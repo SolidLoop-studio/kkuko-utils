@@ -38,16 +38,25 @@ class DefaultDict<K, V> {
     }
 
     /**
-     * 키를 기준으로 정렬
+     * 키를 기준으로 정렬하거나, 사용자 정의 비교함수 사용
      * 
-     * @returns 전체 키/값 쌍 반환
+     * @param compareFn (optional) 정렬에 사용할 비교 함수
      */
-    sortedEntries(): [K, V][] {
-        return [...this.store.entries()].sort(([a], [b]) => {
+    sortedEntries(
+        compareFn?: (a: [K, V], b: [K, V]) => number
+    ): [K, V][] {
+        const entries = [...this.store.entries()];
+
+        if (compareFn) {
+            return entries.sort(compareFn);
+        }
+
+        // 기본 정렬 로직
+        return entries.sort(([a], [b]) => {
             if (typeof a === "string" && typeof b === "string") {
-                return a.localeCompare(b,"ko-KR"); // 문자열 비교
+                return a.localeCompare(b, "ko-KR");
             }
-            return a > b ? 1 : a < b ? -1 : 0; // 일반적인 비교 연산자
+            return a > b ? 1 : a < b ? -1 : 0;
         });
     }
 

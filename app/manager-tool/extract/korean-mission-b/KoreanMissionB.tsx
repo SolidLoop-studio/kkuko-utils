@@ -13,16 +13,32 @@ import { Download, Play, Settings, Zap, Home } from "lucide-react";
 import { DefaultDict } from "@/app/lib/collections";
 import Link from "next/link";
 import HelpModal from "@/app/components/HelpModal";
+import { reverDuemLaw } from "@/app/lib/DuemLaw";
+
+const MISSION_LETTERS = "가나다라마바사아자차카타파하";
+
+interface MissionWordEntry {
+    count: number;
+    len: number;
+    words: string[];
+}
 
 const f = (word: string) => {
     let r = `${word} `;
-    for (const m of "가나다라마바사아자차카타파하") {
+    for (const m of MISSION_LETTERS) {
         const pp = (word.match(new RegExp(m, "gi")) || []).length
         if (pp >= 1) {
             r += `[${m}${pp}]`;
         }
     }
     return r;
+}
+
+function count(text: string, target: string): number {
+    const escapedTarget = target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escapedTarget, 'g');
+    const matches = text.match(regex);
+    return matches ? matches.length : 0;
 }
 
 const WordExtractorApp = () => {
@@ -64,52 +80,65 @@ const WordExtractorApp = () => {
             await new Promise(resolve => setTimeout(resolve, 1))
             if (fileContent) {
                 const words = fileContent.split(/\s+/);
-                // {시작글자: 해당단어들 리스트}
-                const kkk = new DefaultDict<string, string[]>(() => []);
                 const result: string[] = [];
-                for (const word of words) {
-                    kkk.get(word[0]).push(word)
-                }
-                // 정렬하여 dict추출
-                const ppp = kkk.sortedEntries();
-                // [시작글자, 단어들 리스트]
-                for (const [l, v] of ppp) {
-                    // ww: 1티어 단어, co: 1티어 단어의 미션 글자 수
-                    let ww: string | undefined = undefined;
-                    let co: number = 0;
+                const missionWordsMap = new DefaultDict<string, DefaultDict<string, MissionWordEntry>>(() => 
+                    new DefaultDict(() => ({ count: 0, len: 0, words: [] }))
+                );
+                
+                for (const word of new Set(words)){
+                    if (!word.trim()) continue;
+                    const firstChar = word[0];
+                    for (const m of MISSION_LETTERS){
+                        const missionCount = count(word, m);
+                        if (missionCount === 0) continue;
+                        const k = missionWordsMap.get(firstChar).get(m);
+                        if (k.count === missionCount) {
+                            if (k.len < word.length) {
+                                k.len = word.length;
+                                k.words = [word];
+                            } else if (k.len === word.length){
+                                k.words.push(word);
+                            }
+                            
+                        } else if (k.count < missionCount) {
+                            k.count = missionCount;
+                            k.len = word.length;
+                            k.words = [word];
+                        }
 
-                    // 미션 단어수 체크
-                    for (const m of "가나다라마바사아자차카타파하") {
-                        for (const word of v) {
-                            const pp = (word.match(new RegExp(m, "gi")) || []).length;
-                            if (pp > 0) {
-                                if (ww === undefined) {
-                                    // 초기화
-                                    ww = word;
-                                    co = pp;
+                        for (const duemFirstChar of reverDuemLaw(firstChar)){
+                            if (duemFirstChar === firstChar) continue;
+                            const duemK = missionWordsMap.get(duemFirstChar).get(m);
+                            if (duemK.count === missionCount) {
+                                if (duemK.len < word.length) {
+                                    duemK.len = word.length;
+                                    duemK.words = [word];
+                                } else if (duemK.len === word.length){
+                                    duemK.words.push(word);
                                 }
-                                else {
-                                    // 현재 1티어 미션 글자수 보다 미션글자수가 크거나 미션글자수가 같아도 길이가 길면 갱신 
-                                    if (co === pp && ww.length < word.length) ww = word;
-                                    else if (pp > co) {
-                                        ww = word;
-                                        co = pp;
-                                    }
-                                }
+                                
+                            } else if (duemK.count < missionCount) {
+                                duemK.count = missionCount;
+                                duemK.len = word.length;
+                                duemK.words = [word];
                             }
                         }
-                        // 1티어 단어 존재한다면
-                        if (ww !== undefined) {
-                            // 결과 저장
-                            if (!result.includes(`=[${l}]=`)) result.push(`=[${l}]=`);
-                            result.push(`-${m}-`);
-                            if (showMissionLetter) result.push(f(ww));
-                            else result.push(ww);
-                            result.push("");
-                            // 초기화
-                            ww = undefined;
-                            co = 0;
+                    }
+                }
+                
+                for (const [startChar, missionMap] of missionWordsMap.sortedEntries()){
+                    result.push(`=[${startChar}]=`)
+                    for (const m of MISSION_LETTERS){
+                        if (missionMap.get(m).words.length === 0) continue;
+                        result.push(`-${m}-`);
+                        for (const w of missionMap.get(m).words.sort((a,b) => a.localeCompare(b, "ko-KR"))){
+                            if (showMissionLetter){
+                                result.push(f(w));
+                            } else {
+                                result.push(w);
+                            }
                         }
+                        result.push(``);
                     }
                 }
                 setExtractedWords(result);
