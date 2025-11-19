@@ -578,8 +578,34 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
         }
     };
 
+    const handleConvertToLowercase = () => {
+        try {
+            const updatedContent = fileContent.toLowerCase();
+            if (updatedContent === fileContent) return;
+            pushToUndoStack(fileContent);
+            setFileContent(updatedContent);
+            setLineCount(updatedContent.split("\n").length);
+        } catch (err) {
+            if (err instanceof Error) {
+                seterrorModalView({
+                    ErrName: err.name,
+                    ErrMessage: err.message,
+                    ErrStackRace: err.stack,
+                    inputValue: `ConvertToLowercase | ${fileContent}`
+                });
+            } else {
+                seterrorModalView({
+                    ErrName: null,
+                    ErrMessage: null,
+                    ErrStackRace: err as string,
+                    inputValue: `ConvertToLowercase | ${fileContent}`
+                });
+            }
+        }
+    };
+
     return (
-        <div className="bg-gray-50 dark:bg-gray-900 rounded-lg shadow-lg overflow-hidden">
+        <div className="bg-gray-50 dark:bg-gray-900 rounded-lg shadow-lg overflow-auto max-h-screen">
             {/* 헤더 */}
             <div className="bg-white dark:bg-gray-800 p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                 <h1 className="flex items-center text-2xl font-bold text-gray-800 dark:text-gray-100">
@@ -619,6 +645,7 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
                                         <li>• <strong>중복 제거:</strong> 중복된 단어들을 삭제합니다.</li>
                                         <li>• <strong>빈 줄 제거:</strong> 빈줄을 삭제합니다.</li>
                                         <li>• <strong>공백 → 줄바꿈:</strong> 공백을 줄바꿈으로 바꿉니다. 이 웹사이트의 대부분 내용들은 줄바꿈을 한 단어로 인식합니다.</li>
+                                        <li>• <strong>영어 대 → 소:</strong> 영어 대문자를 소문자로 변환합니다.</li>
                                     </ul>
                                 </div>
 
@@ -864,6 +891,17 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
                                     삭제하기
                                 </button>
                             </div>
+                        </div>
+                        {/* 영어 대문자 -> 소문자 */}
+                        <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-900 rounded-md">
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 min-w-20">영어 대 → 소:</span>
+                            <button
+                                className="flex-1 bg-blue-500 text-white px-3 py-1.5 rounded-md hover:bg-blue-600 text-sm font-medium transition-colors disabled:bg-gray-200 dark:disabled:bg-gray-700 disabled:text-gray-400 disabled:cursor-not-allowed"
+                                disabled={!fileContent}
+                                onClick={handleConvertToLowercase} 
+                            >
+                                변환하기
+                            </button>
                         </div>
                     </div>
                 </div>
