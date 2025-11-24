@@ -38,6 +38,7 @@ import { isNoin } from '@/app/lib/lib'
 import { addWordQueryType } from '@/app/types/type'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
+import ThemeSelectModal from './ThemeSelectModal'
 
 // 타입 정의
 type Theme = {
@@ -65,9 +66,23 @@ export default function AdminHome({ requestDatas, refreshFn }: { requestDatas: W
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [allSelected, setAllSelected] = useState<boolean>(false);
     const [errorModalView, setErrorModalView] = useState<ErrorMessage | null>(null);
+    const [themeModalOpen, setThemeModalOpen] = useState<boolean>(false);
+    const [selectedRequestForModal, setSelectedRequestForModal] = useState<WordRequest | null>(null);
+    const [allThemes, setAllThemes] = useState<{ id: number; name: string; code: string }[]>([]);
     const user = useSelector((state: RootState) => state.user);
 
     const PAGE_SIZE = 30;
+
+    // 전체 주제 목록 불러오기
+    useEffect(() => {
+        const loadAllThemes = async () => {
+            const { data, error } = await SCM.get().allThemes();
+            if (!error && data) {
+                setAllThemes(data);
+            }
+        };
+        loadAllThemes();
+    }, []);
 
     // 요청 타입별 필터링
     const filteredRequests = requestDatas.filter(request => {
@@ -108,30 +123,32 @@ export default function AdminHome({ requestDatas, refreshFn }: { requestDatas: W
         setSelectedRequests(newSelected);
     };
 
-    // 주제 선택 토글
-    const toggleTheme = (requestId: number, themeId: number) => {
-        const currentThemes = selectedThemes[requestId] || new Set<number>();
-        const newSelectedThemes = { ...selectedThemes };
+    // 주제 선택 버튼 클릭 핸들러
+    const handleThemeSelectClick = (request: WordRequest) => {
+        setSelectedRequestForModal(request);
+        setThemeModalOpen(true);
+    };
 
-        if (currentThemes.has(themeId)) {
-            currentThemes.delete(themeId);
-            if (currentThemes.size === 0) {
-                toggleRequest(requestId)
-            }
-        } else {
-            currentThemes.add(themeId);
+    // 모달에서 주제 선택 확인 핸들러
+    const handleThemeModalConfirm = (selectedThemesList: Theme[]) => {
+        if (!selectedRequestForModal) return;
+
+        const newSelectedThemes = { ...selectedThemes };
+        const themeIds = new Set(selectedThemesList.map(t => t.theme_id));
+        newSelectedThemes[selectedRequestForModal.id] = themeIds;
+        setSelectedThemes(newSelectedThemes);
+
+        // 주제가 선택되면 해당 요청도 자동으로 선택
+        if (themeIds.size > 0) {
             const newSelected = new Set(selectedRequests);
-            if (!newSelected.has(requestId)) {
-                newSelected.add(requestId);
+            if (!newSelected.has(selectedRequestForModal.id)) {
+                newSelected.add(selectedRequestForModal.id);
                 if (newSelected.size === currentRequests.length) {
                     setAllSelected(true);
                 }
                 setSelectedRequests(newSelected);
             }
         }
-
-        newSelectedThemes[requestId] = currentThemes;
-        setSelectedThemes(newSelectedThemes);
     };
 
     const makeError = (error: PostgrestError) => {
@@ -155,11 +172,18 @@ export default function AdminHome({ requestDatas, refreshFn }: { requestDatas: W
             const request = requestDatas.find(r => r.id === reqId);
             const selectedThemeIds = selectedThemes[reqId] || new Set<number>();
 
+            // allThemes에서 선택된 주제 정보 가져오기
+            const selectedThemeObjects = allThemes
+                .filter(theme => selectedThemeIds.has(theme.id))
+                .map(theme => ({
+                    theme_id: theme.id,
+                    theme_name: theme.name,
+                    theme_code: theme.code
+                }));
+
             return {
                 ...request,
-                selectedThemes: request?.wait_themes?.filter(theme =>
-                    selectedThemeIds.has(theme.theme_id)
-                )
+                selectedThemes: selectedThemeObjects
             };
         });
 
@@ -173,6 +197,8 @@ export default function AdminHome({ requestDatas, refreshFn }: { requestDatas: W
 
         // 승인할 목록에서 쿼리에 맞게 배분
         for (const req of requestsToApprove) {
+            const selectedThemeIds = selectedThemes[req.id!] || new Set<number>();
+            
             switch (req.request_type) {
                 case "add":
                     if (!req.word || !req.selectedThemes || req.selectedThemes.length === 0) continue;
@@ -188,10 +214,16 @@ export default function AdminHome({ requestDatas, refreshFn }: { requestDatas: W
                     continue
 
                 case "theme_change":
-                    if (!req.word_id || !req.selectedThemes) continue;
+                    if (!req.word_id) continue;
                     const addT: { word_id: number, theme_id: number }[] = [];
                     const delT: { word_id: number, theme_id: number }[] = [];
-                    req.selectedThemes.forEach((theme) => {
+                    
+                    // theme_change는 wait_themes를 직접 사용
+                    const themesToProcess = req.wait_themes?.filter(theme => 
+                        selectedThemeIds.has(theme.theme_id)
+                    ) || [];
+                    
+                    themesToProcess.forEach((theme) => {
                         if (theme.typez === "add") {
                             addT.push({ word_id: req.word_id as number, theme_id: theme.theme_id })
                         }
@@ -619,14 +651,57 @@ export default function AdminHome({ requestDatas, refreshFn }: { requestDatas: W
                                                             {renderRequestTypeBadge(request.request_type)}
                                                         </TableCell>
                                                         <TableCell>
-                                                            {request.wait_themes ? (
+                                                            {request.request_type === 'add' ? (
+                                                                <div className="space-y-2">
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => handleThemeSelectClick(request)}
+                                                                        className="w-full"
+                                                                    >
+                                                                        주제 선택 ({selectedThemes[request.id]?.size || 0})
+                                                                    </Button>
+                                                                    {selectedThemes[request.id] && selectedThemes[request.id].size > 0 && (
+                                                                        <div className="flex flex-wrap gap-1">
+                                                                            {allThemes
+                                                                                .filter(theme => selectedThemes[request.id]?.has(theme.id))
+                                                                                .map((theme, index) => (
+                                                                                    <Badge key={`badge-${theme.id}-${index}`} variant="secondary" className="text-xs">
+                                                                                        {theme.name}
+                                                                                    </Badge>
+                                                                                ))}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ) : request.wait_themes ? (
                                                                 <div className="flex flex-col gap-2">
                                                                     {request.wait_themes.map((theme, index) => (
                                                                         <div key={`t-${theme.theme_id}-${request.id}-${index ^ 10110}`} className="flex items-center gap-2">
                                                                             <Checkbox
                                                                                 id={`theme-${request.id}-${theme.theme_id}`}
                                                                                 checked={selectedThemes[request.id]?.has(theme.theme_id) || false}
-                                                                                onCheckedChange={() => toggleTheme(request.id, theme.theme_id)}
+                                                                                onCheckedChange={() => {
+                                                                                    const currentThemes = selectedThemes[request.id] || new Set<number>();
+                                                                                    const newSelectedThemes = { ...selectedThemes };
+                                                                                    if (currentThemes.has(theme.theme_id)) {
+                                                                                        currentThemes.delete(theme.theme_id);
+                                                                                        if (currentThemes.size === 0) {
+                                                                                            toggleRequest(request.id)
+                                                                                        }
+                                                                                    } else {
+                                                                                        currentThemes.add(theme.theme_id);
+                                                                                        const newSelected = new Set(selectedRequests);
+                                                                                        if (!newSelected.has(request.id)) {
+                                                                                            newSelected.add(request.id);
+                                                                                            if (newSelected.size === currentRequests.length) {
+                                                                                                setAllSelected(true);
+                                                                                            }
+                                                                                            setSelectedRequests(newSelected);
+                                                                                        }
+                                                                                    }
+                                                                                    newSelectedThemes[request.id] = currentThemes;
+                                                                                    setSelectedThemes(newSelectedThemes);
+                                                                                }}
                                                                             />
                                                                             <label htmlFor={`theme-${request.id}-${theme.theme_id}`} className="text-sm flex items-center text-gray-700 dark:text-gray-200">
                                                                                 {theme.theme_name}
@@ -709,6 +784,19 @@ export default function AdminHome({ requestDatas, refreshFn }: { requestDatas: W
                     </CardFooter>
                 </Card>
                 {errorModalView && <ErrorModal error={errorModalView} onClose={() => setErrorModalView(null)} />}
+                {selectedRequestForModal && (
+                    <ThemeSelectModal
+                        isOpen={themeModalOpen}
+                        onClose={() => {
+                            setThemeModalOpen(false);
+                            setSelectedRequestForModal(null);
+                        }}
+                        word={selectedRequestForModal.word}
+                        initialSelectedThemes={selectedRequestForModal.wait_themes || []}
+                        initialSelectedThemeIds={selectedThemes[selectedRequestForModal.id]}
+                        onConfirm={handleThemeModalConfirm}
+                    />
+                )}
             </div>
         </div>
     )
