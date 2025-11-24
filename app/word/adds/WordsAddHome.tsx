@@ -165,7 +165,14 @@ export default function WordsAddPage() {
             if (!trimmedLine) return;
 
             const delimiterIndex = trimmedLine.indexOf('/');
-            if (delimiterIndex === -1) return;
+            if (delimiterIndex === -1){
+                words.push({
+                    id: `word-${Date.now()}-${index}`,
+                    word: trimmedLine,
+                    topics: []
+                })
+                return;
+            }
 
             const word = trimmedLine.substring(0, delimiterIndex).trim();
             const topicsStr = trimmedLine.substring(delimiterIndex + 1).trim();
@@ -638,7 +645,7 @@ export default function WordsAddPage() {
             }
         }
         const regex = /^[0-9ㄱ-힣]*$/;
-        return !regex.test(entry.word) || p || entry.topics.length === 0;
+        return !regex.test(entry.word) || p;
     };
 
     const formatFileSize = (bytes: number) => {

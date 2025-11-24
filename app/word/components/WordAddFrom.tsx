@@ -597,7 +597,7 @@ const WordAddForm = ({ saveFn, initWord = "", initThemes = [] }: WordAddFormProp
                     <Button
                         className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:text-gray-500 dark:disabled:text-gray-400"
                         onClick={onSave}
-                        disabled={word.length === 0 || selectedTopics.length === 0 || invalidWord || isSaving}
+                        disabled={word.length === 0 || invalidWord || isSaving}
                     >
                         <Save className="mr-2 h-4 w-4" />
                         단어 저장

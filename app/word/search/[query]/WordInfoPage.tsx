@@ -25,6 +25,10 @@ export default function WordInfoPage({ query }: { query: string }) {
         setErrorView(`단어 정보 데이터 로드중 오류.\nErrorName: ${erorr.name ?? "알수없음"}\nError Message: ${erorr.message ?? "없음"}\nError code: ${erorr.code}`);
     };
 
+    const goTo404 = () => {
+        router.push("/404");
+    };
+
     const wordSetFunc = (wordInfo: {
         id: number,
         word: string,
@@ -269,7 +273,7 @@ export default function WordInfoPage({ query }: { query: string }) {
         
     }, [query]);
 
-    if (isNotFound) { return <NotFound /> }
+    if (isNotFound) { goTo404(); }
 
     if (loadingState.isLoading) { return <LoadingPage title={'단어 정보'} /> }
 
