@@ -1,4 +1,4 @@
-import type { addWordQueryType, addWordThemeQueryType, DocsLogData, WordLogData } from '@/app/types/type';
+import type { addWordQueryType, addWordThemeQueryType, advancedQueryType, DocsLogData, WordLogData } from '@/app/types/type';
 import { AuthError, OAuthResponse, PostgrestError, PostgrestSingleResponse, Session, Subscription } from '@supabase/supabase-js';
 import type { Database } from '@/app/types/database.types'
 
@@ -82,12 +82,16 @@ export interface IGetManager{
     themeDocsByThemeNames(themeNames: string[]): Promise<PostgrestSingleResponse<docs[]>>;
     firstWordCountByLetters(letters: string[]): Promise<number>;
     lastWordCountByLetters(letters: string[]): Promise<number>;
+    /**
+     * @deprecated Use wordsByWords or wordsByAdvancedQuery instead  */
     wordsByQuery(query: string): Promise<{data: string[], error: null} | {data: null; error: PostgrestError}>;
     logsByFillter({filterState, filterType, from, to}:{filterState?: "approved" | "rejected" | "pending" | "all", filterType: "delete" | "add" | "all", from: number, to: number}): Promise<PostgrestSingleResponse<(log & {make_by_user: { nickname: string; } | null; processed_by_user: { nickname: string | null } | null;})[]>>
     docsLogsByFilter({ docsName, logType, from, to }: { docsName?: string; logType: 'add' | 'delete' | 'all'; from: number; to: number; }): Promise<PostgrestSingleResponse<(docs_log & { docs: docs; users: { nickname: string } | null })[]>>;
     notice(): Promise<PostgrestSingleResponse<notification | null>>;
     wordsThemesByWordId(wordIds: number[]): Promise<PostgrestSingleResponse<{word_id: number, themes: theme}[]>>;
     allUser(sortField?: 'contribution' | 'month_contribution' | 'nickname', isAsc?: boolean): Promise<PostgrestSingleResponse<user[]>>;
+    letterCountInfo(): Promise<{data: {firstLetterCounts: Record<string, {count: number; k_count: number; n_count: number}>; lastLetterCounts: Record<string, {count: number; k_count: number; n_count: number}>;}, error: null}|{data: null; error: PostgrestError}>;
+    wordsByAdvancedQuery(input: advancedQueryType): Promise<{data: {word: string, nextWordCount: number}[], error: null} | {data: null; error: PostgrestError}>;
 }
 
 // delete 관련 타입

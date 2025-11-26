@@ -1,10 +1,11 @@
 import { ISupabaseClientManager, IAddManager, IGetManager, IDeleteManager, IUpdateManager } from './ISupabaseClientManager';
 import type { PostgrestError, PostgrestSingleResponse, Session, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/app/types/database.types';
-import type { addWordQueryType, addWordThemeQueryType, DocsLogData, WordLogData } from '@/app/types/type';
-import { reverDuemLaw } from '../DuemLaw';
+import type { addWordQueryType, addWordThemeQueryType, DocsLogData, WordLogData, advancedQueryType } from '@/app/types/type';
+import DuemLaw, { reverDuemLaw } from '../DuemLaw';
 import { sum } from 'es-toolkit';
 import { StorageError } from '@supabase/storage-js';
+import { count } from '../lib';
 
 const CACHE_DURATION = 10 * 60 * 1000;
 
@@ -77,6 +78,15 @@ class GetManager implements IGetManager {
     constructor(private readonly supabase: SupabaseClient<Database>) { }
 
     private wordsCache: Record<string,{data: {word: string, noin_canuse: boolean, k_canuse: boolean, status: "ok" | "add" | "delete"}[], time: number}> = {};
+    private wordFirstLetterCountsCache: Record<string, {
+        count: number;
+        k_count: number;
+        n_count: number;
+        len3_k_count: number;
+        len3_n_count: number;
+    }> = {};
+    private wordLastLetterCountsCache: Record<string,{count: number, k_count: number, n_count: number}> = {};
+    private wordLetterCountsCacheTime: number = 0;
 
     public async waitWordInfoByWord(word: string) {
         return await this.supabase.from('wait_words').select('*,users(nickname)').eq('word', word).maybeSingle();
@@ -385,6 +395,9 @@ class GetManager implements IGetManager {
 
         return (sum((lasWordsCount1 ?? []).map(({count})=>count))) + (lasWordsCount2 || 0)
     }
+    /**
+     * @deprecated Use wordsByWords or wordsByAdvancedQuery instead 
+     */
     public async wordsByQuery(query: string) {
         const cleanQuery = query.trim().replace(/[^ㄱ-힣a-zA-Z0-9]/g, '');
         let dbqueryA = this.supabase.from('words').select('word')
@@ -415,6 +428,111 @@ class GetManager implements IGetManager {
             }
         })
         return {data: allWords.sort((a,b)=>a.length - b.length), error: null}
+    }
+    public async letterCountInfo(){
+        const now = Date.now();
+        if (this.wordLetterCountsCacheTime !== 0 && now - this.wordLetterCountsCacheTime < CACHE_DURATION){
+            return {data: {
+                firstLetterCounts: this.wordFirstLetterCountsCache,
+                lastLetterCounts: this.wordLastLetterCountsCache
+            }, error: null}
+        }
+        const { data: firstLetterCountsData, error: firstLetterCountsError } = await this.supabase.from('word_first_letter_counts').select('*');
+        if (firstLetterCountsError) return {data: null, error: firstLetterCountsError}
+        const { data: lastLetterCountsData, error: lastLetterCountsError } = await this.supabase.from('word_last_letter_counts').select('*');
+        if (lastLetterCountsError) return {data: null, error: lastLetterCountsError}
+
+        const firstLetterCounts: Record<string,{count: number, k_count: number, n_count: number, len3_k_count: number, len3_n_count: number}> = {};
+        firstLetterCountsData?.forEach(({ first_letter, count, k_count, n_count, len3_k_count, len3_n_count }) => {
+            firstLetterCounts[first_letter] = { count, k_count, n_count, len3_k_count, len3_n_count };
+        });
+        const lastLetterCounts: Record<string,{count: number, k_count: number, n_count: number}> = {};
+        lastLetterCountsData?.forEach(({ last_letter, count, k_count, n_count }) => {
+            lastLetterCounts[last_letter] = { count, k_count, n_count };
+        });
+
+        this.wordFirstLetterCountsCache = firstLetterCounts;
+        this.wordLastLetterCountsCache = lastLetterCounts;
+        this.wordLetterCountsCacheTime = now;
+
+        return {data: {
+            firstLetterCounts,
+            lastLetterCounts
+        }, error: null}
+    }
+    public async wordsByAdvancedQuery(input: advancedQueryType) {
+        const { data: letterData, error: letterError } = await this.letterCountInfo();
+        if (letterError) return { data: null, error: letterError };
+
+        switch (input.mode) {
+            case 'kor-start':
+                const { data, error} = await this.supabase.rpc('get_korean_words_advanced_s',{
+                    p_start: input.start,
+                    p_end: input.end,
+                    p_length_max: input.length_max,
+                    p_length_min: input.length_min,
+                    p_man: input.man,
+                    p_eti: input.eti,
+                    p_jen: input.jen,
+                    p_ingjung: input.ingjung,
+                    p_limit: input.limit,
+                    p_mission: input.mission,
+                    p_sort_by: input.sort_by,
+                    p_duem: input.duem
+                });
+                if (error) return {data: null, error};
+                return { data: data.map((word) => ({ word: word.word, nextWordCount: letterData.firstLetterCounts[word.word[word.word.length - 1]]?.[input.ingjung ? 'k_count' : 'n_count'] ?? 0 })), error: null };
+
+            case 'kor-end':
+                const { data: data2, error: error2} = await this.supabase.rpc('get_korean_words_advanced_e',{
+                    p_start: input.start,
+                    p_end: input.end,
+                    p_length_max: input.length_max,
+                    p_length_min: input.length_min,
+                    p_man: input.man,
+                    p_eti: input.eti,
+                    p_jen: input.jen,
+                    p_ingjung: input.ingjung,
+                    p_limit: input.limit,
+                    p_mission: input.mission,
+                    p_sort_by: input.sort_by,
+                    p_duem: input.duem
+                });
+                if (error2) return {data: null, error: error2};
+                return { data: data2.map((word) => ({ word: word.word, nextWordCount: letterData.lastLetterCounts[word.word[0]]?.[input.ingjung ? 'k_count' : 'n_count'] ?? 0 })), error: null };
+
+            case 'kung':
+                const {data: data3, error: error3} = await this.supabase.rpc('get_korean_words_advanced_kung',{
+                    p_start: input.start,
+                    p_end: input.end,
+                    p_man: input.man,
+                    p_eti: input.eti,
+                    p_jen: input.jen,
+                    p_ingjung: input.ingjung,
+                    p_limit: input.limit,
+                    p_mission: input.mission,
+                    p_sort_by: input.sort_by
+                });
+                if (error3) return {data: null, error: error3};
+                return { data: data3.map((word) => ({ word: word.word, nextWordCount: letterData.firstLetterCounts[word.word[word.word.length - 1]]?.[input.ingjung ? 'len3_k_count' : 'len3_n_count'] ?? 0 })), error: null};
+            case 'hunmin':
+                const {data: data4, error: error4} = await this.supabase.rpc('get_korean_words_advanced_hunmin',{
+                    p_chosungs: input.query,
+                    p_limit: input.limit,
+                    p_mission: input.mission === '' ? undefined : input.mission,
+                });
+                if (error4) return {data: null, error: error4};
+                return { data: data4.map((word) => ({ word: word.word, nextWordCount: -1 })), error: null};
+            case 'jaqi':
+                const {data: data5, error: error5} = await this.supabase.rpc('get_korean_words_advanced_jaqi',{
+                    p_chosungs: input.query,
+                    p_theme_id: input.theme
+                });
+                if (error5) return {data: null, error: error5};
+                return { data: data5.sort((a,b)=>b.word.length - a.word.length).map((word) => ({ word: word.word, nextWordCount: -1 })), error: null};
+            default:
+                return {data: [], error: null};
+        }
     }
     public async logsByFillter({ filterState, filterType, from, to }: { filterState: 'approved' | 'rejected' | 'pending' | 'all'; filterType: 'delete' | 'add' | 'all'; from: number; to: number; }) {
         let query = this.supabase

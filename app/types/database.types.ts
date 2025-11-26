@@ -257,18 +257,21 @@ export type Database = {
           content: string
           created_at: string
           id: number
+          link: string | null
           title: string
         }
         Insert: {
           content: string
           created_at?: string
           id?: number
+          link?: string | null
           title: string
         }
         Update: {
           content?: string
           created_at?: string
           id?: number
+          link?: string | null
           title?: string
         }
         Relationships: []
@@ -458,42 +461,78 @@ export type Database = {
       word_first_letter_counts: {
         Row: {
           count: number
+          count_updated_at: string | null
           first_letter: string
           k_count: number
+          k_count_updated_at: string | null
+          len3_count: number
+          len3_count_updated_at: string | null
+          len3_k_count: number
+          len3_k_count_updated_at: string | null
+          len3_n_count: number
+          len3_n_count_updated_at: string | null
           n_count: number
+          n_count_updated_at: string | null
         }
         Insert: {
           count?: number
+          count_updated_at?: string | null
           first_letter: string
           k_count?: number
+          k_count_updated_at?: string | null
+          len3_count?: number
+          len3_count_updated_at?: string | null
+          len3_k_count?: number
+          len3_k_count_updated_at?: string | null
+          len3_n_count?: number
+          len3_n_count_updated_at?: string | null
           n_count?: number
+          n_count_updated_at?: string | null
         }
         Update: {
           count?: number
+          count_updated_at?: string | null
           first_letter?: string
           k_count?: number
+          k_count_updated_at?: string | null
+          len3_count?: number
+          len3_count_updated_at?: string | null
+          len3_k_count?: number
+          len3_k_count_updated_at?: string | null
+          len3_n_count?: number
+          len3_n_count_updated_at?: string | null
           n_count?: number
+          n_count_updated_at?: string | null
         }
         Relationships: []
       }
       word_last_letter_counts: {
         Row: {
           count: number
+          count_updated_at: string | null
           k_count: number
+          k_count_updated_at: string | null
           last_letter: string
           n_count: number
+          n_count_updated_at: string | null
         }
         Insert: {
           count?: number
+          count_updated_at?: string | null
           k_count?: number
+          k_count_updated_at?: string | null
           last_letter: string
           n_count?: number
+          n_count_updated_at?: string | null
         }
         Update: {
           count?: number
+          count_updated_at?: string | null
           k_count?: number
+          k_count_updated_at?: string | null
           last_letter?: string
           n_count?: number
+          n_count_updated_at?: string | null
         }
         Relationships: []
       }
@@ -625,6 +664,28 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      combine_hangul: {
+        Args: { cho: string; jong?: string; jung: string }
+        Returns: string
+      }
+      decompose_hangul: {
+        Args: { hangul: string }
+        Returns: {
+          cho: string
+          jong: string
+          jung: string
+        }[]
+      }
+      decrease_word_stats: {
+        Args: {
+          p_first_letter: string
+          p_k_canuse: boolean
+          p_last_letter: string
+          p_noin_canuse: boolean
+          p_word_len: number
+        }
+        Returns: undefined
+      }
       delete_word_themes_bulk: {
         Args: { pairs: Json }
         Returns: {
@@ -638,6 +699,7 @@ export type Database = {
         Args: { pairs: Json }
         Returns: undefined
       }
+      duem: { Args: { letter: string }; Returns: string }
       get_chosungs: { Args: { hangul: string }; Returns: string }
       get_delete_requests_by_themeid: {
         Args: { input_theme_id: number }
@@ -648,6 +710,73 @@ export type Database = {
         }[]
       }
       get_doc_rank: { Args: { doc_id: number }; Returns: number }
+      get_korean_words_advanced_e: {
+        Args: {
+          p_duem?: boolean
+          p_end?: string
+          p_eti?: boolean
+          p_ingjung?: boolean
+          p_jen?: boolean
+          p_length_max?: number
+          p_length_min?: number
+          p_limit?: number
+          p_man?: boolean
+          p_mission?: string
+          p_sort_by?: string
+          p_start?: string
+        }
+        Returns: {
+          word: string
+        }[]
+      }
+      get_korean_words_advanced_hunmin: {
+        Args: { p_chosungs: string; p_limit: number; p_mission?: string }
+        Returns: {
+          word: string
+        }[]
+      }
+      get_korean_words_advanced_jaqi: {
+        Args: { p_chosungs: string; p_theme_id: number }
+        Returns: {
+          word: string
+        }[]
+      }
+      get_korean_words_advanced_kung: {
+        Args: {
+          p_duem?: boolean
+          p_end?: string
+          p_eti?: boolean
+          p_ingjung?: boolean
+          p_jen?: boolean
+          p_limit?: number
+          p_man?: boolean
+          p_mission?: string
+          p_sort_by?: string
+          p_start?: string
+        }
+        Returns: {
+          word: string
+        }[]
+      }
+      get_korean_words_advanced_s: {
+        Args: {
+          p_duem?: boolean
+          p_end?: string
+          p_eti?: boolean
+          p_ingjung?: boolean
+          p_jen?: boolean
+          p_length_max?: number
+          p_length_min?: number
+          p_limit?: number
+          p_man?: boolean
+          p_mission?: string
+          p_sort_by?: string
+          p_start?: string
+        }
+        Returns: {
+          word: string
+        }[]
+      }
       get_user_monthly_rank: { Args: { uid: string }; Returns: number }
       get_words_with_themes: {
         Args: { words_input: string[] }
@@ -664,6 +793,16 @@ export type Database = {
           word: string
           wthemes: number[]
         }[]
+      }
+      increase_word_stats: {
+        Args: {
+          p_first_letter: string
+          p_k_canuse: boolean
+          p_last_letter: string
+          p_noin_canuse: boolean
+          p_word_len: number
+        }
+        Returns: undefined
       }
       increment_contribution: {
         Args: { inc_amount: number; target_id: string }
@@ -695,6 +834,9 @@ export type Database = {
         }[]
       }
       reset_monthly_contribution: { Args: never; Returns: undefined }
+      revers_duem: { Args: { letter: string }; Returns: string[] }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       update_last_update: { Args: { docs_id: number }; Returns: undefined }
       update_last_updates: { Args: { docs_ids: number[] }; Returns: undefined }
     }

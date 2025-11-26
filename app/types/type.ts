@@ -52,3 +52,30 @@ export type addWordThemeQueryType = {
     word_id: number;
     theme_id: number;
 }
+
+type commonAdvancedQueryType = {
+    limit: number;
+}
+
+type nomalCommonAdvancedQueryType = {
+    start?: string;
+    end?: string;
+    ingjung: boolean;
+    mission: string;
+    man: boolean;
+    jen: boolean;
+    eti: boolean;
+    duem: boolean;
+    miniInfo: boolean;
+    length_min?: number;
+    length_max?: number;
+    sort_by?: "abc" | "length" | "attack";
+    asc?: boolean;
+}
+
+export type advancedQueryType = |
+    (commonAdvancedQueryType & nomalCommonAdvancedQueryType & {mode: 'kor-start'}) |
+    (commonAdvancedQueryType & nomalCommonAdvancedQueryType & {mode: 'kor-end'}) |
+    (commonAdvancedQueryType & nomalCommonAdvancedQueryType & {mode: 'kung'}) |
+    (commonAdvancedQueryType & {query: string, mode: 'hunmin', mission: string}) |
+    (commonAdvancedQueryType & {query: string, mode: 'jaqi', theme: number})
