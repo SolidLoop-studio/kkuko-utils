@@ -5,7 +5,6 @@ import type { addWordQueryType, addWordThemeQueryType, DocsLogData, WordLogData,
 import DuemLaw, { reverDuemLaw } from '../DuemLaw';
 import { sum } from 'es-toolkit';
 import { StorageError } from '@supabase/storage-js';
-import { count } from '../lib';
 
 const CACHE_DURATION = 10 * 60 * 1000;
 
@@ -159,7 +158,7 @@ class GetManager implements IGetManager {
     public async docsWords({ name, duem, typez }: { name: string, duem: boolean, typez: "letter" | "theme" } | { name: number, duem: boolean, typez: "ect" }) {
         if (typez === "letter") {
             if (duem) {
-                const { data: wordsData, error: wordsError } = await this.supabase.from('words').select('*').in('last_letter', [...new Set(...reverDuemLaw(name[0]), DuemLaw(name[0]))]).eq('k_canuse', true).neq('length', 1);
+                const { data: wordsData, error: wordsError } = await this.supabase.from('words').select('*').in('last_letter', [...new Set([...reverDuemLaw(name[0]), DuemLaw(name[0])])]).eq('k_canuse', true).neq('length', 1); 
                 if (wordsError) return { data: null, error: wordsError }
                 let q = this.supabase.from('wait_words').select('word,requested_by,request_type');
                 for (const l of reverDuemLaw(name[0])) {

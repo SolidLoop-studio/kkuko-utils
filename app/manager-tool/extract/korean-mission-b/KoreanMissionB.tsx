@@ -34,7 +34,7 @@ const f = (word: string) => {
     return r;
 }
 
-function count(text: string, target: string): number {
+function countMissionChars(text: string, target: string): number {
     const escapedTarget = target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = new RegExp(escapedTarget, 'g');
     const matches = text.match(regex);
@@ -89,7 +89,7 @@ const WordExtractorApp = () => {
                     if (!word.trim()) continue;
                     const firstChar = word[0];
                     for (const m of MISSION_LETTERS){
-                        const missionCount = count(word, m);
+                        const missionCount = countMissionChars(word, m);
                         if (missionCount === 0) continue;
                         const k = missionWordsMap.get(firstChar).get(m);
                         if (k.count === missionCount) {
@@ -127,7 +127,7 @@ const WordExtractorApp = () => {
                 }
                 
                 for (const [startChar, missionMap] of missionWordsMap.sortedEntries()){
-                    result.push(`=[${startChar}]=`)
+                    result.push(`=[${startChar}]=`);
                     for (const m of MISSION_LETTERS){
                         if (missionMap.get(m).words.length === 0) continue;
                         result.push(`-${m}-`);

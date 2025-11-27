@@ -686,7 +686,7 @@ export default function AdminHome({ requestDatas, refreshFn }: { requestDatas: W
                                                                                     if (currentThemes.has(theme.theme_id)) {
                                                                                         currentThemes.delete(theme.theme_id);
                                                                                         if (currentThemes.size === 0) {
-                                                                                            toggleRequest(request.id)
+                                                                                            toggleRequest(request.id);
                                                                                         }
                                                                                     } else {
                                                                                         currentThemes.add(theme.theme_id);

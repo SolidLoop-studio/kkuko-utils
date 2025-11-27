@@ -263,7 +263,7 @@ export default function WordInfoPage({ query }: { query: string }) {
         
     }, [query]);
 
-    if (isNotFound) { goTo404(); }
+    if (isNotFound) { goTo404(); return null; }
 
     if (loadingState.isLoading) { return <LoadingPage title={'단어 정보'} /> }
 
