@@ -11,7 +11,10 @@ type ParserError = {
 type ReturnModeParse = {
     words: string[];
     wordAndThemes: { [key: string]: string[] };
-    logs: { type: GameEventType | "turnHint"; time: number; userId: string; message: string; }[]
+    logs: { type: GameEventType | "turnHint"; time: number; userId?: string; message: string; }[];
+    roundChains: { round: number; chains: { userId: string; word: string | null; isRoundEnd: boolean }[] }[];
+    userMapping: { [userId: string]: number };
+    mode: number;
 }
 
 export default class ReplayParser {
@@ -56,7 +59,12 @@ export default class ReplayParser {
 
         const words: string[] = [];
         const wordAndThemes: { [key: string]: string[] } = {};
-        const logs: { type: GameEventType; time: number; userId: string; message: string; }[] = [];
+        const logs: { type: GameEventType; time: number; userId?: string; message: string; }[] = [];
+        const roundChains: { round: number; chains: { userId: string; word: string | null; isRoundEnd: boolean }[] }[] = [];
+        const userMapping: { [userId: string]: number } = {};
+        const userOrder: string[] = [];
+        let currentRound = -1;
+        let currentChain: { userId: string; word: string | null; isRoundEnd: boolean }[] = [];
 
         logs.push({
             type: 'startGame', 
@@ -73,43 +81,61 @@ export default class ReplayParser {
                     logs.push({ type: "chat", time: event.time, userId: eventData.from, message: eventData.value });
                     break;
                 case "conn":
-                    logs.push({ type: "conn", time: event.time, userId: eventData.user.profile.id, message: `${eventData.user.profile.id}님이 입장하셨습니다.` });
+                    logs.push({ type: "conn", time: event.time, userId: eventData.user.profile?.id, message: `${eventData.user.profile?.id}님이 입장하셨습니다.` });
                     break;
                 case "disconn":
-                    logs.push({ type: "disconn", time: event.time, userId: eventData.id, message: `${eventData.id}님이 퇴장하셨습니다.` });
+                    logs.push({ type: "disconn", time: event.time, userId: eventData?.id, message: `${eventData?.id}님이 퇴장하셨습니다.` });
                     break;
                 case "disconnRoom":
-                    logs.push({ type: "disconnRoom", time: event.time, userId: eventData.id, message: `${eventData.id}님이 퇴장하셨습니다.` });
+                    logs.push({ type: "disconnRoom", time: event.time, userId: eventData?.id, message: `${eventData?.id}님이 퇴장하셨습니다.` });
                     break;
                 case "roundReady":
                     if (!("char" in eventData) || !("mission" in eventData)) continue;
-                    logs.push({ type: "roundReady", time: event.time, userId: eventData.profile.id, message: `${eventData.round}라운드 준비. 시작 글자: ${eventData.char}${eventData.mission ? `, 미션글자: ${eventData.mission}` : ""}` });
+                    logs.push({ type: "roundReady", time: event.time, userId: eventData.profile?.id, message: `${eventData.round}라운드 준비. 시작 글자: ${eventData.char}${eventData.mission ? `, 미션글자: ${eventData.mission}` : ""}` });
+                    if (currentChain.length > 0) {
+                        roundChains.push({ round: currentRound, chains: currentChain });
+                    }
+                    currentRound = eventData.round;
+                    currentChain = [];
                     break;
                 case "turnStart":
                     if (!("mission" in eventData)) continue;
-                    logs.push({ type: "turnStart", time: event.time, userId: eventData.profile.id, message: `시작글자: ${eventData.char}${eventData.mission ? `, 미션글자: ${eventData.mission}` : ""}로 턴 시작` });
+                    logs.push({ type: "turnStart", time: event.time, userId: eventData.profile?.id, message: `시작글자: ${eventData.char}${eventData.mission ? `, 미션글자: ${eventData.mission}` : ""}로 턴 시작` });
                     break;
                 case "turnEnd":
                     // 명시적 타입 가드 사용
                     if ("ok" in eventData) {
+                        const userId = eventData.profile?.id || "";
+                        // 첫 번째 라운드에서 유저 순서 기록
+                        if (currentRound === 1 && userId && !userOrder.includes(userId)) {
+                            userOrder.push(userId);
+                            userMapping[userId] = userOrder.length;
+                        }
+                        
                         if (eventData.ok) {
                             words.push(eventData.value);
                             wordAndThemes[eventData.value] = [...new Set(eventData.theme.split(","))];
-                            logs.push({ type: "turnEnd", time: event.time, userId: eventData.profile.id, message: `"${eventData.value}"입력 성공. 얻은 점수: ${eventData.score}점 (미션 보너스: ${eventData.bonus ? eventData.bonus + "점" : "없음"})` });
+                            logs.push({ type: "turnEnd", time: event.time, userId: eventData.profile?.id, message: `"${eventData.value}"입력 성공. 얻은 점수: ${eventData.score}점 (미션 보너스: ${eventData.bonus ? eventData.bonus + "점" : "없음"})` });
+                            currentChain.push({ userId: eventData.profile?.id, word: eventData.value, isRoundEnd: false });
                         } else {
                             if (!eventData.hint) continue;
                             words.push(eventData.hint);
-                            logs.push({ type: "turnEnd", time: event.time, userId: eventData.profile.id, message: `라운드 종료. 힌트: ${eventData.hint}. 잃은 점수: ${Math.abs(eventData.score)}점` });
+                            logs.push({ type: "turnEnd", time: event.time, userId: eventData.profile?.id, message: `라운드 종료. 힌트: ${eventData.hint}. 잃은 점수: ${Math.abs(eventData.score)}점` });
+                            currentChain.push({ userId: eventData.profile?.id, word: null, isRoundEnd: true });
                         }
                     }
                     break;
                 case "turnError":
-                    logs.push({ type: "turnError", time: event.time, userId: eventData.profile.id, message: `턴 넘기기 실패. 입력한 단어: ${eventData.value}, 에러코드: ${eventData.code} (${errorCode[eventData.code] ?? "알 수 없는 에러"})` });
+                    logs.push({ type: "turnError", time: event.time, userId: eventData.profile?.id, message: `턴 넘기기 실패. 입력한 단어: ${eventData.value}, 에러코드: ${eventData.code} (${errorCode[eventData.code] ?? "알 수 없는 에러"})` });
                     break;
             }
         }
 
-        return { data: { words: [...new Set(words)], wordAndThemes, logs }, error: null };
+        if (currentChain.length > 0) {
+            roundChains.push({ round: currentRound, chains: currentChain });
+        }
+
+        return { data: { words: [...new Set(words)], wordAndThemes, logs, roundChains, userMapping, mode: this.parsedData.mode }, error: null };
     }
 
     private jaquizModeAnalyze(): { data: ReturnModeParse, error: null } | { data: null, error: ParserError } {
@@ -118,7 +144,10 @@ export default class ReplayParser {
 
         const words: string[] = [];
         const wordAndThemes: { [key: string]: string[] } = {};
-        const logs: { type: GameEventType | "turnHint"; time: number; userId: string; message: string; }[] = [];
+        const logs: { type: GameEventType | "turnHint"; time: number; userId?: string; message: string; }[] = [];
+        const roundChains: { round: number; chains: { userId: string; word: string | null; isRoundEnd: boolean }[] }[] = [];
+        let currentRound = -1;
+        let currentChain: { userId: string; word: string | null; isRoundEnd: boolean }[] = [];
 
         logs.push({
             type: 'startGame', 
@@ -147,6 +176,11 @@ export default class ReplayParser {
                     // Mode4에서는 roundReady의 구조가 다름
                     if ("theme" in eventData) {
                         logs.push({ type: "roundReady", time: event.time, userId: eventData.profile.id, message: `${eventData.round}라운드 준비. 주제: ${eventData.theme}` });
+                        if (currentChain.length > 0) {
+                            roundChains.push({ round: currentRound, chains: currentChain });
+                        }
+                        currentRound = eventData.round;
+                        currentChain = [];
                     }
                     break;
                 case "turnStart":
@@ -166,6 +200,7 @@ export default class ReplayParser {
                     if ("answer" in eventData) {
                         words.push(eventData.answer);
                         logs.push({ type: "turnEnd", time: event.time, userId: eventData.profile.id, message: `정답: ${eventData.answer}. ${eventData.score ? `얻은 점수: ${eventData.score}점` : ""} ${eventData.bonus ? `(보너스: ${eventData.bonus}점)` : ""}` });
+                        currentChain.push({ userId: eventData.profile.id, word: eventData.answer, isRoundEnd: false });
                     }
                     break;
                 case "turnError":
@@ -174,7 +209,11 @@ export default class ReplayParser {
             }
         }
 
-        return { data: { words: [...new Set(words)], wordAndThemes, logs }, error: null };
+        if (currentChain.length > 0) {
+            roundChains.push({ round: currentRound, chains: currentChain });
+        }
+
+        return { data: { words: [...new Set(words)], wordAndThemes, logs, roundChains, userMapping: {}, mode: this.parsedData.mode }, error: null };
     }
 
     private handandaeModeAnalyze(): { data: ReturnModeParse, error: null} | { data: null, error: ParserError} {
@@ -183,7 +222,10 @@ export default class ReplayParser {
 
         const words: string[] = [];
         const wordAndThemes: { [key: string]: string[] } = {};
-        const logs: { type: GameEventType; time: number; userId: string; message: string; }[] = [];
+        const logs: { type: GameEventType; time: number; userId?: string; message: string; }[] = [];
+        const roundChains: { round: number; chains: { userId: string; word: string | null; isRoundEnd: boolean }[] }[] = [];
+        let currentRound = -1;
+        let currentChain: { userId: string; word: string | null; isRoundEnd: boolean }[] = [];
 
         logs.push({
             type: 'startGame',
@@ -212,6 +254,11 @@ export default class ReplayParser {
                     // Mode5에서는 roundReady의 구조가 다름
                     if ("theme" in eventData) {
                         logs.push({ type: "roundReady", time: event.time, userId: eventData.profile.id, message: `${eventData.round}라운드 준비. 주제: ${eventData.theme}` });
+                        if (currentChain.length > 0) {
+                            roundChains.push({ round: currentRound, chains: currentChain });
+                        }
+                        currentRound = eventData.round;
+                        currentChain = [];
                     }
                     break;
                 case "turnStart":
@@ -227,6 +274,9 @@ export default class ReplayParser {
                             words.push(eventData.value);
                             wordAndThemes[eventData.value] = [...new Set(eventData.theme.split(","))];
                             logs.push({ type: "turnEnd", time: event.time, userId: "", message: `"${eventData.value}"입력 성공. 얻은 점수: ${eventData.score}점 (미션 보너스: ${eventData.bonus ? eventData.bonus + "점" : "없음"})` });
+                            currentChain.push({ userId: "", word: eventData.value, isRoundEnd: false });
+                        } else {
+                            currentChain.push({ userId: "", word: null, isRoundEnd: true });
                         }
                     }
                     break;
@@ -236,6 +286,10 @@ export default class ReplayParser {
             }
         }
 
-        return { data: { words: [...new Set(words)], wordAndThemes, logs }, error: null };
+        if (currentChain.length > 0) {
+            roundChains.push({ round: currentRound, chains: currentChain });
+        }
+
+        return { data: { words: [...new Set(words)], wordAndThemes, logs, roundChains, userMapping: {}, mode: this.parsedData.mode }, error: null };
     }
 }

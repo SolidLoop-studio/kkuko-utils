@@ -4,7 +4,7 @@ type Player = {
     /* 플레이어 착용 의상 */
     equip: PlayerEquip;
     /* 플레이어 고유id */
-    id: string;
+    id?: string;
     /* 플레이어 닉네임 (이유는 모르나 #으로 시작함) */
     nick: string;
     score: number;
@@ -88,13 +88,13 @@ type GameEventData = |
     user: {
         data: { score: number }
         equip: PlayerEquip;
-        id: string;
+        id?: string;
         profile: GameEventProfile
     };
 } |
 {
     type: "disconn";
-    id: string;
+    id?: string;
 } |
 {
     type: "roundReady";
@@ -106,7 +106,7 @@ type GameEventData = |
     type: "turnStart";
     char: string;
     mission: string | null;
-    id: string;
+    id?: string;
     profile: GameEventProfile;
     roundTime: number;
     turnTime: number;
@@ -149,7 +149,7 @@ type GameEventData = |
     value: string;
 } | {
     type: "disconnRoom";
-    id: string;
+    id?: string;
 } | {
     type: "okg";
     count: number;

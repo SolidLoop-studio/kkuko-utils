@@ -21,7 +21,10 @@ interface AnalyzedFile {
   status: FileStatus;
   words: string[];
   wordAndThemes: { [key: string]: string[] };
-  logs: { type: GameEventType | "turnHint"; time: number; userId: string; message: string; }[];
+  logs: { type: GameEventType | "turnHint"; time: number; userId?: string; message: string; }[];
+  roundChains: { round: number; chains: { userId: string; word: string | null; isRoundEnd: boolean }[] }[];
+  userMapping: { [userId: string]: number };
+  mode: number;
   error?: string;
 }
 
@@ -111,6 +114,9 @@ export default function ReplayAnalyzerPage() {
             words: [],
             wordAndThemes: {},
             logs: [],
+            roundChains: [],
+            userMapping: {},
+            mode: 0,
             error: parseResult.error.name
           });
           continue;
@@ -126,6 +132,9 @@ export default function ReplayAnalyzerPage() {
             words: [],
             wordAndThemes: {},
             logs: [],
+            roundChains: [],
+            userMapping: {},
+            mode: 0,
             error: analyzeResult.error.name
           });
           continue;
@@ -137,7 +146,10 @@ export default function ReplayAnalyzerPage() {
           status: 'success',
           words: analyzeResult.data.words,
           wordAndThemes: analyzeResult.data.wordAndThemes,
-          logs: analyzeResult.data.logs
+          logs: analyzeResult.data.logs,
+          roundChains: analyzeResult.data.roundChains,
+          userMapping: analyzeResult.data.userMapping,
+          mode: analyzeResult.data.mode
         });
 
       } catch (error) {
@@ -148,6 +160,9 @@ export default function ReplayAnalyzerPage() {
           words: [],
           wordAndThemes: {},
           logs: [],
+          roundChains: [],
+          userMapping: {},
+          mode: 0,
           error: error instanceof Error ? error.message : '알 수 없는 오류'
         });
       }
@@ -296,8 +311,11 @@ export default function ReplayAnalyzerPage() {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="words" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 dark:bg-gray-600">
+              <TabsList className={`grid w-full ${file.mode !== 4 && file.mode !== 11 ? 'grid-cols-3' : 'grid-cols-2'} dark:bg-gray-600`}>
                 <TabsTrigger value="words" className="dark:text-gray-200 dark:data-[state=active]:bg-gray-500 dark:data-[state=active]:text-white">단어 목록 ({file.words.length}개)</TabsTrigger>
+                {file.mode !== 4 && file.mode !== 11 && (
+                  <TabsTrigger value="chains" className="dark:text-gray-200 dark:data-[state=active]:bg-gray-500 dark:data-[state=active]:text-white">연결 그래프 ({file.roundChains.length}라운드)</TabsTrigger>
+                )}
                 <TabsTrigger value="logs" className="dark:text-gray-200 dark:data-[state=active]:bg-gray-500 dark:data-[state=active]:text-white">게임 로그 ({file.logs.length}개)</TabsTrigger>
               </TabsList>
 
@@ -331,6 +349,55 @@ export default function ReplayAnalyzerPage() {
                   </div>
                 </ScrollArea>
               </TabsContent>
+
+              {file.mode !== 4 && file.mode !== 11 && (
+                <TabsContent value="chains" className="space-y-4">
+                  <ScrollArea className="h-96 w-full border dark:border-gray-600 rounded-md p-4 dark:bg-gray-600">
+                    <div className="space-y-6">
+                      {/* 유저 매핑 표시 */}
+                      {Object.keys(file.userMapping).length > 0 && (
+                        <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg mb-4">
+                          <h4 className="font-semibold text-sm mb-2 dark:text-white">플레이어 번호</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {Object.entries(file.userMapping)
+                              .sort((a, b) => a[1] - b[1])
+                              .map(([userId, userNum]) => (
+                                <Badge key={userId} variant="outline" className="dark:border-gray-400 dark:text-gray-200">
+                                  {userNum}번: {userId}
+                                </Badge>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {file.roundChains.map((roundChain: { round: number; chains: { userId: string; word: string | null; isRoundEnd: boolean }[] }, roundIndex: number) => (
+                        <div key={roundIndex} className="border-b dark:border-gray-500 pb-4 last:border-b-0">
+                          <h3 className="font-semibold text-lg mb-3 dark:text-white">{roundChain.round}라운드</h3>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {roundChain.chains.map((chain: { userId: string; word: string | null; isRoundEnd: boolean }, chainIndex: number) => (
+                              <React.Fragment key={chainIndex}>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="secondary" className="dark:bg-gray-500 dark:text-gray-100">
+                                    {file.userMapping[chain.userId] || '?'}
+                                  </Badge>
+                                  {chain.isRoundEnd ? (
+                                    <span className="text-red-500 font-semibold dark:text-red-400">라운드 종료</span>
+                                  ) : (
+                                    <span className="font-medium dark:text-white">{chain.word}</span>
+                                  )}
+                                </div>
+                                {chainIndex < roundChain.chains.length - 1 && (
+                                  <span className="text-gray-400 dark:text-gray-500">→</span>
+                                )}
+                              </React.Fragment>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+              )}
 
               <TabsContent value="logs" className="space-y-4">
                 <ScrollArea className="h-96 w-full border dark:border-gray-600 rounded-md p-4 dark:bg-gray-600">
