@@ -623,6 +623,14 @@ class GetManager implements IGetManager {
     public async allUser(sortField?: 'contribution' | 'month_contribution' | 'nickname', isAsc?: boolean) {
         return await this.supabase.from('users').select('*').order(sortField ?? 'contribution', { ascending: isAsc ?? false });
     }
+    public async wordState(){
+        const {data: data1, error: error1} = await this.supabase.from('word_first_letter_counts').select('*');
+        const {data: data2, error: error2} = await this.supabase.from('word_last_letter_counts').select('*');
+        if (error1) return {data: null, error: error1};
+        if (error2) return {data: null, error: error2};
+        
+        return {data: {firstLetterCounts: data1, lastLetterCounts: data2}, error: null};
+    }
     
 }
 

@@ -16,6 +16,8 @@ type log = Database['public']['Tables']['logs']['Row'];
 type word_themes_wait = Database['public']['Tables']['word_themes_wait']['Row'];
 type wait_word_themes = Database['public']['Tables']['wait_word_themes']['Row'];
 type notification = Database['public']['Tables']['notification']['Row'];
+type word_first_letter_counts = Database['public']['Tables']['word_first_letter_counts']['Row'];
+type word_last_letter_counts = Database['public']['Tables']['word_last_letter_counts']['Row'];
 
 type delete_word_themes_bulk = Database['public']['Functions']['delete_word_themes_bulk']['Returns'];
 
@@ -90,6 +92,7 @@ export interface IGetManager{
     allUser(sortField?: 'contribution' | 'month_contribution' | 'nickname', isAsc?: boolean): Promise<PostgrestSingleResponse<user[]>>;
     letterCountInfo(): Promise<{data: {firstLetterCounts: Record<string, {count: number; k_count: number; n_count: number}>; lastLetterCounts: Record<string, {count: number; k_count: number; n_count: number}>;}, error: null}|{data: null; error: PostgrestError}>;
     wordsByAdvancedQuery(input: advancedQueryType): Promise<{data: {word: string, nextWordCount: number}[], error: null} | {data: null; error: PostgrestError}>;
+    wordState(): Promise<{data: {firstLetterCounts: word_first_letter_counts[]; lastLetterCounts: word_last_letter_counts[];}, error: null}|{data: null; error: PostgrestError}>;
 }
 
 // delete 관련 타입

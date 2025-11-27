@@ -7,7 +7,8 @@ import {
     FileText, 
     Clock, 
     ChevronRight,  
-    Database 
+    Database,
+    BarChart3
 } from "lucide-react";
 
 export async function generateMetadata() {
@@ -74,6 +75,14 @@ const features = [
         color: "from-pink-500 to-rose-500",
         bgColor: "group-hover:bg-pink-50 dark:group-hover:bg-pink-950/20"
     },
+    { 
+        title: "단어 통계", 
+        description: "글자별 단어 개수 통계를 확인합니다.", 
+        link: "/word/stats",
+        icon: BarChart3,
+        color: "from-indigo-500 to-blue-500",
+        bgColor: "group-hover:bg-indigo-50 dark:group-hover:bg-indigo-950/20"
+    },
 ];
 
 export default function OpenDBHomePage() {
@@ -94,7 +103,7 @@ export default function OpenDBHomePage() {
                 </div>
 
                 {/* 기능 카드 그리드 */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 max-w-6xl mx-auto">
                     {features.map((feature, idx) => {
                         const IconComponent = feature.icon;
                         

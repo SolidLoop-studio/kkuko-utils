@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import WordSearch from './WordSearch';
 
 export async function generateMetadata() {
@@ -16,7 +17,11 @@ export async function generateMetadata() {
 }
 
 const WordSearchPage = () => {
-    return <WordSearch />;
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center h-screen">로딩 중...</div>}>
+            <WordSearch />
+        </Suspense>
+    );
 }
 
 export default WordSearchPage;
