@@ -13,13 +13,27 @@ const Footer = () => {
         <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start space-y-8 lg:space-y-0">
           
           {/* 브랜드 섹션 */}
-          <div className="lg:flex-1">
+          <div className="lg:flex lg:flex-col lg:items-start gap-2">
             <Link href="/" className="group inline-block">
               <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent group-hover:from-blue-300 group-hover:to-purple-300 transition-all duration-300">
                 Kkuko Utils
               </h2>
             </Link>
-          </div>
+
+            <a
+              href="https://kkutu.lightstudio.kr"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="
+                text-sm text-gray-300 hover:text-white transition-colors
+                px-2 py-1 rounded-lg
+                bg-white/5 hover:bg-white/10
+                border border-white/10
+              "
+            >
+              파트너: kkutu.lightstudio.kr
+            </a>
+        </div>
 
           {/* 링크 섹션 */}
           <div className="lg:flex-1 lg:max-w-md">
