@@ -1,6 +1,6 @@
 "use client";
 import { useEffect } from "react";
-import KkutuChat from "./KkutuChat";
+import KkutuChat from "./GameChat";
 import KkutuMenu from "./components/KkutuMenu";
 import GameBox from "./GameBox";
 import GameBody from "./GameBody";
