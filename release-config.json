@@ -1,0 +1,11 @@
+{
+    "repoUrl": "https://github.com/SolidLoop-studio/kkuko-utils",
+    "allowedTypes": {
+        "feat": "Features",
+        "fix": "Bug Fixes",
+        "perf": "Performance Improvements",
+        "revert": "Reverts",
+        "refactor": "Code Refactoring"
+    },
+    "targetBranch": "main"
+}

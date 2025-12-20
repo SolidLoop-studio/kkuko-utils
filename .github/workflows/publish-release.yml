@@ -1,24 +1,22 @@
-name: Automated Release & Changelog
+name: Publish GitHub Release
 
 on:
   push:
     branches:
       - main
 
-permissions:
-  contents: write
-  pull-requests: write
-
 jobs:
-  # Job 1: 변경사항 감지 및 PR 생성
-  prepare-release:
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+  publish:
+    # 커밋 메시지가 버전 범핑 포맷([skip ci] - (v...)) 일 때만 실행
+    if: "contains(github.event.head_commit.message, '[skip ci] - (v')"
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0 # 전체 히스토리를 가져와야 로그 분석 가능
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -28,7 +26,8 @@ jobs:
       - name: Install Dependencies
         run: npm install simple-git semver @actions/github @actions/core dotenv
 
-      - name: Run Release Script (Create PR)
+      - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node scripts/release.js
+        # --release 플래그를 사용하여 릴리즈 등록 모드로 실행
+        run: node scripts/release.js --release
