@@ -1,5 +1,5 @@
 import { disassemble } from 'es-hangul';
-import type { GameSetting, SubminWordResult, CurrentState, UsedWord } from '../types/game.type';
+import type { GameSetting, SubminWordResult, CurrentState, UsedWord } from '../types/game.types';
 import { wordService } from '../services/WordService';
 import { GameLogic } from './GameLogic';
 

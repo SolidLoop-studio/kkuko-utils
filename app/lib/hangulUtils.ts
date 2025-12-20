@@ -75,6 +75,12 @@ export function reverDuemLaw(c: string, ignoreError?: boolean): string[]{
 
 }
 
+/**
+ * 한글인지 확인합니다.
+ * 
+ * @param s - 확인할 문자열
+ * @returns 한글 여부
+ */
 export function isHangul(s: string): boolean {
     const hangulRegex = /^[ㄱ-ㅎ가-힣]+$/;
     return hangulRegex.test(s);

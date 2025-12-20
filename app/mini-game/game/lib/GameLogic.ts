@@ -1,6 +1,6 @@
 import { duemLaw } from '@/lib/hangulUtils';
 import { WordService } from '../services/WordService';
-import { GameSetting, CurrentState } from '../types/game.type';
+import { GameSetting, CurrentState } from '../types/game.types';
 
 /**
  * 게임 규칙 및 로직을 처리하는 클래스
