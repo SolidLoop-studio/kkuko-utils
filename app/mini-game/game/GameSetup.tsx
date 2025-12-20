@@ -204,7 +204,7 @@ const GameSetup = () => {
 
     return (
         <>
-            <div className="game-setup-container bg-white h-[410px] p-2 rounded-lg shadow-lg w-[1000px] mt-5">
+            <div className="game-setup-container bg-white h-[410px] p-2 shadow-lg w-[1000px]">
 
                 {/* 단어 로드 및 게임 설정을 가로로 배치 */}
                 <div className="mb-4 flex gap-6 flex-col md:flex-row">

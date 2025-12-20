@@ -28,7 +28,7 @@ const features = [
     { 
         title: "미니게임", 
         description: "다양한 미니게임을 하며 실력을 늘려보세요.", 
-        link: null,
+        link: '/mini-game',
         icon: Gamepad2,
         color: "from-purple-500 to-pink-500",
         bgColor: "group-hover:bg-purple-50 dark:group-hover:bg-purple-950/20"
