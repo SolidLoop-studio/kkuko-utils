@@ -9,6 +9,7 @@ import LoadingPage, {useLoadingState } from '@/app/components/LoadingPage';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { WordInfoProps } from './WordInfo';
+import NotFound from '@/app/not-found-client';
 
 export default function WordInfoPage({ query }: { query: string }) {
     const [errorView, setErrorView] = useState<string | null>(null);
@@ -21,10 +22,6 @@ export default function WordInfoPage({ query }: { query: string }) {
 
     const makeError = (erorr: PostgrestError) => {
         setErrorView(`단어 정보 데이터 로드중 오류.\nErrorName: ${erorr.name ?? "알수없음"}\nError Message: ${erorr.message ?? "없음"}\nError code: ${erorr.code}`);
-    };
-
-    const goTo404 = () => {
-        router.push("/404");
     };
 
     const wordSetFunc = (wordInfo: {
@@ -263,7 +260,7 @@ export default function WordInfoPage({ query }: { query: string }) {
         
     }, [query]);
 
-    if (isNotFound) { goTo404(); return null; }
+    if (isNotFound) { return <NotFound />; }
 
     if (loadingState.isLoading) { return <LoadingPage title={'단어 정보'} /> }
 
