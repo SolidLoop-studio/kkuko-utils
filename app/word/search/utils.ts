@@ -10,6 +10,16 @@ export const getModeLabel = (m: GameMode) => {
     }
 };
 
+export const getModeShortLabel = (m: GameMode) => {
+    switch (m) {
+        case 'kor-start': return '한끝';
+        case 'kor-end': return '한앞';
+        case 'kung': return '쿵따';
+        case 'hunmin': return '훈민';
+        case 'jaqi': return '자퀴';
+    }
+};
+
 export const countMissionChars = (word: string, missionChars: string) => {
     if (!missionChars) return 0;
     return word.split('').filter(char => missionChars.includes(char)).length;
