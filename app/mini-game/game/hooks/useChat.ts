@@ -64,7 +64,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
             gameHandleRef.current?.(s);
         } catch (e) {
-            // swallow any errors from the game handler
+            console.error(e);
         }
     };
 
@@ -75,7 +75,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const sendHint = () => {
         try {
             sendHintRef.current?.();
-        } catch (e) {}
+        } catch (e) {
+            console.error(e);
+        }
     };
 
     const clearMessagesAndShowStartNotice = () => {

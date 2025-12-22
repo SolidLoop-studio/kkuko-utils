@@ -20,6 +20,7 @@ export const useGameState = () => {
             }
         } catch (e) {
             dispatch(setStartBlocked({ blocked: true, message: '게임을 시작할 수 없습니다.' }));
+            console.error(e);
         }
     };
 

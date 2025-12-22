@@ -58,7 +58,6 @@ const TooltipPortal = ({ children, style, portalId, initialLeft, targetTop, targ
             if (!el || typeof initialLeft !== 'number' || typeof targetTop !== 'number' || typeof targetBottom !== 'number') return;
             const rect = el.getBoundingClientRect();
             const winW = window.innerWidth;
-            const winH = window.innerHeight;
             const margin = 8;
             const tooltipW = Math.min(rect.width, Math.max(0, winW - margin * 2));
 

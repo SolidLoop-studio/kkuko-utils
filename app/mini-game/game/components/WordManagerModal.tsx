@@ -68,6 +68,7 @@ const WordManagerModal = ({ onClose }: WordManagerModalProps) => {
                 await loadWords();
             } catch (error) {
                 setEditError('단어 수정 중 오류가 발생했습니다.');
+                console.error(error);
             }
         }
         setEditingWord(null);
@@ -94,7 +95,7 @@ const WordManagerModal = ({ onClose }: WordManagerModalProps) => {
             gameManager.deleteWordFromDB(word);
             await loadWords();
         } catch (e) {
-            // ignore
+            console.error(e);
         }
     };
 
@@ -114,6 +115,7 @@ const WordManagerModal = ({ onClose }: WordManagerModalProps) => {
             await loadWords();
         } catch (error) {
             setAddError('단어 추가 중 오류가 발생했습니다.');
+            console.error(error);
         }
     };
 

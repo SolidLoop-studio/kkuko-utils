@@ -13,23 +13,23 @@ const SettingsModal = ({ onClose }: Props) => {
         try {
             const v = localStorage.getItem('kkutuVolume');
             if (v !== null) setVolume(Number(v));
-        } catch (e) { }
+        } catch (e) { console.error(e); }
     }, []);
 
     const handleChange = (v: number) => {
         setVolume(v);
         try {
             soundManager.setAllVolume(v / 100);
-        } catch (e) { }
+        } catch (e) { console.error(e); }
     };
 
     const handleSave = () => {
         try {
             localStorage.setItem('kkutuVolume', String(volume));
-        } catch (e) { }
+        } catch (e) { console.error(e); }
         try {
             soundManager.setAllVolume(volume / 100);
-        } catch (e) { }
+        } catch (e) { console.error(e); }
         onClose();
     };
 

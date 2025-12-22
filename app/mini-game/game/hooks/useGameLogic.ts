@@ -13,7 +13,7 @@ let ROUND_TIME_LIMIT = 120; // seconds
  * 게임의 핵심 로직을 관리하는 커스텀 훅
  */
 export const useGameLogic = () => {
-    const { chatInput, setChatInput, clearMessagesAndShowStartNotice } = useChat();
+    const { setChatInput, clearMessagesAndShowStartNotice } = useChat();
     const { pendingStart, clearPendingStart, blockStart } = useGameState();
     const [word, setWord] = useState("/시작을 입력하면 게임시작!");
     const [isFail, setIsFail] = useState(false);
@@ -61,7 +61,7 @@ export const useGameLogic = () => {
             } else {
                 soundManager.play(`T${speed}`);
             }
-        } catch (e) { }
+        } catch (e) { console.error(e); }
     };
 
     const stopBGMForSpeed = (speed?: number) => {
@@ -71,15 +71,15 @@ export const useGameLogic = () => {
             } else {
                 soundManager.stop(`T${speed}`);
             }
-        } catch (e) { }
+        } catch (e) { console.error(e); }
     };
 
     /**
      * 게임 종료 처리
      */
     const endGame = () => {
-        try { soundManager.stopAllSounds(); } catch (e) { }
-        try { soundManager.play('timeout'); } catch (e) { }
+        try { soundManager.stopAllSounds(); } catch (e) { console.error(e); }
+        try { soundManager.play('timeout'); } catch (e) { console.error(e); }
 
         if (timerRef.current) {
             clearInterval(timerRef.current);
@@ -102,7 +102,7 @@ export const useGameLogic = () => {
         setIsPaused(true);
         setIsFail(false);
         // clear chat input when game ends
-        try { setChatInput(''); } catch (e) { }
+        try { setChatInput(''); } catch (e) { console.error(e); }
         const hintWord = gameManager.gameEndHint();
         console.log('Game ended, hint word:', hintWord);
         setWord(hintWord);
@@ -211,18 +211,18 @@ export const useGameLogic = () => {
         if (input === '/시작') {
             // prevent starting a new game while one is already active or already starting
             if (isGameStarted || isStarting) {
-                try { setChatInput(''); } catch (e) { }
+                try { setChatInput(''); } catch (e) { console.error(e); }
                 return;
             }
             // if game cannot start (no valid start chars etc.), show modal and abort
             try {
                 if (!gameManager.canGameStart()) {
-                    try { setChatInput(''); } catch (e) { }
+                    try { setChatInput(''); } catch (e) { console.error(e); }
                     // set zustand store flag so UI can display modal
-                    try { blockStart('게임을 시작할 수 없습니다.'); } catch (e) { }
+                    try { blockStart('게임을 시작할 수 없습니다.'); } catch (e) { console.error(e); }
                     return;
                 }
-            } catch (e) { }
+            } catch (e) { console.error(e); }
             // mark that a start sequence is in progress so aliases cannot re-trigger it
             setIsStarting(true);
             // 게임 결과 다이얼로그 닫기
@@ -241,7 +241,7 @@ export const useGameLogic = () => {
             setRoundTime(ROUND_TIME_LIMIT);
             setTurnTime(TURN_TIME_LIMIT);
             // clear chat history and show start notice
-            try { clearMessagesAndShowStartNotice(); } catch (e) { }
+            try { clearMessagesAndShowStartNotice(); } catch (e) { console.error(e); }
             setChatInput('');
             setIsPaused(true);
             setInputVisible(false);
@@ -271,7 +271,7 @@ export const useGameLogic = () => {
                             });
                             temps = startState.turnSpeed;
                         }
-                    } catch (e) { }
+                    } catch (e) { console.error(e); }
 
                     let cycleStarted = false;
                     try {
@@ -284,14 +284,15 @@ export const useGameLogic = () => {
                             setInputVisible(true);
                             try {
                                 if (typeof temps !== 'undefined') playBGMForSpeed(temps);
-                            } catch (e) { }
+                            } catch (e) { console.error(e); }
                         });
                     } catch (e) {
                         setIsGameStarted(true);
                         setIsPaused(false);
                         setInputVisible(true);
-                        try { if (typeof temps !== 'undefined') playBGMForSpeed(temps); } catch (e) { }
+                        try { if (typeof temps !== 'undefined') playBGMForSpeed(temps); } catch (e) { console.error(e); }
                         if (!cycleStarted) startNewCycle();
+                        console.error(e);
                     }
                 });
 
@@ -316,15 +317,15 @@ export const useGameLogic = () => {
                             });
                             temps = startState.turnSpeed;
                         }
-                    } catch (e) { }
+                    } catch (e) { console.error(e); }
                     try {
                         startNewCycle();
                         setIsGameStarted(true);
                         setIsStarting(false);
                         setIsPaused(false);
                         setInputVisible(true);
-                        try { if (typeof temps !== 'undefined') playBGMForSpeed(temps); } catch (e) { }
-                    } catch (e) { }
+                        try { if (typeof temps !== 'undefined') playBGMForSpeed(temps); } catch (e) { console.error(e); }
+                    } catch (e) { console.error(e); }
                     if (startTimeoutRef.current) { clearTimeout(startTimeoutRef.current); startTimeoutRef.current = null; }
                 }, 3000);
             } catch (e) {
@@ -332,6 +333,7 @@ export const useGameLogic = () => {
                 setIsStarting(false);
                 setIsPaused(false);
                 startNewCycle();
+                console.error(e);
             }
             return;
         }
@@ -348,7 +350,7 @@ export const useGameLogic = () => {
         }
 
         if (input.startsWith(currentChar)) {
-            try { soundManager.stop('fail'); } catch (e) { }
+            try { soundManager.stop('fail'); } catch (e) { console.error(e); }
             if (failTimeoutRef.current) {
                 clearTimeout(failTimeoutRef.current);
                 failTimeoutRef.current = null;
@@ -368,7 +370,7 @@ export const useGameLogic = () => {
                 setWord(`${input}${submitRes.reason ? ": " + submitRes.reason : ""}`);
                 setIsFail(true);
                 setChatInput('');
-                try { soundManager.play('fail'); } catch (e) { }
+                try { soundManager.play('fail'); } catch (e) { console.error(e); }
                 setTimeout(() => {
                     setIsFail(false);
                     if (!hintVisible) { setWord(currentChar); }
@@ -389,14 +391,13 @@ export const useGameLogic = () => {
                 return newHistory.slice(0, 5);
             });
 
-            const hasMissionChar = input.includes(missionChar);
             setIsPaused(true);
 
             const wordLength = input.length;
             if (wordLength <= 8 && BEAT[wordLength]) {
                 const beatPattern = BEAT[wordLength];
                 if (lastState === null) return;
-                try { stopBGMForSpeed(lastState.speed); } catch (e) { }
+                try { stopBGMForSpeed(lastState.speed); } catch (e) { console.error(e); }
                 setWord(input);
                 setAnimatingWord(input);
                 const initialVisible = new Array(wordLength).fill(false);
@@ -423,7 +424,7 @@ export const useGameLogic = () => {
                                 if (char === missionChar) {
                                     soundManager.play('mission');
                                 }
-                            } catch (e) { }
+                            } catch (e) { console.error(e); }
                         }, i * intervalTime);
                         beatTimeoutRefs.current.push(timeout);
                         beatIndex++;
@@ -433,7 +434,7 @@ export const useGameLogic = () => {
                 const totalAnimationTime = beatPattern.length * intervalTime + 120;
                 const finalTimeout = setTimeout(() => {
                     if (lastState === null) return;
-                    try { soundManager.play(`K${lastState.speed}`); } catch (e) { }
+                    try { soundManager.play(`K${lastState.speed}`); } catch (e) { console.error(e); }
 
                     const runPulse = (repeats = 3) => {
                         if (lastState === null) return 0;
@@ -458,7 +459,7 @@ export const useGameLogic = () => {
                             setMissionChar(submitRes.nextMissionChar);
                         }
                         setIsPaused(false);
-                        try { playBGMForSpeed(submitRes.turnSpeed); } catch (e) { }
+                        try { playBGMForSpeed(submitRes.turnSpeed); } catch (e) { console.error(e); }
                         if (typeof submitRes !== 'undefined' && submitRes && submitRes.nextChar) {
                             setCurrentChar(submitRes.nextChar);
                             if (submitRes.nextMissionChar) setMissionChar(submitRes.nextMissionChar);
@@ -474,7 +475,7 @@ export const useGameLogic = () => {
                 beatTimeoutRefs.current.push(finalTimeout);
             } else if (wordLength >= 9) {
                 if (lastState === null) return;
-                try { stopBGMForSpeed(lastState.speed); } catch (e) { }
+                try { stopBGMForSpeed(lastState.speed); } catch (e) { console.error(e); }
                 setWord(input);
                 setAnimatingWord(input);
                 const initialVisible = new Array(wordLength).fill(false);
@@ -493,7 +494,7 @@ export const useGameLogic = () => {
                         });
                         try {
                             soundManager.play('Al');
-                        } catch (e) { }
+                        } catch (e) { console.error(e); }
                     }, i * intervalTime);
                     beatTimeoutRefs.current.push(timeout);
                 }
@@ -501,7 +502,7 @@ export const useGameLogic = () => {
                 const totalAnimationTime = wordLength * intervalTime + 120;
                 const finalTimeout = setTimeout(() => {
                     if (lastState === null) return;
-                    try { soundManager.play(`K${lastState.speed}`); } catch (e) { }
+                    try { soundManager.play(`K${lastState.speed}`); } catch (e) { console.error(e); }
                     const runPulse = (repeats = 2) => {
                         if (lastState === null) return 0;
                         const safeBlinkSource2 = isFinite(lastState.turnTime) ? lastState.turnTime : 15000;
@@ -525,7 +526,7 @@ export const useGameLogic = () => {
                             setMissionChar(submitRes.nextMissionChar);
                         }
                         setIsPaused(false);
-                        try { playBGMForSpeed(submitRes.turnSpeed); } catch (e) { }
+                        try { playBGMForSpeed(submitRes.turnSpeed); } catch (e) { console.error(e); }
                         if (typeof submitRes !== 'undefined' && submitRes && submitRes.nextChar) {
                             setCurrentChar(submitRes.nextChar);
                             if (submitRes.nextMissionChar) setMissionChar(submitRes.nextMissionChar);
@@ -547,7 +548,7 @@ export const useGameLogic = () => {
                         setMissionChar(submitRes.nextMissionChar);
                     }
                     setIsPaused(false);
-                    try { playBGMForSpeed(submitRes.turnSpeed); } catch (e) { }
+                    try { playBGMForSpeed(submitRes.turnSpeed); } catch (e) { console.error(e); }
                     if (typeof submitRes !== 'undefined' && submitRes && submitRes.nextChar) {
                         setCurrentChar(submitRes.nextChar);
                         if (submitRes.nextMissionChar) setMissionChar(submitRes.nextMissionChar);
@@ -568,7 +569,7 @@ export const useGameLogic = () => {
             setWord(input);
             setIsFail(true);
             setChatInput('');
-            try { soundManager.play('fail'); } catch (e) { }
+            try { soundManager.play('fail'); } catch (e) { console.error(e); }
             failTimeoutRef.current = setTimeout(() => {
                 setIsFail(false);
                 if (!hintVisible) { setWord(currentChar); }

@@ -70,6 +70,7 @@ const GameSetup = () => {
             const startCharsStr = Array.from(cur.wantStartChar).join('');
             setLocalSetting({ roundTimeSeconds: Math.round(cur.roundTime / 1000), notAgainSameChar: cur.notAgainSameChar, lang: cur.lang, mode: cur.mode, hintMode: cur.hintMode, startChars: startCharsStr });
             setStartCharInput(startCharsStr);
+            console.error(e);
         }
     };
     const handleSettingChange = async (partial: Partial<{ roundTimeSeconds: number; notAgainSameChar: boolean; lang: 'ko' | 'en'; mode: 'normal' | 'mission'; hintMode: 'special' | 'auto' }>) => {
@@ -87,7 +88,7 @@ const GameSetup = () => {
         try {
             localStorage.setItem('kkutu_game_setting', JSON.stringify(merged));
         } catch (e) {
-            // ignore storage errors
+            console.error(e);
         }
 
         // If words exist, reload DB so maps reflect mode changes
@@ -99,7 +100,7 @@ const GameSetup = () => {
                 setWordCount(words.length);
             }
         } catch (e) {
-            // ignore
+            console.error(e);
         }
     };
 
@@ -111,12 +112,14 @@ const GameSetup = () => {
     const saveStartChars = async () => {
         const cleaned = (startCharInput || '').replace(/\s+/g, '');
         const chars = cleaned.split('').filter(c => c !== '');
-        const merged = { ...localSetting, startChars: cleaned };
-        setLocalSetting(merged as any);
+        const merged = { ...localSetting, startChars: cleaned } as typeof localSetting;
+        setLocalSetting(merged);
         gameManager.updateSetting({ wantStartChar: new Set(chars) });
         try {
             localStorage.setItem('kkutu_game_setting', JSON.stringify({ ...merged }));
-        } catch (e) { }
+        } catch (e) {
+            console.error(e);
+        }
 
         try {
             const exists = await hasWords();
@@ -125,7 +128,9 @@ const GameSetup = () => {
                 gameManager.loadWordDB(words.map(({ word, theme }) => ({ word, theme: theme.split(',') })), gameManager.getSetting());
                 setWordCount(words.length);
             }
-        } catch (e) { }
+        } catch (e) {
+            console.error(e);
+        }
 
         setIsStartCharModalOpen(false);
     };
@@ -198,7 +203,7 @@ const GameSetup = () => {
             setWordCount(0);
             setMessage('모든 단어가 삭제되었습니다.');
         } catch (e) {
-            // ignore
+            console.error(e);
         }
     };
 

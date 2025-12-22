@@ -31,7 +31,7 @@ export const useChatLog = () => {
                 if (!isPlaying) {
                     requestStart();
                 } else {
-                    try { callGameInput('/시작'); } catch (e) { }
+                    try { callGameInput('/시작'); } catch (e) { console.error(e); }
                 }
                 return;
             }
@@ -39,7 +39,7 @@ export const useChatLog = () => {
             // 게임 종료 명령어 (채팅에서 바로 종료 요청)
             if (trimmedInput === '/gg' || trimmedInput === '/ㅈㅈ') {
                 setChatInput('');
-                try { callGameInput(trimmedInput); } catch (e) { }
+                try { callGameInput(trimmedInput); } catch (e) { console.error(e); }
                 setChatInput('');
                 const noticeMessage: ChatMessage = {
                     id: Date.now(),
