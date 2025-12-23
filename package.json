@@ -44,6 +44,7 @@
     "@tanstack/react-virtual": "^3.13.9",
     "@types/react-window": "^1.8.8",
     "@uiw/react-codemirror": "^4.23.12",
+    "@vercel/analytics": "^1.6.1",
     "@vercel/speed-insights": "^1.2.0",
     "axios": "^1.8.4",
     "class-variance-authority": "^0.7.1",
