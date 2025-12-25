@@ -13,8 +13,8 @@ import { Input } from "@/app/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
 import ErrorModal from '../components/ErrModal';
-import type { ErrorMessage } from "../types/type";
-import { SCM } from "../lib/supabaseClient";
+import type { ErrorMessage } from "@/types/type";
+import { SCM } from "@/lib/supabaseClient";
 
 const AuthPage = () => {
     const router = useRouter();

@@ -1,14 +1,14 @@
 import Link from "next/link";
-import { 
-    Search, 
-    Download, 
-    Plus, 
-    Upload, 
-    FileText, 
-    Clock, 
-    ChevronRight,  
+import {
+    Search,
+    Download,
+    Plus,
+    Upload,
+    FileText,
+    Clock,
+    ChevronRight,
     Database,
-    BarChart3
+    BarChart3, AlignStartVertical
 } from "lucide-react";
 
 export async function generateMetadata() {
@@ -83,6 +83,14 @@ const features = [
         color: "from-indigo-500 to-blue-500",
         bgColor: "group-hover:bg-indigo-50 dark:group-hover:bg-indigo-950/20"
     },
+    {
+        title: "Open API",
+        description: "오픈 DB의 단어 검색 기능을 API에서 만나보세요.",
+        link: "/word/api",
+        icon: AlignStartVertical,
+        color: "from-indigo-400 to-yellow-600",
+        bgColor: "group-hover:bg-indigo-50 dark:group-hover:bg-indigo-950/20"
+    }
 ];
 
 export default function OpenDBHomePage() {
