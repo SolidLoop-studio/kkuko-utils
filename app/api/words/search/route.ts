@@ -6,83 +6,83 @@ import { GameMode } from '@/app/word/search/types';
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
 
-    const mode = (searchParams.get('mode') || 'kor-start') as GameMode;
-    const q = searchParams.get('q') || '';
-    const mission = searchParams.get('mission') || '';
-    const minLength = parseInt(searchParams.get('minLength') || '2');
-    const maxLength = parseInt(searchParams.get('maxLength') || '100');
-    const sortBy = (searchParams.get('sortBy') || 'length') as 'abc' | 'length' | 'attack';
-    const duem = searchParams.get('duem') !== 'false';
-    const miniInfo = searchParams.get('miniInfo') === 'true';
-    const manner = searchParams.get('manner') || 'man';
-    const ingjung = searchParams.get('ingjung') !== 'false';
+    const gameMode = (searchParams.get('mode') || 'kor-start') as GameMode;
+    const searchQuery = searchParams.get('q') || '';
+    const missionLetter = searchParams.get('mission') || '';
+    const minimumLength = parseInt(searchParams.get('minLength') || '2');
+    const maximumLength = parseInt(searchParams.get('maxLength') || '100');
+    const sortOrder = (searchParams.get('sortBy') || 'length') as 'abc' | 'length' | 'attack';
+    const isDuemApplied = searchParams.get('duem') !== 'false';
+    const hasMiniInfo = searchParams.get('miniInfo') === 'true';
+    const mannerMode = searchParams.get('manner') || 'man';
+    const isAcceptedOnly = searchParams.get('ingjung') !== 'false';
     const displayLimit = parseInt(searchParams.get('limit') || '100');
     const themeId = searchParams.get('themeId');
 
     try {
-        let query: advancedQueryType;
+        let searchOptions: advancedQueryType;
 
-        if (mode === 'kor-start' || mode === 'kor-end') {
-            const start = mode === 'kor-start' ? q : searchParams.get('start') || undefined;
-            const end = mode === 'kor-end' ? q : searchParams.get('end') || undefined;
+        if (gameMode === 'kor-start' || gameMode === 'kor-end') {
+            const startLetter = gameMode === 'kor-start' ? searchQuery : searchParams.get('start') || undefined;
+            const endLetter = gameMode === 'kor-end' ? searchQuery : searchParams.get('end') || undefined;
 
-            if (mode === 'kor-start' && !start) return createErrorResponse('시작 초성이 필요합니다.');
-            if (mode === 'kor-end' && !end) return createErrorResponse('끝 초성이 필요합니다.');
+            if (gameMode === 'kor-start' && !startLetter) return handleErrorResponse('시작 초성이 필요합니다.');
+            if (gameMode === 'kor-end' && !endLetter) return handleErrorResponse('끝 초성이 필요합니다.');
 
-            query = {
-                mode,
-                start: start?.trim(),
-                end: end?.trim(),
-                mission,
-                ingjung,
-                man: manner === 'man',
-                jen: manner === 'jen',
-                eti: manner === 'eti',
-                duem,
-                miniInfo,
-                length_min: minLength,
-                length_max: maxLength,
-                sort_by: sortBy,
+            searchOptions = {
+                mode: gameMode,
+                start: startLetter?.trim(),
+                end: endLetter?.trim(),
+                mission: missionLetter,
+                ingjung: isAcceptedOnly,
+                man: mannerMode === 'man',
+                jen: mannerMode === 'jen',
+                eti: mannerMode === 'eti',
+                duem: isDuemApplied,
+                miniInfo: hasMiniInfo,
+                length_min: minimumLength,
+                length_max: maximumLength,
+                sort_by: sortOrder,
                 limit: isNaN(displayLimit) ? 100 : displayLimit
             };
-        } else if (mode === 'kung') {
-            if (!q) return createErrorResponse('단어가 필요합니다.');
-            query = {
+        } else if (gameMode === 'kung') {
+            if (!searchQuery) return handleErrorResponse('단어가 필요합니다.');
+            searchOptions = {
                 mode: 'kung',
-                start: q.trim().slice(0, 3),
-                mission,
-                ingjung,
-                man: manner === 'man',
-                jen: manner === 'jen',
-                eti: manner === 'eti',
-                duem,
-                miniInfo,
+                start: searchQuery.trim().slice(0, 3),
+                mission: missionLetter,
+                ingjung: isAcceptedOnly,
+                man: mannerMode === 'man',
+                jen: mannerMode === 'jen',
+                eti: mannerMode === 'eti',
+                duem: isDuemApplied,
+                miniInfo: hasMiniInfo,
                 length_min: 3,
                 length_max: 3,
-                sort_by: sortBy,
+                sort_by: sortOrder,
                 limit: isNaN(displayLimit) ? 100 : displayLimit
             };
-        } else if (mode === 'hunmin') {
-            if (q.trim().length !== 2) return createErrorResponse('훈민정음 쿼리는 2글자여야 합니다.');
-            query = {
+        } else if (gameMode === 'hunmin') {
+            if (searchQuery.trim().length !== 2) return handleErrorResponse('훈민정음 쿼리는 2글자여야 합니다.');
+            searchOptions = {
                 mode: 'hunmin',
-                query: q.trim(),
-                mission,
+                query: searchQuery.trim(),
+                mission: missionLetter,
                 limit: isNaN(displayLimit) ? 100 : displayLimit
             };
-        } else if (mode === 'jaqi') {
-            if (!themeId) return createErrorResponse('테마 ID가 필요합니다.');
-            query = {
+        } else if (gameMode === 'jaqi') {
+            if (!themeId) return handleErrorResponse('테마 ID가 필요합니다.');
+            searchOptions = {
                 mode: 'jaqi',
-                query: q.trim(),
+                query: searchQuery.trim(),
                 theme: Number(themeId),
                 limit: isNaN(displayLimit) ? 100 : displayLimit
             };
         } else {
-            return createErrorResponse('유효하지 않은 모드입니다.');
+            return handleErrorResponse('유효하지 않은 모드입니다.');
         }
 
-        const { data, error } = await SCM.get().wordsByAdvancedQuery(query);
+        const { data, error } = await SCM.get().wordsByAdvancedQuery(searchOptions);
 
         if (error) throw error;
 
@@ -92,6 +92,6 @@ export async function GET(request: NextRequest) {
     }
 }
 
-function createErrorResponse(message: string) {
+function handleErrorResponse(message: string) {
     return NextResponse.json({ error: message }, { status: 400 });
 }

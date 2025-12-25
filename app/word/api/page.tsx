@@ -24,7 +24,23 @@ export async function generateMetadata() {
     };
 }
 
-export default function OpenAPIDocsPage() {
+export default function OpenApiDocsPage() {
+    const commonParameters = [
+        { name: "mode", type: "string", description: "게임 모드 (kor-start, kor-end, kung, hunmin, jaqi)", defaultValue: "kor-start" },
+        { name: "q", type: "string", description: "검색어. 모드에 따라 시작자, 끝자, 또는 초성", defaultValue: "-" },
+        { name: "limit", type: "number", description: "최대 검색 결과 수", defaultValue: "100" },
+        { name: "sortBy", type: "string", description: "정렬 기준 (abc, length, attack)", defaultValue: "length" },
+    ];
+
+    const advancedParameters = [
+        { parameterName: "manner", type: "string", description: "단어 필터 (man, jen, eti)", defaultValue: "man" },
+        { parameterName: "minLength", type: "number", description: "최소 글자 수", defaultValue: "2" },
+        { parameterName: "maxLength", type: "number", description: "최대 글자 수", defaultValue: "100" },
+        { parameterName: "duem", type: "boolean", description: "두음법칙 적용 여부", defaultValue: "true" },
+        { parameterName: "mission", type: "string", description: "포함해야 할 특정 글자", defaultValue: '""' },
+        { parameterName: "themeId", type: "number", description: "jaqi 모드 사용 시 필수 테마 Id", defaultValue: "-" },
+    ];
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 p-6">
             <div className="max-w-5xl mx-auto mb-12">
@@ -81,30 +97,14 @@ export default function OpenAPIDocsPage() {
                                 </tr>
                                 </thead>
                                 <tbody className="text-slate-700 dark:text-slate-300">
-                                <tr className="border-b border-slate-100 dark:border-slate-800">
-                                    <td className="py-4 px-4 font-mono text-indigo-500 font-bold">mode</td>
-                                    <td className="py-4 px-4">string</td>
-                                    <td className="py-4 px-4">게임 모드 (kor-start, kor-end, kung, hunmin, jaqi)</td>
-                                    <td className="py-4 px-4 italic">kor-start</td>
-                                </tr>
-                                <tr className="border-b border-slate-100 dark:border-slate-800">
-                                    <td className="py-4 px-4 font-mono text-indigo-500 font-bold">q</td>
-                                    <td className="py-4 px-4 text-rose-500 font-bold">string</td>
-                                    <td className="py-4 px-4 font-bold">검색어. 모드에 따라 시작자, 끝자, 또는 초성</td>
-                                    <td className="py-4 px-4">-</td>
-                                </tr>
-                                <tr className="border-b border-slate-100 dark:border-slate-800">
-                                    <td className="py-4 px-4 font-mono text-indigo-500 font-bold">limit</td>
-                                    <td className="py-4 px-4">number</td>
-                                    <td className="py-4 px-4">최대 검색 결과 수</td>
-                                    <td className="py-4 px-4">100</td>
-                                </tr>
-                                <tr>
-                                    <td className="py-4 px-4 font-mono text-indigo-500 font-bold">sortBy</td>
-                                    <td className="py-4 px-4">string</td>
-                                    <td className="py-4 px-4">정렬 기준 (abc, length, attack)</td>
-                                    <td className="py-4 px-4">length</td>
-                                </tr>
+                                {commonParameters.map((param, index) => (
+                                    <tr key={index} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
+                                        <td className="py-4 px-4 font-mono text-indigo-500 font-bold">{param.name}</td>
+                                        <td className="py-4 px-4">{param.type}</td>
+                                        <td className="py-4 px-4">{param.description}</td>
+                                        <td className="py-4 px-4 italic">{param.defaultValue}</td>
+                                    </tr>
+                                ))}
                                 </tbody>
                             </table>
                         </div>
@@ -123,19 +123,12 @@ export default function OpenAPIDocsPage() {
                                 </tr>
                                 </thead>
                                 <tbody className="text-slate-700 dark:text-slate-300">
-                                {[
-                                    { p: "manner", t: "string", d: "단어 필터 (man, jen, eti)", v: "man" },
-                                    { p: "minLength", t: "number", d: "최소 글자 수", v: "2" },
-                                    { p: "maxLength", t: "number", d: "최대 글자 수", v: "100" },
-                                    { p: "duem", t: "boolean", d: "두음법칙 적용 여부", v: "true" },
-                                    { p: "mission", t: "string", d: "포함해야 할 특정 글자", v: '""' },
-                                    { p: "themeId", t: "number", d: "jaqi 모드 사용 시 필수 테마 ID", v: "-" },
-                                ].map((row, i) => (
-                                    <tr key={i} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
-                                        <td className="py-4 px-4 font-mono text-emerald-500 font-bold">{row.p}</td>
-                                        <td className="py-4 px-4">{row.t}</td>
-                                        <td className="py-4 px-4">{row.d}</td>
-                                        <td className="py-4 px-4 italic">{row.v}</td>
+                                {advancedParameters.map((param, index) => (
+                                    <tr key={index} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
+                                        <td className="py-4 px-4 font-mono text-emerald-500 font-bold">{param.parameterName}</td>
+                                        <td className="py-4 px-4">{param.type}</td>
+                                        <td className="py-4 px-4">{param.description}</td>
+                                        <td className="py-4 px-4 italic">{param.defaultValue}</td>
                                     </tr>
                                 ))}
                                 </tbody>
