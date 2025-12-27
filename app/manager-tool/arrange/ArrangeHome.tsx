@@ -578,6 +578,58 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, setErrorModalVi
         }
     };
 
+    // 정렬 v4: v3 방식(앞글자순, 길이별 정렬) + v2처럼 그룹헤더(=[첫글자]=) 추가
+    const handleSortWordv4 = () => {
+        try {
+            const filtered = fileContent.split("\n").filter((word) => word !== "" && !word.includes('=['));
+            const sorted = filtered.sort((a, b) => {
+                const aFirst = a[0];
+                const bFirst = b[0];
+                if (aFirst === bFirst) {
+                    if (a.length === b.length) return a.localeCompare(b, "ko-KR");
+                    return b.length - a.length;
+                }
+                return aFirst.localeCompare(bFirst, "ko-KR");
+            });
+
+            // 그룹핑하여 '=[X]=' 헤더 추가
+            let groupedText = '';
+            let currentChar: string | null = null;
+            for (const word of sorted) {
+                if (!word) continue;
+                const firstChar = word[0].toLowerCase();
+                if (currentChar !== firstChar) {
+                    if (currentChar !== null) groupedText += '\n';
+                    groupedText += `=[${firstChar.toUpperCase()}]=\n`;
+                    currentChar = firstChar;
+                }
+                groupedText += word + '\n';
+            }
+            const updatedContent = groupedText.trim();
+            if (updatedContent === fileContent) return;
+            pushToUndoStack(fileContent);
+            setFileContent(updatedContent);
+            setLineCount(updatedContent.split("\n").length);
+        } catch (err) {
+            if (err instanceof Error) {
+                seterrorModalView({
+                    ErrName: err.name,
+                    ErrMessage: err.message,
+                    ErrStackRace: err.stack,
+                    inputValue: `SortWordv4 | ${fileContent}`
+                });
+
+            } else {
+                seterrorModalView({
+                    ErrName: null,
+                    ErrMessage: null,
+                    ErrStackRace: err as string,
+                    inputValue: `SortWordv4 | ${fileContent}`
+                });
+            }
+        }
+    };
+
     const handleConvertToLowercase = () => {
         try {
             const updatedContent = fileContent.toLowerCase();
@@ -634,6 +686,7 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, setErrorModalVi
                                         <li>• <strong>ㄱㄴㄷ순 정렬 v1:</strong> 한글 가나다순으로 정렬합니다.</li>
                                         <li>• <strong>ㄱㄴㄷ순 정렬 v2:</strong> 한글 가나다순으로 정렬하고 알파벳별로 그룹화합니다.</li>
                                         <li>• <strong>ㄱㄴㄷ순 정렬 v3:</strong> 한글 앞글자순으로 정렬하고 길이별로 정렬합니다.</li>
+                                        <li>• <strong>ㄱㄴㄷ순 정렬 v4:</strong> v3 방식(앞글자순 + 길이별)으로 정렬하고, 결과를 알파벳별로 그룹화하여 <code>=[첫글자]=</code> 헤더를 추가합니다.</li>
                                         <li>• <strong>길이 긴순 정렬:</strong> 단어의 길이가 긴 순서로 정렬합니다.</li>
                                     </ul>
                                 </div>
@@ -790,6 +843,22 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, setErrorModalVi
                             </button>
                             <div className="w-6 h-6 relative cursor-pointer hover:opacity-80 transition-opacity">
                                 <HelpModal wantGo={4} />
+                            </div>
+                        </div>
+
+                        {/* ㄱㄴㄷ 순 정렬 v4 */}
+                        <div className="flex items-center gap-2 p-2 bg-gray-50
+                            dark:bg-gray-900 rounded-md">
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 min-w-20">ㄱㄴㄷ 순 정렬 v4:</span>
+                            <button
+                                className="flex-1 bg-green-500 text-white px-3 py-1.5 rounded-md hover:bg-green-600 text-sm font-medium transition-colors disabled:bg-gray-200 dark:disabled:bg-gray-700 disabled:text-gray-400 disabled:cursor-not-allowed"
+                                disabled={!fileContent}
+                                onClick={handleSortWordv4}
+                            >
+                                정렬하기
+                            </button>
+                            <div className="w-6 h-6 relative cursor-pointer hover:opacity-80 transition-opacity">
+                                <HelpModal wantGo={5} />
                             </div>
                         </div>
 

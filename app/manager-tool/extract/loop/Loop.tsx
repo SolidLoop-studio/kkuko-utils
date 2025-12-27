@@ -4,7 +4,7 @@ import ErrorModal from "@/app/components/ErrModal";
 import type { ErrorMessage } from '@/app/types/type'
 import Spinner from "@/app/components/Spinner";
 import FileContentDisplay from "../components/FileContentDisplay";
-import DuemLaw from "@/app/lib/DuemLaw";
+import DuemLaw from "@/app/lib/hangulUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";

@@ -40,6 +40,7 @@ const WordExtractorApp = () => {
     const [loading, setLoading] = useState(false);
     const [oneMissionChecked, setOneMissionChecked] = useState<boolean>(false);
     const [showMissionLetter, setShowMissionLetter] = useState<boolean>(false);
+    const [excludeFirstMissionChecked, setExcludeFirstMissionChecked] = useState<boolean>(false);
     const [selected, setSelected] = useState<op[]>([]);
 
     const options: ["미션글자 포함순", "글자길이순", "ㄱㄴㄷ순"] = ["미션글자 포함순", "글자길이순", "ㄱㄴㄷ순"];
@@ -100,11 +101,15 @@ const WordExtractorApp = () => {
     // 미션 단어들 추출
     const buildMissionMap = (
         content: string,
-        include: number
+        include: number,
+        excludeFirstMission: boolean
     ): DefaultDict<string, { word: string; mission: number }[]> => {
         const dict = new DefaultDict<string, { word: string; mission: number }[]>(() => []);
         for (const m of MISSION_CHARS) {
-            for (const word of content.split('\n')) {
+            for (const raw of content.split('\n')) {
+                const word = raw.trim();
+                if (!word) continue;
+                if (excludeFirstMission && MISSION_CHARS.includes(word[0])) continue;
                 const count = countMissionChar(word, m);
                 if (count >= include) dict.get(m).push({ word, mission: count });
             }
@@ -122,11 +127,17 @@ const WordExtractorApp = () => {
 
         // 오로지 ㄱㄴㄷ순 정렬만 있을 경우
         if (rank2 === undefined) {
+            // 중복 단어가 많이 쌓여 정렬에서 스택 오버플로우가 발생할 수 있으므로
+            // Set으로 중복을 제거하고 단순 localeCompare 정렬로 처리합니다.
+            const set = new Set<string>();
             for (const m of MISSION_CHARS) {
-                result.push(...missionMap.get(m).map(({ word }) => word))
+                for (const { word } of missionMap.get(m)) {
+                    set.add(word);
+                }
             }
-            result.sort((a, b) => sortedAlphabet({ word: a, mission: -1 }, { word: b, mission: -1 }));
-            return showMissionLetter ? result.map(word => formatWord(word)) : result
+            const arr = Array.from(set);
+            arr.sort((a, b) => a.localeCompare(b, "ko-KR"));
+            return showMissionLetter ? arr.map(word => formatWord(word)) : arr;
         }
         // 2순위가 미션글자 포함순일때
         else if (selected[1] === "미션글자 포함순") {
@@ -241,7 +252,7 @@ const WordExtractorApp = () => {
             if (!fileContent || selected.length === 0) return;
 
             const include = oneMissionChecked ? 1 : 2;
-            const missionMap = buildMissionMap(fileContent, include);
+            const missionMap = buildMissionMap(fileContent, include, excludeFirstMissionChecked);
             const rank1 = pack[selected[0]];
             const rank2 = pack[selected[1]];
             const rank3 = pack[selected[2]];
@@ -468,6 +479,20 @@ const WordExtractorApp = () => {
                                             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 dark:text-gray-200"
                                         >
                                             미션 글자 표시
+                                        </Label>
+                                    </div>
+
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="exclude-first-mission"
+                                            checked={excludeFirstMissionChecked}
+                                            onCheckedChange={(checked) => setExcludeFirstMissionChecked(checked as boolean)}
+                                        />
+                                        <Label
+                                            htmlFor="exclude-first-mission"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 dark:text-gray-200"
+                                        >
+                                            첫글자 미션글자 제외
                                         </Label>
                                     </div>
 

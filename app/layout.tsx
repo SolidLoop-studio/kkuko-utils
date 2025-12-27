@@ -8,6 +8,7 @@ import { Providers } from "./providers";
 import AutoLogin from "./AutoLogin";
 import NoticeProvider from "./components/NoticeProvider";
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import { Analytics } from "@vercel/analytics/next"
 
 
 const geistSans = Geist({
@@ -89,6 +90,7 @@ export default function RootLayout({
 				</Providers>
 				<Footer />
 				{process.env.NODE_ENV === "production" && <SpeedInsights />}
+				{process.env.NODE_ENV === "production" && <Analytics />}
 			</body>
 		</html>
 	);

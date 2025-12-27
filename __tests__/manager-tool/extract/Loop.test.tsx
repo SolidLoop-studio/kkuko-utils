@@ -25,7 +25,7 @@ jest.mock("@/app/manager-tool/extract/components/FileContentDisplay", () => {
 });
 
 // DuemLaw 함수 모킹
-jest.mock("@/app/lib/DuemLaw", () => {
+jest.mock("@/app/lib/hangulUtils", () => {
 	return jest.fn((char: string) => {
 		// 두음법칙 매핑
 		const duemMap: { [key: string]: string } = {

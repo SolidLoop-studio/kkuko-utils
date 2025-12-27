@@ -103,7 +103,7 @@ const Footer = () => {
         <div className="mt-8 text-center">
           <p className="text-sm text-gray-400">
             © {new Date().getFullYear()} 
-            <span className="font-medium text-gray-300 mx-1">hafskjfha</span>
+            <span className="font-medium text-gray-300 mx-1">SolidLoop-studio</span>
             All rights reserved.
           </p>
           <p className="text-xs text-gray-500 mt-1">

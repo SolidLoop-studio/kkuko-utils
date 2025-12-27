@@ -1,7 +1,7 @@
 import { Settings } from 'lucide-react';
 import WordSearchHelpModal from './WordSearchHelpModal';
 import { GameMode } from '../types';
-import { getModeLabel } from '../utils';
+import { getModeShortLabel } from '../utils';
 
 interface SearchHeaderProps {
     searchType: 'simple' | 'advanced';
@@ -26,7 +26,7 @@ export default function SearchHeader({ searchType, setSearchType, mode, onOpenMo
                                 : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                         }`}
                     >
-                        일반 검색
+                        일반
                     </button>
                     <button
                         onClick={() => setSearchType('advanced')}
@@ -36,7 +36,7 @@ export default function SearchHeader({ searchType, setSearchType, mode, onOpenMo
                                 : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                         }`}
                     >
-                        고급 검색
+                        고급
                     </button>
                 </div>
                 <WordSearchHelpModal />
@@ -47,7 +47,7 @@ export default function SearchHeader({ searchType, setSearchType, mode, onOpenMo
                     className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                 >
                     <Settings className="h-5 w-5" />
-                    {getModeLabel(mode)}
+                    {getModeShortLabel(mode)}
                 </button>
             )}
         </div>

@@ -12,6 +12,7 @@ import ThemeSelectionModal from './components/ThemeSelectionModal';
 export default function WordSearch() {
     const [showModeModal, setShowModeModal] = useState(false);
     const [showThemeModal, setShowThemeModal] = useState(false);
+    const [showOptions, setShowOptions] = useState(true);
 
     const {
         searchType, setSearchType,
@@ -45,53 +46,69 @@ export default function WordSearch() {
     return (
         <div className="flex flex-col h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-950 p-4">
             <div className="w-full max-w-4xl mx-auto flex flex-col flex-1 min-h-0">
-                {/* 제목 및 검색 타입, 검색 옵션 */}
-                <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-4 mb-4">
-                    <SearchHeader 
-                        searchType={searchType}
-                        setSearchType={handleSearchTypeChange}
-                        mode={mode} 
-                        onOpenModeModal={() => setShowModeModal(true)} 
-                    />
-                    {searchType === 'simple' ? (
-                        <SimpleSearchOptions
-                            simpleQuery={simpleQuery}
-                            setSimpleQuery={setSimpleQuery}
-                            loading={loading}
-                            handleSearch={handleSimpleSearch}
-                        />
-                    ) : (
-                        <SearchOptions
-                            mode={mode}
-                            startLetter={startLetter} setStartLetter={setStartLetter}
-                            endLetter={endLetter} setEndLetter={setEndLetter}
-                            mission={mission} setMission={setMission}
-                            minLength={minLength} setMinLength={setMinLength}
-                            maxLength={maxLength} setMaxLength={setMaxLength}
-                            sortBy={sortBy} setSortBy={setSortBy}
-                            duem={duem} setDuem={setDuem}
-                            miniInfo={miniInfo} setMiniInfo={setMiniInfo}
-                            manner={manner} setManner={setManner}
-                            ingjung={ingjung} setIngjung={setIngjung}
-                            simpleQuery={simpleQuery} setSimpleQuery={setSimpleQuery}
-                            displayLimit={displayLimit} setDisplayLimit={setDisplayLimit}
-                            loading={loading}
-                            handleSearch={handleSearch}
-                            onOpenThemeModal={() => setShowThemeModal(true)}
-                            selectedTheme={selectedTheme}
-                        />
-                    )}
+                <div className="flex justify-end md:hidden mb-2">
+                    <button
+                        onClick={() => setShowOptions((v) => !v)}
+                        className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md"
+                    >
+                        {showOptions ? '검색 옵션 숨기기' : '검색 옵션 보기'}
+                    </button>
                 </div>
 
+                {/* 제목 및 검색 타입, 검색 옵션 */}
+                {showOptions && (
+                    <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-4 mb-4">
+                        <SearchHeader
+                            searchType={searchType}
+                            setSearchType={handleSearchTypeChange}
+                            mode={mode}
+                            onOpenModeModal={() => setShowModeModal(true)}
+                        />
+
+                        <div className="mt-3">
+                            {searchType === 'simple' ? (
+                                <SimpleSearchOptions
+                                    simpleQuery={simpleQuery}
+                                    setSimpleQuery={setSimpleQuery}
+                                    loading={loading}
+                                    handleSearch={handleSimpleSearch}
+                                />
+                            ) : (
+                                <SearchOptions
+                                    mode={mode}
+                                    startLetter={startLetter} setStartLetter={setStartLetter}
+                                    endLetter={endLetter} setEndLetter={setEndLetter}
+                                    mission={mission} setMission={setMission}
+                                    minLength={minLength} setMinLength={setMinLength}
+                                    maxLength={maxLength} setMaxLength={setMaxLength}
+                                    sortBy={sortBy} setSortBy={setSortBy}
+                                    duem={duem} setDuem={setDuem}
+                                    miniInfo={miniInfo} setMiniInfo={setMiniInfo}
+                                    manner={manner} setManner={setManner}
+                                    ingjung={ingjung} setIngjung={setIngjung}
+                                    simpleQuery={simpleQuery} setSimpleQuery={setSimpleQuery}
+                                    displayLimit={displayLimit} setDisplayLimit={setDisplayLimit}
+                                    loading={loading}
+                                    handleSearch={handleSearch}
+                                    onOpenThemeModal={() => setShowThemeModal(true)}
+                                    selectedTheme={selectedTheme}
+                                />
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 {/* 검색 결과 */}
-                <SearchResults
-                    results={results}
-                    searchPerformed={searchPerformed}
-                    loading={loading}
-                    mission={mission}
-                    miniInfo={miniInfo}
-                    mode={mode}
-                />
+                <div className="flex-1 overflow-auto min-h-0">
+                    <SearchResults
+                        results={results}
+                        searchPerformed={searchPerformed}
+                        loading={loading}
+                        mission={mission}
+                        miniInfo={miniInfo}
+                        mode={mode}
+                    />
+                </div>
             </div>
 
             {/* 모드 선택 모달 */}

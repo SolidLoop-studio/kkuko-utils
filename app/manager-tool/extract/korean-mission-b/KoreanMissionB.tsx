@@ -13,7 +13,7 @@ import { Download, Play, Settings, Zap, Home } from "lucide-react";
 import { DefaultDict } from "@/app/lib/collections";
 import Link from "next/link";
 import HelpModal from "@/app/components/HelpModal";
-import { reverDuemLaw } from "@/app/lib/DuemLaw";
+import { reverDuemLaw } from "@/app/lib/hangulUtils";
 
 const MISSION_LETTERS = "가나다라마바사아자차카타파하";
 

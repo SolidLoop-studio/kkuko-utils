@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import HelpModal from '@/app/components/HelpModal';
 
-interface HelpModalProp {
-    wantGo?: 1 | 2 | 3 | 4;
+interface HelpModalprop {
+    wantGo?: 1 | 2 | 3 | 4 | 5;
 }
 
 const HelpModalB = ({ wantGo }: HelpModalProp) => {
@@ -10,6 +10,7 @@ const HelpModalB = ({ wantGo }: HelpModalProp) => {
     const sortRef1 = useRef<HTMLHeadingElement>(null);
     const sortRef2 = useRef<HTMLHeadingElement>(null);
     const sortRef3 = useRef<HTMLHeadingElement>(null);
+    const sortRef4 = useRef<HTMLHeadingElement>(null);
 
     const scrollToSection = (ref: React.RefObject<HTMLElement | null>) => {
         if (ref.current) {
@@ -28,6 +29,9 @@ const HelpModalB = ({ wantGo }: HelpModalProp) => {
                     break;
                 case 4:
                     scrollToSection(sortRef3);
+                    break;
+                case 5:
+                    scrollToSection(sortRef4);
                     break;
             }
         }
@@ -59,6 +63,14 @@ const HelpModalB = ({ wantGo }: HelpModalProp) => {
                         onClick={() => scrollToSection(sortRef3)}
                     >
                         ㄱㄴㄷ순 정렬 v3
+                    </button>
+                </li>
+                <li>
+                    <button
+                        className="text-blue-500 dark:text-blue-400 hover:underline"
+                        onClick={() => scrollToSection(sortRef4)}
+                    >
+                        ㄱㄴㄷ순 정렬 v4
                     </button>
                 </li>
             </ul>
@@ -108,6 +120,21 @@ const HelpModalB = ({ wantGo }: HelpModalProp) => {
 
                 <pre className="bg-gray-100 dark:bg-gray-800 text-sm p-3 rounded-md text-gray-800 dark:text-gray-200">
                     {`가끔가끔\n가격\n오늘\n오글오글`} <br />→<br />{`가끔가끔\n가격\n오글오글\n오늘`}
+                </pre>
+
+                <h3
+                    ref={sortRef4}
+                    className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100"
+                >
+                    ㄱㄴㄷ순 정렬 v4
+                </h3>
+
+                <p className="text-gray-700 dark:text-gray-300">
+                    v4 버전은 한글 앞글자순으로 정렬하고 길이별로 정렬한후 그룹으로 묶습니다.
+                </p>
+
+                <pre className="bg-gray-100 dark:bg-gray-800 text-sm p-3 rounded-md text-gray-800 dark:text-gray-200">
+                    {`나비야\n가나다라마바사\n나비\n난방\n가로`} <br />→<br />{`=[가]=\n가나다라마바사\n가로\n\n=[나]=\n나비\n나비야\n\n=[난]=\n난방`}
                 </pre>
             </div>
         </div>

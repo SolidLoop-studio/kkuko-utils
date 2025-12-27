@@ -2,7 +2,7 @@ import { ISupabaseClientManager, IAddManager, IGetManager, IDeleteManager, IUpda
 import type { PostgrestError, PostgrestSingleResponse, Session, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/app/types/database.types';
 import type { addWordQueryType, addWordThemeQueryType, DocsLogData, WordLogData, advancedQueryType } from '@/app/types/type';
-import DuemLaw, { reverDuemLaw } from '../DuemLaw';
+import DuemLaw, { reverDuemLaw } from '../hangulUtils';
 import { sum } from 'es-toolkit';
 import { StorageError } from '@supabase/storage-js';
 

@@ -18,7 +18,7 @@ import { SCM } from "@/app/lib/supabaseClient"
 import ConfirmModal from "@/app/components/ConfirmModal";
 import { josa } from "es-hangul";
 import { useRouter } from 'next/navigation'
-import  DuemRaw,{ reverDuemLaw } from '@/app/lib/DuemLaw';
+import  DuemRaw,{ reverDuemLaw } from '@/app/lib/hangulUtils';
 import WordSearchBar from "./SearchBar";
 import { PostgrestError } from "@supabase/supabase-js";
 import { DocsLogData } from "@/app/types/type";

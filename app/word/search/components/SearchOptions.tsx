@@ -67,14 +67,14 @@ export default function SearchOptions({
     if (mode === 'kor-start' || mode === 'kor-end' || mode === 'kung') {
         return (
             <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-3 gap-2">
                     <input
                         type="text"
                         value={startLetter}
                         onChange={(e) => setStartLetter(e.target.value)}
                         onKeyDown={handleKeyPress}
                         placeholder="시작 글자"
-                        className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <input
                         type="text"
@@ -82,7 +82,7 @@ export default function SearchOptions({
                         onChange={(e) => setEndLetter(e.target.value)}
                         onKeyDown={handleKeyPress}
                         placeholder="끝 글자"
-                        className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <input
                         type="text"
@@ -90,7 +90,7 @@ export default function SearchOptions({
                         onChange={(e) => setMission(e.target.value)}
                         onKeyDown={handleKeyPress}
                         placeholder="미션 글자"
-                        className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
 
