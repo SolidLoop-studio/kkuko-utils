@@ -11,13 +11,13 @@ import {
 
 export async function generateMetadata() {
     return {
-        title: "끄코 유틸리티 - 오픈DB API",
-        description: `끄코 유틸리티 - 오픈DB API`,
+        title: "끄코 유틸리티 - 오픈API 단어",
+        description: `끄코 유틸리티 - 오픈API 단어`,
         openGraph: {
-            title: "끄코 유틸리티 - 오픈DB API",
-            description: "끄코 유틸리티 - 오픈DB API",
+            title: "끄코 유틸리티 - 오픈API 단어",
+            description: "끄코 유틸리티 - 오픈API 단어",
             type: "website",
-            url: "https://kkuko-utils.vercel.app/word/api",
+            url: "https://kkuko-utils.vercel.app/openapi/word",
             siteName: "끄코 유틸리티",
             locale: "ko_KR",
         },

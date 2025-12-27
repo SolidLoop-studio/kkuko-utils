@@ -69,6 +69,7 @@ const Header = () => {
         { href: "/manager-tool", label: "단어장 관리 도구", isActive: pathname.includes('manager-tool') },
         { href: "/words-docs", label: "단어장 공유", isActive: pathname.includes('words-docs') },
         { href: "/word", label: "오픈DB", isActive: pathname==='/word' || pathname.includes('/word/') },
+        { href: "/openapi", label: "오픈API", isActive: pathname.includes('/openapi') },
         { 
             href: "/extra-features", 
             label: "기타 기능", 
@@ -78,7 +79,8 @@ const Header = () => {
             !(pathname === "/") && 
             !(pathname.includes('admin')) &&
             !(pathname.includes('/word/')) &&
-            pathname !=='/word'
+            pathname !=='/word' &&
+            !pathname.includes('/openapi')
         }
     ];
 
