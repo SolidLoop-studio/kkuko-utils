@@ -1,4 +1,5 @@
 import WordCombinerPage from "./WordCombinerPage";
+import React from "react";
 
 export async function generateMetadata() {
 	return {

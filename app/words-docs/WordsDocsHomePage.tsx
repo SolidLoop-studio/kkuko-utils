@@ -18,7 +18,7 @@ type DocsType = {
 export default function WordsDocsHomePage(){
     const { loadingState, updateLoadingState } = useLoadingState();
     const [errorMessage,setErrorMessage] = useState<string|null>(null);
-    const [docsDatas, setDocsDatas] = useState<DocsType[] | null>(null);
+    const [docsData, setDocsData] = useState<DocsType[] | null>(null); // Data 자체가 복수형
 
     useEffect(()=>{
         const getData = async () => {
@@ -36,7 +36,7 @@ export default function WordsDocsHomePage(){
                 id: `${id}`, name, maker: users?.nickname ?? "알수없음", last_update, is_manager: false, typez, created_at
             }));
             
-            setDocsDatas(docs);
+            setDocsData(docs);
             updateLoadingState(100, "완료");
         }
         getData();
@@ -46,7 +46,7 @@ export default function WordsDocsHomePage(){
 
     if (errorMessage) return <ErrorPage message={errorMessage}/>
 
-    if (docsDatas) return <WordsDocsHome docs={docsDatas} />
+    if (docsData) return <WordsDocsHome docs={docsData} />
 
     return null
 }

@@ -194,7 +194,7 @@ const Table = ({
         CancelDeleteRequest, 
         RequestDelete, 
         DeleteByAdmin, 
-    } = useWorkFunc({ makeError, setIsProcessing, user, CompleWork, isProcessing });
+    } = useWorkFunc({ makeError, setIsProcessing, user, CompWork: CompleWork, isProcessing });
 
     return (
         <div className="w-full mx-auto">

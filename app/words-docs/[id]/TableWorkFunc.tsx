@@ -2,7 +2,7 @@ import { SCM } from '@/app/lib/supabaseClient';
 import type { PostgrestError } from "@supabase/supabase-js";
 import { isNoin } from "@/app/lib/lib";
 import type { RootState } from '@/app/store/store';
-import { useCallback } from 'react';
+import React, { useCallback } from 'react';
 
 interface DocsLogData {
     readonly word: string;
@@ -19,22 +19,22 @@ interface WordLogData {
     readonly state: "approved" | "rejected";
 }
 
-type DocsLogDatas = DocsLogData[];
-type WordLogDatas = WordLogData[];
+type DocsLogArrayOfData = DocsLogData[];
+type WordLogArrayOfData = WordLogData[];
 
-export const useWorkFunc = ({ makeError, setIsProcessing, user, isProcessing, CompleWork }: {
+export const useWorkFunc = ({ makeError, setIsProcessing, user, isProcessing, CompWork }: {
     makeError: (error: PostgrestError) => void,
     setIsProcessing: React.Dispatch<React.SetStateAction<boolean>>,
     user: RootState['user'],
-    CompleWork: () => void,
+    CompWork: () => void,
     isProcessing: boolean
 }) => {
-    const WriteDocsLog = useCallback(async (logsData: DocsLogDatas) => {
+    const WriteDocsLog = useCallback(async (logsData: DocsLogArrayOfData) => {
         const { error: insertDocsLogDataError } = await SCM.add().docsLog(logsData);
         if (insertDocsLogDataError) { throw insertDocsLogDataError }
     }, []);
 
-    const WriteWordLog = useCallback(async (logsData: WordLogDatas) => {
+    const WriteWordLog = useCallback(async (logsData: WordLogArrayOfData) => {
         const { error: insertWordLogDataError } = await SCM.add().wordLog(logsData);
         if (insertWordLogDataError) { throw insertWordLogDataError }
     }, []);
@@ -123,7 +123,7 @@ export const useWorkFunc = ({ makeError, setIsProcessing, user, isProcessing, Co
             if (deleteWaitWordDataError) return makeError(deleteWaitWordDataError);
 
             setIsProcessing(false);
-            CompleWork();
+            CompWork();
         } catch (error) {
             makeError(error as PostgrestError);
             setIsProcessing(false);
@@ -155,7 +155,7 @@ export const useWorkFunc = ({ makeError, setIsProcessing, user, isProcessing, Co
         await WriteWordLog([insertWordLogData]);
 
         setIsProcessing(false);
-        CompleWork();
+        CompWork();
         return;
     }, []);
 
@@ -233,7 +233,7 @@ export const useWorkFunc = ({ makeError, setIsProcessing, user, isProcessing, Co
 
 
         setIsProcessing(false);
-        CompleWork();
+        CompWork();
         return;
     }, []);
 
@@ -262,7 +262,7 @@ export const useWorkFunc = ({ makeError, setIsProcessing, user, isProcessing, Co
         await WriteWordLog([insertWordLogData]);
 
         setIsProcessing(false);
-        CompleWork();
+        CompWork();
         return;
     }, []);
 
@@ -281,7 +281,7 @@ export const useWorkFunc = ({ makeError, setIsProcessing, user, isProcessing, Co
         if (deleteWaitWordDataError) { return makeError(deleteWaitWordDataError); }
 
         setIsProcessing(false);
-        CompleWork();
+        CompWork();
         return;
     }, []);
 
@@ -300,7 +300,7 @@ export const useWorkFunc = ({ makeError, setIsProcessing, user, isProcessing, Co
         if (deleteWaitWordDataError) { return makeError(deleteWaitWordDataError); }
 
         setIsProcessing(false);
-        CompleWork();
+        CompWork();
         return;
     }, []);
 
@@ -374,7 +374,7 @@ export const useWorkFunc = ({ makeError, setIsProcessing, user, isProcessing, Co
         }
 
         setIsProcessing(false);
-        CompleWork();
+        CompWork();
         return;
 
     }, []);
@@ -405,7 +405,7 @@ export const useWorkFunc = ({ makeError, setIsProcessing, user, isProcessing, Co
         if (!insertWaitWordDataA) return;
 
         setIsProcessing(false);
-        CompleWork();
+        CompWork();
         return;
     }, []);
 

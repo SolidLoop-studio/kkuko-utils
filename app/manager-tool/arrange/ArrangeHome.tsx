@@ -140,12 +140,12 @@ const FileSector = ({ fileContent, fileInputRef, handleFileUpload, file, lineCou
 };
 
 
-const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalView }:
+const ToolSector = ({ fileContent, setFileContent, setLineCount, setErrorModalView }:
     {
         fileContent: string,
         setFileContent: React.Dispatch<React.SetStateAction<string>>,
         setLineCount: React.Dispatch<React.SetStateAction<number>>,
-        seterrorModalView: React.Dispatch<React.SetStateAction<ErrorMessage | null>>
+        setErrorModalView: React.Dispatch<React.SetStateAction<ErrorMessage | null>>
     }
 ) => {
     const [undoStack, setUndoStack] = useState<string[]>([]);
@@ -163,7 +163,7 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
             setRedoStack([]);
         } catch (err) {
             if (err instanceof Error) {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: err.name,
                     ErrMessage: err.message,
                     ErrStackRace: err.stack,
@@ -171,7 +171,7 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
                 });
 
             } else {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: null,
                     ErrMessage: null,
                     ErrStackRace: err as string,
@@ -192,7 +192,7 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
             }
         } catch (err) {
             if (err instanceof Error) {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: err.name,
                     ErrMessage: err.message,
                     ErrStackRace: err.stack,
@@ -200,7 +200,7 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
                 });
 
             } else {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: null,
                     ErrMessage: null,
                     ErrStackRace: err as string,
@@ -221,7 +221,7 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
             }
         } catch (err) {
             if (err instanceof Error) {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: err.name,
                     ErrMessage: err.message,
                     ErrStackRace: err.stack,
@@ -229,7 +229,7 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
                 });
 
             } else {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: null,
                     ErrMessage: null,
                     ErrStackRace: err as string,
@@ -249,7 +249,7 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
             setLineCount(updatedContent.split("\n").length);
         } catch (err) {
             if (err instanceof Error) {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: err.name,
                     ErrMessage: err.message,
                     ErrStackRace: err.stack,
@@ -257,7 +257,7 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
                 });
 
             } else {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: null,
                     ErrMessage: null,
                     ErrStackRace: err as string,
@@ -280,7 +280,7 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
             setLineCount(updatedContent.split("\n").length);
         } catch (err) {
             if (err instanceof Error) {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: err.name,
                     ErrMessage: err.message,
                     ErrStackRace: err.stack,
@@ -288,7 +288,7 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
                 });
 
             } else {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: null,
                     ErrMessage: null,
                     ErrStackRace: err as string,
@@ -312,7 +312,7 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
             setRemoveWord("");
         } catch (err) {
             if (err instanceof Error) {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: err.name,
                     ErrMessage: err.message,
                     ErrStackRace: err.stack,
@@ -320,7 +320,7 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
                 });
 
             } else {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: null,
                     ErrMessage: null,
                     ErrStackRace: err as string,
@@ -342,7 +342,7 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
             setReplaceValue("");
         } catch (err) {
             if (err instanceof Error) {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: err.name,
                     ErrMessage: err.message,
                     ErrStackRace: err.stack,
@@ -350,7 +350,7 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
                 });
 
             } else {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: null,
                     ErrMessage: null,
                     ErrStackRace: err as string,
@@ -377,7 +377,7 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
             setLineCount(temp.length);
         } catch (err) {
             if (err instanceof Error) {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: err.name,
                     ErrMessage: err.message,
                     ErrStackRace: err.stack,
@@ -385,7 +385,7 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
                 });
 
             } else {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: null,
                     ErrMessage: null,
                     ErrStackRace: err as string,
@@ -406,7 +406,7 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
             console.log(updatedContent)
         } catch (err) {
             if (err instanceof Error) {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: err.name,
                     ErrMessage: err.message,
                     ErrStackRace: err.stack,
@@ -414,7 +414,7 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
                 });
 
             } else {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: null,
                     ErrMessage: null,
                     ErrStackRace: err as string,
@@ -450,7 +450,7 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
             setLineCount(updatedContent.split("\n").length);
         } catch (err) {
             if (err instanceof Error) {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: err.name,
                     ErrMessage: err.message,
                     ErrStackRace: err.stack,
@@ -458,7 +458,7 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
                 });
 
             } else {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: null,
                     ErrMessage: null,
                     ErrStackRace: err as string,
@@ -495,14 +495,14 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
             setPatternToDelete("");
         } catch (err) {
             if (err instanceof Error) {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: err.name,
                     ErrMessage: err.message,
                     ErrStackRace: err.stack,
                     inputValue: `DeleteByPattern | ${fileContent}`
                 });
             } else {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: null,
                     ErrMessage: null,
                     ErrStackRace: err as string,
@@ -522,14 +522,14 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
             setLineCount(updatedContent.length);
         } catch (err) {
             if (err instanceof Error) {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: err.name,
                     ErrMessage: err.message,
                     ErrStackRace: err.stack,
                     inputValue: `SortByLength | ${fileContent}`
                 });
             } else {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: null,
                     ErrMessage: null,
                     ErrStackRace: err as string,
@@ -560,7 +560,7 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
             console.log(updatedContent)
         } catch (err) {
             if (err instanceof Error) {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: err.name,
                     ErrMessage: err.message,
                     ErrStackRace: err.stack,
@@ -568,7 +568,7 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
                 });
 
             } else {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: null,
                     ErrMessage: null,
                     ErrStackRace: err as string,
@@ -587,14 +587,14 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, seterrorModalVi
             setLineCount(updatedContent.split("\n").length);
         } catch (err) {
             if (err instanceof Error) {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: err.name,
                     ErrMessage: err.message,
                     ErrStackRace: err.stack,
                     inputValue: `ConvertToLowercase | ${fileContent}`
                 });
             } else {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: null,
                     ErrMessage: null,
                     ErrStackRace: err as string,
@@ -1052,7 +1052,7 @@ const ArrangeHome = () => {
                     fileContent={fileContent}
                     setFileContent={setFileContent}
                     setLineCount={setLineCount}
-                    seterrorModalView={seterrorModalView}
+                    setErrorModalView={seterrorModalView}
                 />
             </div>
 

@@ -21,8 +21,7 @@ const DocsDataHomePage = async ({ params }: { params: Promise<{ id: string }> })
     const {id} = await params;
     const nid = Number(id)
 
-    if (isNaN(nid)) return <NotFound />
-    return <DocsDataPage id={nid} />
+    return isNaN(nid) ? <NotFound /> : <DocsDataPage id={nid} />
     
 }
 

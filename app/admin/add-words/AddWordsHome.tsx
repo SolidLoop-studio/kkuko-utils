@@ -400,7 +400,7 @@ export default function WordsAddHome() {
         const insertThemeMap: Record<string, string[]> = {}; // 단어 - 추가된 주제이름들 맵
 
         // 단어 주제 추가
-        const { data: insertedThemesData, error: inseredThemeError } = await supabaseInQueryChunk(
+        const { data: insertedThemesData, error: insertedThemeError } = await supabaseInQueryChunk(
             themesAddQuery,
             async (chunk) => {
                 const r = await SCM.add().wordsThemes(chunk);
@@ -412,7 +412,7 @@ export default function WordsAddHome() {
                 }
             }
         )
-        if (inseredThemeError) return makeError(inseredThemeError)
+        if (insertedThemeError) return makeError(insertedThemeError)
         for (const data of insertedThemesData ?? []) {
             insertThemeMap[data.words.word] = [...(insertThemeMap[data.words.word] ?? []), data.themes.name]
         }
@@ -438,9 +438,9 @@ export default function WordsAddHome() {
         // JSON에 없는 단어-주제 쌍 제거
         setCurrentTask('파일에 없는 단어-주제 쌍 제거 중...');
         if (wordThemeDelQuery.length > 0) {
-            const { data: wordthemeDeletedData, error: wordThemeDeleteError } = await SCM.delete().wordTheme(wordThemeDelQuery);
+            const { data: wordThemeDeletedData, error: wordThemeDeleteError } = await SCM.delete().wordTheme(wordThemeDelQuery);
             if (wordThemeDeleteError) return makeError(wordThemeDeleteError);
-            for (const data of wordthemeDeletedData) {
+            for (const data of wordThemeDeletedData) {
                 const docsId = themeDocsInfo[data.theme_name]
                 if (docsId) {
                     docsLogsQuery.push({

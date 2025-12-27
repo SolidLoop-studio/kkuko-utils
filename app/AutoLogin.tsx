@@ -14,15 +14,15 @@ const AutoLogin = () => {
 
             if (!data || !data.session || error) return;
 
-            const { data: ddata, error: err } = await SCM.get().userById(data.session.user.id);
+            const { data: dbdata, error: err } = await SCM.get().userById(data.session.user.id);
             
-            if (err || !ddata) return;
+            if (err || !dbdata) return;
 
             dispatch(
                 userAction.setInfo({
-                    username: ddata.nickname,
-                    role: ddata.role ?? "guest",
-                    uuid: ddata.id,
+                    username: dbdata.nickname,
+                    role: dbdata.role ?? "guest",
+                    uuid: dbdata.id,
                 })
             );
         }

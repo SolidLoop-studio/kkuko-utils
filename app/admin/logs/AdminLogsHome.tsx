@@ -207,7 +207,7 @@ export default function AdminLogsHome({ initialWordLogs, initialDocsLogs, allDoc
         setLoading(true);
         try {
             if (selectedTab === "word_logs") {
-                const { data, error } = await SCM.get().logsByFillter({ 
+                const { data, error } = await SCM.get().logsByFilter({
                     filterState: wordLogState, 
                     filterType: wordLogType, 
                     from: 0, 

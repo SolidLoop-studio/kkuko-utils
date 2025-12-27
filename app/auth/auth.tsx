@@ -23,7 +23,7 @@ const AuthPage = () => {
     const [loading, setLoading] = useState<boolean>(false);
     const [nicknameError, setNicknameError] = useState("");
     const dispatch = useDispatch<AppDispatch>();
-    const [errorModalView, seterrorModalView] = useState<ErrorMessage | null>(null);
+    const [errorModalView, setErrorModalView] = useState<ErrorMessage | null>(null);
 
     useEffect(() => {
         
@@ -36,7 +36,7 @@ const AuthPage = () => {
             const { data, error: err } = await SCM.get().userById(session.user.id);
     
             if (err) {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: err.name ?? null,
                     ErrMessage: err.message ?? null,
                     ErrStackRace: err.stack ?? null,
@@ -76,7 +76,7 @@ const AuthPage = () => {
         const { error: err } = await SCM.loginByGoogle(location.origin);
         if (err) {
             if (err instanceof Error) {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: err.name,
                     ErrMessage: err.message,
                     ErrStackRace: err.stack,
@@ -84,7 +84,7 @@ const AuthPage = () => {
                 });
 
             } else {
-                seterrorModalView({
+                setErrorModalView({
                     ErrName: null,
                     ErrMessage: null,
                     ErrStackRace: err as string,
@@ -107,7 +107,7 @@ const AuthPage = () => {
         // 닉네임 중복 확인
         const { data: checkData, error: checkErr } = await SCM.get().usersByNickname(nickname);
         if (checkErr) {
-            seterrorModalView({
+            setErrorModalView({
                 ErrName: checkErr.name,
                 ErrMessage: checkErr.message,
                 ErrStackRace: checkErr.stack,
@@ -127,7 +127,7 @@ const AuthPage = () => {
         const { data, error:err } = await SCM.add().nickname(session.data.session.user.id, nickname)
 
         if (err) {
-            seterrorModalView({
+            setErrorModalView({
                 ErrName: err.name,
                 ErrMessage: err.message,
                 ErrStackRace: err.stack,
@@ -267,7 +267,7 @@ const AuthPage = () => {
                 {errorModalView && (
                     <ErrorModal 
                         error={errorModalView} 
-                        onClose={() => seterrorModalView(null)} 
+                        onClose={() => setErrorModalView(null)}
                     />
                 )}
             </div>

@@ -213,7 +213,7 @@ const ProfilePage = ({ userName }: { userName: string }) => {
             setMonthlyContributions(filledContributions);
 
             setLoading(null);
-            loadTabsData(getUserData.id);
+            await loadTabsData(getUserData.id);
         };
         getData();
         

@@ -129,7 +129,7 @@ export default function WordsDelHome() {
 
         setCurrentTask("필요한 정보 가져오는 중...");
         setProgress(0);
-        const { data: docsDatas, error: docsDataError } = await SCM.get().allDocs();
+        const { data: docsData, error: docsDataError } = await SCM.get().allDocs();
         if (docsDataError) return makeError(docsDataError);
 
         const { data: waitWords, error: waitWordsError } = await SCM.get().allWaitWords('delete');
@@ -156,10 +156,10 @@ export default function WordsDelHome() {
         const themeDocsInfo: Record<string, number> = {};
 
 
-        docsDatas.filter(({ typez }) => typez === "letter").forEach(({ id, name }) => {
+        docsData.filter(({ typez }) => typez === "letter").forEach(({ id, name }) => {
             letterDocsInfo[name] = id
         })
-        docsDatas.filter(({ typez }) => typez === "theme").forEach(({ id, name }) => {
+        docsData.filter(({ typez }) => typez === "theme").forEach(({ id, name }) => {
             themeDocsInfo[name] = id
         })
 

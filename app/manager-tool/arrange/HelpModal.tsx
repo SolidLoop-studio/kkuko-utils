@@ -1,11 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import HelpModal from '@/app/components/HelpModal';
 
-interface HelpModalprop {
+interface HelpModalProp {
     wantGo?: 1 | 2 | 3 | 4;
 }
 
-const HelpModalB = ({ wantGo }: HelpModalprop) => {
+const HelpModalB = ({ wantGo }: HelpModalProp) => {
     // 각 섹션에 대한 
     const sortRef1 = useRef<HTMLHeadingElement>(null);
     const sortRef2 = useRef<HTMLHeadingElement>(null);
@@ -114,7 +114,7 @@ const HelpModalB = ({ wantGo }: HelpModalprop) => {
     )
 }
 
-export default function HelpModalC({ wantGo }: HelpModalprop) {
+export default function HelpModalC({ wantGo }: HelpModalProp) {
     return (
         <HelpModal title={"단어장 정리 도구 도움말"}>
             <HelpModalB wantGo={wantGo} />
