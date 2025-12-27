@@ -1,7 +1,7 @@
 import { Settings } from 'lucide-react';
 import WordSearchHelpModal from './WordSearchHelpModal';
 import { GameMode } from '../types';
-import { getModeLabel, getModeShortLabel } from '../utils';
+import { getModeShortLabel } from '../utils';
 
 interface SearchHeaderProps {
     searchType: 'simple' | 'advanced';

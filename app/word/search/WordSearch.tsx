@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useWordSearch } from './hooks/useWordSearch';
 import SearchHeader from './components/SearchHeader';
 import SearchOptions from './components/SearchOptions';
