@@ -97,7 +97,7 @@ export default function LogPage() {
             const from = (currentPage - 1) * itemsPerPage;
             const to = from + itemsPerPage - 1;
 
-            const { data: LogsData, error: LogsDataError, count } = await SCM.get().logsByFillter({
+            const { data: LogsData, error: LogsDataError, count } = await SCM.get().logsByFilter({
                 filterState: currentFilterState,
                 filterType: currentFilterType,
                 from, to

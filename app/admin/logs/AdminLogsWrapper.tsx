@@ -83,7 +83,7 @@ export default function AdminLogsWrapper(){
                 { data: allDocsLogs, error: docsLogsError },
                 { data: allDocs, error: allDocsError }
             ] = await Promise.all([
-                SCM.get().logsByFillter({ filterState: "all", filterType: "all", from: 0, to: 999 }),
+                SCM.get().logsByFilter({ filterState: "all", filterType: "all", from: 0, to: 999 }),
                 SCM.get().docsLogsByFilter({ logType: "all", from: 0, to: 999 }),
                 SCM.get().allDocs()
             ]);

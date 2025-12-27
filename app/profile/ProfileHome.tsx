@@ -51,7 +51,7 @@ export default function ProfileHomePage() {
   const [searchInput, setSearchInput] = useState("");
   const [resultUsers, setResultUsers] = useState<user[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [errorModalView, seterrorModalView] = useState<ErrorMessage | null>(null);
+  const [errorModalView, setErrorModalView] = useState<ErrorMessage | null>(null);
 
   const handleSearch = async () => {
     setIsLoading(true);
@@ -60,7 +60,7 @@ export default function ProfileHomePage() {
     if (error){
         setIsLoading(false);
         setResultUsers([]);
-        seterrorModalView({
+        setErrorModalView({
             ErrName: error.name,
             ErrMessage: error.message,
             ErrStackRace: error.code,
@@ -210,7 +210,7 @@ export default function ProfileHomePage() {
         {errorModalView && (
           <ErrorModal
             error={errorModalView}
-            onClose={() => seterrorModalView(null)}
+            onClose={() => setErrorModalView(null)}
           />
         )}
       </div>

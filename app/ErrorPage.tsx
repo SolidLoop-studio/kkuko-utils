@@ -6,7 +6,7 @@ import type { ErrorMessage } from "./types/type";
 import { useRouter } from "next/navigation";
 
 const ErrorPage:React.FC<{e:ErrorMessage}> = ({e}) => {
-    const [errork,setError] = useState<ErrorMessage | null>(null);
+    const [error,setError] = useState<ErrorMessage | null>(null);
     const router = useRouter();
 
     const goBack = () => {
@@ -19,7 +19,7 @@ const ErrorPage:React.FC<{e:ErrorMessage}> = ({e}) => {
 
     return (
         <div className="flex flex-col flex-grow min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-            {errork && <ErrorModal error={e} onClose={()=>setError(null)} /> }
+            {error && <ErrorModal error={e} onClose={()=>setError(null)} /> }
 
             <button
                 onClick={goBack}

@@ -28,7 +28,7 @@ type WordRequest = {
 export default function AdminHomeWrapper(){
     const { loadingState, updateLoadingState } = useLoadingState();
     const [errorMessage,setErrorMessage] = useState<string|null>(null);
-    const [waitDatas,setWaitDatas] = useState<WordRequest[] | null>(null);
+    const [waitData,setWaitData] = useState<WordRequest[] | null>(null);
 
     const MakeError = (error: PostgrestError) => {
         setErrorMessage(`문서 정보 데이터 로드중 오류.\nErrorName: ${error.name ?? "알수없음"}\nError Message: ${error.message ?? "없음"}\nError code: ${error.code}`)
@@ -123,7 +123,7 @@ export default function AdminHomeWrapper(){
             waitQueue.push(r);
         });
 
-        setWaitDatas(waitQueue);
+        setWaitData(waitQueue);
         updateLoadingState(100, "완료!")
     }
 
@@ -141,7 +141,7 @@ export default function AdminHomeWrapper(){
         return <ErrorPage message={errorMessage}/>
     }
 
-    if (waitDatas){
-        return <AdminHome requestDatas={waitDatas} refreshFn={getWaitQueue} />
+    if (waitData){
+        return <AdminHome requestData={waitData} refreshFn={getWaitQueue} />
     }
 }

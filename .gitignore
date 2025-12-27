@@ -5,6 +5,7 @@
 /.pnp
 .pnp.*
 .yarn/*
+/.next
 !.yarn/patches
 !.yarn/plugins
 !.yarn/releases
@@ -43,3 +44,6 @@ next-env.d.ts
 # Test
 app/test/
 app/api/test
+
+# Idea
+/.idea

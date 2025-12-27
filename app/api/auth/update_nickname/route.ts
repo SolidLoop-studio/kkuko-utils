@@ -11,7 +11,7 @@ export async function POST(request: NextRequest){
     if (!body){
         return NextResponse.json({
             data: null,
-            error: "invaild data"
+            error: "invalid data"
         })
     }
 
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest){
     if (!nickname){
         return NextResponse.json({
             data: null,
-            error: "invaild data"
+            error: "invalid data"
         })
     }
 

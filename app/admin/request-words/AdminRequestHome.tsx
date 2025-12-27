@@ -59,7 +59,7 @@ type WordRequest = {
     word_id?: number; // 주제 변경 요청에서만 사용
 }
 
-export default function AdminHome({ requestDatas, refreshFn }: { requestDatas: WordRequest[], refreshFn: () => Promise<void> }) {
+export default function AdminHome({ requestData: requestData, refreshFn }: { requestData: WordRequest[], refreshFn: () => Promise<void> }) {
     const [selectedTab, setSelectedTab] = useState<string>("all");
     const [selectedRequests, setSelectedRequests] = useState<Set<number>>(new Set());
     const [selectedThemes, setSelectedThemes] = useState<Record<number, Set<number>>>({});
@@ -85,7 +85,7 @@ export default function AdminHome({ requestDatas, refreshFn }: { requestDatas: W
     }, []);
 
     // 요청 타입별 필터링
-    const filteredRequests = requestDatas.filter(request => {
+    const filteredRequests = requestData.filter(request => {
         if (selectedTab === "all") return true;
         return request.request_type === selectedTab;
     });
@@ -169,7 +169,7 @@ export default function AdminHome({ requestDatas, refreshFn }: { requestDatas: W
 
         // 승인 처리할 요청과 선택된 주제 정보 구성
         const requestsToApprove = Array.from(selectedRequests).map(reqId => {
-            const request = requestDatas.find(r => r.id === reqId);
+            const request = requestData.find(r => r.id === reqId);
             const selectedThemeIds = selectedThemes[reqId] || new Set<number>();
 
             // allThemes에서 선택된 주제 정보 가져오기
@@ -427,7 +427,7 @@ export default function AdminHome({ requestDatas, refreshFn }: { requestDatas: W
 
         // 거절할 처리할 요청과 선택된 주제 정보 구성
         const requestsToReject = Array.from(selectedRequests).map(reqId => {
-            const request = requestDatas.find(r => r.id === reqId);
+            const request = requestData.find(r => r.id === reqId);
             const selectedThemeIds = selectedThemes[reqId] || new Set<number>();
 
             return {

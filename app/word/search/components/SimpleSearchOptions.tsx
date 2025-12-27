@@ -1,4 +1,5 @@
 import { Search, Loader2 } from 'lucide-react';
+import React from "react";
 
 interface SimpleSearchOptionsProps {
     simpleQuery: string;

@@ -1,6 +1,6 @@
 "use client"
 import React, { useState } from 'react';
-import type { SixCharString, FiveCharString, ErrorMessage } from '../types/type';
+import type { SixCharString, FiveCharString, ErrorMessage } from '@/types/type';
 import CombinationManager from '../lib/CombinationsManger';
 import ErrorModal from '../components/ErrModal';
 import HelpModal from './WordCombinerHelpModal';
@@ -12,7 +12,7 @@ interface WordCombinerWithData {
 }
 
 export default function WordCombinerClient({ prop }: { prop: WordCombinerWithData }) {
-    const [nomalJOKAK, setNomalJOKAK] = useState<string>("");
+    const [normalJOKAK, setNormalJOKAK] = useState<string>("");
     const [highJOKAK, setHighJOKAK] = useState<string>("");
     const [rareJOKAK, setRareJOKAK] = useState<string>("");
     const [inputHtml, setInputHtml] = useState<string>("");
@@ -31,7 +31,7 @@ export default function WordCombinerClient({ prop }: { prop: WordCombinerWithDat
             const parser = new DOMParser();
             const doc = parser.parseFromString(htmlString, 'text/html');
 
-            let nomal = ""; // 일반
+            let normal = ""; // 일반
             let high = ""; // 고급
             let rare = ""; // 희귀
 
@@ -58,11 +58,11 @@ export default function WordCombinerClient({ prop }: { prop: WordCombinerWithDat
                     rare += chName.repeat(tCount);
                 } else if (charName.includes("글자 조각")) {
                     const chName = charName.replace("글자 조각 - ", "");
-                    nomal += chName.repeat(tCount);
+                    normal += chName.repeat(tCount);
                 }
             });
             setInputHtml("");
-            setNomalJOKAK(nomal);
+            setNormalJOKAK(normal);
             setHighJOKAK(high);
             setRareJOKAK(rare);
             setActiveTab('normal');
@@ -89,12 +89,12 @@ export default function WordCombinerClient({ prop }: { prop: WordCombinerWithDat
         try {
             setLoading(true);
             setTimeout(() => {
-                const manger6 = new CombinationManager(nomalJOKAK.replace(/\s+/g, '').split('').sort().join(''), len6WordsData);
+                const manger6 = new CombinationManager(normalJOKAK.replace(/\s+/g, '').split('').sort().join(''), len6WordsData);
                 setLen6Date(manger6.getBests());
-                const manger5 = new CombinationManager(manger6.remainstr(), len5WordsData);
+                const manger5 = new CombinationManager(manger6.remainStr(), len5WordsData);
                 setLen5Data(manger5.getBests());
                 setLoading(false);
-                setNomalJOKAK(manger5.remainstr());
+                setNormalJOKAK(manger5.remainStr());
             }, 1)
         } catch (err: unknown) {
             if (err instanceof Error) {
@@ -123,10 +123,10 @@ export default function WordCombinerClient({ prop }: { prop: WordCombinerWithDat
             setTimeout(() => {
                 const manger6 = new CombinationManager(highJOKAK.replace(/\s+/g, '').split('').sort().join(''), len6WordsData);
                 setLen6Date(manger6.getBests());
-                const manger5 = new CombinationManager(manger6.remainstr(), len5WordsData);
+                const manger5 = new CombinationManager(manger6.remainStr(), len5WordsData);
                 setLen5Data(manger5.getBests());
                 setLoading(false);
-                setHighJOKAK(manger5.remainstr());
+                setHighJOKAK(manger5.remainStr());
             }, 1)
         } catch (err: unknown) {
             if (err instanceof Error) {
@@ -155,10 +155,10 @@ export default function WordCombinerClient({ prop }: { prop: WordCombinerWithDat
             setTimeout(() => {
                 const manger6 = new CombinationManager(rareJOKAK.replace(/\s+/g, '').split('').sort().join(''), len6WordsData);
                 setLen6Date(manger6.getBests());
-                const manger5 = new CombinationManager(manger6.remainstr(), len5WordsData);
+                const manger5 = new CombinationManager(manger6.remainStr(), len5WordsData);
                 setLen5Data(manger5.getBests());
                 setLoading(false);
-                setRareJOKAK(manger5.remainstr());
+                setRareJOKAK(manger5.remainStr());
             }, 1)
         } catch (err: unknown) {
             if (err instanceof Error) {
@@ -193,7 +193,7 @@ export default function WordCombinerClient({ prop }: { prop: WordCombinerWithDat
 
     const getCurrentValue = () => {
         switch(activeTab) {
-            case 'normal': return nomalJOKAK;
+            case 'normal': return normalJOKAK;
             case 'high': return highJOKAK;
             case 'rare': return rareJOKAK;
             case 'html': return inputHtml;
@@ -203,11 +203,11 @@ export default function WordCombinerClient({ prop }: { prop: WordCombinerWithDat
 
     const getCurrentSetter = () => {
         switch(activeTab) {
-            case 'normal': return setNomalJOKAK;
+            case 'normal': return setNormalJOKAK;
             case 'high': return setHighJOKAK;
             case 'rare': return setRareJOKAK;
             case 'html': return setInputHtml;
-            default: return setNomalJOKAK;
+            default: return setNormalJOKAK;
         }
     };
 
@@ -309,7 +309,7 @@ export default function WordCombinerClient({ prop }: { prop: WordCombinerWithDat
                         <div className="grid grid-cols-3 gap-4">
                             <div className="flex flex-col items-center p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
                                 <span className="text-xs text-gray-500 dark:text-gray-400">일반</span>
-                                <span className="text-lg font-semibold">{nomalJOKAK.length}</span>
+                                <span className="text-lg font-semibold">{normalJOKAK.length}</span>
                             </div>
                             <div className="flex flex-col items-center p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
                                 <span className="text-xs text-gray-500 dark:text-gray-400">고급</span>

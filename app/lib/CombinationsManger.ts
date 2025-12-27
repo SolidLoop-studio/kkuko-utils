@@ -145,7 +145,7 @@ class CombinationManager {
     }
 
     /**
-     * 단어 사전의 단어들의 글자 출현 횟수 countting 함수 (나중에 단어들의 점수로 활용됨)
+     * 단어 사전의 단어들의 글자 출현 횟수 counting 함수 (나중에 단어들의 점수로 활용됨)
      */
     private countLetter() {
         this.letterCount = {};              // letterCount 초기화
@@ -158,7 +158,7 @@ class CombinationManager {
     }
 
     /**
-     * 사용가능한 음절들을 countting하는 함수(음절 문자열에서 replace하는것 보다 효율적일듯)
+     * 사용가능한 음절들을 counting하는 함수(음절 문자열에서 replace하는것 보다 효율적일듯)
      */
     private countSyllable() {
         this.syllableCount = {};
@@ -190,7 +190,7 @@ class CombinationManager {
      * 남아 있는 음절들을 정렬하여 반환하는 함수
      * @returns {string} 정렬된 음절 문자열
      */
-    public remainstr(): string {
+    public remainStr(): string {
         const result = [];
         for (const [syllable, count] of Object.entries(this.syllableCount)) {
             if (count > 0) {

@@ -32,7 +32,7 @@ const programInfoFetcher = async (id: string): Promise<{data: {data: Program}, e
   }
 }
 
-const ProgramRelaseFetcher = async (_: string, { arg }: { arg: { repo: string } }): Promise<{data: {latest: GitHubRelease, all: GitHubRelease[]}, error: null} | {data: null, error: FetchError}> => {
+const ProgramReleaseFetcher = async (_: string, { arg }: { arg: { repo: string } }): Promise<{data: {latest: GitHubRelease, all: GitHubRelease[]}, error: null} | {data: null, error: FetchError}> => {
   try {
     const repo = arg.repo;
     const encodedRepo = encodeURIComponent(repo);
@@ -69,7 +69,7 @@ export default function ProgramDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [showAllReleases, setShowAllReleases] = useState(false);
   const {data: infoData, isLoading} = useSWR(`/api/programs/info?id=${programId}`, () => programInfoFetcher(programId), { dedupingInterval: 300_000, revalidateIfStale: false });
-  const { trigger, data: mutateData, isMutating } = useSWRMutation(`/api/programs/releases?id=${programId}`, ProgramRelaseFetcher);
+  const { trigger, data: mutateData, isMutating } = useSWRMutation(`/api/programs/releases?id=${programId}`, ProgramReleaseFetcher);
 
   useEffect(()=>{
     const updateFunc = async () => {
@@ -79,7 +79,7 @@ export default function ProgramDetailPage() {
         } else if (infoData.data) {
           setProgram(infoData.data.data);
           setError(null);
-          trigger({repo: infoData.data.data.github_repo});
+          await trigger({repo: infoData.data.data.github_repo});
         }
       }
     }

@@ -9,7 +9,7 @@ import { convertQwertyToHangul } from "es-hangul";
 import { useSelector } from "react-redux";
 import type { RootState } from "../store/store";
 import LoginRequiredModal from "../components/LoginRequiredModal";
-import { SCM } from "../lib/supabaseClient";
+import { SCM } from "@/lib/supabaseClient";
 import CompleteModal from "../components/CompleteModal";
 
 interface Document {
