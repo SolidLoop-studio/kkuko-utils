@@ -252,6 +252,9 @@ class GetManager implements IGetManager {
             return { data: null, error: { name: "unexcept", details: "", code: "", message: "", hint: "" } as PostgrestError }
         }
     }
+    public async docsLastUpdate(id: number) {
+        return await this.supabase.from('docs').select('last_update').eq('id', id).maybeSingle();
+    }
     public async allWaitWords(c?:"add" | "delete") {
         if (c=="add"){
             return await this.supabase.from('wait_words').select('*,words(*),users(*)').eq('request_type',"add").order('requested_at', { ascending: true });
