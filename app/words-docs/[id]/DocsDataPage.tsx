@@ -38,6 +38,14 @@ export default function DocsDataPage({id}:{id:number}){
             const {data: docsStarData, error: docsStarError} = await SCM.get().docsStar(docsData.id);
             if (docsStarError) return makeError(docsStarError);
 
+            if (id === 208 || id === 223 || id === 238) {
+                const p = {title: docsData.name, lastUpdate: docsData.last_update, typez: docsData.typez}
+                setWordsData({words: [], metadata: p, starCount:docsStarData.map(({user_id})=>user_id)});
+                await SCM.update().docView(docsData.id);
+                updateLoadingState(100, "완료!");
+                return;
+            }
+
             if (docsData.typez === "letter"){
                 updateLoadingState(40, "문서에 들어간 단어 정보 가져오는 중...");
                 const {data, error: LetterDatasError} = await SCM.get().docsWords({name: docsData.name, duem: docsData.duem, typez: "letter"});
@@ -108,6 +116,6 @@ export default function DocsDataPage({id}:{id:number}){
     
     if (errorMessage) return <ErrorPage message={errorMessage}/>
 
-    if (wordsData) return <DocsDataHome id={id} data={wordsData.words.sort((a,b)=>a.word.localeCompare(b.word,'ko'))} metaData={wordsData.metadata} starCount={wordsData.starCount}/>
+    if (wordsData) return <DocsDataHome id={id} data={wordsData.words.sort((a,b)=>a.word.localeCompare(b.word,'ko'))} metaData={wordsData.metadata} starCount={wordsData.starCount} isSpecial={(209 <= id && id <= 222) || (224<= id && id <= 237) || (239<= id && id <= 252)}/>
     
 }

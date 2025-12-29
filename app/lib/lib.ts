@@ -31,3 +31,20 @@ export function calculateKoreanInitials(word: string): string{
 export function count(a: string, target: string): number{
     return (a.match(new RegExp(target, "gi")) || []).length
 }
+
+/**
+ * 미션 문자 마스크 생성 함수
+ * 
+ * @param chars 문자 배열
+ * @returns 미션 문자 마스크
+ */
+export function misssionCharMask(chars: string[]): number {
+    let base = 0;
+    const missionChars = ['가','나','다','라','마','바','사','아','자','차','카','타','파','하'];
+    for (const c of chars) {
+        if (missionChars.includes(c)) {
+            base = base | (1 << missionChars.indexOf(c));
+        }
+    }
+    return base;
+}
