@@ -16,10 +16,10 @@ export async function generateMetadata() {
 	};
 }
 
-const OAuthpage: React.FC = () => {
+const OAuthPage: React.FC = () => {
     return (
         <AuthPage />
     )
 }
 
-export default OAuthpage;
+export default OAuthPage;

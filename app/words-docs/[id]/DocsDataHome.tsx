@@ -257,7 +257,7 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
         URL.revokeObjectURL(url);
     };
 
-    const hadnleDocsStar = async () => {
+    const handleDocsStar = async () => {
         if (!user.uuid) {
             return setLoginNeedModalOpen(true);
         }
@@ -273,7 +273,7 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
     }
 
     const makeError = (error: PostgrestError) => {
-        seterrorModalView({
+        setErrorModalView({
             ErrName: error.name,
             ErrMessage: error.message,
             ErrStackRace: error.stack,
@@ -558,7 +558,7 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
             )}
             {errorModalView && (
                 <ErrorModal
-                    onClose={() => seterrorModalView(null)}
+                    onClose={() => setErrorModalView(null)}
                     error={errorModalView}
                 />
             )}

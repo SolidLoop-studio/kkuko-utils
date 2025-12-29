@@ -702,7 +702,7 @@ class GetManager implements IGetManager {
         return result;
     }
 
-    public async logsByFillter({ filterState, filterType, from, to }: { filterState: 'approved' | 'rejected' | 'pending' | 'all'; filterType: 'delete' | 'add' | 'all'; from: number; to: number; }) {
+    public async logsByFilter({ filterState, filterType, from, to }: { filterState: 'approved' | 'rejected' | 'pending' | 'all'; filterType: 'delete' | 'add' | 'all'; from: number; to: number; }) {
         let query = this.supabase
             .from('logs')
             .select(`

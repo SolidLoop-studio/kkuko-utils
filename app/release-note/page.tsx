@@ -1,4 +1,5 @@
 import ReleaseNote from "./ReleaseNote";
+import React from "react";
 
 export async function generateMetadata() {
 	return {

@@ -7,7 +7,7 @@ import { Play } from 'lucide-react';
 
 const HelpModalA = ({ wantGo }: { wantGo?: 1 | 2 | 3; }) => {
     // 각 섹션에 대한 ref
-    const nomalHelp = useRef<HTMLHeadingElement>(null);
+    const normalHelp = useRef<HTMLHeadingElement>(null);
     const HTMLHelp = useRef<HTMLHeadingElement>(null);
     const chromeHTML = useRef<HTMLHeadingElement>(null);
 
@@ -36,7 +36,7 @@ const HelpModalA = ({ wantGo }: { wantGo?: 1 | 2 | 3; }) => {
                     <li>
                         <button
                             className="text-blue-600 dark:text-blue-400 hover:underline text-left"
-                            onClick={() => scrollToSection(nomalHelp)}
+                            onClick={() => scrollToSection(normalHelp)}
                         >
                             1. 기본적인 사용법
                         </button>
@@ -64,7 +64,7 @@ const HelpModalA = ({ wantGo }: { wantGo?: 1 | 2 | 3; }) => {
 
             {/* 기본 사용법 */}
             <div className="space-y-4">
-                <h3 ref={nomalHelp} className="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <h3 ref={normalHelp} className="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                     <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-sm px-2 py-1 rounded-full font-medium">1</span>
                     기본적인 사용법
                 </h3>

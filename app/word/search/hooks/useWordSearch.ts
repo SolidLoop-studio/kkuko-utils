@@ -32,7 +32,7 @@ export const useWordSearch = () => {
     useEffect(() => {
         const modeParam = searchParams.get('mode');
         const qParam = searchParams.get('q');
-        
+
         if (modeParam || qParam) {
             // mode 파라미터 처리
             let targetMode: GameMode = 'kor-start';
@@ -43,26 +43,26 @@ export const useWordSearch = () => {
             } else if (modeParam === 'k') {
                 targetMode = 'kung';
             }
-            
+
             setMode(targetMode);
             setSearchType('advanced');
-            
+
             // q 파라미터 처리
             if (qParam) {
                 setManner(''); // manner을 빈 문자열로 설정
-                
+
                 if (targetMode === 'kor-start' || targetMode === 'kung') {
                     setStartLetter(qParam);
                 } else if (targetMode === 'kor-end') {
                     setEndLetter(qParam);
                 }
-                
+
                 // 쿵쿵따 모드인 경우 길이 설정
                 if (targetMode === 'kung') {
                     setMinLength(3);
                     setMaxLength(3);
                 }
-                
+
                 // 자동 검색 트리거
                 setAutoSearchTriggered(true);
             }
@@ -84,10 +84,10 @@ export const useWordSearch = () => {
         setLoading(true);
         setSearchPerformed(true);
         setResults([]);
-        
+
         try {
             let query: advancedQueryType;
-            
+
             if (mode === 'kor-start' || mode === 'kor-end') {
                 if (mode === 'kor-start' && startLetter.trim() === '') return;
                 if (mode === 'kor-end' && endLetter.trim() === '') return;
@@ -160,10 +160,10 @@ export const useWordSearch = () => {
         setLoading(true);
         setSearchPerformed(true);
         setResults([]);
-        
+
         try {
             if (simpleQuery.trim() === '') return;
-            
+
             const { data, error } = await SCM.get().wordsByQuery(simpleQuery.trim());
             if (error) {
                 console.error('검색 오류:', error);

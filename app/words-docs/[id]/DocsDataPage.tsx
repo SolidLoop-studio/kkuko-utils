@@ -23,14 +23,14 @@ export default function DocsDataPage({id}:{id:number}){
     const [errorMessage,setErrorMessage] = useState<string|null>(null);
     const [wordsData,setWordsData] = useState<{words:wordsDataType[], metadata:{title:string, lastUpdate:string, typez: "letter" | "theme" | "ect"}, starCount: string[]} | null>(null);
 
-    const makeError = (erorr: PostgrestError) => {
-        setErrorMessage(`문서 정보 데이터 로드중 오류.\nErrorName: ${erorr.name ?? "알수없음"}\nError Message: ${erorr.message ?? "없음"}\nError code: ${erorr.code}`)
+    const makeError = (error: PostgrestError) => {
+        setErrorMessage(`문서 정보 데이터 로드중 오류.\nErrorName: ${error.name ?? "알수없음"}\nError Message: ${error.message ?? "없음"}\nError code: ${error.code}`)
         updateLoadingState(100,"ERR");
         return;
     }
 
     useEffect(()=>{
-        const getDatas = async () => {
+        const getData = async () => {
             updateLoadingState(10,"문서 정보 가져오는 중...")
             const {data: docsData, error: docsDataError} = await SCM.get().docsInfoByDocsId(id);
             if (docsDataError) return makeError(docsDataError);
@@ -48,16 +48,16 @@ export default function DocsDataPage({id}:{id:number}){
 
             if (docsData.typez === "letter"){
                 updateLoadingState(40, "문서에 들어간 단어 정보 가져오는 중...");
-                const {data, error: LetterDatasError} = await SCM.get().docsWords({name: docsData.name, duem: docsData.duem, typez: "letter"});
-                if (LetterDatasError) return makeError(LetterDatasError);
-                const {words: LetterDatas1, waitWords: LetterDatas2} = data;
+                const {data, error: LetterDataError} = await SCM.get().docsWords({name: docsData.name, duem: docsData.duem, typez: "letter"});
+                if (LetterDataError) return makeError(LetterDataError);
+                const {words: LetterData1, waitWords: LetterData2} = data;
 
                 await new Promise(resolve => setTimeout(resolve, 1))
                 updateLoadingState(70, "데이터를 가공중...")
                 
                 // 삭제 요청인 단어는 제외
-                const wordsNotInB = LetterDatas1.filter(a => !LetterDatas2.some(b => b.word === a.word)).map((p)=>({word: p.word, status: "ok" as const, maker: undefined}));
-                const wordsData = [...wordsNotInB, ...LetterDatas2.filter(({word})=>word.length > 1).map(({word,requested_by,request_type})=>({word, status: request_type, maker:requested_by}))]
+                const wordsNotInB = LetterData1.filter(a => !LetterData2.some(b => b.word === a.word)).map((p)=>({word: p.word, status: "ok" as const, maker: undefined}));
+                const wordsData = [...wordsNotInB, ...LetterData2.filter(({word})=>word.length > 1).map(({word,requested_by,request_type})=>({word, status: request_type, maker:requested_by}))]
                 const p = {title: docsData.name, lastUpdate: docsData.last_update, typez:docsData.typez}
                 setWordsData({words: wordsData, metadata: p, starCount:docsStarData.map(({user_id})=>user_id)});
                 await SCM.update().docView(docsData.id);
@@ -107,7 +107,7 @@ export default function DocsDataPage({id}:{id:number}){
                 return;
             }
         }
-        getDatas();
+        getData();
     },[])
     
     if (isNotFound) return <NotFound />;
