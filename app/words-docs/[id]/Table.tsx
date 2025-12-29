@@ -115,11 +115,20 @@ const Table = ({
                     </button>
                 );
             },
-            cell: ({ getValue }) => (
-                <Link href={`/word/search/${getValue()}`} className="font-semibold text-gray-900 underline dark:text-gray-100">
-                    {getValue() as string}
-                </Link>
-            )
+            cell: ({ getValue }) => {
+                const word = getValue() as string;
+                return (
+                    <Link href={`/word/search/${word}`} className="font-semibold text-gray-900 underline dark:text-gray-100">
+                        {isMission.m && isMission.t ? (
+                            word.split("").map((char, i) => (
+                                char === isMission.t ? <span key={i} className="text-green-500">{char}</span> : char
+                            ))
+                        ) : (
+                            word
+                        )}
+                    </Link>
+                );
+            }
         },
         { 
             accessorKey: "status", 

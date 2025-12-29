@@ -622,6 +622,7 @@ export type Database = {
           k_canuse: boolean
           last_letter: string | null
           length: number | null
+          mission_mark: number
           noin_canuse: boolean
           word: string
         }
@@ -634,6 +635,7 @@ export type Database = {
           k_canuse?: boolean
           last_letter?: string | null
           length?: number | null
+          mission_mark?: number
           noin_canuse?: boolean
           word: string
         }
@@ -646,6 +648,7 @@ export type Database = {
           k_canuse?: boolean
           last_letter?: string | null
           length?: number | null
+          mission_mark?: number
           noin_canuse?: boolean
           word?: string
         }
@@ -800,6 +803,51 @@ export type Database = {
           word: string
         }[]
       }
+      get_mission_len3_words: {
+        Args: { target_mask: number }
+        Returns: {
+          added_at: string
+          added_by: string | null
+          chosungs: string | null
+          first_letter: string | null
+          id: number
+          k_canuse: boolean
+          last_letter: string | null
+          length: number | null
+          mission_mark: number
+          noin_canuse: boolean
+          word: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "words"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_mission_mark: { Args: { input_word: string }; Returns: number }
+      get_mission_words: {
+        Args: { target_mask: number }
+        Returns: {
+          added_at: string
+          added_by: string | null
+          chosungs: string | null
+          first_letter: string | null
+          id: number
+          k_canuse: boolean
+          last_letter: string | null
+          length: number | null
+          mission_mark: number
+          noin_canuse: boolean
+          word: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "words"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_user_monthly_rank: { Args: { uid: string }; Returns: number }
       get_words_by_theme: {
         Args: { theme_name: string }
@@ -847,6 +895,7 @@ export type Database = {
         Returns: undefined
       }
       increment_doc_views: { Args: { doc_id: number }; Returns: undefined }
+      insert_mission_words: { Args: never; Returns: undefined }
       random_wait_word_ff: {
         Args: { prefixes: string[] }
         Returns: {
