@@ -1,5 +1,6 @@
 import { Equipment, ItemInfo, KkukoRecord, Mode, isSpecialOptions } from '@/types/kkuko.types';
 import { NICKNAME_COLORS, OPTION_NAMES, SLOT_NAMES } from '../../shared/lib/const';
+import { CSSProperties } from 'react';
 
 export const getNicknameColor = (equipment: Equipment[], isDarkTheme: boolean): string => {
     const nikItem = equipment.find(eq => eq.slot === 'NIK');
@@ -9,6 +10,21 @@ export const getNicknameColor = (equipment: Equipment[], isDarkTheme: boolean): 
 
     const colorKey = nikItem.itemId.toLowerCase().replace('_name', '');
     return NICKNAME_COLORS[colorKey] || defaultColor;
+};
+
+export const getNicknameStyle = (equipment: Equipment[], isDarkTheme: boolean): CSSProperties => {
+    const nikItem = equipment.find(eq => eq.slot === 'NIK');
+
+    if (nikItem?.itemId === '25_815_blue_red_name') {
+        return {
+            background: 'linear-gradient(127deg,rgba(255, 81, 81, 1) 0%, rgba(50, 137, 255, 1) 100%)',
+            color: 'transparent',
+            WebkitBackgroundClip: 'text',
+            backgroundClip: 'text'
+        };
+    }
+
+    return { color: getNicknameColor(equipment, isDarkTheme) };
 };
 
 export const extractColorFromLabel = (description: string, isDarkTheme: boolean): string => {

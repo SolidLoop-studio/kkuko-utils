@@ -2,7 +2,7 @@ import React from 'react';
 import { ItemInfo, ProfileData } from '@/types/kkuko.types';
 import TryRenderImg from '../../shared/components/TryRenderImg';
 import ProfileAvatar from '../../shared/components/ProfileAvatar';
-import { getNicknameColor } from '../utils/profileHelper';
+import { getNicknameStyle } from '../utils/profileHelper';
 
 interface ProfileHeaderProps {
     profileData: ProfileData;
@@ -65,7 +65,7 @@ export default function ProfileHeader({ profileData, itemsData, expRank }: Profi
                     <div>
                         <h2
                             className="text-3xl font-bold"
-                            style={{ color: getNicknameColor(profileData.equipment, isDarkTheme) }}
+                            style={getNicknameStyle(profileData.equipment, isDarkTheme)}
                         >
                             {profileData.user.nickname}
                         </h2>
