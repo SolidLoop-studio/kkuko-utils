@@ -1,9 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { rankingCache } from '../lib/cache';
 import { fetchModes as fetchModesApi, fetchRanking as fetchRankingApi } from '../../shared/lib/api';
 import type { RankingEntry, RankingOption, Mode } from '@/app/types/kkuko.types';
 
 export const useKkukoRanking = () => {
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const pathname = usePathname();
+
     const [modes, setModes] = useState<Mode[]>([]);
     const [selectedMode, setSelectedMode] = useState<string>('');
     const [rankings, setRankings] = useState<RankingEntry[]>([]);
@@ -32,9 +37,6 @@ export const useKkukoRanking = () => {
             const response = await fetchModesApi();
             const modesData = response.data.data as Mode[];
             setModes(modesData);
-            if (modesData.length > 0) {
-                setSelectedMode(modesData[0].modeId);
-            }
         } catch (error) {
             handleError(error, 'fetchModes', 'fetchModes');
             setModes([]);
@@ -78,10 +80,40 @@ export const useKkukoRanking = () => {
         fetchRankings();
     }, [fetchRankings]);
 
+    // Sync mode with URL
+    useEffect(() => {
+        if (modes.length === 0) return;
+
+        const queryMode = searchParams.get('mode');
+        const isValidQueryMode = queryMode && modes.some(m => m.modeId === queryMode);
+        
+        if (isValidQueryMode) {
+            if (selectedMode !== queryMode) {
+                setSelectedMode(queryMode);
+                setPage(1);
+            }
+        } else {
+             const defaultMode = modes[0].modeId;
+             if (selectedMode !== defaultMode && !queryMode) {
+                 setSelectedMode(defaultMode);
+             }
+
+             if (queryMode !== defaultMode) {
+                 const params = new URLSearchParams(searchParams.toString());
+                 params.set('mode', defaultMode);
+                 router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+             }
+        }
+    }, [modes, searchParams, pathname, router, selectedMode]);
+
     const handleModeChange = useCallback((modeId: string) => {
         setSelectedMode(modeId);
         setPage(1);
-    }, []);
+        
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('mode', modeId);
+        router.push(`${pathname}?${params.toString()}`);
+    }, [searchParams, pathname, router]);
 
     const handleOptionChange = useCallback((value: string) => {
         setOption(value as RankingOption);
