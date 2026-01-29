@@ -113,6 +113,17 @@ export default function SearchResults({
         });
     };
 
+    if (showOverlay) {
+        return (
+            <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur-sm pointer-events-auto">
+                <div className="text-white text-lg font-medium">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                    로딩 중...
+                </div>
+            </div>
+        )
+    }
+
     return (
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg flex-1 flex flex-col min-h-0 overflow-hidden">
             <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 px-4 py-3 border-b border-gray-200 dark:border-gray-700 rounded-t-xl flex-shrink-0">
@@ -134,15 +145,6 @@ export default function SearchResults({
                     pointerEvents: showOverlay ? 'none' : 'auto'
                 }}
             >
-                {/* 가림막 오버레이 */}
-                {showOverlay && (
-                    <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur-sm pointer-events-auto">
-                        <div className="text-white text-lg font-medium">
-                            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-                            로딩 중...
-                        </div>
-                    </div>
-                )}
 
                 {!searchPerformed ? (
                     <div className="flex items-center justify-center h-full">
