@@ -5,6 +5,8 @@ export interface UserProfile {
     observedAt: string;
     exordial: string;
     level: number;
+    isPublic: boolean;
+    isLastOnlineHidden: boolean;
 }
 
 export interface Equipment {
