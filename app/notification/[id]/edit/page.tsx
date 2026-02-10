@@ -1,4 +1,3 @@
-import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import NotificationWrite from "../../write/NotificationWrite";
 import { notFound } from "next/navigation";
 import { type Metadata } from "next";
@@ -19,8 +18,6 @@ export default async function NotificationEditPage({ params }: PageProps) {
     if (isNaN(notificationId)) {
         notFound();
     }
-
-    const supabase = await createSupabaseServerClient();
     
     const { data: notification, error } = await SCM.get().notificationById(notificationId);
 
