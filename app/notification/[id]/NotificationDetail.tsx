@@ -3,13 +3,24 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, ChevronLeft, Pin } from "lucide-react";
+import { Calendar, ChevronLeft, Pin, Edit, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import type { Database } from "@/types/database.types";
 import Image from "next/image";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
+import ReactMarkdown from "react-markdown";
+import { useSelector } from "react-redux";
+import type { RootState } from "../../store/store";
+import { SCM } from "@/lib/supabaseClient";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import ErrorModal from "@/components/ErrModal";
+import type { ErrorMessage } from "@/types/type";
+import ConfirmModal from "@/components/ConfirmModal";
+import { PostgrestError } from "@supabase/supabase-js";
+import CompleteModal from "@/app/components/CompleteModal";
 
 type NotificationType = Database['public']['Tables']['notification']['Row'];
 
@@ -24,15 +35,95 @@ interface NotificationDetailProps {
  * @param {NotificationType} props.notification - 표시할 공지사항 데이터
  */
 export default function NotificationDetail({ notification }: NotificationDetailProps) {
+    const user = useSelector((state: RootState) => state.user);
+    const router = useRouter();
+    const [error, setError] = useState<ErrorMessage | null>(null);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [completeStatus, setCompleteStatus] = useState<{title: string; description: string;} | null>(null);
+
+    const handleDelete = async () => {
+        try {
+            setIsDeleting(true);
+            const { error } = await SCM.delete().notificationById(notification.id);
+            
+            if (error) throw error;
+            
+            setCompleteStatus({
+                title: "공지사항이 삭제되었습니다.",
+                description: "공지사항이 성공적으로 삭제되었습니다. 목록으로 돌아갑니다."
+            });
+        } catch (error) {
+            console.error("Delete failed:", error);
+            const pgError = error as PostgrestError;
+            setError({
+                ErrName: pgError.code || "Delete Error",
+                ErrMessage: pgError.message || "공지사항 삭제에 실패했습니다.",
+                ErrStackRace: pgError.details,
+                inputValue: `Delete ID: ${notification.id}`,
+                location: "NotificationDetail"
+            });
+        } finally {
+            setIsDeleting(false);
+            setIsDeleteModalOpen(false);
+        }
+    };
+
+    const handleCloseCompleteModal = () => {
+        router.push("/notification");
+        router.refresh();
+    };
+
     return (
         <div className="space-y-6 px-4 md:px-0 max-w-4xl mx-auto">
-            <div className="flex items-center gap-2 mb-6">
-                <Link href="/notification">
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                </Link>
-                <h1 className="text-xl font-bold tracking-tight">공지사항 상세</h1>
+            {error && <ErrorModal error={error} onClose={() => setError(null)} />}
+            {completeStatus && (
+                <CompleteModal 
+                    open={completeStatus !== null}
+                    title={completeStatus.title}
+                    description={completeStatus.description}
+                    onClose={handleCloseCompleteModal}
+                />
+            )}
+            <ConfirmModal 
+                open={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                title="공지사항 삭제"
+                description="이 공지사항을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+                onConfirm={handleDelete}
+                
+            />
+
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                    <Link href="/notification">
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                    </Link>
+                    <h1 className="text-xl font-bold tracking-tight">공지사항 상세</h1>
+                </div>
+
+                {user.role === "admin" && (
+                    <div className="flex gap-2">
+                        <Link href={`/notification/${notification.id}/edit`}>
+                            <Button variant="outline" size="sm" className="gap-2">
+                                <Edit className="w-4 h-4" />
+                                수정
+                            </Button>
+                        </Link>
+                        <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            className="gap-2"
+                            onClick={() => setIsDeleteModalOpen(true)}
+                            disabled={isDeleting}
+                        >
+                            <Trash2 className="w-4 h-4" />
+                            삭제
+                        </Button>
+                    </div>
+                )}
             </div>
 
             <Card className="dark:border-zinc-800">
@@ -63,8 +154,8 @@ export default function NotificationDetail({ notification }: NotificationDetailP
                 <Separator />
                 
                 <CardContent className="pt-6">
-                    <div className="whitespace-pre-wrap text-base leading-relaxed text-foreground min-h-[100px]">
-                        {notification.body}
+                    <div className="text-base leading-relaxed text-foreground min-h-[100px] [&>ul]:list-disc [&>ul]:pl-6 [&>ol]:list-decimal [&>ol]:pl-6 [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-4 [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mb-3 [&>h3]:text-lg [&>h3]:font-bold [&>h3]:mb-2 [&>p]:mb-4 [&>a]:text-primary [&>a]:underline [&>blockquote]:border-l-4 [&>blockquote]:pl-4 [&>blockquote]:italic">
+                        <ReactMarkdown>{notification.body}</ReactMarkdown>
                     </div>
                     
                     {notification.img && (
