@@ -15,6 +15,11 @@ export default function ApiServerAdminHome() {
       description: 'API Server 및 Crawler 로그 조회',
       href: '/admin/api-server/logs',
     },
+    {
+      title: 'Items 관리',
+      description: '아이템 상태 확인 및 수정',
+      href: '/admin/api-server/items',
+    }
   ];
 
   return (

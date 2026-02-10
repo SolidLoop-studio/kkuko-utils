@@ -1,6 +1,15 @@
 // API Server Admin API Functions
 import axios from 'axios';
-import type { CrawlerHealthResponse, SaveSessionRequest, SaveSessionResponse, RestartCrawlerResponse } from './types';
+import type { 
+  CrawlerHealthResponse, 
+  SaveSessionRequest, 
+  SaveSessionResponse, 
+  RestartCrawlerResponse,
+  ItemsResponse,
+  Item,
+  CreateItemRequest,
+  UpdateItemRequest
+} from './types';
 import { SCM } from '@/app/lib/supabaseClient';
 import zlib from 'zlib';
 
@@ -45,6 +54,71 @@ export const restartCrawler = async (
     `${BASE_URL}/admin/crawler/restart/${channelId}`,
     {},
     { headers }
+  );
+  return response.data;
+};
+
+// Item APIs
+export const fetchItems = async (page: number = 1): Promise<ItemsResponse> => {
+  const headers = await getAuthHeaders();
+  const response = await axios.get<ItemsResponse>(
+    `${BASE_URL}/admin/item/items`,
+    { 
+      headers,
+      params: { page }
+    }
+  );
+  return response.data;
+};
+
+export const createItem = async (data: CreateItemRequest): Promise<Item> => {
+  const headers = await getAuthHeaders();
+  const response = await axios.post<Item>(
+    `${BASE_URL}/admin/item`,
+    data,
+    { headers }
+  );
+  return response.data;
+};
+
+export const updateItem = async (id: string, data: UpdateItemRequest): Promise<Item> => {
+  const headers = await getAuthHeaders();
+  const response = await axios.put<Item>(
+    `${BASE_URL}/admin/item/${id}`,
+    data,
+    { headers }
+  );
+  return response.data;
+};
+
+export const deleteItem = async (id: string): Promise<void> => {
+  const headers = await getAuthHeaders();
+  await axios.delete(
+    `${BASE_URL}/admin/item/${id}`,
+    { headers }
+  );
+};
+
+export const searchItems = async (name: string, page: number = 1): Promise<ItemsResponse> => {
+  const headers = await getAuthHeaders();
+  const response = await axios.get<ItemsResponse>(
+    `${BASE_URL}/admin/item/items/name/${encodeURIComponent(name)}`,
+    { 
+      headers,
+      params: { page }
+    }
+  );
+  return response.data;
+};
+
+export const searchItemsByGroup = async (group: string, page: number = 1): Promise<ItemsResponse> => {
+  const headers = await getAuthHeaders();
+  const response = await axios.get<ItemsResponse>(
+    `${BASE_URL}/admin/item/items/group/${encodeURIComponent(group)}`,
+    { 
+      headers,
+      params: { page }
+    }
   );
   return response.data;
 };
