@@ -36,6 +36,7 @@ export const useKkukoRanking = () => {
         try {
             const response = await fetchModesApi();
             const modesData = response.data.data as Mode[];
+            modesData.push({ modeId: 'ALL', modeName: '전체 모드', group: 'def' });
             setModes(modesData);
         } catch (error) {
             handleError(error, 'fetchModes', 'fetchModes');
@@ -93,16 +94,16 @@ export const useKkukoRanking = () => {
                 setPage(1);
             }
         } else {
-             const defaultMode = modes[0].modeId;
-             if (selectedMode !== defaultMode && !queryMode) {
-                 setSelectedMode(defaultMode);
-             }
+            const defaultMode = modes[0].modeId;
+            if (selectedMode !== defaultMode && !queryMode) {
+                setSelectedMode(defaultMode);
+            }
 
-             if (queryMode !== defaultMode) {
-                 const params = new URLSearchParams(searchParams.toString());
-                 params.set('mode', defaultMode);
-                 router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-             }
+            if (queryMode !== defaultMode) {
+                const params = new URLSearchParams(searchParams.toString());
+                params.set('mode', defaultMode);
+                router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+            }
         }
     }, [modes, searchParams, pathname, router, selectedMode]);
 
