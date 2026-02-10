@@ -8,6 +8,8 @@ export const metadata: Metadata = {
     description: "끄코 유틸의 공지사항 목록입니다.",
 };
 
+export const revalidate = 60;
+
 /**
  * 공지사항 페이지 컴포넌트입니다.
  * 서버 사이드에서 데이터를 가져와 Notification 클라이언트 컴포넌트에 전달합니다.
