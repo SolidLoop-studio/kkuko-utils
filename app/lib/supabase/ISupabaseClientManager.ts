@@ -95,6 +95,7 @@ export interface IGetManager{
     wordsByAdvancedQuery(input: advancedQueryType): Promise<{data: {word: string, nextWordCount: number}[], error: null} | {data: null; error: PostgrestError}>;
     wordState(): Promise<{data: {firstLetterCounts: word_first_letter_counts[]; lastLetterCounts: word_last_letter_counts[];}, error: null}|{data: null; error: PostgrestError}>;
     docsLastUpdate(id: number): Promise<PostgrestSingleResponse<{last_update: string;} | null>>
+    allNotifications(): Promise<PostgrestSingleResponse<notification[]>>;
 }
 
 // delete 관련 타입

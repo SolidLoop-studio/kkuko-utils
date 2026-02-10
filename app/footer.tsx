@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Bug, FileText, ExternalLink } from 'lucide-react';
+import { Bug, FileText, ExternalLink, Megaphone } from 'lucide-react';
 
 const Footer = () => {
   return (
@@ -62,10 +62,18 @@ const Footer = () => {
               
               <Link
                 href="/release-note"
-                className="group flex items-center space-x-3 p-3 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 transition-all duration-200 border border-gray-700/50 hover:border-gray-600/50 sm:col-span-2"
+                className="group flex items-center space-x-3 p-3 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 transition-all duration-200 border border-gray-700/50 hover:border-gray-600/50"
               >
                 <FileText className="w-5 h-5 text-gray-400 group-hover:text-blue-400 transition-colors" />
                 <span className="text-sm font-medium group-hover:text-white transition-colors">Release Notes</span>
+              </Link>
+
+              <Link 
+                href="/notification"
+                className="group flex items-center space-x-3 p-3 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 transition-all duration-200 border border-gray-700/50 hover:border-gray-600/50"
+              >
+                <Megaphone className="w-5 h-5 text-gray-400 group-hover:text-yellow-400 transition-colors" />
+                <span className="text-sm font-medium group-hover:text-white transition-colors">공지사항</span>
               </Link>
               
               <Link
