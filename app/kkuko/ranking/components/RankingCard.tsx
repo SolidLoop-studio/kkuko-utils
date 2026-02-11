@@ -3,11 +3,11 @@
 import Link from 'next/link';
 import { Trophy, TrendingUp } from 'lucide-react';
 import { Card } from '@/app/components/ui/card';
-import type { RankingEntry } from '@/app/types/kkuko.types';
+import type { RankingEntry, RankingOption } from '@/app/types/kkuko.types';
 
 interface RankingCardProps {
     entry: RankingEntry;
-    option: 'win' | 'exp';
+    option: RankingOption;
 }
 
 export function RankingCard({ entry, option }: RankingCardProps) {
@@ -55,10 +55,16 @@ export function RankingCard({ entry, option }: RankingCardProps) {
                 {/* Stats */}
                 <div className="flex-shrink-0 flex gap-6 text-sm">
                     <div className="text-center">
-                        <div className="text-gray-600 dark:text-gray-400 mb-1">{option === 'win' ? '승리' : '경험치'}</div>
+                        <div className="text-gray-600 dark:text-gray-400 mb-1">
+                            {option === 'exp' ? '경험치' : option === 'total' ? '플레이 판 수' : '승리'}
+                        </div>
                         <div className="text-gray-900 dark:text-white font-bold flex items-center gap-1">
                             <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-500" />
-                            {option === 'win' ? userRecord.win.toLocaleString() : userRecord.exp.toLocaleString()}
+                            {option === 'exp' 
+                                ? userRecord.exp.toLocaleString() 
+                                : option === 'total'
+                                    ? userRecord.total.toLocaleString()
+                                    : userRecord.win.toLocaleString()}
                         </div>
                     </div>
                     <div className="text-center">

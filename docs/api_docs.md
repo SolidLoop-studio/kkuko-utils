@@ -561,7 +561,7 @@ No Content - 성공적으로 삭제됨
 | Name   | Type   | Default | Description               |
 | ------ | ------ | ------- | ------------------------- |
 | page   | number | 1       | 페이지 번호                    |
-| option | string | -       | `win` (승리 수), `exp` (경험치) |
+| option | string | -       | `win` (승리 수), `exp` (경험치), `total` (총 플레이 판 수) |
 
 ---
 

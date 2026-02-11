@@ -54,6 +54,7 @@ export const useKkukoRanking = () => {
 
         if (cachedData) {
             setRankings(cachedData);
+            setLoading(false);
             return;
         }
 
@@ -107,22 +108,55 @@ export const useKkukoRanking = () => {
         }
     }, [modes, searchParams, pathname, router, selectedMode]);
 
+
+    // Sync option with URL
+    useEffect(() => {
+        const queryOption = searchParams.get('option');
+        if (queryOption && ['win', 'exp', 'total'].includes(queryOption)) {
+            if (option !== queryOption) {
+                setOption(queryOption as RankingOption);
+                setPage(1);
+            }
+        }
+    }, [searchParams, option]);
+
     const handleModeChange = useCallback((modeId: string) => {
         setSelectedMode(modeId);
         setPage(1);
+        setRankings([]);
+        setLoading(true);
         
         const params = new URLSearchParams(searchParams.toString());
         params.set('mode', modeId);
-        router.push(`${pathname}?${params.toString()}`);
+        params.delete('page');
+        
+        const newUrl = `${pathname}?${params.toString()}`;
+        window.history.replaceState(null, '', newUrl);
+
+        router.replace(newUrl, { scroll: false });
     }, [searchParams, pathname, router]);
 
     const handleOptionChange = useCallback((value: string) => {
         setOption(value as RankingOption);
         setPage(1);
-    }, []);
+        setRankings([]);
+        setLoading(true);
+        
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('option', value);
+        params.delete('page');
+        
+        const newUrl = `${pathname}?${params.toString()}`;
+        window.history.replaceState(null, '', newUrl);
+
+        router.replace(newUrl, { scroll: false });
+    }, [searchParams, pathname, router]);
 
     const handlePageChange = useCallback((newPage: number) => {
         setPage(newPage);
+        setRankings([]);
+        setLoading(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }, []);
 
     return {

@@ -44,7 +44,7 @@ export async function fetchExpRank(userId: string) {
 export async function fetchRanking(
     mode: string, 
     page: number = 1, 
-    option: 'win' | 'exp' = 'win'
+    option: 'win' | 'exp' | 'total' = 'win'
 ) {
     return await client.get(`/ranking/${mode}`, {
         params: {

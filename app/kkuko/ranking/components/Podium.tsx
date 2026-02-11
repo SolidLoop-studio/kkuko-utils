@@ -202,9 +202,9 @@ export function Podium({ topThree, option }: PodiumProps) {
                                         <div className="flex items-center gap-2">
                                             <TrendingUp className="w-5 h-5" />
                                             <span className="font-bold text-base">
-                                                {option === 'win' 
-                                                    ? entry.userRecord.win.toLocaleString() 
-                                                    : entry.userRecord.exp.toLocaleString()}
+                                                {option === 'exp' 
+                                                    ? entry.userRecord.exp.toLocaleString()
+                                                    : entry.userRecord.win.toLocaleString()}
                                             </span>
                                         </div>
                                         <div className="text-xs opacity-90 font-medium">

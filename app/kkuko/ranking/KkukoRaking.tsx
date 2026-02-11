@@ -1,6 +1,6 @@
 'use client';
 
-import { Trophy, TrendingUp, Target } from 'lucide-react';
+import { Trophy, TrendingUp, Target, Gamepad2 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { ModeSelector } from './components/ModeSelector';
 import { RankingList } from './components/RankingList';
@@ -81,6 +81,13 @@ export default function KkukoRanking() {
                             >
                                 <Trophy className="w-4 h-4 mr-2" />
                                 경험치 순위
+                            </TabsTrigger>
+                            <TabsTrigger 
+                                value="total"
+                                className="data-[state=active]:bg-green-600 data-[state=active]:text-white"
+                            >
+                                <Gamepad2 className="w-4 h-4 mr-2" />
+                                플레이 판 수
                             </TabsTrigger>
                         </TabsList>
                     </Tabs>

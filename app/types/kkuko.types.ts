@@ -90,7 +90,7 @@ export interface RankingEntry {
     };
 }
 
-export type RankingOption = 'win' | 'exp';
+export type RankingOption = 'win' | 'exp' | 'total';
 
 export function isSpecialOptions(obj: unknown): obj is SpecialOptions {
     return !!obj && typeof obj === 'object' &&
