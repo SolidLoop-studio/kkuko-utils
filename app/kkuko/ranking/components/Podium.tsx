@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 import { TrendingUp, User, Crown } from 'lucide-react';
 import { Card } from '@/app/components/ui/card';
-import type { RankingEntry, RankingOption, ProfileData, ItemInfo } from '@/app/types/kkuko.types';
+import type { RankingEntry, RankingOption, ProfileData } from '@/app/types/kkuko.types';
 import ProfileAvatar from '../../shared/components/ProfileAvatar';
 import { fetchProfile, fetchItems } from '../../shared/lib/api';
 
@@ -14,60 +14,62 @@ interface PodiumProps {
 }
 
 export function Podium({ topThree, option }: PodiumProps) {
-    const [profiles, setProfiles] = useState<Record<string, ProfileData>>({});
-    const [itemsData, setItemsData] = useState<ItemInfo[]>([]);
+    // 1. Fetch Profiles for top 3 users
+    const topThreeIds = topThree.slice(0, 3).map(entry => entry.userInfo.id).join(',');
 
-    useEffect(() => {
-        if (topThree.length === 0) return;
+    const { data: profiles = {} } = useQuery({
+        queryKey: ['podium-profiles', topThreeIds],
+        queryFn: async () => {
+            if (!topThreeIds) return {};
+            
+            const validEntries = topThree.slice(0, 3);
+            const profilePromises = validEntries.map(entry => 
+                fetchProfile(entry.userInfo.id, 'id')
+                    .then(res => (res.data && res.data.status === 200) ? res.data.data : null)
+                    .catch(err => {
+                        console.error(`Failed to fetch profile for ${entry.userInfo.nickname}`, err);
+                        return null;
+                    })
+            );
 
-        const loadProfiles = async () => {
-            try {
-                // Fetch profiles for all top 3 users parallel
-                const validEntries = topThree.slice(0, 3);
-                
-                const profilePromises = validEntries.map(entry => 
-                    fetchProfile(entry.userInfo.id, 'id')
-                        .then(res => (res.data && res.data.status === 200) ? res.data.data : null)
-                        .catch(err => {
-                            console.error(`Failed to fetch profile for ${entry.userInfo.nickname}`, err);
-                            return null;
-                        })
-                );
+            const resolvedProfiles = (await Promise.all(profilePromises)).filter((p): p is ProfileData => p !== null);
+            
+            const newProfiles: Record<string, ProfileData> = {};
+            resolvedProfiles.forEach(p => {
+                if (!p || !p.user) return;
+                newProfiles[p.user.id] = p;
+            });
+            return newProfiles;
+        },
+        enabled: topThree.length > 0,
+        staleTime: 5 * 60 * 1000, // 5 minutes
+    });
 
-                const resolvedProfiles = (await Promise.all(profilePromises)).filter((p): p is ProfileData => p !== null);
-                
-                const newProfiles: Record<string, ProfileData> = {};
-                const allItemIds = new Set<string>();
+    // 2. Extract item IDs from fetched profiles
+    const allItemIds = new Set<string>();
+    Object.values(profiles).forEach(p => {
+        if (p.equipment) {
+            p.equipment.forEach(e => {
+                if (e.itemId) allItemIds.add(e.itemId);
+            });
+        }
+    });
+    const itemIdsString = Array.from(allItemIds).join(',');
 
-                resolvedProfiles.forEach(p => {
-                    if (!p || !p.user) return;
-                    newProfiles[p.user.id] = p;
-                    
-                    // Collect item IDs
-                    if (p.equipment) {
-                        p.equipment.forEach(e => {
-                            if (e.itemId) allItemIds.add(e.itemId);
-                        });
-                    }
-                });
-
-                setProfiles(newProfiles);
-
-                // Fetch items details needed for rendering avatars
-                if (allItemIds.size > 0) {
-                    const idsString = Array.from(allItemIds).join(',');
-                    const itemsResponse = await fetchItems(idsString);
-                    if (itemsResponse.data && itemsResponse.data.status === 200) {
-                        setItemsData(itemsResponse.data.data);
-                    }
-                }
-            } catch (error) {
-                console.error("Failed to load podium profiles", error);
-            }
-        };
-
-        loadProfiles();
-    }, [topThree]);
+    // 3. Fetch Items
+    const { data: itemsData = [] } = useQuery({
+        queryKey: ['podium-items', itemIdsString],
+        queryFn: async () => {
+             if (!itemIdsString) return [];
+             const itemsResponse = await fetchItems(itemIdsString);
+             if (itemsResponse.data && itemsResponse.data.status === 200) {
+                 return itemsResponse.data.data;
+             }
+             return [];
+        },
+        enabled: allItemIds.size > 0,
+        staleTime: 5 * 60 * 1000, // 5 minutes
+    });
 
     if (topThree.length === 0) return null;
 

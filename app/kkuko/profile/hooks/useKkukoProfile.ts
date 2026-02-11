@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
     fetchModes as fetchModesApi,
     fetchTotalUsers as fetchTotalUsersApi,
@@ -6,135 +7,146 @@ import {
     fetchItems as fetchItemsApi,
     fetchExpRank as fetchExpRankApi
 } from '../../shared/lib/api';
-import { Equipment, ItemInfo, Mode, ProfileData } from '@/types/kkuko.types';
+import { Equipment, ItemInfo, Mode, ProfileData } from '@/app/types/kkuko.types';
 import { useRecentSearches } from './useRecentSearches';
 
+interface ErrorMessage {
+    ErrName: string;
+    ErrMessage: string;
+    ErrStackRace: string | null;
+    inputValue: string;
+    location: string;
+}
+
 export const useKkukoProfile = () => {
-    const [profileData, setProfileData] = useState<ProfileData | null>(null);
-    const [itemsData, setItemsData] = useState<ItemInfo[]>([]);
-    const [modesData, setModesData] = useState<Mode[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [detailedError, setDetailedError] = useState<ErrorMessage | null>(null);
-    const [totalUserCount, setTotalUserCount] = useState<number>(0);
-    const [expRank, setExpRank] = useState<number | null>(null);
+    // Search state
+    const [searchQuery, setSearchQuery] = useState<string>('');
+    const [searchType, setSearchType] = useState<'nick' | 'id'>('nick');
+    const [shouldFetchProfile, setShouldFetchProfile] = useState(false);
     
-    // Recent searches hook integration
+    // Error state
+    const [detailedError, setDetailedError] = useState<ErrorMessage | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
     const { recentSearches, saveToRecentSearches, removeFromRecentSearches } = useRecentSearches();
 
+    // Helper to create error object
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const handleError = useCallback((err: any, inputValue: string, location: string) => {
-        const errorMsg: ErrorMessage = {
-            ErrName: err.name || "Error",
-            ErrMessage: err.message || "Unknown error",
-            ErrStackRace: err.stack || null,
-            inputValue: inputValue,
-            location: location
-        };
-        setDetailedError(errorMsg);
-        console.error(`Failed at ${location}:`, err);
-    }, []);
+    const createError = (err: any, inputValue: string, location: string): ErrorMessage => ({
+        ErrName: err.name || "Error",
+        ErrMessage: err.message || "Unknown error",
+        ErrStackRace: err.stack || null,
+        inputValue: inputValue,
+        location: location
+    });
 
-    const fetchModes = useCallback(async () => {
-        try {
+    // 1. Fetch Modes (independent, 1 hour stale time)
+    const { data: modesData = [] } = useQuery({
+        queryKey: ['kkuko-modes-raw'],
+        queryFn: async () => {
             const response = await fetchModesApi();
-            const result = await response.data;
-            if (result.status === 200) {
-                setModesData(result.data);
-            }
-        } catch (err) {
-            handleError(err, 'fetchModes', 'fetchModes');
-        }
-    }, [handleError]);
+            return response.data.data as Mode[];
+        },
+        staleTime: 60 * 60 * 1000,
+    });
 
-    const fetchTotalUsers = useCallback(async () => {
-        try {
+    // 2. Fetch Total Users (independent, 5 minutes stale time)
+    const { data: totalUserCount = 0 } = useQuery({
+        queryKey: ['kkuko-total-users'],
+        queryFn: async () => {
             const response = await fetchTotalUsersApi();
-            const result = await response.data;
-            if (result.status === 200) {
-                setTotalUserCount(result.data.totalUsers);
+            return response.data.data.totalUsers as number;
+        },
+        staleTime: 5 * 60 * 1000,
+    });
+
+    // 3. Fetch Profile (dependent on search)
+    const { 
+        data: profileData = null, 
+        isLoading: profileLoading,
+        error: profileError,
+        isSuccess: profileSuccess
+    } = useQuery({
+        queryKey: ['kkuko-profile', searchQuery, searchType],
+        queryFn: async () => {
+            const response = await fetchProfileApi(searchQuery, searchType);
+            if (response.status === 404) {
+                throw new Error('NOT_FOUND');
             }
-        } catch (err) {
-            handleError(err, 'fetchTotalUsers', 'fetchTotalUsers');
+            return response.data.data as ProfileData;
+        },
+        enabled: shouldFetchProfile && !!searchQuery,
+        staleTime: 5 * 60 * 1000,
+        retry: false,
+    });
+
+    // Handle Profile Errors & Success side effects
+    useEffect(() => {
+        if (profileError) {
+            if (profileError.message === 'NOT_FOUND') {
+                setError('등록된 유저가 아닙니다.');
+            } else {
+                setError('프로필을 불러오는데 실패했습니다.');
+                setDetailedError(createError(profileError, searchQuery, 'fetchProfile'));
+            }
+            setShouldFetchProfile(false);
         }
-    }, [handleError]);
+    }, [profileError, searchQuery]);
+
+    useEffect(() => {
+        if (profileSuccess && profileData) {
+            saveToRecentSearches(searchQuery, searchType);
+            setError(null);
+            setDetailedError(null);
+        }
+    }, [profileSuccess, profileData, saveToRecentSearches, searchQuery, searchType]);
 
 
-    const fetchItems = useCallback(async (itemIds: string) => {
-        try {
+    // 4. Fetch Items (dependent on profileData)
+    const itemIds = profileData?.equipment?.length 
+        ? profileData.equipment.map((eq: Equipment) => eq.itemId).join(',') 
+        : null;
+
+    const { data: itemsData = [] } = useQuery({
+        queryKey: ['kkuko-items', itemIds],
+        queryFn: async () => {
+            if (!itemIds) return [];
             const response = await fetchItemsApi(itemIds);
-            const result = await response.data;
-            if (result.status === 200) {
-                const newItems = Array.isArray(result.data) ? result.data : [result.data];
-                setItemsData(newItems);
-            }
-        } catch (err) {
-            handleError(err, itemIds, 'fetchItems');
-        }
-    }, [handleError]);
+            const result = response.data;
+            return Array.isArray(result.data) ? result.data : [result.data];
+        },
+        enabled: !!itemIds,
+        staleTime: 5 * 60 * 1000,
+    });
 
-    const fetchExpRank = useCallback(async (userId: string) => {
-        try {
+    // 5. Fetch Exp Rank (dependent on profileData)
+    const userId = profileData?.user?.id;
+
+    const { data: expRank = null } = useQuery({
+        queryKey: ['kkuko-exp-rank', userId],
+        queryFn: async () => {
+            if (!userId) return null;
             const response = await fetchExpRankApi(userId);
-            setExpRank(response.data.rank);
-        } catch (err) {
-            handleError(err, userId, 'fetchExpRank');
-        }
-    }, [handleError]);
+            return response.data.rank as number;
+        },
+        enabled: !!userId,
+        staleTime: 5 * 60 * 1000,
+    });
 
-    const fetchProfile = useCallback(async (query: string, type: 'nick' | 'id') => {
-        setLoading(true);
+    // Trigger fetch
+    const fetchProfile = useCallback((query: string, type: 'nick' | 'id') => {
+        setSearchQuery(query);
+        setSearchType(type);
+        setShouldFetchProfile(true);
         setError(null);
         setDetailedError(null);
-        setProfileData(null);
-        setItemsData([]); 
-        setExpRank(null);
-
-        try {
-            const response = await fetchProfileApi(query, type);
-
-            if (response.status === 404) {
-                setError('등록된 유저가 아닙니다.');
-                setLoading(false);
-                return;
-            }
-
-            const result = await response.data;
-
-            if (result.status === 200) {
-                setProfileData(result.data);
-
-                // Fetch items data
-                if (result.data.equipment.length > 0) {
-                    const itemIds = result.data.equipment.map((eq: Equipment) => eq.itemId).join(',');
-                    fetchItems(itemIds);
-                }
-
-                // Fetch exp rank
-                fetchExpRank(result.data.user.id);
-                
-                // Save to recent searches
-                saveToRecentSearches(query, type);
-            }
-        } catch (err) {
-            setError('프로필을 불러오는데 실패했습니다.');
-            handleError(err, query, 'fetchProfile');
-        } finally {
-            setLoading(false);
-        }
-    }, [fetchItems, fetchExpRank, saveToRecentSearches, handleError]);
-
-    // Initial load
-    useEffect(() => {
-        fetchModes();
-        fetchTotalUsers();
-    }, [fetchModes, fetchTotalUsers]);
+    }, []);
 
     return {
         profileData,
         itemsData,
         modesData,
-        loading,
+        loading: profileLoading && shouldFetchProfile,
         error,
         detailedError,
         setDetailedError,
