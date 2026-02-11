@@ -31,6 +31,10 @@ export async function fetchProfile(query: string, type: 'nick' | 'id') {
     })
 }
 
+export async function fetchProfileByNickname(nickname: string) {
+    return await client.get(`/profile/nickname/${encodeURIComponent(nickname)}`);
+}
+
 export async function fetchItems(itemsIds: string) {
     return await client.get<{data: ItemInfo[], status: number}>(`/item?query=${encodeURIComponent(itemsIds)}`);
 }

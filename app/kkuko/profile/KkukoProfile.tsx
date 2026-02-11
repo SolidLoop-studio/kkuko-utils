@@ -16,6 +16,7 @@ export default function KkukoProfile() {
     const searchParams = useSearchParams();
     const {
         profileData,
+        profileList,
         itemsData,
         modesData,
         loading,
@@ -26,7 +27,8 @@ export default function KkukoProfile() {
         expRank,
         recentSearches,
         fetchProfile,
-        removeFromRecentSearches
+        removeFromRecentSearches,
+        selectProfile
     } = useKkukoProfile();
 
     const [showItemModal, setShowItemModal] = useState(false);
@@ -76,8 +78,38 @@ export default function KkukoProfile() {
                 </div>
             )}
 
-            {/* Empty State - No search yet */}
-            {!loading && !error && !profileData && (
+            {/* List Selection */}
+            {!profileData && profileList && !loading && (
+                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-2xl mx-auto">
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">검색 결과 선택</h2>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                        여러 유저가 검색되었습니다. 조회할 유저를 선택해주세요.
+                    </p>
+                    <ul className="space-y-2">
+                        {profileList.map((profile) => (
+                             <li key={profile.user.id} 
+                                 className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                                 onClick={() => selectProfile(profile)}
+                             >
+                                <div className="flex justify-between items-center">
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-bold text-lg text-gray-900 dark:text-gray-100">{profile.user.nickname}</span>
+                                        <span className="px-2 py-0.5 text-xs rounded bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100">
+                                            Lv. {profile.user.level}
+                                        </span>
+                                    </div>
+                                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                                        ID: {profile.user.id}
+                                    </div>
+                                </div>
+                             </li>
+                        ))}
+                    </ul>
+                 </div>
+            )}
+
+            {/* Empty State - No search yet AND No List */}
+            {!loading && !error && !profileData && !profileList && (
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-12 text-center">
                     <div className="max-w-md mx-auto">
                         <Search className="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-gray-500" />

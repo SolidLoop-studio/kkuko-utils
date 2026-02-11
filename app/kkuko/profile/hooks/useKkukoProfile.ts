@@ -4,10 +4,11 @@ import {
     fetchModes as fetchModesApi,
     fetchTotalUsers as fetchTotalUsersApi,
     fetchProfile as fetchProfileApi,
+    fetchProfileByNickname as fetchProfileByNicknameApi,
     fetchItems as fetchItemsApi,
     fetchExpRank as fetchExpRankApi
 } from '../../shared/lib/api';
-import { Equipment, ItemInfo, Mode, ProfileData } from '@/app/types/kkuko.types';
+import { Equipment, Mode, ProfileData } from '@/app/types/kkuko.types';
 import { useRecentSearches } from './useRecentSearches';
 
 interface ErrorMessage {
@@ -24,6 +25,9 @@ export const useKkukoProfile = () => {
     const [searchType, setSearchType] = useState<'nick' | 'id'>('nick');
     const [shouldFetchProfile, setShouldFetchProfile] = useState(false);
     
+    // New state for selection from list
+    const [selectedProfile, setSelectedProfile] = useState<ProfileData | null>(null);
+
     // Error state
     const [detailedError, setDetailedError] = useState<ErrorMessage | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -62,29 +66,77 @@ export const useKkukoProfile = () => {
 
     // 3. Fetch Profile (dependent on search)
     const { 
-        data: profileData = null, 
+        data: queryResult = null, 
         isLoading: profileLoading,
         error: profileError,
         isSuccess: profileSuccess
     } = useQuery({
         queryKey: ['kkuko-profile', searchQuery, searchType],
         queryFn: async () => {
-            const response = await fetchProfileApi(searchQuery, searchType);
-            if (response.status === 404) {
-                throw new Error('NOT_FOUND');
+            if (searchType === 'nick') {
+                 try {
+                     const response = await fetchProfileByNicknameApi(searchQuery);
+                     const data = response.data.data;
+                     
+                     if (Array.isArray(data)) {
+                        if (data.length === 0) throw new Error('NOT_FOUND');
+                        if (data.length === 1) return { type: 'single', data: data[0] as ProfileData };
+                        return { type: 'list', data: data as ProfileData[] };
+                     }
+                     return { type: 'single', data: data as ProfileData };
+                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 } catch (err: any) {
+                     if (err.response?.status === 404) throw new Error('NOT_FOUND');
+                     if (err.response?.status === 403) throw new Error('PRIVATE_PROFILE');
+                     throw err;
+                 }
+            } else {
+                 try {
+                     const response = await fetchProfileApi(searchQuery, searchType);
+                     return { type: 'single', data: response.data.data as ProfileData };
+                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 } catch (err: any) {
+                     if (err.response?.status === 404) throw new Error('NOT_FOUND');
+                     if (err.response?.status === 403) throw new Error('PRIVATE_PROFILE');
+                     throw err;
+                 }
             }
-            return response.data.data as ProfileData;
         },
         enabled: shouldFetchProfile && !!searchQuery,
         staleTime: 5 * 60 * 1000,
         retry: false,
     });
 
+    const profileList = queryResult?.type === 'list' ? (queryResult.data as ProfileData[]) : null;
+
+    // Update selectedProfile when query result changes (for single result)
+    useEffect(() => {
+        if (profileSuccess && queryResult) {
+             if (queryResult.type === 'single') {
+                 setSelectedProfile(queryResult.data as ProfileData);
+             } else {
+                 // For list, we wait for user selection, so start with null
+                 setSelectedProfile(null);
+             }
+        }
+    }, [profileSuccess, queryResult]);
+
+    // Derived profileData is the Selected Profile
+    const profileData = selectedProfile;
+
     // Handle Profile Errors & Success side effects
     useEffect(() => {
         if (profileError) {
-            if (profileError.message === 'NOT_FOUND') {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const err = profileError as any;
+            const isPrivate = err.message === 'PRIVATE_PROFILE' || err.response?.status === 403;
+            const isNotFound = err.message === 'NOT_FOUND' || err.response?.status === 404;
+
+            if (isNotFound) {
                 setError('등록된 유저가 아닙니다.');
+            } else if (isPrivate) {
+                setError('프로필이 비공개된 유저 입니다.'); 
+                setDetailedError(null); 
             } else {
                 setError('프로필을 불러오는데 실패했습니다.');
                 setDetailedError(createError(profileError, searchQuery, 'fetchProfile'));
@@ -94,15 +146,15 @@ export const useKkukoProfile = () => {
     }, [profileError, searchQuery]);
 
     useEffect(() => {
-        if (profileSuccess && profileData) {
+        if (profileSuccess) {
             saveToRecentSearches(searchQuery, searchType);
             setError(null);
             setDetailedError(null);
         }
-    }, [profileSuccess, profileData, saveToRecentSearches, searchQuery, searchType]);
+    }, [profileSuccess, saveToRecentSearches, searchQuery, searchType]);
 
 
-    // 4. Fetch Items (dependent on profileData)
+    // 4. Fetch Items (dependent on selectedProfile)
     const itemIds = profileData?.equipment?.length 
         ? profileData.equipment.map((eq: Equipment) => eq.itemId).join(',') 
         : null;
@@ -119,7 +171,7 @@ export const useKkukoProfile = () => {
         staleTime: 5 * 60 * 1000,
     });
 
-    // 5. Fetch Exp Rank (dependent on profileData)
+    // 5. Fetch Exp Rank (dependent on selectedProfile)
     const userId = profileData?.user?.id;
 
     const { data: expRank = null } = useQuery({
@@ -140,10 +192,12 @@ export const useKkukoProfile = () => {
         setShouldFetchProfile(true);
         setError(null);
         setDetailedError(null);
+        setSelectedProfile(null);
     }, []);
 
     return {
         profileData,
+        profileList,
         itemsData,
         modesData,
         loading: profileLoading && shouldFetchProfile,
@@ -154,6 +208,7 @@ export const useKkukoProfile = () => {
         expRank,
         recentSearches,
         fetchProfile,
-        removeFromRecentSearches
+        removeFromRecentSearches,
+        selectProfile: setSelectedProfile
     };
 };
