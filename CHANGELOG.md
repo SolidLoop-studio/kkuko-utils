@@ -1,3 +1,24 @@
+# [v1.6.0](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.5.2...v1.6.0) - 2026-02-12
+
+## feat
+- ([688410c](https://github.com/SolidLoop-studio/kkuko-utils/commit/688410c)) - 정보 비공개 요청 링크 추가
+- ([16b6e74](https://github.com/SolidLoop-studio/kkuko-utils/commit/16b6e74)) - 중복된 닉네임 검색 처리 추가
+- ([4ccb275](https://github.com/SolidLoop-studio/kkuko-utils/commit/4ccb275)) - 플레이 판수 탭 추가 및 탭 옵션 쿼리파라미터 추가
+- ([c57a31c](https://github.com/SolidLoop-studio/kkuko-utils/commit/c57a31c)) - api-server 아이템 관리자 페이지 제작
+- ([2923c50](https://github.com/SolidLoop-studio/kkuko-utils/commit/2923c50)) - 공지사항 추가/수정/삭제 구현
+- ([32d3b43](https://github.com/SolidLoop-studio/kkuko-utils/commit/32d3b43)) - 공지사항 열람 페이지 추가
+- ([c05353f](https://github.com/SolidLoop-studio/kkuko-utils/commit/c05353f)) - 랭킹에 전체모드 추가
+
+## fix
+- ([8bc4843](https://github.com/SolidLoop-studio/kkuko-utils/commit/8bc4843)) - 이미지 캐싱
+- ([d78980d](https://github.com/SolidLoop-studio/kkuko-utils/commit/d78980d)) - 캐싱 추가로 429 줄이기 및 성능 향상
+- ([d28d954](https://github.com/SolidLoop-studio/kkuko-utils/commit/d28d954)) - dark 모드 기본 색상 변경
+- ([8541713](https://github.com/SolidLoop-studio/kkuko-utils/commit/8541713)) - 관리자페이지 전용 공지사항 관리 페이지를 이동
+- ([87d0ceb](https://github.com/SolidLoop-studio/kkuko-utils/commit/87d0ceb)) - html lang수정
+- ([a94e1d3](https://github.com/SolidLoop-studio/kkuko-utils/commit/a94e1d3)) - 모드 페이지 쿼리 파라미터 추가
+- ([e8c8cea](https://github.com/SolidLoop-studio/kkuko-utils/commit/e8c8cea)) - 가림막 버그 수정
+- ([86cca46](https://github.com/SolidLoop-studio/kkuko-utils/commit/86cca46)) - 특수 이름색 수정
+
 # [v1.5.2](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.5.1...v1.5.2) - 2026-01-22
 
 ## fix
