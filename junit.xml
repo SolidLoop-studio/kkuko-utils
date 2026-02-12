@@ -1,0 +1,767 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="327" failures="0" errors="0" time="13.364">
+  <testsuite name="KoreanMission" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:46" time="5.159" tests="9">
+    <testcase classname="KoreanMission 초기 렌더링이 정상적으로 되는지 확인" name="KoreanMission 초기 렌더링이 정상적으로 되는지 확인" time="0.073">
+    </testcase>
+    <testcase classname="KoreanMission 1미 포함 체크박스가 정상적으로 동작하는지 확인" name="KoreanMission 1미 포함 체크박스가 정상적으로 동작하는지 확인" time="0.18">
+    </testcase>
+    <testcase classname="KoreanMission 미션 글자 표시 체크박스가 정상적으로 동작하는지 확인" name="KoreanMission 미션 글자 표시 체크박스가 정상적으로 동작하는지 확인" time="0.05">
+    </testcase>
+    <testcase classname="KoreanMission 정렬 모드 체크박스가 정상적으로 동작하는지 확인" name="KoreanMission 정렬 모드 체크박스가 정상적으로 동작하는지 확인" time="0.053">
+    </testcase>
+    <testcase classname="KoreanMission 파일 내용이 없을 때 단어 추출 버튼이 비활성화되는지 확인" name="KoreanMission 파일 내용이 없을 때 단어 추출 버튼이 비활성화되는지 확인" time="0.021">
+    </testcase>
+    <testcase classname="KoreanMission 파일 업로드 후 단어 추출이 정상적으로 동작하는지 확인" name="KoreanMission 파일 업로드 후 단어 추출이 정상적으로 동작하는지 확인" time="0.113">
+    </testcase>
+    <testcase classname="KoreanMission 단어 추출 결과에 따라 다운로드 버튼이 활성화되는지 확인" name="KoreanMission 단어 추출 결과에 따라 다운로드 버튼이 활성화되는지 확인" time="0.09">
+    </testcase>
+    <testcase classname="KoreanMission 1미 포함 옵션이 제대로 적용되는지 확인" name="KoreanMission 1미 포함 옵션이 제대로 적용되는지 확인" time="0.123">
+    </testcase>
+    <testcase classname="KoreanMission 다운로드 기능이 정상적으로 동작하는지 확인" name="KoreanMission 다운로드 기능이 정상적으로 동작하는지 확인" time="0.103">
+    </testcase>
+  </testsuite>
+  <testsuite name="Merge" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:46" time="5.709" tests="12">
+    <testcase classname="Merge 초기 렌더링이 정상적으로 되는지 확인" name="Merge 초기 렌더링이 정상적으로 되는지 확인" time="0.12">
+    </testcase>
+    <testcase classname="Merge 정렬 체크박스가 정상적으로 동작하는지 확인" name="Merge 정렬 체크박스가 정상적으로 동작하는지 확인" time="0.212">
+    </testcase>
+    <testcase classname="Merge 파일이 업로드되지 않았을 때 병합 버튼이 비활성화되는지 확인" name="Merge 파일이 업로드되지 않았을 때 병합 버튼이 비활성화되는지 확인" time="0.057">
+    </testcase>
+    <testcase classname="Merge 첫 번째 파일만 업로드되었을 때 병합 버튼이 비활성화되는지 확인" name="Merge 첫 번째 파일만 업로드되었을 때 병합 버튼이 비활성화되는지 확인" time="0.142">
+    </testcase>
+    <testcase classname="Merge 두 파일이 모두 업로드되면 병합 버튼이 활성화되는지 확인" name="Merge 두 파일이 모두 업로드되면 병합 버튼이 활성화되는지 확인" time="0.109">
+    </testcase>
+    <testcase classname="Merge 파일 병합이 정상적으로 동작하는지 확인 (정렬 활성화)" name="Merge 파일 병합이 정상적으로 동작하는지 확인 (정렬 활성화)" time="0.158">
+    </testcase>
+    <testcase classname="Merge 파일 병합이 정상적으로 동작하는지 확인 (정렬 비활성화)" name="Merge 파일 병합이 정상적으로 동작하는지 확인 (정렬 비활성화)" time="0.212">
+    </testcase>
+    <testcase classname="Merge 병합 결과가 없을 때 다운로드 버튼이 비활성화되는지 확인" name="Merge 병합 결과가 없을 때 다운로드 버튼이 비활성화되는지 확인" time="0.034">
+    </testcase>
+    <testcase classname="Merge 다운로드 기능이 정상적으로 동작하는지 확인" name="Merge 다운로드 기능이 정상적으로 동작하는지 확인" time="0.182">
+    </testcase>
+    <testcase classname="Merge 첫 번째 파일 초기화가 정상적으로 동작하는지 확인" name="Merge 첫 번째 파일 초기화가 정상적으로 동작하는지 확인" time="0.081">
+    </testcase>
+    <testcase classname="Merge 모든 파일 초기화가 정상적으로 동작하는지 확인" name="Merge 모든 파일 초기화가 정상적으로 동작하는지 확인" time="0.095">
+    </testcase>
+    <testcase classname="Merge 파일 크기 정보가 올바르게 표시되는지 확인" name="Merge 파일 크기 정보가 올바르게 표시되는지 확인" time="0.057">
+    </testcase>
+  </testsuite>
+  <testsuite name="EnglishMission" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:51" time="1.161" tests="10">
+    <testcase classname="EnglishMission 초기 렌더링이 정상적으로 되는지 확인" name="EnglishMission 초기 렌더링이 정상적으로 되는지 확인" time="0.036">
+    </testcase>
+    <testcase classname="EnglishMission 최소 포함수 입력이 정상적으로 동작하는지 확인" name="EnglishMission 최소 포함수 입력이 정상적으로 동작하는지 확인" time="0.089">
+    </testcase>
+    <testcase classname="EnglishMission 결과 정렬 체크박스가 정상적으로 동작하는지 확인" name="EnglishMission 결과 정렬 체크박스가 정상적으로 동작하는지 확인" time="0.029">
+    </testcase>
+    <testcase classname="EnglishMission 파일 내용이 없을 때 단어 추출 버튼이 비활성화되는지 확인" name="EnglishMission 파일 내용이 없을 때 단어 추출 버튼이 비활성화되는지 확인" time="0.016">
+    </testcase>
+    <testcase classname="EnglishMission 파일 업로드 후 단어 추출이 정상적으로 동작하는지 확인" name="EnglishMission 파일 업로드 후 단어 추출이 정상적으로 동작하는지 확인" time="0.084">
+    </testcase>
+    <testcase classname="EnglishMission 단어 추출 결과에 따라 다운로드 버튼이 활성화되는지 확인" name="EnglishMission 단어 추출 결과에 따라 다운로드 버튼이 활성화되는지 확인" time="0.081">
+    </testcase>
+    <testcase classname="EnglishMission 정렬 옵션이 제대로 적용되는지 확인" name="EnglishMission 정렬 옵션이 제대로 적용되는지 확인" time="0.092">
+    </testcase>
+    <testcase classname="EnglishMission 최소 포함수가 0 이하일 때 자동으로 양수로 설정되는지 확인" name="EnglishMission 최소 포함수가 0 이하일 때 자동으로 양수로 설정되는지 확인" time="0.066">
+    </testcase>
+    <testcase classname="EnglishMission 다운로드 기능이 정상적으로 동작하는지 확인" name="EnglishMission 다운로드 기능이 정상적으로 동작하는지 확인" time="0.096">
+    </testcase>
+    <testcase classname="EnglishMission 파일의 총 단어 수가 정상적으로 표시되는지 확인" name="EnglishMission 파일의 총 단어 수가 정상적으로 표시되는지 확인" time="0.031">
+    </testcase>
+  </testsuite>
+  <testsuite name="Loop" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:46" time="6.538" tests="13">
+    <testcase classname="Loop 초기 렌더링이 정상적으로 되는지 확인" name="Loop 초기 렌더링이 정상적으로 되는지 확인" time="0.163">
+    </testcase>
+    <testcase classname="Loop 돌림글자 입력이 정상적으로 동작하는지 확인" name="Loop 돌림글자 입력이 정상적으로 동작하는지 확인" time="0.219">
+    </testcase>
+    <testcase classname="Loop 정렬 체크박스가 정상적으로 동작하는지 확인" name="Loop 정렬 체크박스가 정상적으로 동작하는지 확인" time="0.081">
+    </testcase>
+    <testcase classname="Loop 추출 모드 선택이 정상적으로 동작하는지 확인" name="Loop 추출 모드 선택이 정상적으로 동작하는지 확인" time="0.109">
+    </testcase>
+    <testcase classname="Loop 파일 내용이 없을 때 돌림단어 추출 버튼이 비활성화되는지 확인" name="Loop 파일 내용이 없을 때 돌림단어 추출 버튼이 비활성화되는지 확인" time="0.084">
+    </testcase>
+    <testcase classname="Loop 필수 조건이 충족되지 않으면 돌림단어 추출 버튼이 비활성화되는지 확인" name="Loop 필수 조건이 충족되지 않으면 돌림단어 추출 버튼이 비활성화되는지 확인" time="0.165">
+    </testcase>
+    <testcase classname="Loop 모드 1 돌림단어 추출이 정상적으로 동작하는지 확인" name="Loop 모드 1 돌림단어 추출이 정상적으로 동작하는지 확인" time="0.206">
+    </testcase>
+    <testcase classname="Loop 모드 2 돌림단어 추출이 정상적으로 동작하는지 확인" name="Loop 모드 2 돌림단어 추출이 정상적으로 동작하는지 확인" time="0.174">
+    </testcase>
+    <testcase classname="Loop 모드 3 돌림단어 추출이 정상적으로 동작하는지 확인" name="Loop 모드 3 돌림단어 추출이 정상적으로 동작하는지 확인" time="0.208">
+    </testcase>
+    <testcase classname="Loop 모드 4 돌림단어 추출이 정상적으로 동작하는지 확인" name="Loop 모드 4 돌림단어 추출이 정상적으로 동작하는지 확인" time="0.156">
+    </testcase>
+    <testcase classname="Loop 다운로드 버튼이 추출 결과에 따라 활성화되는지 확인" name="Loop 다운로드 버튼이 추출 결과에 따라 활성화되는지 확인" time="0.176">
+    </testcase>
+    <testcase classname="Loop 정렬 옵션이 제대로 적용되는지 확인" name="Loop 정렬 옵션이 제대로 적용되는지 확인" time="0.17">
+    </testcase>
+    <testcase classname="Loop 다운로드 기능이 정상적으로 동작하는지 확인" name="Loop 다운로드 기능이 정상적으로 동작하는지 확인" time="0.222">
+    </testcase>
+  </testsuite>
+  <testsuite name="LenX" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:52" time="1.139" tests="8">
+    <testcase classname="LenX 초기 렌더링이 정상적으로 되는지 확인" name="LenX 초기 렌더링이 정상적으로 되는지 확인" time="0.044">
+    </testcase>
+    <testcase classname="LenX 글자길이 입력이 정상적으로 동작하는지 확인" name="LenX 글자길이 입력이 정상적으로 동작하는지 확인" time="0.08">
+    </testcase>
+    <testcase classname="LenX 정렬 체크박스가 정상적으로 동작하는지 확인" name="LenX 정렬 체크박스가 정상적으로 동작하는지 확인" time="0.033">
+    </testcase>
+    <testcase classname="LenX 파일 내용이 없을 때 단어 추출 버튼이 비활성화되는지 확인" name="LenX 파일 내용이 없을 때 단어 추출 버튼이 비활성화되는지 확인" time="0.016">
+    </testcase>
+    <testcase classname="LenX 파일 업로드 후 단어 추출이 정상적으로 동작하는지 확인" name="LenX 파일 업로드 후 단어 추출이 정상적으로 동작하는지 확인" time="0.086">
+    </testcase>
+    <testcase classname="LenX 단어 추출 결과에 따라 다운로드 버튼이 활성화되는지 확인" name="LenX 단어 추출 결과에 따라 다운로드 버튼이 활성화되는지 확인" time="0.085">
+    </testcase>
+    <testcase classname="LenX 정렬 옵션이 제대로 적용되는지 확인" name="LenX 정렬 옵션이 제대로 적용되는지 확인" time="0.111">
+    </testcase>
+    <testcase classname="LenX 다운로드 기능이 정상적으로 동작하는지 확인" name="LenX 다운로드 기능이 정상적으로 동작하는지 확인" time="0.088">
+    </testcase>
+  </testsuite>
+  <testsuite name="StartX" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:52" time="1.009" tests="8">
+    <testcase classname="StartX 초기 렌더링이 정상적으로 되는지 확인" name="StartX 초기 렌더링이 정상적으로 되는지 확인" time="0.035">
+    </testcase>
+    <testcase classname="StartX 끝글자 입력이 정상적으로 동작하는지 확인" name="StartX 끝글자 입력이 정상적으로 동작하는지 확인" time="0.069">
+    </testcase>
+    <testcase classname="StartX 정렬 체크박스가 정상적으로 동작하는지 확인" name="StartX 정렬 체크박스가 정상적으로 동작하는지 확인" time="0.032">
+    </testcase>
+    <testcase classname="StartX 파일 내용이 없을 때 단어 추출 버튼이 비활성화되는지 확인" name="StartX 파일 내용이 없을 때 단어 추출 버튼이 비활성화되는지 확인" time="0.014">
+    </testcase>
+    <testcase classname="StartX 파일 업로드 후 단어 추출이 정상적으로 동작하는지 확인" name="StartX 파일 업로드 후 단어 추출이 정상적으로 동작하는지 확인" time="0.064">
+    </testcase>
+    <testcase classname="StartX 단어 추출 결과에 따라 다운로드 버튼이 활성화되는지 확인" name="StartX 단어 추출 결과에 따라 다운로드 버튼이 활성화되는지 확인" time="0.08">
+    </testcase>
+    <testcase classname="StartX 정렬 옵션이 제대로 적용되는지 확인" name="StartX 정렬 옵션이 제대로 적용되는지 확인" time="0.126">
+    </testcase>
+    <testcase classname="StartX 다운로드 기능이 정상적으로 동작하는지 확인" name="StartX 다운로드 기능이 정상적으로 동작하는지 확인" time="0.113">
+    </testcase>
+  </testsuite>
+  <testsuite name="Podium" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:53" time="0.603" tests="3">
+    <testcase classname="Podium should calculate style correctly" name="Podium should calculate style correctly" time="0.026">
+    </testcase>
+    <testcase classname="Podium should render top 3 users" name="Podium should render top 3 users" time="0.041">
+    </testcase>
+    <testcase classname="Podium should fetch profile data on mount" name="Podium should fetch profile data on mount" time="0.01">
+    </testcase>
+  </testsuite>
+  <testsuite name="EndX" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:52" time="1.116" tests="8">
+    <testcase classname="EndX 초기 렌더링이 정상적으로 되는지 확인" name="EndX 초기 렌더링이 정상적으로 되는지 확인" time="0.044">
+    </testcase>
+    <testcase classname="EndX 끝글자 입력이 정상적으로 동작하는지 확인" name="EndX 끝글자 입력이 정상적으로 동작하는지 확인" time="0.095">
+    </testcase>
+    <testcase classname="EndX 정렬 체크박스가 정상적으로 동작하는지 확인" name="EndX 정렬 체크박스가 정상적으로 동작하는지 확인" time="0.039">
+    </testcase>
+    <testcase classname="EndX 파일 내용이 없을 때 단어 추출 버튼이 비활성화되는지 확인" name="EndX 파일 내용이 없을 때 단어 추출 버튼이 비활성화되는지 확인" time="0.011">
+    </testcase>
+    <testcase classname="EndX 파일 업로드 후 단어 추출이 정상적으로 동작하는지 확인" name="EndX 파일 업로드 후 단어 추출이 정상적으로 동작하는지 확인" time="0.086">
+    </testcase>
+    <testcase classname="EndX 단어 추출 결과에 따라 다운로드 버튼이 활성화되는지 확인" name="EndX 단어 추출 결과에 따라 다운로드 버튼이 활성화되는지 확인" time="0.079">
+    </testcase>
+    <testcase classname="EndX 정렬 옵션이 제대로 적용되는지 확인" name="EndX 정렬 옵션이 제대로 적용되는지 확인" time="0.111">
+    </testcase>
+    <testcase classname="EndX 다운로드 기능이 정상적으로 동작하는지 확인" name="EndX 다운로드 기능이 정상적으로 동작하는지 확인" time="0.119">
+    </testcase>
+  </testsuite>
+  <testsuite name="ProfileSearch" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:54" time="0.484" tests="4">
+    <testcase classname="ProfileSearch should render search input and button" name="ProfileSearch should render search input and button" time="0.011">
+    </testcase>
+    <testcase classname="ProfileSearch should change search type" name="ProfileSearch should change search type" time="0.014">
+    </testcase>
+    <testcase classname="ProfileSearch should submit search" name="ProfileSearch should submit search" time="0.007">
+    </testcase>
+    <testcase classname="ProfileSearch should show recent searches on focus" name="ProfileSearch should show recent searches on focus" time="0.015">
+    </testcase>
+  </testsuite>
+  <testsuite name="KoreanMissionB" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:53" time="0.894" tests="8">
+    <testcase classname="KoreanMissionB 초기 렌더링이 정상적으로 되는지 확인" name="KoreanMissionB 초기 렌더링이 정상적으로 되는지 확인" time="0.025">
+    </testcase>
+    <testcase classname="KoreanMissionB 미션글자 표시 체크박스가 정상적으로 동작하는지 확인" name="KoreanMissionB 미션글자 표시 체크박스가 정상적으로 동작하는지 확인" time="0.069">
+    </testcase>
+    <testcase classname="KoreanMissionB 파일 내용이 없을 때 단어 추출 버튼이 비활성화되는지 확인" name="KoreanMissionB 파일 내용이 없을 때 단어 추출 버튼이 비활성화되는지 확인" time="0.014">
+    </testcase>
+    <testcase classname="KoreanMissionB 파일 업로드 후 단어 추출이 정상적으로 동작하는지 확인" name="KoreanMissionB 파일 업로드 후 단어 추출이 정상적으로 동작하는지 확인" time="0.057">
+    </testcase>
+    <testcase classname="KoreanMissionB 단어 추출 결과에 따라 다운로드 버튼이 활성화되는지 확인" name="KoreanMissionB 단어 추출 결과에 따라 다운로드 버튼이 활성화되는지 확인" time="0.058">
+    </testcase>
+    <testcase classname="KoreanMissionB 미션글자 표시 옵션이 제대로 적용되는지 확인" name="KoreanMissionB 미션글자 표시 옵션이 제대로 적용되는지 확인" time="0.086">
+    </testcase>
+    <testcase classname="KoreanMissionB 다운로드 기능이 정상적으로 동작하는지 확인" name="KoreanMissionB 다운로드 기능이 정상적으로 동작하는지 확인" time="0.073">
+    </testcase>
+    <testcase classname="KoreanMissionB 파일 내용이 있을 때 파일 단어 수가 표시되는지 확인" name="KoreanMissionB 파일 내용이 있을 때 파일 단어 수가 표시되는지 확인" time="0.023">
+    </testcase>
+  </testsuite>
+  <testsuite name="KkutuChat" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:54" time="0.971" tests="6">
+    <testcase classname="KkutuChat should render correctly" name="KkutuChat should render correctly" time="0.019">
+    </testcase>
+    <testcase classname="KkutuChat should handle input change" name="KkutuChat should handle input change" time="0.008">
+    </testcase>
+    <testcase classname="KkutuChat should handle send message on button click" name="KkutuChat should handle send message on button click" time="0.018">
+    </testcase>
+    <testcase classname="KkutuChat should handle send message on Enter key when game input is not visible" name="KkutuChat should handle send message on Enter key when game input is not visible" time="0.004">
+    </testcase>
+    <testcase classname="KkutuChat should call game input on Enter key when game input is visible" name="KkutuChat should call game input on Enter key when game input is visible" time="0.004">
+    </testcase>
+    <testcase classname="KkutuChat should send hint on Enter key when input is /ㅍ" name="KkutuChat should send hint on Enter key when input is /ㅍ" time="0.004">
+    </testcase>
+  </testsuite>
+  <testsuite name="FileContentDisplay" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:54" time="0.652" tests="9">
+    <testcase classname="FileContentDisplay 렌더링이 정상적으로 되는지 확인" name="FileContentDisplay 렌더링이 정상적으로 되는지 확인" time="0.015">
+    </testcase>
+    <testcase classname="FileContentDisplay 파일이 없을 때 플레이스홀더가 표시되는지 확인" name="FileContentDisplay 파일이 없을 때 플레이스홀더가 표시되는지 확인" time="0.008">
+    </testcase>
+    <testcase classname="FileContentDisplay 파일 업로드 처리가 정상적으로 되는지 확인" name="FileContentDisplay 파일 업로드 처리가 정상적으로 되는지 확인" time="0.057">
+    </testcase>
+    <testcase classname="FileContentDisplay 파일이 업로드되면 파일 정보가 표시되는지 확인" name="FileContentDisplay 파일이 업로드되면 파일 정보가 표시되는지 확인" time="0.01">
+    </testcase>
+    <testcase classname="FileContentDisplay 파일 내용이 있을 때 정상적으로 표시되는지 확인" name="FileContentDisplay 파일 내용이 있을 때 정상적으로 표시되는지 확인" time="0.01">
+    </testcase>
+    <testcase classname="FileContentDisplay 결과 데이터가 있을 때 정상적으로 표시되는지 확인" name="FileContentDisplay 결과 데이터가 있을 때 정상적으로 표시되는지 확인" time="0.008">
+    </testcase>
+    <testcase classname="FileContentDisplay 초기화 버튼이 정상적으로 동작하는지 확인" name="FileContentDisplay 초기화 버튼이 정상적으로 동작하는지 확인" time="0.023">
+    </testcase>
+    <testcase classname="FileContentDisplay 검색 기능이 정상적으로 동작하는지 확인" name="FileContentDisplay 검색 기능이 정상적으로 동작하는지 확인" time="0.038">
+    </testcase>
+    <testcase classname="FileContentDisplay 대용량 파일에서 가상화 모드가 활성화되는지 확인" name="FileContentDisplay 대용량 파일에서 가상화 모드가 활성화되는지 확인" time="0.01">
+    </testcase>
+  </testsuite>
+  <testsuite name="ModeSelector" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:54" time="0.668" tests="1">
+    <testcase classname="ModeSelector should render trigger with selected mode" name="ModeSelector should render trigger with selected mode" time="0.09">
+    </testcase>
+  </testsuite>
+  <testsuite name="GameResultModal" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:55" time="0.435" tests="4">
+    <testcase classname="GameResultModal should render correctly" name="GameResultModal should render correctly" time="0.017">
+    </testcase>
+    <testcase classname="GameResultModal should handle minimize/maximize" name="GameResultModal should handle minimize/maximize" time="0.016">
+    </testcase>
+    <testcase classname="GameResultModal should close when close button is clicked" name="GameResultModal should close when close button is clicked" time="0.006">
+    </testcase>
+    <testcase classname="GameResultModal should show empty message if no words used" name="GameResultModal should show empty message if no words used" time="0.004">
+    </testcase>
+  </testsuite>
+  <testsuite name="KkukoHome" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:55" time="0.478" tests="3">
+    <testcase classname="KkukoHome should render the title and description" name="KkukoHome should render the title and description" time="0.012">
+    </testcase>
+    <testcase classname="KkukoHome should render the Profile section with link" name="KkukoHome should render the Profile section with link" time="0.018">
+    </testcase>
+    <testcase classname="KkukoHome should render the Ranking section with link" name="KkukoHome should render the Ranking section with link" time="0.023">
+    </testcase>
+  </testsuite>
+  <testsuite name="RankingPagination" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:55" time="0.434" tests="4">
+    <testcase classname="RankingPagination should render current page number" name="RankingPagination should render current page number" time="0.033">
+    </testcase>
+    <testcase classname="RankingPagination should disable prev button on page 1" name="RankingPagination should disable prev button on page 1" time="0.016">
+    </testcase>
+    <testcase classname="RankingPagination should call onPageChange when buttons clicked" name="RankingPagination should call onPageChange when buttons clicked" time="0.012">
+    </testcase>
+    <testcase classname="RankingPagination should disable next button if hasNextPage is false" name="RankingPagination should disable next button if hasNextPage is false" time="0.006">
+    </testcase>
+  </testsuite>
+  <testsuite name="SoundManager" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:55" time="0.44" tests="8">
+    <testcase classname="SoundManager should load sounds correctly" name="SoundManager should load sounds correctly" time="0.038">
+    </testcase>
+    <testcase classname="SoundManager should play a sound" name="SoundManager should play a sound" time="0.055">
+    </testcase>
+    <testcase classname="SoundManager should playOnce correctly" name="SoundManager should playOnce correctly" time="0.046">
+    </testcase>
+    <testcase classname="SoundManager should stop a sound" name="SoundManager should stop a sound" time="0.051">
+    </testcase>
+    <testcase classname="SoundManager should set volume" name="SoundManager should set volume" time="0.024">
+    </testcase>
+    <testcase classname="SoundManager should set all volume" name="SoundManager should set all volume" time="0.059">
+    </testcase>
+    <testcase classname="SoundManager should stop all sounds" name="SoundManager should stop all sounds" time="0.036">
+    </testcase>
+    <testcase classname="SoundManager should playWithEnd and trigger callback" name="SoundManager should playWithEnd and trigger callback" time="0.036">
+    </testcase>
+  </testsuite>
+  <testsuite name="KkutuMenu" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:55" time="0.545" tests="8">
+    <testcase classname="KkutuMenu should render buttons correctly when not playing" name="KkutuMenu should render buttons correctly when not playing" time="0.013">
+    </testcase>
+    <testcase classname="KkutuMenu should render buttons correctly when playing" name="KkutuMenu should render buttons correctly when playing" time="0.011">
+    </testcase>
+    <testcase classname="KkutuMenu should open help modal" name="KkutuMenu should open help modal" time="0.008">
+    </testcase>
+    <testcase classname="KkutuMenu should open settings modal" name="KkutuMenu should open settings modal" time="0.006">
+    </testcase>
+    <testcase classname="KkutuMenu should open dictionary modal" name="KkutuMenu should open dictionary modal" time="0.005">
+    </testcase>
+    <testcase classname="KkutuMenu should call requestStart when start button is clicked" name="KkutuMenu should call requestStart when start button is clicked" time="0.005">
+    </testcase>
+    <testcase classname="KkutuMenu should call exitGame when exit button is clicked" name="KkutuMenu should call exitGame when exit button is clicked" time="0.005">
+    </testcase>
+    <testcase classname="KkutuMenu should show confirm modal when start is blocked" name="KkutuMenu should show confirm modal when start is blocked" time="0.009">
+    </testcase>
+  </testsuite>
+  <testsuite name="useKkukoProfile" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:55" time="0.543" tests="4">
+    <testcase classname="useKkukoProfile should fetch modes and total users on mount" name="useKkukoProfile should fetch modes and total users on mount" time="0.067">
+    </testcase>
+    <testcase classname="useKkukoProfile should fetch profile successfully" name="useKkukoProfile should fetch profile successfully" time="0.067">
+    </testcase>
+    <testcase classname="useKkukoProfile should handle profile not found (status 404)" name="useKkukoProfile should handle profile not found (status 404)" time="0.056">
+    </testcase>
+    <testcase classname="useKkukoProfile should handle API errors" name="useKkukoProfile should handle API errors" time="0.056">
+    </testcase>
+  </testsuite>
+  <testsuite name="RankingCard" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:56" time="0.374" tests="3">
+    <testcase classname="RankingCard should render user info" name="RankingCard should render user info" time="0.014">
+    </testcase>
+    <testcase classname="RankingCard should display win rate when option is win" name="RankingCard should display win rate when option is win" time="0.005">
+    </testcase>
+    <testcase classname="RankingCard should display exp when option is exp" name="RankingCard should display exp when option is exp" time="0.004">
+    </testcase>
+  </testsuite>
+  <testsuite name="MobileUnsupported" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:56" time="0.338" tests="3">
+    <testcase classname="MobileUnsupported renders the unsupported message correctly" name="MobileUnsupported renders the unsupported message correctly" time="0.009">
+    </testcase>
+    <testcase classname="MobileUnsupported calls router.back() when back button is clicked" name="MobileUnsupported calls router.back() when back button is clicked" time="0.031">
+    </testcase>
+    <testcase classname="MobileUnsupported has the correct CSS classes for mobile visibility" name="MobileUnsupported has the correct CSS classes for mobile visibility" time="0.006">
+    </testcase>
+  </testsuite>
+  <testsuite name="MiniGamePage" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:56" time="0.141" tests="2">
+    <testcase classname="MiniGamePage renders Game and MobileUnsupported components wrapped in Providers" name="MiniGamePage renders Game and MobileUnsupported components wrapped in Providers" time="0.006">
+    </testcase>
+    <testcase classname="MiniGamePage renders Game with desktop visibility classes" name="MiniGamePage renders Game with desktop visibility classes" time="0.009">
+    </testcase>
+  </testsuite>
+  <testsuite name="DictionaryModal" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:56" time="0.306" tests="5">
+    <testcase classname="DictionaryModal should render correctly" name="DictionaryModal should render correctly" time="0.008">
+    </testcase>
+    <testcase classname="DictionaryModal should search for a word" name="DictionaryModal should search for a word" time="0.007">
+    </testcase>
+    <testcase classname="DictionaryModal should show message for unknown word" name="DictionaryModal should show message for unknown word" time="0.005">
+    </testcase>
+    <testcase classname="DictionaryModal should handle enter key" name="DictionaryModal should handle enter key" time="0.005">
+    </testcase>
+    <testcase classname="DictionaryModal should close when close button is clicked" name="DictionaryModal should close when close button is clicked" time="0.003">
+    </testcase>
+  </testsuite>
+  <testsuite name="SettingsModal" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:56" time="0.189" tests="5">
+    <testcase classname="SettingsModal should render correctly" name="SettingsModal should render correctly" time="0.008">
+    </testcase>
+    <testcase classname="SettingsModal should load volume from localStorage" name="SettingsModal should load volume from localStorage" time="0.006">
+    </testcase>
+    <testcase classname="SettingsModal should change volume" name="SettingsModal should change volume" time="0.012">
+    </testcase>
+    <testcase classname="SettingsModal should save volume and close" name="SettingsModal should save volume and close" time="0.008">
+    </testcase>
+    <testcase classname="SettingsModal should close without saving when cancel is clicked" name="SettingsModal should close without saving when cancel is clicked" time="0.002">
+    </testcase>
+  </testsuite>
+  <testsuite name="GameSetup" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:56" time="0.559" tests="7">
+    <testcase classname="GameSetup should render correctly" name="GameSetup should render correctly" time="0.024">
+    </testcase>
+    <testcase classname="GameSetup should load existing words on mount" name="GameSetup should load existing words on mount" time="0.018">
+    </testcase>
+    <testcase classname="GameSetup should handle file upload" name="GameSetup should handle file upload" time="0.032">
+    </testcase>
+    <testcase classname="GameSetup should handle setting changes" name="GameSetup should handle setting changes" time="0.012">
+    </testcase>
+    <testcase classname="GameSetup should open and close word manager modal" name="GameSetup should open and close word manager modal" time="0.014">
+    </testcase>
+    <testcase classname="GameSetup should handle clear words" name="GameSetup should handle clear words" time="0.029">
+    </testcase>
+    <testcase classname="GameSetup should handle start char modal" name="GameSetup should handle start char modal" time="0.069">
+    </testcase>
+  </testsuite>
+  <testsuite name="GraphBar" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:56" time="0.231" tests="4">
+    <testcase classname="GraphBar should render correctly" name="GraphBar should render correctly" time="0.03">
+    </testcase>
+    <testcase classname="GraphBar should handle custom background color" name="GraphBar should handle custom background color" time="0.002">
+    </testcase>
+    <testcase classname="GraphBar should clamp percentage between 0 and 100" name="GraphBar should clamp percentage between 0 and 100" time="0.006">
+    </testcase>
+    <testcase classname="GraphBar should handle noTransition prop" name="GraphBar should handle noTransition prop" time="0.004">
+    </testcase>
+  </testsuite>
+  <testsuite name="fileUtils" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:57" time="0.156" tests="4">
+    <testcase classname="fileUtils parseWordsFromFile should throw error if file size exceeds 1MB" name="fileUtils parseWordsFromFile should throw error if file size exceeds 1MB" time="0.063">
+    </testcase>
+    <testcase classname="fileUtils parseWordsFromFile should throw error if file extension is not .txt" name="fileUtils parseWordsFromFile should throw error if file extension is not .txt" time="0.001">
+    </testcase>
+    <testcase classname="fileUtils parseWordsFromFile should parse words correctly" name="fileUtils parseWordsFromFile should parse words correctly" time="0.001">
+    </testcase>
+    <testcase classname="fileUtils parseWordsFromFile should remove special characters and convert to lowercase" name="fileUtils parseWordsFromFile should remove special characters and convert to lowercase" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="ProfileHeader" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:56" time="0.314" tests="2">
+    <testcase classname="ProfileHeader should render user info" name="ProfileHeader should render user info" time="0.023">
+    </testcase>
+    <testcase classname="ProfileHeader should render badges" name="ProfileHeader should render badges" time="0.005">
+    </testcase>
+  </testsuite>
+  <testsuite name="HistoryHolder" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:57" time="0.221" tests="3">
+    <testcase classname="HistoryHolder should render correctly" name="HistoryHolder should render correctly" time="0.012">
+    </testcase>
+    <testcase classname="HistoryHolder should show tooltip on hover" name="HistoryHolder should show tooltip on hover" time="0.011">
+    </testcase>
+    <testcase classname="HistoryHolder should handle empty items" name="HistoryHolder should handle empty items" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="useGameState" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:57" time="0.144" tests="7">
+    <testcase classname="useGameState should return current state" name="useGameState should return current state" time="0.003">
+    </testcase>
+    <testcase classname="useGameState should request start successfully" name="useGameState should request start successfully" time="0.001">
+    </testcase>
+    <testcase classname="useGameState should block start if gameManager says no" name="useGameState should block start if gameManager says no" time="0.001">
+    </testcase>
+    <testcase classname="useGameState should clear pending start" name="useGameState should clear pending start" time="0.002">
+    </testcase>
+    <testcase classname="useGameState should exit game" name="useGameState should exit game" time="0.001">
+    </testcase>
+    <testcase classname="useGameState should dismiss start blocked" name="useGameState should dismiss start blocked" time="0.001">
+    </testcase>
+    <testcase classname="useGameState should block start with message" name="useGameState should block start with message" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="useRecentSearches" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:57" time="0.152" tests="6">
+    <testcase classname="useRecentSearches should initialize with empty array if nothing in localStorage" name="useRecentSearches should initialize with empty array if nothing in localStorage" time="0.005">
+    </testcase>
+    <testcase classname="useRecentSearches should load recent searches from localStorage" name="useRecentSearches should load recent searches from localStorage" time="0.002">
+    </testcase>
+    <testcase classname="useRecentSearches should save to recent searches" name="useRecentSearches should save to recent searches" time="0.002">
+    </testcase>
+    <testcase classname="useRecentSearches should move duplicate search to top" name="useRecentSearches should move duplicate search to top" time="0.002">
+    </testcase>
+    <testcase classname="useRecentSearches should remove from recent searches" name="useRecentSearches should remove from recent searches" time="0.002">
+    </testcase>
+    <testcase classname="useRecentSearches should limit history to 7 items" name="useRecentSearches should limit history to 7 items" time="0.002">
+    </testcase>
+  </testsuite>
+  <testsuite name="HelpModal" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:57" time="0.188" tests="3">
+    <testcase classname="HelpModal should render correctly" name="HelpModal should render correctly" time="0.021">
+    </testcase>
+    <testcase classname="HelpModal should close when close button is clicked" name="HelpModal should close when close button is clicked" time="0.009">
+    </testcase>
+    <testcase classname="HelpModal should close when clicking backdrop" name="HelpModal should close when clicking backdrop" time="0.005">
+    </testcase>
+  </testsuite>
+  <testsuite name="GameInput" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:57" time="0.141" tests="6">
+    <testcase classname="GameInput should render correctly" name="GameInput should render correctly" time="0.014">
+    </testcase>
+    <testcase classname="GameInput should handle value change" name="GameInput should handle value change" time="0.004">
+    </testcase>
+    <testcase classname="GameInput should handle key down" name="GameInput should handle key down" time="0.007">
+    </testcase>
+    <testcase classname="GameInput should apply custom class name" name="GameInput should apply custom class name" time="0.002">
+    </testcase>
+    <testcase classname="GameInput should be readonly when readonly prop is true" name="GameInput should be readonly when readonly prop is true" time="0.004">
+    </testcase>
+    <testcase classname="GameInput should forward ref" name="GameInput should forward ref" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="ItemModal" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:57" time="0.19" tests="2">
+    <testcase classname="ItemModal should render items in modal" name="ItemModal should render items in modal" time="0.009">
+    </testcase>
+    <testcase classname="ItemModal should call onClose when close button is clicked" name="ItemModal should call onClose when close button is clicked" time="0.013">
+    </testcase>
+  </testsuite>
+  <testsuite name="ProfileRecords" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:57" time="0.155" tests="1">
+    <testcase classname="ProfileRecords should render records correctly" name="ProfileRecords should render records correctly" time="0.014">
+    </testcase>
+  </testsuite>
+  <testsuite name="ConfirmModal" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:57" time="0.124" tests="5">
+    <testcase classname="ConfirmModal should render message" name="ConfirmModal should render message" time="0.005">
+    </testcase>
+    <testcase classname="ConfirmModal should call onConfirm when confirm button is clicked" name="ConfirmModal should call onConfirm when confirm button is clicked" time="0.011">
+    </testcase>
+    <testcase classname="ConfirmModal should call onCancel when cancel button is clicked" name="ConfirmModal should call onCancel when cancel button is clicked" time="0.007">
+    </testcase>
+    <testcase classname="ConfirmModal should call onCancel when clicking backdrop" name="ConfirmModal should call onCancel when clicking backdrop" time="0.003">
+    </testcase>
+    <testcase classname="ConfirmModal should not call onCancel when clicking modal content" name="ConfirmModal should not call onCancel when clicking modal content" time="0.002">
+    </testcase>
+  </testsuite>
+  <testsuite name="ProfileAvatar" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:57" time="0.196" tests="1">
+    <testcase classname="ProfileAvatar should render avatar layers" name="ProfileAvatar should render avatar layers" time="0.015">
+    </testcase>
+  </testsuite>
+  <testsuite name="StartCharModal" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:57" time="0.142" tests="5">
+    <testcase classname="StartCharModal should not render when open is false" name="StartCharModal should not render when open is false" time="0.004">
+    </testcase>
+    <testcase classname="StartCharModal should render correctly when open is true" name="StartCharModal should render correctly when open is true" time="0.006">
+    </testcase>
+    <testcase classname="StartCharModal should call onChange when typing" name="StartCharModal should call onChange when typing" time="0.003">
+    </testcase>
+    <testcase classname="StartCharModal should call onSave when save button is clicked" name="StartCharModal should call onSave when save button is clicked" time="0.003">
+    </testcase>
+    <testcase classname="StartCharModal should call onClose when cancel button is clicked" name="StartCharModal should call onClose when cancel button is clicked" time="0.003">
+    </testcase>
+  </testsuite>
+  <testsuite name="GameBox" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:57" time="0.161" tests="2">
+    <testcase classname="GameBox should render children" name="GameBox should render children" time="0.007">
+    </testcase>
+    <testcase classname="GameBox should have background image" name="GameBox should have background image" time="0.002">
+    </testcase>
+  </testsuite>
+  <testsuite name="WordManagerModal" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:57" time="0.285" tests="5">
+    <testcase classname="WordManagerModal should render and load words" name="WordManagerModal should render and load words" time="0.017">
+    </testcase>
+    <testcase classname="WordManagerModal should search words" name="WordManagerModal should search words" time="0.011">
+    </testcase>
+    <testcase classname="WordManagerModal should add a word" name="WordManagerModal should add a word" time="0.013">
+    </testcase>
+    <testcase classname="WordManagerModal should delete a word" name="WordManagerModal should delete a word" time="0.012">
+    </testcase>
+    <testcase classname="WordManagerModal should edit a word" name="WordManagerModal should edit a word" time="0.02">
+    </testcase>
+  </testsuite>
+  <testsuite name="RankingCache" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:58" time="0.08" tests="6">
+    <testcase classname="RankingCache should return null for non-existent key" name="RankingCache should return null for non-existent key" time="0.002">
+    </testcase>
+    <testcase classname="RankingCache should store and retrieve data" name="RankingCache should store and retrieve data" time="0.001">
+    </testcase>
+    <testcase classname="RankingCache should return null for expired data" name="RankingCache should return null for expired data" time="0">
+    </testcase>
+    <testcase classname="RankingCache should return data if not expired" name="RankingCache should return data if not expired" time="0">
+    </testcase>
+    <testcase classname="RankingCache should clear all data" name="RankingCache should clear all data" time="0.001">
+    </testcase>
+    <testcase classname="RankingCache should cleanup expired entries only" name="RankingCache should cleanup expired entries only" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="ProfileStats" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:58" time="0.174" tests="2">
+    <testcase classname="ProfileStats should render total options correctly" name="ProfileStats should render total options correctly" time="0.014">
+    </testcase>
+    <testcase classname="ProfileStats should call onShowDetail when button clicked" name="ProfileStats should call onShowDetail when button clicked" time="0.012">
+    </testcase>
+  </testsuite>
+  <testsuite name="useGameLogic" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:57" time="0.367" tests="4">
+    <testcase classname="useGameLogic should initialize correctly" name="useGameLogic should initialize correctly" time="0.008">
+    </testcase>
+    <testcase classname="useGameLogic should handle start command" name="useGameLogic should handle start command" time="0.006">
+    </testcase>
+    <testcase classname="useGameLogic should handle valid word submission" name="useGameLogic should handle valid word submission" time="0.007">
+    </testcase>
+    <testcase classname="useGameLogic should handle invalid word submission" name="useGameLogic should handle invalid word submission" time="0.005">
+    </testcase>
+  </testsuite>
+  <testsuite name="Game" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:58" time="0.11" tests="2">
+    <testcase classname="Game should render setup when not playing" name="Game should render setup when not playing" time="0.005">
+    </testcase>
+    <testcase classname="Game should render game box when playing" name="Game should render game box when playing" time="0.002">
+    </testcase>
+  </testsuite>
+  <testsuite name="useChatLog" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:58" time="0.173" tests="5">
+    <testcase classname="useChatLog should handle send message (normal)" name="useChatLog should handle send message (normal)" time="0.01">
+    </testcase>
+    <testcase classname="useChatLog should handle start command when not playing" name="useChatLog should handle start command when not playing" time="0.001">
+    </testcase>
+    <testcase classname="useChatLog should handle start command when playing" name="useChatLog should handle start command when playing" time="0.002">
+    </testcase>
+    <testcase classname="useChatLog should handle gg command" name="useChatLog should handle gg command" time="0.001">
+    </testcase>
+    <testcase classname="useChatLog should handle hint command" name="useChatLog should handle hint command" time="0.002">
+    </testcase>
+  </testsuite>
+  <testsuite name="GameHead" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:58" time="0.239" tests="5">
+    <testcase classname="GameHead should render correctly" name="GameHead should render correctly" time="0.019">
+    </testcase>
+    <testcase classname="GameHead should handle input change" name="GameHead should handle input change" time="0.005">
+    </testcase>
+    <testcase classname="GameHead should handle enter key" name="GameHead should handle enter key" time="0.003">
+    </testcase>
+    <testcase classname="GameHead should handle hint command" name="GameHead should handle hint command" time="0.004">
+    </testcase>
+    <testcase classname="GameHead should show game result modal when gameResult is present" name="GameHead should show game result modal when gameResult is present" time="0.004">
+    </testcase>
+  </testsuite>
+  <testsuite name="useChat" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:58" time="0.135" tests="6">
+    <testcase classname="useChat should provide initial state" name="useChat should provide initial state" time="0.014">
+    </testcase>
+    <testcase classname="useChat should update chat input" name="useChat should update chat input" time="0.004">
+    </testcase>
+    <testcase classname="useChat should handle chat input change event" name="useChat should handle chat input change event" time="0.002">
+    </testcase>
+    <testcase classname="useChat should register and call game input handler" name="useChat should register and call game input handler" time="0.002">
+    </testcase>
+    <testcase classname="useChat should register and call send hint" name="useChat should register and call send hint" time="0.001">
+    </testcase>
+    <testcase classname="useChat should clear messages and show start notice" name="useChat should clear messages and show start notice" time="0.003">
+    </testcase>
+  </testsuite>
+  <testsuite name="TryRenderImg" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:58" time="0.143" tests="5">
+    <testcase classname="TryRenderImg should render the image initially" name="TryRenderImg should render the image initially" time="0.005">
+    </testcase>
+    <testcase classname="TryRenderImg should call handleLoad when image loads successfully" name="TryRenderImg should call handleLoad when image loads successfully" time="0.003">
+    </testcase>
+    <testcase classname="TryRenderImg should retry loading on error up to maxRetries" name="TryRenderImg should retry loading on error up to maxRetries" time="0.003">
+    </testcase>
+    <testcase classname="TryRenderImg should show placeholder and call onFailure after maxRetries exceeded" name="TryRenderImg should show placeholder and call onFailure after maxRetries exceeded" time="0.004">
+    </testcase>
+    <testcase classname="TryRenderImg should reset state when url prop changes" name="TryRenderImg should reset state when url prop changes" time="0.004">
+    </testcase>
+  </testsuite>
+  <testsuite name="wordDB" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:58" time="0.109" tests="10">
+    <testcase classname="wordDB should load words from file" name="wordDB should load words from file" time="0.002">
+    </testcase>
+    <testcase classname="wordDB should throw error if file is too large" name="wordDB should throw error if file is too large" time="0.011">
+    </testcase>
+    <testcase classname="wordDB should throw error if file is not txt" name="wordDB should throw error if file is not txt" time="0.001">
+    </testcase>
+    <testcase classname="wordDB should get all words" name="wordDB should get all words" time="0.001">
+    </testcase>
+    <testcase classname="wordDB should search words by prefix" name="wordDB should search words by prefix" time="0.001">
+    </testcase>
+    <testcase classname="wordDB should update word" name="wordDB should update word" time="0.001">
+    </testcase>
+    <testcase classname="wordDB should delete word" name="wordDB should delete word" time="0">
+    </testcase>
+    <testcase classname="wordDB should add word" name="wordDB should add word" time="0.001">
+    </testcase>
+    <testcase classname="wordDB should check if has words" name="wordDB should check if has words" time="0">
+    </testcase>
+    <testcase classname="wordDB should clear all words" name="wordDB should clear all words" time="0">
+    </testcase>
+  </testsuite>
+  <testsuite name="duemLaw" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:58" time="0.112" tests="15">
+    <testcase classname="duemLaw should apply duem law correctly for rule 1 (ㄹ -&gt; ㄴ)" name="duemLaw should apply duem law correctly for rule 1 (ㄹ -&gt; ㄴ)" time="0.003">
+    </testcase>
+    <testcase classname="duemLaw should apply duem law correctly for rule 2 (ㄹ -&gt; ㅇ)" name="duemLaw should apply duem law correctly for rule 2 (ㄹ -&gt; ㅇ)" time="0.001">
+    </testcase>
+    <testcase classname="duemLaw should apply duem law correctly for rule 3 (ㄴ -&gt; ㅇ)" name="duemLaw should apply duem law correctly for rule 3 (ㄴ -&gt; ㅇ)" time="0.002">
+    </testcase>
+    <testcase classname="duemLaw should not change characters that do not match rules" name="duemLaw should not change characters that do not match rules" time="0.001">
+    </testcase>
+    <testcase classname="duemLaw should throw error for non-single character input" name="duemLaw should throw error for non-single character input" time="0.019">
+    </testcase>
+    <testcase classname="duemLaw should return input if ignoreError is true for non-single character" name="duemLaw should return input if ignoreError is true for non-single character" time="0.001">
+    </testcase>
+    <testcase classname="duemLaw should return input if it is not hangul" name="duemLaw should return input if it is not hangul" time="0">
+    </testcase>
+    <testcase classname="reverDuemLaw should return original and possible precedents for ㄴ -&gt; ㄹ (rule 1)" name="reverDuemLaw should return original and possible precedents for ㄴ -&gt; ㄹ (rule 1)" time="0.001">
+    </testcase>
+    <testcase classname="reverDuemLaw should return original and possible precedents for ㅇ -&gt; ㄹ (rule 2)" name="reverDuemLaw should return original and possible precedents for ㅇ -&gt; ㄹ (rule 2)" time="0">
+    </testcase>
+    <testcase classname="reverDuemLaw should return original and possible precedents for ㅇ -&gt; ㄴ (rule 3)" name="reverDuemLaw should return original and possible precedents for ㅇ -&gt; ㄴ (rule 3)" time="0.001">
+    </testcase>
+    <testcase classname="reverDuemLaw should return only the input when no reversal applies" name="reverDuemLaw should return only the input when no reversal applies" time="0">
+    </testcase>
+    <testcase classname="reverDuemLaw should throw error for non-single character input" name="reverDuemLaw should throw error for non-single character input" time="0.001">
+    </testcase>
+    <testcase classname="reverDuemLaw should return input array if ignoreError is true for non-single character" name="reverDuemLaw should return input array if ignoreError is true for non-single character" time="0.001">
+    </testcase>
+    <testcase classname="isHangul should return true for Hangul characters" name="isHangul should return true for Hangul characters" time="0">
+    </testcase>
+    <testcase classname="isHangul should return false for non-Hangul characters" name="isHangul should return false for non-Hangul characters" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="GameManager" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:58" time="0.09" tests="8">
+    <testcase classname="GameManager should be a singleton" name="GameManager should be a singleton" time="0.001">
+    </testcase>
+    <testcase classname="GameManager should load word DB correctly" name="GameManager should load word DB correctly" time="0.001">
+    </testcase>
+    <testcase classname="GameManager should handle game flow (normal mode)" name="GameManager should handle game flow (normal mode)" time="0.002">
+    </testcase>
+    <testcase classname="GameManager should handle duem law" name="GameManager should handle duem law" time="0.001">
+    </testcase>
+    <testcase classname="GameManager should add/edit/delete words" name="GameManager should add/edit/delete words" time="0.002">
+    </testcase>
+    <testcase classname="GameManager should handle mission mode" name="GameManager should handle mission mode" time="0.001">
+    </testcase>
+    <testcase classname="GameManager should fail if mission char is missing in mission mode" name="GameManager should fail if mission char is missing in mission mode" time="0.001">
+    </testcase>
+    <testcase classname="GameManager should provide hints" name="GameManager should provide hints" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="profileHelper" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:58" time="0.1" tests="22">
+    <testcase classname="profileHelper getNicknameColor should return correct color for NIK slot" name="profileHelper getNicknameColor should return correct color for NIK slot" time="0.007">
+    </testcase>
+    <testcase classname="profileHelper getNicknameColor should return default color if no NIK slot" name="profileHelper getNicknameColor should return default color if no NIK slot" time="0">
+    </testcase>
+    <testcase classname="profileHelper getNicknameColor should return white default for dark theme" name="profileHelper getNicknameColor should return white default for dark theme" time="0">
+    </testcase>
+    <testcase classname="profileHelper getNicknameColor should return default color if color key not found" name="profileHelper getNicknameColor should return default color if color key not found" time="0.001">
+    </testcase>
+    <testcase classname="profileHelper extractColorFromLabel should extract color from label" name="profileHelper extractColorFromLabel should extract color from label" time="0">
+    </testcase>
+    <testcase classname="profileHelper extractColorFromLabel should return default if no match" name="profileHelper extractColorFromLabel should return default if no match" time="0.001">
+    </testcase>
+    <testcase classname="profileHelper formatNumber should divide by 1000 and return string" name="profileHelper formatNumber should divide by 1000 and return string" time="0">
+    </testcase>
+    <testcase classname="profileHelper calculateTotalOptions should calculate totals correctly for normal options" name="profileHelper calculateTotalOptions should calculate totals correctly for normal options" time="0.001">
+    </testcase>
+    <testcase classname="profileHelper calculateTotalOptions should handle special options" name="profileHelper calculateTotalOptions should handle special options" time="0.001">
+    </testcase>
+    <testcase classname="profileHelper calculateTotalOptions should handle special options (before)" name="profileHelper calculateTotalOptions should handle special options (before)" time="0">
+    </testcase>
+    <testcase classname="profileHelper getModeName &amp; getModeGroup should return mode name" name="profileHelper getModeName &amp; getModeGroup should return mode name" time="0.001">
+    </testcase>
+    <testcase classname="profileHelper getModeName &amp; getModeGroup should return mode group" name="profileHelper getModeName &amp; getModeGroup should return mode group" time="0">
+    </testcase>
+    <testcase classname="profileHelper groupRecordsByMode should group records" name="profileHelper groupRecordsByMode should group records" time="0.001">
+    </testcase>
+    <testcase classname="profileHelper calculateWinRate should calculate win rate" name="profileHelper calculateWinRate should calculate win rate" time="0.001">
+    </testcase>
+    <testcase classname="profileHelper formatObservedAt should format date" name="profileHelper formatObservedAt should format date" time="0.001">
+    </testcase>
+    <testcase classname="profileHelper formatLastSeen should format days ago" name="profileHelper formatLastSeen should format days ago" time="0">
+    </testcase>
+    <testcase classname="profileHelper formatLastSeen should format hours ago" name="profileHelper formatLastSeen should format hours ago" time="0.001">
+    </testcase>
+    <testcase classname="profileHelper formatLastSeen should format minutes ago" name="profileHelper formatLastSeen should format minutes ago" time="0">
+    </testcase>
+    <testcase classname="profileHelper parseDescription should parse description with colors" name="profileHelper parseDescription should parse description with colors" time="0.001">
+    </testcase>
+    <testcase classname="profileHelper parseDescription should parse plain text" name="profileHelper parseDescription should parse plain text" time="0">
+    </testcase>
+    <testcase classname="profileHelper getSlotName &amp; getOptionName should get slot name" name="profileHelper getSlotName &amp; getOptionName should get slot name" time="0.001">
+    </testcase>
+    <testcase classname="profileHelper getSlotName &amp; getOptionName should get option name" name="profileHelper getSlotName &amp; getOptionName should get option name" time="0">
+    </testcase>
+  </testsuite>
+  <testsuite name="WordService" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:58" time="0.102" tests="13">
+    <testcase classname="WordService should be a singleton" name="WordService should be a singleton" time="0.002">
+    </testcase>
+    <testcase classname="WordService loadWordDB should load words correctly" name="WordService loadWordDB should load words correctly" time="0.002">
+    </testcase>
+    <testcase classname="WordService loadWordDB should filter out invalid words" name="WordService loadWordDB should filter out invalid words" time="0.001">
+    </testcase>
+    <testcase classname="WordService addWordToDB should add a new word" name="WordService addWordToDB should add a new word" time="0.001">
+    </testcase>
+    <testcase classname="WordService addWordToDB should not add duplicate word" name="WordService addWordToDB should not add duplicate word" time="0.001">
+    </testcase>
+    <testcase classname="WordService addWordToDB should not add invalid word" name="WordService addWordToDB should not add invalid word" time="0">
+    </testcase>
+    <testcase classname="WordService editWordInDB should edit an existing word" name="WordService editWordInDB should edit an existing word" time="0.002">
+    </testcase>
+    <testcase classname="WordService editWordInDB should fail if old word does not exist" name="WordService editWordInDB should fail if old word does not exist" time="0">
+    </testcase>
+    <testcase classname="WordService editWordInDB should fail if new word is invalid" name="WordService editWordInDB should fail if new word is invalid" time="0.001">
+    </testcase>
+    <testcase classname="WordService deleteWordFromDB should delete an existing word" name="WordService deleteWordFromDB should delete an existing word" time="0.001">
+    </testcase>
+    <testcase classname="WordService deleteWordFromDB should fail if word does not exist" name="WordService deleteWordFromDB should fail if word does not exist" time="0">
+    </testcase>
+    <testcase classname="WordService getWordTheme should return themes for a word" name="WordService getWordTheme should return themes for a word" time="0">
+    </testcase>
+    <testcase classname="WordService getWordTheme should return empty array for nonexistent word" name="WordService getWordTheme should return empty array for nonexistent word" time="0">
+    </testcase>
+  </testsuite>
+  <testsuite name="GameLogic" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:58" time="0.071" tests="11">
+    <testcase classname="GameLogic getTurnSpeed should return correct speed based on round time" name="GameLogic getTurnSpeed should return correct speed based on round time" time="0.002">
+    </testcase>
+    <testcase classname="GameLogic isValidWord should return false if nowState is null" name="GameLogic isValidWord should return false if nowState is null" time="0.001">
+    </testcase>
+    <testcase classname="GameLogic isValidWord should return false if word length is &lt;= 1" name="GameLogic isValidWord should return false if word length is &lt;= 1" time="0.001">
+    </testcase>
+    <testcase classname="GameLogic isValidWord should return false if word is not in DB" name="GameLogic isValidWord should return false if word is not in DB" time="0">
+    </testcase>
+    <testcase classname="GameLogic isValidWord should return false if start char does not match" name="GameLogic isValidWord should return false if start char does not match" time="0">
+    </testcase>
+    <testcase classname="GameLogic isValidWord should return true if word is valid" name="GameLogic isValidWord should return true if word is valid" time="0">
+    </testcase>
+    <testcase classname="GameLogic isValidWord should handle duem law" name="GameLogic isValidWord should handle duem law" time="0">
+    </testcase>
+    <testcase classname="GameLogic getStartChar should return a valid start char for Korean Normal mode" name="GameLogic getStartChar should return a valid start char for Korean Normal mode" time="0.001">
+    </testcase>
+    <testcase classname="GameLogic getStartChar should return a valid start char for Korean Mission mode" name="GameLogic getStartChar should return a valid start char for Korean Mission mode" time="0.001">
+    </testcase>
+    <testcase classname="GameLogic getStartChar should return a valid start char for English Normal mode" name="GameLogic getStartChar should return a valid start char for English Normal mode" time="0">
+    </testcase>
+    <testcase classname="GameLogic getStartChar should respect exclusion list in Normal mode" name="GameLogic getStartChar should respect exclusion list in Normal mode" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="RankingList" errors="0" failures="0" skipped="0" timestamp="2026-02-12T13:42:58" time="0.109" tests="2">
+    <testcase classname="RankingList should render list of cards" name="RankingList should render list of cards" time="0.005">
+    </testcase>
+    <testcase classname="RankingList should render empty state when no rankings" name="RankingList should render empty state when no rankings" time="0.002">
+    </testcase>
+  </testsuite>
+</testsuites>

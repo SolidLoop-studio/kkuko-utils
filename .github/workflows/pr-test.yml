@@ -32,7 +32,8 @@ jobs:
             --coverage \
             --coverageReporters=json-summary \
             --coverageReporters=text \
-            --testResultsProcessor=jest-junit \
+            --reporters=default \
+            --reporters=jest-junit \
             --verbose
         continue-on-error: true
         id: test
