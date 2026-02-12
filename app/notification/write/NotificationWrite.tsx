@@ -37,10 +37,9 @@ export default function NotificationWrite({ notification }: NotificationWritePro
             {error && <ErrorModal error={error} onClose={() => setError(null)} />}
             <NotificationWriteForm
                 notification={notification}
-                backHref="/notification"
                 onError={(err) => {
-                    const supabaseError = err as any;
-                    const errCode = supabaseError?.code;
+                    const supabaseError = err;
+                    const errCode = supabaseError?.['code'];
                     setError({
                         ErrName: errCode || "Notification Error",
                         ErrMessage: errCode === "23P01" ? "모달 공지가 겹쳤습니다 (동일 기간에 모달 공지는 하나만 가능합니다)" : (supabaseError?.message || "공지사항 처리에 실패했습니다."),

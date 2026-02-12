@@ -9,7 +9,6 @@ import LoadingPage, {useLoadingState } from '@/app/components/LoadingPage';
 import axios from 'axios';
 import { useRouter, notFound } from 'next/navigation';
 import { WordInfoProps } from './WordInfo';
-import NotFound from '@/app/not-found-client';
 
 export default function WordInfoPage({ query }: { query: string }) {
     const [errorView, setErrorView] = useState<string | null>(null);

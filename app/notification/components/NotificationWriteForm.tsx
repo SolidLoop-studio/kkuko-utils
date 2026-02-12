@@ -21,8 +21,7 @@ type NotificationType = Database['public']['Tables']['notification']['Row'];
 
 interface NotificationWriteProps {
     notification?: NotificationType;
-    onError?: (error: PostgrestError | Error) => void;
-    backHref?: string;
+    onError?: (error: PostgrestError) => void;
 }
 
 /**
@@ -30,7 +29,7 @@ interface NotificationWriteProps {
  * 관리자 권한이 있는 사용자만 접근 가능합니다.
  * notification prop이 전달되면 수정 모드로 동작합니다.
  */
-export default function NotificationWriteForm({ notification, onError, backHref }: NotificationWriteProps) {
+export default function NotificationWriteForm({ notification, onError }: NotificationWriteProps) {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [title, setTitle] = useState(notification?.title || "");
@@ -75,7 +74,7 @@ export default function NotificationWriteForm({ notification, onError, backHref 
             }
         } catch (error) {
             console.error("Image upload failed:", error);
-            if (onError) onError(error as PostgrestError | Error);
+            onError?.(error as PostgrestError);
         } finally {
             setUploading(false);
         }
@@ -130,7 +129,7 @@ export default function NotificationWriteForm({ notification, onError, backHref 
             });
         } catch (error) {
             console.error("Notification submit failed:", error);
-            onError?.(error as PostgrestError | Error);
+            onError?.(error as PostgrestError);
         } finally {
             setIsLoading(false);
         }
