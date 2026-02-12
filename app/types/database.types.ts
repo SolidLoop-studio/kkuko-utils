@@ -196,6 +196,8 @@ export type Database = {
           end_at: string
           id: number
           img: string | null
+          is_important: boolean
+          is_modal: boolean
           title: string
         }
         Insert: {
@@ -204,6 +206,8 @@ export type Database = {
           end_at: string
           id?: number
           img?: string | null
+          is_important?: boolean
+          is_modal?: boolean
           title: string
         }
         Update: {
@@ -212,6 +216,8 @@ export type Database = {
           end_at?: string
           id?: number
           img?: string | null
+          is_important?: boolean
+          is_modal?: boolean
           title?: string
         }
         Relationships: []

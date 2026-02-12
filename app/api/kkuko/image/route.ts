@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 
-export const runtime = 'edge';
+export const runtime = "edge";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     return new Response("Invalid image url", { status: 400 });
   }
 
-  const imageResponse = await fetch(imageUrl, { signal }).finally(() => clearTimeout(timer));
+  const imageResponse = await fetch(imageUrl, { signal, next: { revalidate: 60 * 60 * 24 * 90 } }).finally(() => clearTimeout(timer));
 
   if (!imageResponse.ok) {
     return new Response("Failed to fetch image", {

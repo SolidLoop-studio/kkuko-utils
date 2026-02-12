@@ -26,6 +26,6 @@ describe('KkukoHome', () => {
         expect(screen.getByText('각 모드별로 승리가 많은 유저들의 랭킹을 확인할 수 있습니다.')).toBeInTheDocument();
         
         const rankingLink = screen.getByRole('link', { name: /구경하기/i });
-        expect(rankingLink).toHaveAttribute('href', '/kkuko/ranking');
+        expect(rankingLink).toHaveAttribute('href', '/kkuko/ranking?mode=ALL');
     });
 });

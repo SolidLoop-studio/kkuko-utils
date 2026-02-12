@@ -24,6 +24,7 @@
   "discord.enabled": true,
   "chat.tools.terminal.autoApprove": {
     "npx jest": true,
-    "npm run lint": true
+    "npm run lint": true,
+    "npx tec --noEmit": true
   }
 }

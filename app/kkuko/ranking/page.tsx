@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import KkukoRaking from "./KkukoRaking";
 
 export async function generateMetadata() {
@@ -16,5 +17,9 @@ export async function generateMetadata() {
 }
 
 export default function KkukoRakingPage() {
-    return <KkukoRaking />;
+    return (
+		<Suspense fallback={<div>Loading...</div>}>
+			<KkukoRaking />
+		</Suspense>
+	);
 }

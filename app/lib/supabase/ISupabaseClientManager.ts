@@ -38,7 +38,7 @@ export interface IAddManager {
     wordsThemes(q: addWordThemeQueryType[]): Promise<PostgrestSingleResponse<{words:{word: string}; themes: {name: string}}[]>>;
     wordThemesReq(q: {word_id: number, theme_id: number, typez: "add" | "delete", req_by: string | null}[]): Promise<PostgrestSingleResponse<{typez: "add" | "delete"; themes:{name: string}}[]>>
     waitWords(q: {word: string, requested_by: string | null, request_type: "add"}[]): Promise<PostgrestSingleResponse<(wait_word)[]>>;
-    notification(data: { title: string; body: string; img?: string | null; end_at: string }): Promise<PostgrestSingleResponse<notification>>;
+    notification(data: { title: string; body: string; img?: string | null; end_at: string; is_important?: boolean; is_modal?: boolean }): Promise<PostgrestSingleResponse<notification>>;
 }
 
 // get 관련 타입
@@ -95,6 +95,8 @@ export interface IGetManager{
     wordsByAdvancedQuery(input: advancedQueryType): Promise<{data: {word: string, nextWordCount: number}[], error: null} | {data: null; error: PostgrestError}>;
     wordState(): Promise<{data: {firstLetterCounts: word_first_letter_counts[]; lastLetterCounts: word_last_letter_counts[];}, error: null}|{data: null; error: PostgrestError}>;
     docsLastUpdate(id: number): Promise<PostgrestSingleResponse<{last_update: string;} | null>>
+    allNotifications(): Promise<PostgrestSingleResponse<notification[]>>;
+    notificationById(id: number): Promise<PostgrestSingleResponse<notification | null>>;
 }
 
 // delete 관련 타입
@@ -121,7 +123,7 @@ export interface IUpdateManager{
     userContribution({ userId, amount }: { userId: string, amount?: number }): Promise<PostgrestSingleResponse<undefined>>;
     docsLastUpdate(docs_ids: number[]): Promise<void>;
     docView(id: number): Promise<void>;
-    notification(id: number, data: { title?: string; body?: string; img?: string | null; end_at?: string | null }): Promise<PostgrestSingleResponse<notification>>;
+    notification(id: number, data: { title?: string; body?: string; img?: string | null; end_at?: string | null; is_important?: boolean; is_modal?: boolean }): Promise<PostgrestSingleResponse<notification>>;
 }
 
 // 전체 supabaseManager 타입 

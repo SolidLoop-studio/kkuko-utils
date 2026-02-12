@@ -5,6 +5,8 @@ export interface UserProfile {
     observedAt: string;
     exordial: string;
     level: number;
+    isPublic: boolean;
+    isLastOnlineHidden: boolean;
 }
 
 export interface Equipment {
@@ -28,7 +30,7 @@ export interface Presence {
     channelId: string | null;
     roomId: string | null;
     crawlerId: string;
-    updatedAt: string;
+    updatedAt: string | null;
 }
 
 export interface ProfileData {
@@ -88,7 +90,7 @@ export interface RankingEntry {
     };
 }
 
-export type RankingOption = 'win' | 'exp';
+export type RankingOption = 'win' | 'exp' | 'total';
 
 export function isSpecialOptions(obj: unknown): obj is SpecialOptions {
     return !!obj && typeof obj === 'object' &&

@@ -183,7 +183,7 @@ const TermsOfService = () => {
             <div className="border-t pt-6 mt-8">
               <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
                 <Shield className="h-4 w-4" />
-                <span>문의사항이 있으시면 GitHub 이슈 또는 이메일(jtw7913@gmail.com)을 통해 연락주시기 바랍니다.</span>
+                <span>문의사항이 있으시면 GitHub 이슈 또는 이메일(admin@solidloop-studio.xyz)을 통해 연락주시기 바랍니다.</span>
               </div>
             </div>
           </CardContent>

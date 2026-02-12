@@ -59,29 +59,27 @@
   }
   .dark {
 
-    --background: 0 0% 3.9%;
+    /* 배경 */
+    --background: 222 47% 11%;        /* gray-900 */
+    --foreground: 210 40% 96%;
 
-    --foreground: 0 0% 98%;
+    /* 카드 / 팝오버 */
+    --card: 215 28% 17%;              /* gray-800 */
+    --card-foreground: 210 40% 96%;
 
-    --card: 0 0% 3.9%;
+    --popover: 215 28% 17%;
+    --popover-foreground: 210 40% 96%;
 
-    --card-foreground: 0 0% 98%;
-
-    --popover: 0 0% 3.9%;
-
-    --popover-foreground: 0 0% 98%;
-
-    --primary: 0 0% 98%;
-
-    --primary-foreground: 0 0% 9%;
+    --primary: 210 40% 96%;
+    --primary-foreground: 222 47% 11%;
 
     --secondary: 0 0% 14.9%;
 
     --secondary-foreground: 0 0% 98%;
 
-    --muted: 0 0% 14.9%;
-
-    --muted-foreground: 0 0% 63.9%;
+    /* 보조 색상 */
+    --muted: 215 25% 22%;
+    --muted-foreground: 215 15% 65%;
 
     --accent: 0 0% 14.9%;
 
@@ -91,11 +89,11 @@
 
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 14.9%;
+    /* 테두리 / 인풋 */
+    --border: 215 20% 27%;            /* gray-700 */
+    --input: 215 20% 27%;
 
-    --input: 0 0% 14.9%;
-
-    --ring: 0 0% 83.1%;
+    --ring: 215 20% 65%;
 
     --chart-1: 220 70% 50%;
 

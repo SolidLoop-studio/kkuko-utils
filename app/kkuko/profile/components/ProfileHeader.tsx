@@ -1,8 +1,9 @@
 import React from 'react';
+import Link from 'next/link';
 import { ItemInfo, ProfileData } from '@/types/kkuko.types';
 import TryRenderImg from '../../shared/components/TryRenderImg';
 import ProfileAvatar from '../../shared/components/ProfileAvatar';
-import { getNicknameColor } from '../utils/profileHelper';
+import { formatLastSeen, formatObservedAt, getNicknameStyle } from '../utils/profileHelper';
 
 interface ProfileHeaderProps {
     profileData: ProfileData;
@@ -65,7 +66,7 @@ export default function ProfileHeader({ profileData, itemsData, expRank }: Profi
                     <div>
                         <h2
                             className="text-3xl font-bold"
-                            style={{ color: getNicknameColor(profileData.equipment, isDarkTheme) }}
+                            style={getNicknameStyle(profileData.equipment, isDarkTheme)}
                         >
                             {profileData.user.nickname}
                         </h2>
@@ -101,10 +102,10 @@ export default function ProfileHeader({ profileData, itemsData, expRank }: Profi
                             </div>
                         </div>
 
-                        {/* <div className="col-span-2">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">마지막 관측</p>
+                        <div className="col-span-2">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">정보 갱신 시각</p>
                             <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{formatObservedAt(profileData.user.observedAt)}</p>
-                        </div> */}
+                        </div> 
 
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">접속 상태</p>
@@ -118,8 +119,9 @@ export default function ProfileHeader({ profileData, itemsData, expRank }: Profi
                             {profileData.presence.channelId ? (
                                 <p className="text-xs text-gray-600 dark:text-gray-400">채널: {profileData.presence.channelId}</p>
                             ) : (
-                                // <p className="text-xs text-gray-600 dark:text-gray-400">마지막 접속: {formatLastSeen(profileData.presence.updatedAt)}</p>
-                                <></>
+                                profileData.presence.updatedAt !== null ?
+                                <p className="text-xs text-gray-600 dark:text-gray-400">마지막 접속: {formatLastSeen(profileData.presence.updatedAt)}</p> :
+                                null
                             )}
                         </div>
 
@@ -133,6 +135,11 @@ export default function ProfileHeader({ profileData, itemsData, expRank }: Profi
                                 )}
                             </p>
                         </div>
+                    </div>
+                    <div className="flex justify-end mt-1">
+                        <Link href="/notification/9" className="text-xs text-gray-400 dark:text-gray-500 hover:underline">
+                            정보 비공개 요청
+                        </Link>
                     </div>
                 </div>
             </div>

@@ -57,7 +57,7 @@ export default function KkukoHome() {
                         각 모드별로 승리가 많은 유저들의 랭킹을 확인할 수 있습니다.
                     </p>
 
-                    <Link href="/kkuko/ranking" className="block">
+                    <Link href="/kkuko/ranking?mode=ALL" className="block">
                         <button className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white px-6 py-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center group">
                             구경하기
                             <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform duration-300" />

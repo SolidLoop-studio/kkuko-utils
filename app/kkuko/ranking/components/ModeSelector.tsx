@@ -18,6 +18,7 @@ interface ModeSelectorProps {
 }
 
 const GROUP_LABELS: Record<string, string> = {
+    def: '기본',
     kor: '🇰🇷 한국어 모드',
     eng: '🇺🇸 영어 모드',
     event: '🎉 이벤트 모드',
@@ -27,7 +28,7 @@ export function ModeSelector({ modes, selectedMode, onModeChange }: ModeSelector
     // Group modes by category
     const groupedModes = modes.reduce((acc, mode) => {
         const group = mode.group || 'other';
-        if (!['kor', 'eng', 'event'].includes(group)) return acc;
+        if (!['kor', 'eng', 'event', 'def'].includes(group)) return acc;
         if (!acc[group]) {
             acc[group] = [];
         }
@@ -37,7 +38,7 @@ export function ModeSelector({ modes, selectedMode, onModeChange }: ModeSelector
 
     // Sort groups: kor, eng, event, others
     const sortedGroups = Object.keys(groupedModes).sort((a, b) => {
-        const order = ['kor', 'eng', 'event'];
+        const order = ['def', 'kor', 'eng', 'event'];
         const indexA = order.indexOf(a);
         const indexB = order.indexOf(b);
         if (indexA === -1 && indexB === -1) return a.localeCompare(b);

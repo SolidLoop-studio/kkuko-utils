@@ -7,9 +7,8 @@ import type { PostgrestError } from '@supabase/supabase-js';
 import { calculateKoreanInitials, count } from '@/app/lib/lib';
 import LoadingPage, {useLoadingState } from '@/app/components/LoadingPage';
 import axios from 'axios';
-import { useRouter } from 'next/navigation';
+import { useRouter, notFound } from 'next/navigation';
 import { WordInfoProps } from './WordInfo';
-import NotFound from '@/app/not-found-client';
 
 export default function WordInfoPage({ query }: { query: string }) {
     const [errorView, setErrorView] = useState<string | null>(null);
@@ -260,7 +259,7 @@ export default function WordInfoPage({ query }: { query: string }) {
         
     }, [query]);
 
-    if (isNotFound) { return <NotFound />; }
+    if (isNotFound) { return notFound(); }
 
     if (loadingState.isLoading) { return <LoadingPage title={'단어 정보'} /> }
 

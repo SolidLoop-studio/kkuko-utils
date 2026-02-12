@@ -176,7 +176,7 @@ const PrivacyPolicy = () => {
                 <div className="bg-slate-50 dark:bg-slate-700 p-4 rounded-lg">
                   <p><strong>개인정보 보호책임자</strong></p>
                   <p>개발자: hafskjfha</p>
-                  <p>연락처: jtw7913@gmail.com</p>
+                  <p>연락처: admin@solidloop-studio.xyz</p>
                 </div>
               </div>
             </div>
@@ -223,7 +223,7 @@ const PrivacyPolicy = () => {
             <div className="border-t pt-6 mt-8">
               <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
                 <Shield className="h-4 w-4" />
-                <span>개인정보 관련 문의사항이 있으시면 GitHub 이슈또는 이메일(jtw7913@gmail.com) 통해 연락주시기 바랍니다.</span>
+                <span>개인정보 관련 문의사항이 있으시면 GitHub 이슈또는 이메일(admin@solidloop-studio.xyz) 통해 연락주시기 바랍니다.</span>
               </div>
             </div>
           </CardContent>

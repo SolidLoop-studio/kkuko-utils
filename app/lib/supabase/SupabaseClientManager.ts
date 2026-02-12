@@ -68,7 +68,7 @@ class AddManager implements IAddManager {
     public async waitWords(q: { word: string; requested_by: string | null; request_type: 'add'; }[]) {
         return this.supabase.from('wait_words').upsert(q, { onConflict: "word", ignoreDuplicates: true }).select('*');
     }
-    public async notification(data: { title: string; body: string; img?: string | null; end_at: string }) {
+    public async notification(data: { title: string; body: string; img?: string | null; end_at: string, is_important?: boolean, is_modal?: boolean }) {
         return await this.supabase.from('notification').insert(data).select('*').single();
     }
 
@@ -745,7 +745,7 @@ class GetManager implements IGetManager {
     public async notice() {
         const today = new Date();
         today.setHours(23, 59, 59, 999);
-        return await this.supabase.from('notification').select('*').gte('end_at', today.toISOString()).order('created_at', { ascending: false }).limit(1).maybeSingle();
+        return await this.supabase.from('notification').select('*').gte('end_at', today.toISOString()).eq('is_modal', true).order('created_at', { ascending: false }).limit(1).maybeSingle();
     }
     public async wordsThemesByWordId(wordIds: number[]) {
         return await this.supabase.from('word_themes').select('word_id, themes(*)').in('word_id', wordIds);
@@ -760,6 +760,14 @@ class GetManager implements IGetManager {
         if (error2) return { data: null, error: error2 };
 
         return { data: { firstLetterCounts: data1, lastLetterCounts: data2 }, error: null };
+    }
+
+    async allNotifications() {
+        return await this.supabase.from('notification').select('*').order('created_at', { ascending: false });
+    }
+
+    async notificationById(id: number) {
+        return await this.supabase.from('notification').select('*').eq('id', id).maybeSingle();
     }
 
 }
@@ -844,7 +852,7 @@ class UpdateManager implements IUpdateManager {
     public async docView(id: number): Promise<void> {
         await this.supabase.rpc('increment_doc_views', { doc_id: id })
     }
-    public async notification(id: number, data: { title?: string; body?: string; img?: string | null; end_at: string }) {
+    public async notification(id: number, data: { title?: string; body?: string; img?: string | null; end_at: string, is_important?: boolean; is_modal?: boolean }) {
         return await this.supabase.from('notification').update(data).eq('id', id).select('*').single();
     }
 }

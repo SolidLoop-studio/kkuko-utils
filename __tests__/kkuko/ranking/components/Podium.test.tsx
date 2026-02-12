@@ -1,11 +1,25 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { Podium } from '@/app/kkuko/ranking/components/Podium';
 import { RankingEntry, ProfileData } from '@/app/types/kkuko.types';
 import * as api from '@/app/kkuko/shared/lib/api';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 jest.mock('@/app/kkuko/shared/lib/api');
 jest.mock('@/app/kkuko/shared/components/ProfileAvatar', () => () => <div data-testid="profile-avatar" />);
+
+const createWrapper = () => {
+    const queryClient = new QueryClient({
+        defaultOptions: {
+            queries: {
+                retry: false,
+            },
+        },
+    });
+    return ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+};
 
 describe('Podium', () => {
     const mockEntries: RankingEntry[] = [
@@ -41,12 +55,12 @@ describe('Podium', () => {
 
     it('should calculate style correctly', () => {
         // Just checking rendering to ensure no crashes
-        render(<Podium topThree={mockEntries} option="win" />);
+        render(<Podium topThree={mockEntries} option="win" />, { wrapper: createWrapper() });
         // Wait for effects
     });
 
     it('should render top 3 users', async () => {
-        render(<Podium topThree={mockEntries} option="win" />);
+        render(<Podium topThree={mockEntries} option="win" />, { wrapper: createWrapper() });
         
         await waitFor(() => {
             expect(screen.getByText('User1')).toBeInTheDocument();
@@ -56,7 +70,7 @@ describe('Podium', () => {
     });
 
     it('should fetch profile data on mount', async () => {
-        render(<Podium topThree={mockEntries} option="win" />);
+        render(<Podium topThree={mockEntries} option="win" />, { wrapper: createWrapper() });
         
         await waitFor(() => {
             expect(api.fetchProfile).toHaveBeenCalledTimes(3);
