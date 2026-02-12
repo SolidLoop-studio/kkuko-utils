@@ -1,3 +1,8 @@
+# [v1.6.1](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.6.0...v1.6.1) - 2026-02-12
+
+## fix
+- ([2c0ef13](https://github.com/SolidLoop-studio/kkuko-utils/commit/2c0ef13)) - 공지 모달 md뷰어 사용
+
 # [v1.6.0](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.5.2...v1.6.0) - 2026-02-12
 
 ## feat
