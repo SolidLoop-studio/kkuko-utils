@@ -30,7 +30,7 @@ export interface Presence {
     channelId: string | null;
     roomId: string | null;
     crawlerId: string;
-    updatedAt: string;
+    updatedAt: string | null;
 }
 
 export interface ProfileData {

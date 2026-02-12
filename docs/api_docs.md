@@ -417,7 +417,7 @@ No Content - 성공적으로 삭제됨
       channelId: string | null;
       roomId: string | null;
       crawlerId: string;
-      updatedAt: string; // ISO format
+      updatedAt: string | null; // ISO format, if isLastOnlineHidden is true then null
     };
   };
   status: 200;
@@ -478,7 +478,7 @@ No Content - 성공적으로 삭제됨
       channelId: string | null;
       roomId: string | null;
       crawlerId: string;
-      updatedAt: string; // ISO format
+      updatedAt: string | null; // ISO format, if isLastOnlineHidden is true then null
     };
   }[];
   status: 200;
