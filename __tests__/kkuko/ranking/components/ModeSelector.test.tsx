@@ -1,13 +1,13 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { ModeSelector } from '@/app/kkuko/ranking/components/ModeSelector';
 import { Mode } from '@/app/types/kkuko.types';
 
 describe('ModeSelector', () => {
     const mockModes: Mode[] = [
-        { id: 'kor1', name: 'Korean Mode 1', group: 'kor', category: 'kor' },
-        { id: 'eng1', name: 'English Mode 1', group: 'eng', category: 'eng' },
-        { id: 'event1', name: 'Event Mode 1', group: 'event', category: 'event' },
+        { modeId: 'kor1', modeName: 'Korean Mode 1', group: 'kor' },
+        { modeId: 'eng1', modeName: 'English Mode 1', group: 'eng' },
+        { modeId: 'event1', modeName: 'Event Mode 1', group: 'event' },
     ];
     const mockOnModeChange = jest.fn();
 
