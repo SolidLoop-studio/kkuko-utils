@@ -51,7 +51,7 @@ export default function NoticeModal({ open, onClose, notice }: NoticeModalProps)
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="max-w-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
+            <DialogContent className="max-w-md max-h-[80vh] overflow-hidden bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
                 <DialogHeader className="space-y-3">
                     <div className="flex items-center gap-2">
                         <Info className="w-5 h-5 text-blue-500" />
@@ -87,8 +87,10 @@ export default function NoticeModal({ open, onClose, notice }: NoticeModalProps)
                     )}
 
                     {/* 공지 내용 */}
-                    <div className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
-                        <MarkdownViewer content={notice.body} />
+                    <div className="prose prose-sm dark:prose-invert text-sm text-gray-600 dark:text-gray-300 leading-relaxed max-w-none">
+                        <div className="max-h-[54vh] overflow-y-auto pr-2">
+                            <MarkdownViewer content={notice.body} />
+                        </div>
                     </div>
 
                     {/* 다음에 미표시 체크박스 */}
