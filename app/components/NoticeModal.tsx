@@ -6,6 +6,7 @@ import { Checkbox } from "@/app/components/ui/checkbox";
 import { useState } from "react";
 import { Info } from "lucide-react";
 import Image from "next/image";
+import MarkdownViewer from "./MarkdownViewer";
 
 interface NoticeData {
     id: number;
@@ -87,7 +88,7 @@ export default function NoticeModal({ open, onClose, notice }: NoticeModalProps)
 
                     {/* 공지 내용 */}
                     <div className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
-                        {notice.body}
+                        <MarkdownViewer content={notice.body} />
                     </div>
 
                     {/* 다음에 미표시 체크박스 */}
