@@ -39,7 +39,7 @@ describe('ItemModal', () => {
         expect(screen.getByText('장착 아이템 목록')).toBeInTheDocument();
         expect(screen.getByText('Cool Hat')).toBeInTheDocument();
         expect(screen.getByText('score:')).toBeInTheDocument();
-        expect(screen.getByText('+10000')).toBeInTheDocument();
+        expect(screen.getByText('+10')).toBeInTheDocument();
     });
 
     it('should call onClose when close button is clicked', () => {

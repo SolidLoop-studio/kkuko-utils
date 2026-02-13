@@ -63,9 +63,9 @@ describe('profileHelper', () => {
     });
 
     describe('formatNumber', () => {
-        it('should divide by 1000 and return string', () => {
-             expect(formatNumber(1500)).toBe('1.5');
-             expect(formatNumber(10000)).toBe('10');
+        it('should return string', () => {
+             expect(formatNumber(0.014999999)).toBe('0.015');
+             expect(formatNumber(0.12)).toBe('0.12');
         });
     });
 
@@ -76,9 +76,9 @@ describe('profileHelper', () => {
                 { id: '2', name: 'Item2', description: '', group: '', options: { str: 3 }, updatedAt: 1 }
             ];
             const result = calculateTotalOptions(items);
-            // 1 * 1000 + 3 * 1000 = 4000
-            expect(result['str']).toBe(4000);
-            expect(result['dex']).toBe(2000);
+            // 1 * 1 + 3 * 1 = 4
+            expect(result['str']).toBe(4);
+            expect(result['dex']).toBe(2);
         });
 
         it('should handle special options', () => {
@@ -95,7 +95,7 @@ describe('profileHelper', () => {
             ];
             const result = calculateTotalOptions(items);
             // Should use 'after'
-            expect(result['str']).toBe(5000);
+            expect(result['str']).toBe(5);
         });
         
          it('should handle special options (before)', () => {
@@ -112,7 +112,7 @@ describe('profileHelper', () => {
             ];
             const result = calculateTotalOptions(items);
             // Should use 'before'
-            expect(result['str']).toBe(1000);
+            expect(result['str']).toBe(1);
         });
     });
 
