@@ -17,7 +17,7 @@ export default function ItemModal({ itemsData, profileData, onClose }: ItemModal
         const itemOptionUI = (key: string, value: number) => (
             <div key={key} className="bg-gray-50 dark:bg-gray-700 rounded px-3 py-2">
                 <span className="text-sm text-gray-600 dark:text-gray-400">{getOptionName(key)}: </span>
-                <span className="font-semibold text-gray-900 dark:text-gray-100">{value > 0 ? '+' : ''}{formatNumber(value * (key[0] === 'g' ? 100000 : 1000))}{key[0] === 'g' ? '%p' : ''}</span>
+                <span className="font-semibold text-gray-900 dark:text-gray-100">{value > 0 ? '+' : ''}{formatNumber(value * (key[0] === 'g' ? 100 : 1))}{key[0] === 'g' ? '%p' : ''}</span>
             </div>
         )
 
@@ -71,7 +71,7 @@ export default function ItemModal({ itemsData, profileData, onClose }: ItemModal
                         const imageGroup = getImageGroup();
 
                         return (
-                            <div key={item.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                            <div key={`${item.id}::${equipment?.slot}`} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                                 <div className="flex gap-4">
                                     {/* Item Image */}
                                     {imageGroup && (

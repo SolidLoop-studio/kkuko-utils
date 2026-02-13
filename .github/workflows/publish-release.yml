@@ -7,8 +7,8 @@ on:
 
 jobs:
   publish:
-    # 커밋 메시지가 버전 범핑 포맷([skip ci] - (v...)) 일 때만 실행
-    if: "contains(github.event.head_commit.message, '[skip ci] - (v')"
+    # 커밋 메시지가 버전 범핑 포맷([skip deploy] - (v...)) 일 때만 실행
+    if: "contains(github.event.head_commit.message, '[skip deploy] - (v')"
     runs-on: ubuntu-latest
     permissions:
       contents: write
