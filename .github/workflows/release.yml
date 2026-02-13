@@ -12,7 +12,7 @@ permissions:
 jobs:
   # Job 1: 변경사항 감지 및 PR 생성
   prepare-release:
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    if: "!contains(github.event.head_commit.message, '[skip deploy]')"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code

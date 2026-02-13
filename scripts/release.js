@@ -28,12 +28,12 @@ async function run() {
 
     console.log(`ℹ️ Current Version: v${currentVersion}`);
 
-    // 2. [skip ci] 체크 (PR 모드일 때만)
+    // 2. [skip deploy] 체크 (PR 모드일 때만)
     if (!isReleaseMode) {
       const log = await git.log({ maxCount: 1 });
       const lastCommitMsg = log.latest.message;
-      if (lastCommitMsg.includes('[skip ci]')) {
-        console.log('🛑 Last commit contains [skip ci]. Exiting...');
+      if (lastCommitMsg.includes('[skip ci]') || lastCommitMsg.includes('[skip deploy]')) {
+        console.log('🛑 Last commit contains [skip deploy]. Exiting...');
         return;
       }
     }
@@ -158,7 +158,7 @@ async function run() {
     // 8. Git 커밋 및 PR 생성
     if (!isDryRun) {
       const branchName = `release/${nextVersion}`;
-      const commitMessage = `[skip ci] - (${nextVersion})`;
+      const commitMessage = `[skip deploy] - (${nextVersion})`;
 
       // Git 설정
       await git.addConfig('user.name', 'github-actions[bot]');
