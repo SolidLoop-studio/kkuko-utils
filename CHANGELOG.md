@@ -1,3 +1,9 @@
+# [v1.6.2](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.6.1...v1.6.2) - 2026-02-13
+
+## fix
+- ([1935fba](https://github.com/SolidLoop-studio/kkuko-utils/commit/1935fba)) - 분당 옵션 계산 오류 수정
+- ([c176818](https://github.com/SolidLoop-studio/kkuko-utils/commit/c176818)) - 부동소수점 오류 수정
+
 # [v1.6.1](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.6.0...v1.6.1) - 2026-02-12
 
 ## fix
