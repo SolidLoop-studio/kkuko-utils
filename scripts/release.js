@@ -95,12 +95,15 @@ async function run() {
 
     // 6. 체인지로그 내용 생성
     const date = new Date().toISOString().split('T')[0];
-    let header = `# [${nextVersion}] - ${date}`;
+    const versionHeader = isReleaseMode ? `v${currentVersion}` : nextVersion;
+    let header = `# [${versionHeader}] - ${date}`;
     
     // Repo URL이 있으면 비교 링크 생성
     if (config.repoUrl) {
-      const prevVersionTag = `v${currentVersion}`;
-      header = `# [${nextVersion}](${config.repoUrl}/compare/${prevVersionTag}...${nextVersion}) - ${date}`;
+      // 릴리즈 모드일 때는 이전 태그와 현재 버전 비교 필요 (구현 생략 - 단순화)
+       // PR 모드일 때는 현재 버전(old) .. 다음 버전(new)
+      const prevVersionTag = isReleaseMode ? '...' : `v${currentVersion}`; 
+      header = `# [${versionHeader}](${config.repoUrl}/compare/${prevVersionTag}...${versionHeader}) - ${date}`;
     }
 
     let changelogBody = `${header}\n\n`;
@@ -130,7 +133,8 @@ async function run() {
     // --- 실행 분기: Release Mode (GitHub Release 등록) vs Normal Mode (PR 생성) ---
 
     if (isReleaseMode) {
-      await createGitHubRelease(currentVersion, changelogBody, isDryRun);
+      // 릴리즈 모드에서는 이미 버전이 업데이트 된 상태이므로 currentVersion을 사용
+      await createGitHubRelease(`v${currentVersion}`, changelogBody, isReleaseMode && isDryRun);
       return;
     }
 
