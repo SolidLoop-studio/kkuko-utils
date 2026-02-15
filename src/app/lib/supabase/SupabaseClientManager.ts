@@ -600,7 +600,7 @@ class GetManager implements IGetManager {
         const { data: letterData, error: letterError } = await this.letterCountInfo();
         if (letterError) return { data: null, error: letterError };
 
-        let result: { data: { word: string, nextWordCount: number }[], error: null } | { data: null; error: PostgrestError } = { data: [], error: null };
+        const result: { data: { word: string, nextWordCount: number }[], error: null } | { data: null; error: PostgrestError } = { data: [], error: null };
 
         switch (input.mode) {
             case 'kor-start': {
