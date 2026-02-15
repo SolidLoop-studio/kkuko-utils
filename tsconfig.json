@@ -20,11 +20,11 @@
     ],
     "paths": {
       "@/*": ["./*"],
-      "@/types/*": ["./app/types/*"],
-      "@/components/*": ["./app/components/*"],
-      "@/lib/*": ["./app/lib/*"],
+      "@/types/*": ["./src/app/types/*"],
+      "@/components/*": ["./src/app/components/*"],
+      "@/lib/*": ["./src/app/lib/*"],
     },
-    "typeRoots": ["./node_modules/@types", "./app/types"]
+    "typeRoots": ["./node_modules/@types", "src/app/types"]
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]

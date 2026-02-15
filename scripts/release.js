@@ -130,7 +130,7 @@ async function run() {
     // --- 실행 분기: Release Mode (GitHub Release 등록) vs Normal Mode (PR 생성) ---
 
     if (isReleaseMode) {
-      await createGitHubRelease(nextVersion, changelogBody, isDryRun);
+      await createGitHubRelease(currentVersion, changelogBody, isDryRun);
       return;
     }
 
