@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { Database } from './app/types/database.types';
+import { Database } from './src/app/types/database.types';
 
 export async function middleware(request: NextRequest) {
     const isProtectedRoute = request.nextUrl.pathname.startsWith('/admin')
