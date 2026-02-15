@@ -1,3 +1,8 @@
+# [v1.6.3](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.6.2...v1.6.3) - 2026-02-15
+
+## fix
+- ([f1fab4a](https://github.com/SolidLoop-studio/kkuko-utils/commit/f1fab4a)) - 두음법칙이 적용되지 않는 버그 수정
+
 # [v1.6.2](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.6.1...v1.6.2) - 2026-02-13
 
 ## fix
