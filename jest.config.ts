@@ -9,7 +9,7 @@ const customJestConfig = {
   testEnvironment: 'jest-environment-jsdom',
   testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/'],
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/$1',
+    '^@/(.*)$': '<rootDir>/src/$1',
   },
   transform: {
     '^.+\\.(ts|tsx)$': 'babel-jest',
@@ -18,10 +18,10 @@ const customJestConfig = {
     'node_modules/(?!(lucide-react)/)', // lucide-react는 변환 예외
   ],
   collectCoverageFrom: [
-    'app/**/*.{js,jsx,ts,tsx}',
-    '!app/**/_*.{js,jsx,ts,tsx}',
-    '!app/**/layout.{js,jsx,ts,tsx}',
-    '!app/**/page.{js,jsx,ts,tsx}',
+    'src/app/**/*.{js,jsx,ts,tsx}',
+    '!src/app/**/_*.{js,jsx,ts,tsx}',
+    '!src/app/**/layout.{js,jsx,ts,tsx}',
+    '!src/app/**/page.{js,jsx,ts,tsx}',
     '!**/*.d.ts',
     '!**/node_modules/**',
   ],
