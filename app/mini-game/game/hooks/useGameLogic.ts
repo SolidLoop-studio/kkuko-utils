@@ -349,7 +349,7 @@ export const useGameLogic = () => {
             return;
         }
 
-        if (input.startsWith(currentChar)) {
+        if (gameManager.isValidWord(input)) {
             try { soundManager.stop('fail'); } catch (e) { console.error(e); }
             if (failTimeoutRef.current) {
                 clearTimeout(failTimeoutRef.current);
