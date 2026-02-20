@@ -176,7 +176,7 @@ API 서버 로그를 조회합니다.
 
 ---
 
-### GET /admin/item/items/group/:group
+#### GET /admin/item/items/group/:group
 
 특정 그룹의 아이템 목록을 조회합니다.
 
@@ -212,7 +212,7 @@ API 서버 로그를 조회합니다.
 
 ---
 
-### GET /admin/item/items/name/:name
+#### GET /admin/item/items/name/:name
 
 특정 이름을 포함하는 아이템 목록을 조회합니다.
 
@@ -249,7 +249,7 @@ API 서버 로그를 조회합니다.
 
 ---
 
-### POST /admin/item
+#### POST /admin/item
 
 아이템을 추가합니다.
 
@@ -288,7 +288,7 @@ Response (201)
 
 ---
 
-### PUT /admin/item/:id
+#### PUT /admin/item/:id
 
 아이템 정보를 수정합니다.
 
@@ -330,7 +330,7 @@ Response (201)
 
 ---
 
-### DELETE /admin/item/:id
+#### DELETE /admin/item/:id
 
 아이템을 삭제합니다.
 
@@ -343,6 +343,71 @@ Response (201)
 **Response (204)**
 No Content - 성공적으로 삭제됨
 
+---
+### User (Admin)
+
+#### GET /admin/user/users
+등록된 사용자 목록을 조회합니다.
+
+**Query Parameters**
+| Name  | Type   | Description      |
+| ----- | ------ | ---------------- |
+| page  | number | 페이지 번호       |
+
+**Response**
+
+```ts
+{
+  items: {
+    id: string;
+    nickname: string;
+    exp: number;
+    observedAt: string; // ISO format
+    exordial: string;
+    level: number;
+    isPublic: boolean;
+    isLastOnlineHidden: boolean;
+  }[];
+  totalCount: number;
+  currentPage: number;
+  totalPages: number;
+}
+```
+
+---
+#### PUT /admin/user/public-status/:id
+특정 사용자의 공개 상태를 수정합니다.
+
+**Path Parameter**
+| Name | Type   | Description |
+| ---- | ------ | ----------- |
+| id   | string | 사용자 ID    |
+
+**Request Body**
+| Field        | Type   | Description     |
+| ------------ | ------ | --------------- |
+| isPublic     | boolean| 공개 여부       |
+
+```ts
+{
+  isPublic: boolean;
+}
+```
+
+**Response (200)**
+
+```ts
+{
+  id: string;
+  nickname: string;
+  exp: number;
+  observedAt: string; // ISO format
+  exordial: string;
+  level: number;
+  isPublic: boolean;
+  isLastOnlineHidden: boolean;
+}
+```
 
 ---
 
