@@ -2,7 +2,7 @@ import React from 'react';
 import { ItemInfo, ProfileData, isSpecialOptions, ItemOption, SpecialOptions } from '@/src/app/types/kkuko.types';
 import TryRenderImg from '../../shared/components/TryRenderImg'
 import { getSlotName, extractColorFromLabel, parseDescription, getOptionName, formatNumber } from '../utils/profileHelper';
-import { NICKNAME_COLORS } from '../../shared/lib/const';
+import { NICKNAME_COLORS, OPTION_NAMES } from '../../shared/lib/const';
 
 interface ItemModalProps {
     itemsData: ItemInfo[];
@@ -23,11 +23,11 @@ export default function ItemModal({ itemsData, profileData, onClose }: ItemModal
 
         if (isSpecialOptions(options)) {
             const relevantOptions = Date.now() >= options.date ? options.after : options.before;
-            return Object.entries(relevantOptions).filter(([_, v]) => v !== undefined && typeof v === 'number').map(([k, v]) =>
+            return Object.entries(relevantOptions).filter(([k, v]) => k in OPTION_NAMES && v !== undefined && typeof v === 'number').map(([k, v]) =>
                 itemOptionUI(k, v as number)
             );
         } else {
-            return Object.entries(options).filter(([_, v]) => v !== undefined && typeof v === 'number').map(([k, v]) =>
+            return Object.entries(options).filter(([k, v]) => k in OPTION_NAMES && v !== undefined && typeof v === 'number').map(([k, v]) =>
                 itemOptionUI(k, v as number)
             );
         }

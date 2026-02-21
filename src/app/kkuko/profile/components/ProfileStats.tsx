@@ -1,6 +1,7 @@
 import React from 'react';
 import { ItemInfo } from '@/src/app/types/kkuko.types';
 import { calculateTotalOptions, getOptionName, formatNumber } from '../utils/profileHelper';
+import { OPTION_NAMES } from '../../shared/lib/const';
 
 interface ProfileStatsProps {
     itemsData: ItemInfo[];
@@ -23,7 +24,7 @@ export default function ProfileStats({ itemsData, onShowDetail }: ProfileStatsPr
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {Object.entries(totalOptions).map(([key, value]) => (
+                {Object.entries(totalOptions).filter(([key]) => key in OPTION_NAMES).map(([key, value]) => (
                     <div key={key} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
                         <p className="text-sm text-gray-500 dark:text-gray-400">{getOptionName(key)}</p>
                         <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{value > 0 ? '+' : ''}{formatNumber(value)}{key[0] === 'g' ? '%p' : ''}</p>
