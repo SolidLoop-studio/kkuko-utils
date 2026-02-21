@@ -470,6 +470,43 @@ No Content - 성공적으로 삭제됨
 
 ---
 
+#### PUT /admin/user/last-online-hidden/:id
+
+특정 사용자의 마지막 온라인 숨김 상태를 수정합니다.
+
+**Path Parameter**
+| Name | Type   | Description |
+| ---- | ------ | ----------- |
+| id   | string | 사용자 ID    |
+
+**Request Body**
+| Field              | Type   | Description     |
+| ------------------ | ------ | --------------- |
+| isLastOnlineHidden | boolean| 마지막 온라인 숨김 여부 |
+
+```ts
+{
+  isLastOnlineHidden: boolean;
+}
+```
+
+**Response (200)**
+
+```ts
+{
+  id: string;
+  nickname: string;
+  exp: number;
+  observedAt: string; // ISO format
+  exordial: string;
+  level: number;
+  isPublic: boolean;
+  isLastOnlineHidden: boolean;
+}
+```
+
+---
+
 ## User API
 
 ### GET /profile/total

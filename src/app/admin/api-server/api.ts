@@ -170,6 +170,21 @@ export const searchItemsByGroup = async (group: string, page: number = 1): Promi
   return response.data;
 };
 
+export interface UpdateUserLastOnlineHiddenStatusRequest {
+  isLastOnlineHidden: boolean;
+}
+
+export const updateUserLastOnlineHiddenStatus = async (id: string, isLastOnlineHidden: boolean): Promise<User> => {
+  const headers = await getAuthHeaders();
+  const data: UpdateUserLastOnlineHiddenStatusRequest = { isLastOnlineHidden };
+  const response = await axios.put<User>(
+    `${BASE_URL}/admin/user/last-online-hidden/${id}`,
+    data,
+    { headers }
+  );
+  return response.data;
+};
+
 // Logs APIs
 const isGzip = (u8: Uint8Array) => u8 && u8.length >= 2 && u8[0] === 0x1f && u8[1] === 0x8b;
 

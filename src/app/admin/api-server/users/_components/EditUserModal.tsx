@@ -34,16 +34,18 @@ export default function EditUserModal({
     const title = readOnly ? 'View User' : 'Edit User'
 
     const [isPublic, setIsPublic] = useState(false)
+    const [isLastOnlineHidden, setIsLastOnlineHidden] = useState(false)
 
     useEffect(() => {
         if (open && user) {
             setIsPublic(user.isPublic)
+            setIsLastOnlineHidden(user.isLastOnlineHidden)
         }
     }, [open, user])
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        onSave({ isPublic })
+        onSave({ isPublic, isLastOnlineHidden })
     }
 
     if (!user) return null
@@ -93,6 +95,23 @@ export default function EditUserModal({
                             />
                             <Label htmlFor="isPublic">
                                 {isPublic ? 'Visible' : 'Hidden'}
+                            </Label>
+                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="isLastOnlineHidden" className="text-right">
+                            Last Online Hidden
+                        </Label>
+                        <div className="flex items-center space-x-2 col-span-3">
+                            <Checkbox
+                                id="isLastOnlineHidden"
+                                checked={isLastOnlineHidden}
+                                onCheckedChange={(checked) => setIsLastOnlineHidden(!!checked)}
+                                disabled={readOnly}
+                            />
+                            <Label htmlFor="isLastOnlineHidden">
+                                {isLastOnlineHidden ? 'Hidden' : 'Visible'}
                             </Label>
                         </div>
                     </div>

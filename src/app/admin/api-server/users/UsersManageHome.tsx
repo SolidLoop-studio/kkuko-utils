@@ -64,8 +64,14 @@ export default function UsersManageHome() {
     })
 
     const updateMutation = useMutation({
-        mutationFn: (vars: { id: string, input: UserInput }) => {
-            return API.updateUserPublicStatus(vars.id, vars.input.isPublic)
+        mutationFn: async (vars: { id: string, input: UserInput }) => {
+            // We call both endpoints.
+            // If one fails, the mutation fails.
+            // Ideally should check what changed, but calling both is safe if idempotent-like (setting value).
+            await API.updateUserPublicStatus(vars.id, vars.input.isPublic)
+            if (vars.input.isLastOnlineHidden !== undefined) {
+                 await API.updateUserLastOnlineHiddenStatus(vars.id, vars.input.isLastOnlineHidden)
+            }
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['users'] })
