@@ -375,6 +375,65 @@ No Content - 성공적으로 삭제됨
 ```
 
 ---
+
+#### GET /admin/user/users/id/:id
+특정 사용자 정보를 조회합니다.
+
+**Path Parameter**
+| Name | Type   | Description |
+| ---- | ------ | ----------- |
+| id   | string | 사용자 ID    |
+
+**Response (200)**
+
+```ts
+{
+  items: {
+    id: string;
+    nickname: string;
+    exp: number;
+    observedAt: string; // ISO format
+    exordial: string;
+    level: number;
+    isPublic: boolean;
+    isLastOnlineHidden: boolean;
+  }[];
+  totalCount: 1 | 0; // 1 if user exists, otherwise 0
+  currentPage: 1;
+  totalPages: 1;
+}
+```
+
+
+#### GET /admin/user/users/nickname/:nickname
+특정 닉네임을 포함하는 사용자 정보를 조회합니다.
+
+**Path Parameter**
+| Name  | Type   | Description   |
+| ----- | ------ | ------------- |
+| nickname | string | 사용자 닉네임 |
+
+**Response (200)**
+
+```ts
+{
+  items: {
+    id: string;
+    nickname: string;
+    exp: number;
+    observedAt: string; // ISO format
+    exordial: string;
+    level: number;
+    isPublic: boolean;
+    isLastOnlineHidden: boolean;
+  }[];
+  totalCount: number; // 닉네임을 포함하는 사용자 수
+  currentPage: number;
+  totalPages: number;
+}
+```
+
+---
 #### PUT /admin/user/public-status/:id
 특정 사용자의 공개 상태를 수정합니다.
 
