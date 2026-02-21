@@ -647,6 +647,24 @@ No Content - 성공적으로 삭제됨
 ```
 
 ---
+### GET /profile/force-refresh/:userId
+특정 유저의 프로필 정보를 강제 새로고침을 요청합니다.
+
+**Path Parameter**
+| Name   | Type   | Description |
+| ------ | ------ | ----------- |
+| userId | string | 사용자 ID    |
+
+**Response (200)**
+
+```ts
+{ 
+  message: "Profile refresh enqueued", 
+  status: 200 
+}
+```
+
+---
 
 ## Item API
 

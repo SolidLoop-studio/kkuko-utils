@@ -6,7 +6,8 @@ import {
     fetchProfile as fetchProfileApi,
     fetchProfileByNickname as fetchProfileByNicknameApi,
     fetchItems as fetchItemsApi,
-    fetchExpRank as fetchExpRankApi
+    fetchExpRank as fetchExpRankApi,
+    fetchForceRefresh as fetchForceRefreshApi
 } from '../../shared/lib/api';
 import { Equipment, Mode, ProfileData } from '@/src/app/types/kkuko.types';
 import { useRecentSearches } from './useRecentSearches';
@@ -209,6 +210,7 @@ export const useKkukoProfile = () => {
         recentSearches,
         fetchProfile,
         removeFromRecentSearches,
-        selectProfile: setSelectedProfile
+        selectProfile: setSelectedProfile,
+        requestForceRefresh: fetchForceRefreshApi
     };
 };

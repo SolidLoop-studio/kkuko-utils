@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
 import { ItemInfo, ProfileData } from '@/src/app/types/kkuko.types';
@@ -9,9 +11,17 @@ interface ProfileHeaderProps {
     profileData: ProfileData;
     itemsData: ItemInfo[];
     expRank: number | null;
+    isRefreshing: boolean;
+    onRefreshRequest: () => void;
 }
 
-export default function ProfileHeader({ profileData, itemsData, expRank }: ProfileHeaderProps) {
+export default function ProfileHeader({ 
+    profileData, 
+    itemsData, 
+    expRank, 
+    isRefreshing,
+    onRefreshRequest 
+}: ProfileHeaderProps) {
     const isDarkTheme = typeof window !== 'undefined' ? localStorage.getItem('theme') === 'dark' : false;
 
     const lvImgPlaceholder = () => (
@@ -89,7 +99,7 @@ export default function ProfileHeader({ profileData, itemsData, expRank }: Profi
                                 <div className="relative w-8 h-8 flex-shrink-0">
                                     <TryRenderImg
                                         placeholder={lvImgPlaceholder()}
-                                        url={`/api/kkuko/image?url=https://cdn.kkutu.co.kr/img/kkutu/lv/lv${String(profileData.user.level).padStart(4, '0')}.png`}
+                                        url={`https://api.solidloop-studio.xyz/kkuko/img?url=https://cdn.kkutu.co.kr/img/kkutu/lv/lv${String(profileData.user.level).padStart(4, '0')}.png`}
                                         alt="Level Icon"
                                         width={32}
                                         height={32}
@@ -136,7 +146,15 @@ export default function ProfileHeader({ profileData, itemsData, expRank }: Profi
                             </p>
                         </div>
                     </div>
-                    <div className="flex justify-end mt-1">
+                    <div className="flex justify-end mt-1 items-center gap-3">
+                        <button
+                            onClick={onRefreshRequest}
+                            disabled={isRefreshing}
+                            className={`text-xs ${isRefreshing ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : 'text-gray-400 dark:text-gray-500 hover:underline'}`}
+                        >
+                            {isRefreshing ? '갱신 요청 중...' : '정보 강제 갱신'}
+                        </button>
+                        <span className="text-xs text-gray-300 dark:text-gray-600">|</span>
                         <Link href="/notification/9" className="text-xs text-gray-400 dark:text-gray-500 hover:underline">
                             정보 비공개 요청
                         </Link>

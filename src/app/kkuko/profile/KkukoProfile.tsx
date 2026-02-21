@@ -11,6 +11,9 @@ import ProfileStats from './components/ProfileStats';
 import ProfileRecords from './components/ProfileRecords';
 import ItemModal from './components/ItemModal';
 import ErrorModal from '../../components/ErrModal';
+import CompleteModal from '../../components/CompleteModal';
+import FailModal from '../../components/FailModal';
+import ConfirmModal from '../../components/ConfirmModal';
 
 export default function KkukoProfile() {
     const searchParams = useSearchParams();
@@ -28,10 +31,41 @@ export default function KkukoProfile() {
         recentSearches,
         fetchProfile,
         removeFromRecentSearches,
-        selectProfile
+        selectProfile,
+        requestForceRefresh
     } = useKkukoProfile();
 
     const [showItemModal, setShowItemModal] = useState(false);
+    
+    // Modal state for force refresh
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [showCompleteModal, setShowCompleteModal] = useState(false);
+    const [showFailModal, setShowFailModal] = useState(false);
+    const [modalMessage, setModalMessage] = useState('');
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    const handleRefreshRequest = () => {
+        if (isRefreshing) return;
+        setShowConfirmModal(true);
+    };
+
+    const handleConfirmRefresh = async () => {
+        setShowConfirmModal(false);
+        setIsRefreshing(true);
+        if (!profileData?.user?.id) return;
+
+        try {
+            await requestForceRefresh(profileData.user.id);
+            setShowCompleteModal(true);
+        } catch (error: any) {
+            console.error('Refresh error:', error);
+            setModalMessage(error?.response?.data?.message || '알 수 없는 오류가 발생했습니다.');
+            setShowFailModal(true);
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
+
 
     // Handle URL query parameters to trigger fetch
     useEffect(() => {
@@ -139,6 +173,8 @@ export default function KkukoProfile() {
                         profileData={profileData}
                         itemsData={itemsData}
                         expRank={expRank}
+                        isRefreshing={isRefreshing}
+                        onRefreshRequest={handleRefreshRequest}
                     />
 
                     {/* Equipment Section */}
@@ -146,6 +182,7 @@ export default function KkukoProfile() {
                         itemsData={itemsData}
                         onShowDetail={() => setShowItemModal(true)}
                     />
+
 
                     {/* Records Section */}
                     <ProfileRecords 
@@ -172,12 +209,50 @@ export default function KkukoProfile() {
                 />
             )}
 
+            {/* Force Refresh Modals */}
+            <CompleteModal
+                open={showCompleteModal}
+                onClose={() => setShowCompleteModal(false)}
+                title="갱신 요청 완료"
+                description="갱신 요청이 완료되었습니다. 잠시 후 새로고침 해주세요."
+            />
+
+            <FailModal
+                open={showFailModal}
+                onClose={() => setShowFailModal(false)}
+                title="갱신 요청 실패"
+                description={modalMessage}
+            />
+
             {/* Warning Message */}
             <div className="mt-8 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
                 <p className="text-sm text-yellow-800 dark:text-yellow-300 text-center">
                     ⚠️ 해당 데이터는 비공식 API를 사용하여 만들었으며 데이터가 항상 최신이거나 정확하다고 할 수 없습니다. 참고용으로만 사용해주세요.
                 </p>
             </div>
+
+            {/* Force Refresh Modals */}
+            <ConfirmModal
+                open={showConfirmModal}
+                title="정보 강제 갱신"
+                description="정보를 강제로 갱신하시겠습니까? (약 1분 소요)"
+                onConfirm={handleConfirmRefresh}
+                onClose={() => setShowConfirmModal(false)}
+            />
+
+            <CompleteModal
+                open={showCompleteModal}
+                onClose={() => setShowCompleteModal(false)}
+                title="갱신 요청 완료"
+                description="갱신 요청이 완료되었습니다. 잠시 후 새로고침 해주세요."
+            />
+
+            <FailModal
+                open={showFailModal}
+                onClose={() => setShowFailModal(false)}
+                title="갱신 요청 실패"
+                description={modalMessage}
+            />
         </div>
     );
 }
