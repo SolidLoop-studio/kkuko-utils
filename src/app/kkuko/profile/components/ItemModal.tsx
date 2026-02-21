@@ -83,7 +83,7 @@ export default function ItemModal({ itemsData, profileData, onClose }: ItemModal
                                         <div className="relative w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
                                             <TryRenderImg
                                                 placeholder={itemImgPlaceholder()}
-                                                url={`https://api.solidloop-studio.xyz/kkuko/img?url=https://cdn.kkutu.co.kr/img/kkutu/moremi/${imageGroup}/${item.id}.png`}
+                                                url={`https://cdn.kkutu.co.kr/img/kkutu/moremi/${imageGroup}/${item.id}.png`}
                                                 alt={item.name}
                                                 width={80}
                                                 height={80}
