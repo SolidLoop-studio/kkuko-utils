@@ -1,3 +1,16 @@
+# [v1.7.0](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.6.3...v1.7.0) - 2026-02-21
+
+## fix
+- ([23391d8](https://github.com/SolidLoop-studio/kkuko-utils/commit/23391d8)) - 값이 문자열로된 옵션 처리 추가
+- ([bd59a6c](https://github.com/SolidLoop-studio/kkuko-utils/commit/bd59a6c)) - 알려진 옵션만 표시
+- ([b634676](https://github.com/SolidLoop-studio/kkuko-utils/commit/b634676)) - 이미지 패칭 url 수정
+- ([f1fab4a](https://github.com/SolidLoop-studio/kkuko-utils/commit/f1fab4a)) - 두음법칙이 적용되지 않는 버그 수정
+
+## feat
+- ([4f4e551](https://github.com/SolidLoop-studio/kkuko-utils/commit/4f4e551)) - 정보 강제 갱신 요청 버튼 추가
+- ([9129dbd](https://github.com/SolidLoop-studio/kkuko-utils/commit/9129dbd)) - user관리에서 isLastOnlineHidden도 수정 가능
+- ([451a6f5](https://github.com/SolidLoop-studio/kkuko-utils/commit/451a6f5)) - 유저 관리 추가
+
 # [v1.6.3](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.6.2...v1.6.3) - 2026-02-15
 
 ## fix
