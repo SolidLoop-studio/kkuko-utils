@@ -2,18 +2,17 @@
 
 import React, { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Plus, Search } from 'lucide-react'
+import { ArrowLeft, Search } from 'lucide-react'
+import Link from 'next/link'
 import axios, { AxiosError } from 'axios'
 
 import { Button } from '@/src/app/components/ui/button'
 import { Input } from '@/src/app/components/ui/input'
-import ConfirmModal from '@/src/app/components/ConfirmModal'
-import ItemsTable from './_components/ItemsTable'
-import EditItemModal from './_components/EditItemModal'
-import { Item, ItemInput } from './_components/types'
+import UsersTable from './_components/UsersTable'
+import EditUserModal from './_components/EditUserModal'
+import { User, UserInput } from './_components/types'
 import { ErrorMessage } from '@/src/app/types/type'
 import ErrorModal from '@/src/app/components/ErrModal'
-
 import {
   Select,
   SelectContent,
@@ -23,20 +22,18 @@ import {
 } from "@/src/app/components/ui/select"
 
 import * as API from '../api'
-import Link from 'next/link'
 
-export default function ItemsManageHome() {
+export default function UsersManageHome() {
     const queryClient = useQueryClient()
     const [page, setPage] = useState(1)
     const [searchTerm, setSearchTerm] = useState('')
-    const [searchType, setSearchType] = useState('name')
     const [debouncedSearch, setDebouncedSearch] = useState('')
+    // Although currently only nickname search is implemented, keeping structure flexible
+    const [searchType, setSearchType] = useState('nickname') 
 
     // Modal states
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-    const [isConfirmOpen, setIsConfirmOpen] = useState(false)
-    const [editingItem, setEditingItem] = useState<Item | null>(null)
-    const [deletingItem, setDeletingItem] = useState<Item | null>(null)
+    const [editingUser, setEditingUser] = useState<User | null>(null)
     const [isReadOnly, setIsReadOnly] = useState(false)
     
     // Error state
@@ -51,47 +48,28 @@ export default function ItemsManageHome() {
         return () => clearTimeout(timer)
     }, [searchTerm])
 
-    const fetchItemsFn = async () => {
+    const fetchUsersFn = async () => {
         if (debouncedSearch) {
-            if (searchType === 'group') {
-                return API.searchItemsByGroup(debouncedSearch, page)
+            if (searchType === 'id') {
+                return API.fetchUserById(debouncedSearch)
             }
-            return API.searchItems(debouncedSearch, page)
+            return API.searchUsersByNickname(debouncedSearch)
         }
-        return API.fetchItems(page)
+        return API.fetchUsers(page)
     }
 
     const { data, isLoading, isError, error: queryError } = useQuery({
-        queryKey: ['items', page, debouncedSearch, searchType],
-        queryFn: fetchItemsFn,
-    })
-
-    const createMutation = useMutation({
-        mutationFn: (newItem: ItemInput) => API.createItem(newItem),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['items'] })
-            setIsEditModalOpen(false)
-        },
-        onError: (err) => handleError(err),
+        queryKey: ['users', page, debouncedSearch, searchType],
+        queryFn: fetchUsersFn,
     })
 
     const updateMutation = useMutation({
-        mutationFn: (updatedItem: ItemInput) => {
-            const { id, ...rest } = updatedItem
-            return API.updateItem(id, rest)
+        mutationFn: (vars: { id: string, input: UserInput }) => {
+            return API.updateUserPublicStatus(vars.id, vars.input.isPublic)
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['items'] })
+            queryClient.invalidateQueries({ queryKey: ['users'] })
             setIsEditModalOpen(false)
-        },
-        onError: (err) => handleError(err),
-    })
-
-    const deleteMutation = useMutation({
-        mutationFn: (id: string) => API.deleteItem(id),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['items'] })
-            setIsConfirmOpen(false)
         },
         onError: (err) => handleError(err),
     })
@@ -106,45 +84,26 @@ export default function ItemsManageHome() {
             ErrStackRace: errorObj.stack,
             HTTPStatus: axiosError?.response?.status,
             HTTPData: JSON.stringify(axiosError?.response?.data),
-            inputValue: JSON.stringify(editingItem || deletingItem),
+            inputValue: JSON.stringify(editingUser),
         }
         setError(errMsg)
     }
 
-    const handleEdit = (item: Item) => {
-        setEditingItem(item)
+    const handleEdit = (user: User) => {
+        setEditingUser(user)
         setIsReadOnly(false)
         setIsEditModalOpen(true)
     }
 
-    const handleCreate = () => {
-        setEditingItem(null)
-        setIsReadOnly(false)
-        setIsEditModalOpen(true)
-    }
-
-    const handleRowClick = (item: Item) => {
-        setEditingItem(item)
+    const handleRowClick = (user: User) => {
+        setEditingUser(user)
         setIsReadOnly(true)
         setIsEditModalOpen(true)
     }
 
-    const handleDeleteClick = (item: Item) => {
-        setDeletingItem(item)
-        setIsConfirmOpen(true)
-    }
-
-    const handleSave = (itemInput: ItemInput) => {
-        if (editingItem) {
-            updateMutation.mutate(itemInput)
-        } else {
-            createMutation.mutate(itemInput)
-        }
-    }
-
-    const handleConfirmDelete = () => {
-        if (deletingItem) {
-            deleteMutation.mutate(deletingItem.id)
+    const handleSave = (userInput: UserInput) => {
+        if (editingUser) {
+            updateMutation.mutate({ id: editingUser.id, input: userInput })
         }
     }
 
@@ -155,13 +114,6 @@ export default function ItemsManageHome() {
         }
     }, [isError, queryError])
     
-    // When searchType changes, refetch if there is a search term
-    useEffect(() => {
-        if (debouncedSearch) {
-             queryClient.invalidateQueries({ queryKey: ['items'] })
-        }
-    }, [searchType, queryClient, debouncedSearch])
-
     return (
         <div className="container mx-auto py-10 space-y-6 min-h-[calc(100vh-200px)]">
             <Link href={'/admin/api-server'} className="mb-4 flex outline-none">
@@ -171,10 +123,7 @@ export default function ItemsManageHome() {
                 </Button>
             </Link>
             <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold">Item Management</h1>
-                <Button onClick={handleCreate} className="gap-2">
-                    <Plus className="h-4 w-4" /> Add Item
-                </Button>
+                <h1 className="text-3xl font-bold">User Management</h1>
             </div>
 
             <div className="flex items-center space-x-2 w-full max-w-lg">
@@ -183,8 +132,8 @@ export default function ItemsManageHome() {
                         <SelectValue placeholder="Search by" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="name">Name</SelectItem>
-                        <SelectItem value="group">Group</SelectItem>
+                        <SelectItem value="nickname">Nickname</SelectItem>
+                        <SelectItem value="id">ID</SelectItem>
                     </SelectContent>
                 </Select>
                 <div className="relative flex-1">
@@ -198,11 +147,10 @@ export default function ItemsManageHome() {
                 </div>
             </div>
 
-            <ItemsTable
+            <UsersTable
                 items={data?.items || []}
                 isLoading={isLoading}
                 onEdit={handleEdit}
-                onDelete={handleDeleteClick}
                 onRowClick={handleRowClick}
             />
 
@@ -231,21 +179,13 @@ export default function ItemsManageHome() {
                 </div>
             )}
 
-            <EditItemModal
+            <EditUserModal
                 open={isEditModalOpen}
                 onOpenChange={setIsEditModalOpen}
-                item={editingItem}
+                user={editingUser}
                 onSave={handleSave}
-                isSaving={createMutation.isPending || updateMutation.isPending}
+                isSaving={updateMutation.isPending}
                 readOnly={isReadOnly}
-            />
-
-            <ConfirmModal
-                open={isConfirmOpen}
-                onClose={() => setIsConfirmOpen(false)}
-                onConfirm={handleConfirmDelete}
-                title="Delete Item"
-                description={`Are you sure you want to delete item "${deletingItem?.name}"? This action cannot be undone.`}
             />
 
             {error && (
