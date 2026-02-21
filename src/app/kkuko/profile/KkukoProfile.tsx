@@ -57,9 +57,9 @@ export default function KkukoProfile() {
         try {
             await requestForceRefresh(profileData.user.id);
             setShowCompleteModal(true);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Refresh error:', error);
-            setModalMessage(error?.response?.data?.message || '알 수 없는 오류가 발생했습니다.');
+            setModalMessage('알 수 없는 오류가 발생했습니다.');
             setShowFailModal(true);
         } finally {
             setIsRefreshing(false);

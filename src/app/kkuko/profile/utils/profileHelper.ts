@@ -44,7 +44,7 @@ export const calculateTotalOptions = (itemsData: ItemInfo[]) => {
     const totals: Record<string, number> = {};
 
     itemsData.forEach(item => {
-        const processOptions = (options: Record<string, any>) => {
+        const processOptions = (options: Record<string, number | string | undefined>) => {
             Object.entries(options).forEach(([key, value]) => {
                 if (key in OPTION_NAMES && value !== undefined && value !== null) {
                     const numValue = Number(value);

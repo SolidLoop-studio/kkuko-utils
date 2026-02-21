@@ -54,7 +54,7 @@ export default function ProfileHeader({
                                             <div className="relative w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center overflow-hidden">
                                                 <TryRenderImg
                                                     placeholder={<div className="w-10 h-10" />}
-                                                    url={`/api/kkuko/image?url=https://cdn.kkutu.co.kr/img/kkutu/moremi/badge/${item.id}.png`}
+                                                    url={`https://api.solidloop-studio.xyz/kkuko/image?url=https://cdn.kkutu.co.kr/img/kkutu/moremi/badge/${item.id}.png`}
                                                     alt={item.name}
                                                     width={40}
                                                     height={40}

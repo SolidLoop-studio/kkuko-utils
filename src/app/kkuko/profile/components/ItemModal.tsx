@@ -21,7 +21,7 @@ export default function ItemModal({ itemsData, profileData, onClose }: ItemModal
             </div>
         )
 
-        const filterAndMapOptions = (opts: Record<string, any>) => {
+        const filterAndMapOptions = (opts: Record<string, number | string | undefined>) => {
             return Object.entries(opts)
                 .filter(([k, v]) => {
                     if (!(k in OPTION_NAMES) || v === undefined || v === null) return false;
@@ -83,7 +83,7 @@ export default function ItemModal({ itemsData, profileData, onClose }: ItemModal
                                         <div className="relative w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
                                             <TryRenderImg
                                                 placeholder={itemImgPlaceholder()}
-                                                url={`/api/kkuko/image?url=https://cdn.kkutu.co.kr/img/kkutu/moremi/${imageGroup}/${item.id}.png`}
+                                                url={`https://api.solidloop-studio.xyz/kkuko/image?url=https://cdn.kkutu.co.kr/img/kkutu/moremi/${imageGroup}/${item.id}.png`}
                                                 alt={item.name}
                                                 width={80}
                                                 height={80}
