@@ -8,7 +8,10 @@ import type {
   ItemsResponse,
   Item,
   CreateItemRequest,
-  UpdateItemRequest
+  UpdateItemRequest,
+  UsersResponse,
+  User,
+  UpdateUserPublicStatusRequest
 } from './types';
 import { SCM } from '@/src/app/lib/supabaseClient';
 import zlib from 'zlib';
@@ -99,6 +102,50 @@ export const deleteItem = async (id: string): Promise<void> => {
   );
 };
 
+// User APIs
+export const fetchUsers = async (page: number = 1): Promise<UsersResponse> => {
+  const headers = await getAuthHeaders();
+  const response = await axios.get<UsersResponse>(
+    `${BASE_URL}/admin/user/users`,
+    { 
+      headers,
+      params: { page }
+    }
+  );
+  return response.data;
+};
+
+export const fetchUserById = async (id: string): Promise<UsersResponse> => {
+  const headers = await getAuthHeaders();
+  const response = await axios.get<UsersResponse>(
+    `${BASE_URL}/admin/user/users/id/${id}`,
+    { headers }
+  );
+  return response.data;
+};
+
+
+export const searchUsersByNickname = async (nickname: string): Promise<UsersResponse> => {
+  const headers = await getAuthHeaders();
+  const response = await axios.get<UsersResponse>(
+    `${BASE_URL}/admin/user/users/nickname/${encodeURIComponent(nickname)}`,
+    { headers }
+  );
+  return response.data;
+};
+
+export const updateUserPublicStatus = async (id: string, isPublic: boolean): Promise<User> => {
+  const headers = await getAuthHeaders();
+  const data: UpdateUserPublicStatusRequest = { isPublic };
+  const response = await axios.put<User>(
+    `${BASE_URL}/admin/user/public-status/${id}`,
+    data,
+    { headers }
+  );
+  return response.data;
+};
+
+
 export const searchItems = async (name: string, page: number = 1): Promise<ItemsResponse> => {
   const headers = await getAuthHeaders();
   const response = await axios.get<ItemsResponse>(
@@ -119,6 +166,21 @@ export const searchItemsByGroup = async (group: string, page: number = 1): Promi
       headers,
       params: { page }
     }
+  );
+  return response.data;
+};
+
+export interface UpdateUserLastOnlineHiddenStatusRequest {
+  isLastOnlineHidden: boolean;
+}
+
+export const updateUserLastOnlineHiddenStatus = async (id: string, isLastOnlineHidden: boolean): Promise<User> => {
+  const headers = await getAuthHeaders();
+  const data: UpdateUserLastOnlineHiddenStatusRequest = { isLastOnlineHidden };
+  const response = await axios.put<User>(
+    `${BASE_URL}/admin/user/last-online-hidden/${id}`,
+    data,
+    { headers }
   );
   return response.data;
 };

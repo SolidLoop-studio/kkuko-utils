@@ -17,6 +17,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/img/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'api.solidloop-studio.xyz',
+        port: '',
+        pathname: '/kkuko/**',
+      }
     ],
     localPatterns: [
       {

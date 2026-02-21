@@ -45,6 +45,10 @@ export async function fetchExpRank(userId: string) {
     });
 }
 
+export async function fetchForceRefresh(userId: string) {
+    return await client.get(`/profile/force-refresh/${userId}`);
+}
+
 export async function fetchRanking(
     mode: string, 
     page: number = 1, 

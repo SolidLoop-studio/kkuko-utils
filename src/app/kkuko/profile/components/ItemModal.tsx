@@ -2,7 +2,7 @@ import React from 'react';
 import { ItemInfo, ProfileData, isSpecialOptions, ItemOption, SpecialOptions } from '@/src/app/types/kkuko.types';
 import TryRenderImg from '../../shared/components/TryRenderImg'
 import { getSlotName, extractColorFromLabel, parseDescription, getOptionName, formatNumber } from '../utils/profileHelper';
-import { NICKNAME_COLORS } from '../../shared/lib/const';
+import { NICKNAME_COLORS, OPTION_NAMES } from '../../shared/lib/const';
 
 interface ItemModalProps {
     itemsData: ItemInfo[];
@@ -21,15 +21,20 @@ export default function ItemModal({ itemsData, profileData, onClose }: ItemModal
             </div>
         )
 
+        const filterAndMapOptions = (opts: Record<string, number | string | undefined>) => {
+            return Object.entries(opts)
+                .filter(([k, v]) => {
+                    if (!(k in OPTION_NAMES) || v === undefined || v === null) return false;
+                    return !isNaN(Number(v));
+                })
+                .map(([k, v]) => itemOptionUI(k, Number(v)));
+        };
+
         if (isSpecialOptions(options)) {
             const relevantOptions = Date.now() >= options.date ? options.after : options.before;
-            return Object.entries(relevantOptions).filter(([_, v]) => v !== undefined && typeof v === 'number').map(([k, v]) =>
-                itemOptionUI(k, v as number)
-            );
+            return filterAndMapOptions(relevantOptions);
         } else {
-            return Object.entries(options).filter(([_, v]) => v !== undefined && typeof v === 'number').map(([k, v]) =>
-                itemOptionUI(k, v as number)
-            );
+            return filterAndMapOptions(options);
         }
     }
 
@@ -78,7 +83,7 @@ export default function ItemModal({ itemsData, profileData, onClose }: ItemModal
                                         <div className="relative w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
                                             <TryRenderImg
                                                 placeholder={itemImgPlaceholder()}
-                                                url={`/api/kkuko/image?url=https://cdn.kkutu.co.kr/img/kkutu/moremi/${imageGroup}/${item.id}.png`}
+                                                url={`https://api.solidloop-studio.xyz/kkuko/image?url=https://cdn.kkutu.co.kr/img/kkutu/moremi/${imageGroup}/${item.id}.png`}
                                                 alt={item.name}
                                                 width={80}
                                                 height={80}

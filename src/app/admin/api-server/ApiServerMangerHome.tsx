@@ -19,6 +19,11 @@ export default function ApiServerAdminHome() {
       title: 'Items 관리',
       description: '아이템 상태 확인 및 수정',
       href: '/admin/api-server/items',
+    },
+    {
+      title: 'Users 관리',
+      description: '사용자 목록 조회 및 상태 수정',
+      href: '/admin/api-server/users',
     }
   ];
 

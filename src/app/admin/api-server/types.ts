@@ -63,3 +63,25 @@ export interface UpdateItemRequest {
   options?: ItemOption;
 }
 
+export interface User {
+  id: string;
+  nickname: string;
+  exp: number;
+  observedAt: string;
+  exordial: string;
+  level: number;
+  isPublic: boolean;
+  isLastOnlineHidden: boolean;
+}
+
+export interface UsersResponse {
+  items: User[];
+  totalCount: number;
+  currentPage: number;
+  totalPages: number;
+}
+
+export interface UpdateUserPublicStatusRequest {
+  isPublic: boolean;
+}
+

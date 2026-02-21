@@ -176,7 +176,7 @@ API 서버 로그를 조회합니다.
 
 ---
 
-### GET /admin/item/items/group/:group
+#### GET /admin/item/items/group/:group
 
 특정 그룹의 아이템 목록을 조회합니다.
 
@@ -212,7 +212,7 @@ API 서버 로그를 조회합니다.
 
 ---
 
-### GET /admin/item/items/name/:name
+#### GET /admin/item/items/name/:name
 
 특정 이름을 포함하는 아이템 목록을 조회합니다.
 
@@ -249,7 +249,7 @@ API 서버 로그를 조회합니다.
 
 ---
 
-### POST /admin/item
+#### POST /admin/item
 
 아이템을 추가합니다.
 
@@ -288,7 +288,7 @@ Response (201)
 
 ---
 
-### PUT /admin/item/:id
+#### PUT /admin/item/:id
 
 아이템 정보를 수정합니다.
 
@@ -330,7 +330,7 @@ Response (201)
 
 ---
 
-### DELETE /admin/item/:id
+#### DELETE /admin/item/:id
 
 아이템을 삭제합니다.
 
@@ -343,6 +343,167 @@ Response (201)
 **Response (204)**
 No Content - 성공적으로 삭제됨
 
+---
+### User (Admin)
+
+#### GET /admin/user/users
+등록된 사용자 목록을 조회합니다.
+
+**Query Parameters**
+| Name  | Type   | Description      |
+| ----- | ------ | ---------------- |
+| page  | number | 페이지 번호       |
+
+**Response**
+
+```ts
+{
+  items: {
+    id: string;
+    nickname: string;
+    exp: number;
+    observedAt: string; // ISO format
+    exordial: string;
+    level: number;
+    isPublic: boolean;
+    isLastOnlineHidden: boolean;
+  }[];
+  totalCount: number;
+  currentPage: number;
+  totalPages: number;
+}
+```
+
+---
+
+#### GET /admin/user/users/id/:id
+특정 사용자 정보를 조회합니다.
+
+**Path Parameter**
+| Name | Type   | Description |
+| ---- | ------ | ----------- |
+| id   | string | 사용자 ID    |
+
+**Response (200)**
+
+```ts
+{
+  items: {
+    id: string;
+    nickname: string;
+    exp: number;
+    observedAt: string; // ISO format
+    exordial: string;
+    level: number;
+    isPublic: boolean;
+    isLastOnlineHidden: boolean;
+  }[];
+  totalCount: 1 | 0; // 1 if user exists, otherwise 0
+  currentPage: 1;
+  totalPages: 1;
+}
+```
+
+
+#### GET /admin/user/users/nickname/:nickname
+특정 닉네임을 포함하는 사용자 정보를 조회합니다.
+
+**Path Parameter**
+| Name  | Type   | Description   |
+| ----- | ------ | ------------- |
+| nickname | string | 사용자 닉네임 |
+
+**Response (200)**
+
+```ts
+{
+  items: {
+    id: string;
+    nickname: string;
+    exp: number;
+    observedAt: string; // ISO format
+    exordial: string;
+    level: number;
+    isPublic: boolean;
+    isLastOnlineHidden: boolean;
+  }[];
+  totalCount: number; // 닉네임을 포함하는 사용자 수
+  currentPage: number;
+  totalPages: number;
+}
+```
+
+---
+#### PUT /admin/user/public-status/:id
+특정 사용자의 공개 상태를 수정합니다.
+
+**Path Parameter**
+| Name | Type   | Description |
+| ---- | ------ | ----------- |
+| id   | string | 사용자 ID    |
+
+**Request Body**
+| Field        | Type   | Description     |
+| ------------ | ------ | --------------- |
+| isPublic     | boolean| 공개 여부       |
+
+```ts
+{
+  isPublic: boolean;
+}
+```
+
+**Response (200)**
+
+```ts
+{
+  id: string;
+  nickname: string;
+  exp: number;
+  observedAt: string; // ISO format
+  exordial: string;
+  level: number;
+  isPublic: boolean;
+  isLastOnlineHidden: boolean;
+}
+```
+
+---
+
+#### PUT /admin/user/last-online-hidden/:id
+
+특정 사용자의 마지막 온라인 숨김 상태를 수정합니다.
+
+**Path Parameter**
+| Name | Type   | Description |
+| ---- | ------ | ----------- |
+| id   | string | 사용자 ID    |
+
+**Request Body**
+| Field              | Type   | Description     |
+| ------------------ | ------ | --------------- |
+| isLastOnlineHidden | boolean| 마지막 온라인 숨김 여부 |
+
+```ts
+{
+  isLastOnlineHidden: boolean;
+}
+```
+
+**Response (200)**
+
+```ts
+{
+  id: string;
+  nickname: string;
+  exp: number;
+  observedAt: string; // ISO format
+  exordial: string;
+  level: number;
+  isPublic: boolean;
+  isLastOnlineHidden: boolean;
+}
+```
 
 ---
 
@@ -482,6 +643,24 @@ No Content - 성공적으로 삭제됨
     };
   }[];
   status: 200;
+}
+```
+
+---
+### GET /profile/force-refresh/:userId
+특정 유저의 프로필 정보를 강제 새로고침을 요청합니다.
+
+**Path Parameter**
+| Name   | Type   | Description |
+| ------ | ------ | ----------- |
+| userId | string | 사용자 ID    |
+
+**Response (200)**
+
+```ts
+{ 
+  message: "Profile refresh enqueued", 
+  status: 200 
 }
 ```
 
