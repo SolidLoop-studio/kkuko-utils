@@ -44,19 +44,22 @@ export const calculateTotalOptions = (itemsData: ItemInfo[]) => {
     const totals: Record<string, number> = {};
 
     itemsData.forEach(item => {
+        const processOptions = (options: Record<string, any>) => {
+            Object.entries(options).forEach(([key, value]) => {
+                if (key in OPTION_NAMES && value !== undefined && value !== null) {
+                    const numValue = Number(value);
+                    if (!isNaN(numValue)) {
+                        totals[key] = (totals[key] || 0) + numValue * (key[0] === 'g' ? 100 : 1);
+                    }
+                }
+            });
+        };
+
         if (isSpecialOptions(item.options)) {
             const relevantOptions = Date.now() >= item.options.date ? item.options.after : item.options.before;
-            Object.entries(relevantOptions).forEach(([key, value]) => {
-                if (value !== undefined && typeof value === 'number' && !isNaN(value)) {
-                    totals[key] = (totals[key] || 0) + Number(value) * (key[0] === 'g' ? 100 : 1);
-                }
-            });
+            processOptions(relevantOptions);
         } else {
-            Object.entries(item.options).forEach(([key, value]) => {
-                if (value !== undefined && typeof value === 'number' && !isNaN(value)) {
-                    totals[key] = (totals[key] || 0) + Number(value) * (key[0] === 'g' ? 100 : 1);
-                }
-            });
+            processOptions(item.options);
         }
     });
 

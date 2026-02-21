@@ -21,15 +21,20 @@ export default function ItemModal({ itemsData, profileData, onClose }: ItemModal
             </div>
         )
 
+        const filterAndMapOptions = (opts: Record<string, any>) => {
+            return Object.entries(opts)
+                .filter(([k, v]) => {
+                    if (!(k in OPTION_NAMES) || v === undefined || v === null) return false;
+                    return !isNaN(Number(v));
+                })
+                .map(([k, v]) => itemOptionUI(k, Number(v)));
+        };
+
         if (isSpecialOptions(options)) {
             const relevantOptions = Date.now() >= options.date ? options.after : options.before;
-            return Object.entries(relevantOptions).filter(([k, v]) => k in OPTION_NAMES && v !== undefined && typeof v === 'number').map(([k, v]) =>
-                itemOptionUI(k, v as number)
-            );
+            return filterAndMapOptions(relevantOptions);
         } else {
-            return Object.entries(options).filter(([k, v]) => k in OPTION_NAMES && v !== undefined && typeof v === 'number').map(([k, v]) =>
-                itemOptionUI(k, v as number)
-            );
+            return filterAndMapOptions(options);
         }
     }
 
