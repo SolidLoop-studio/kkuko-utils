@@ -37,7 +37,7 @@ describe('ProfileHeader', () => {
     });
 
     it('should render user info', () => {
-        render(<ProfileHeader profileData={mockProfileData} itemsData={mockItemsData} expRank={1} />);
+        render(<ProfileHeader profileData={mockProfileData} itemsData={mockItemsData} expRank={1} onRefreshRequest={() => {}} isRefreshing={false} />);
         
         expect(screen.getByText('Test Nick')).toBeInTheDocument();
         expect(screen.getByText('Hello World')).toBeInTheDocument();
@@ -47,7 +47,7 @@ describe('ProfileHeader', () => {
     });
 
     it('should render badges', () => {
-        render(<ProfileHeader profileData={mockProfileData} itemsData={mockItemsData} expRank={null} />);
+        render(<ProfileHeader profileData={mockProfileData} itemsData={mockItemsData} expRank={null} onRefreshRequest={() => {}} isRefreshing={false} />);
         
         expect(screen.getByAltText('Best Badge')).toBeInTheDocument();
     });

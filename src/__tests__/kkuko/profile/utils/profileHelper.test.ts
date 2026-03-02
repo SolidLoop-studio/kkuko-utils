@@ -72,13 +72,13 @@ describe('profileHelper', () => {
     describe('calculateTotalOptions', () => {
         it('should calculate totals correctly for normal options', () => {
             const items: ItemInfo[] = [
-                { id: '1', name: 'Item1', description: '', group: '', options: { str: 1, dex: 2 }, updatedAt: 1 },
-                { id: '2', name: 'Item2', description: '', group: '', options: { str: 3 }, updatedAt: 1 }
+                { id: '1', name: 'Item1', description: '', group: '', options: { gEXP: 0.01, dex: 2 }, updatedAt: 1 },
+                { id: '2', name: 'Item2', description: '', group: '', options: { gEXP: 0.03 }, updatedAt: 1 }
             ];
             const result = calculateTotalOptions(items);
-            // 1 * 1 + 3 * 1 = 4
-            expect(result['str']).toBe(4);
-            expect(result['dex']).toBe(2);
+            // 0.01 + 0.03 = 0.04 -> formatted to 4
+            expect(result['gEXP']).toBe(4);
+            expect(result['dex']).toBe(undefined);
         });
 
         it('should handle special options', () => {
@@ -88,14 +88,14 @@ describe('profileHelper', () => {
                     id: '3', name: 'Special', description: '', group: '',
                     options: {
                         date: now - 10000, // Past
-                        before: { str: 1 },
-                        after: { str: 5 }
+                        before: { gEXP: 0.01 },
+                        after: { gEXP: 0.05 }
                     }, updatedAt: 1
                 }
             ];
             const result = calculateTotalOptions(items);
             // Should use 'after'
-            expect(result['str']).toBe(5);
+            expect(result['gEXP']).toBe(5);
         });
         
          it('should handle special options (before)', () => {
@@ -105,14 +105,14 @@ describe('profileHelper', () => {
                     id: '3', name: 'Special', description: '', group: '',
                     options: {
                         date: now + 10000, // Future
-                        before: { str: 1 },
-                        after: { str: 5 }
+                        before: { gEXP: 0.01 },
+                        after: { gEXP: 0.05 }
                     }, updatedAt: 1
                 }
             ];
             const result = calculateTotalOptions(items);
             // Should use 'before'
-            expect(result['str']).toBe(1);
+            expect(result['gEXP']).toBe(1);
         });
     });
 
