@@ -13,6 +13,7 @@ jest.mock('@/app/kkuko/profile/utils/profileHelper', () => ({
 }));
 jest.mock('@/app/kkuko/shared/lib/const', () => ({
     NICKNAME_COLORS: {},
+    OPTION_NAMES: { gEXP: '획득 경험치' }
 }));
 
 describe('ItemModal', () => {
@@ -28,7 +29,7 @@ describe('ItemModal', () => {
             name: 'Cool Hat', 
             image: 'hat.png',
             desc: 'A nice hat',
-            options: { score: 10 }
+            options: { gEXP: 0.1 }
         },
     ] as any;
 
@@ -38,8 +39,8 @@ describe('ItemModal', () => {
         
         expect(screen.getByText('장착 아이템 목록')).toBeInTheDocument();
         expect(screen.getByText('Cool Hat')).toBeInTheDocument();
-        expect(screen.getByText('score:')).toBeInTheDocument();
-        expect(screen.getByText('+10')).toBeInTheDocument();
+        expect(screen.getByText('gEXP:')).toBeInTheDocument();
+        expect(screen.getByText('+10%p')).toBeInTheDocument();
     });
 
     it('should call onClose when close button is clicked', () => {
