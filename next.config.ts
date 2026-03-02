@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   transpilePackages: ['lucide-react'],
   images: {
     remotePatterns: [
@@ -32,6 +31,7 @@ const nextConfig: NextConfig = {
         pathname: '/img/**',
       },
     ],
+    minimumCacheTTL: 2592000,
   },
 };
 
