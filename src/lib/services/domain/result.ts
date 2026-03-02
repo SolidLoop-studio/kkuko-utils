@@ -1,3 +1,6 @@
+/**
+ * 커스텀 오류 타입을 정의합니다. 이 타입은 오류의 이름, 메시지, 스택 추적 정보, 상세 정보, 힌트, 코드, HTTP 상태 코드 등을 포함할 수 있습니다.
+ */
 export type CustomError = {
     /** 오류의 이름 */
     name: string;
@@ -15,6 +18,11 @@ export type CustomError = {
     httpStatus?: number;
 }
 
+/**
+ * 성공과 실패를 명확하게 구분하는 Result 타입입니다.
+ * 성공인 경우 data 필드에 결과 데이터가 포함되고, error 필드는 null입니다.
+ * 실패인 경우 error 필드에 CustomError 객체가 포함되고, data 필드는 null입니다.
+ */
 export type Result<T, E extends CustomError> = 
     | { success: true; data: T; error: null } 
     | { success: false; data: null; error: E };
