@@ -54,7 +54,7 @@ export default function ProfileHeader({
                                             <div className="relative w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center overflow-hidden">
                                                 <TryRenderImg
                                                     placeholder={<div className="w-10 h-10" />}
-                                                    url={`https://api.solidloop-studio.xyz/kkuko/image?url=https://cdn.kkutu.co.kr/img/kkutu/moremi/badge/${item.id}.png`}
+                                                    url={`https://cdn.kkutu.co.kr/img/kkutu/moremi/badge/${item.id}.png`}
                                                     alt={item.name}
                                                     width={40}
                                                     height={40}
@@ -99,7 +99,7 @@ export default function ProfileHeader({
                                 <div className="relative w-8 h-8 flex-shrink-0">
                                     <TryRenderImg
                                         placeholder={lvImgPlaceholder()}
-                                        url={`https://api.solidloop-studio.xyz/kkuko/img?url=https://cdn.kkutu.co.kr/img/kkutu/lv/lv${String(profileData.user.level).padStart(4, '0')}.png`}
+                                        url={`https://cdn.kkutu.co.kr/img/kkutu/lv/lv${String(profileData.user.level).padStart(4, '0')}.png`}
                                         alt="Level Icon"
                                         width={32}
                                         height={32}

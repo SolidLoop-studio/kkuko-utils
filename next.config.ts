@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   transpilePackages: ['lucide-react'],
   images: {
     remotePatterns: [
@@ -21,7 +20,7 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'api.solidloop-studio.xyz',
         port: '',
-        pathname: '/kkuko/**',
+        pathname: '/**',
       }
     ],
     localPatterns: [
@@ -32,6 +31,7 @@ const nextConfig: NextConfig = {
         pathname: '/img/**',
       },
     ],
+    minimumCacheTTL: 2592000,
   },
 };
 

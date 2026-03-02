@@ -37,7 +37,7 @@ export default function ProfileAvatar({ profileData, itemsData }: ProfileAvatarP
                 const leftHandItem = itemsBySlot['Mlhand'];
                 if (leftHandItem) {
                     const imageName = leftHandItem.id;
-                    const imageUrl = `https://api.solidloop-studio.xyz/kkuko/img?url=https://cdn.kkutu.co.kr/img/kkutu/moremi/hand/${imageName}.png`;
+                    const imageUrl = `https://cdn.kkutu.co.kr/img/kkutu/moremi/hand/${imageName}.png`;
                     
                     layers.push({
                         key: `hand-left-${index}`,
@@ -51,7 +51,7 @@ export default function ProfileAvatar({ profileData, itemsData }: ProfileAvatarP
                 const rightHandItem = itemsBySlot['Mrhand'];
                 if (rightHandItem) {
                     const imageName = rightHandItem.id;
-                    const imageUrl = `https://api.solidloop-studio.xyz/kkuko/img?url=https://cdn.kkutu.co.kr/img/kkutu/moremi/hand/${imageName}.png`;
+                    const imageUrl = `https://cdn.kkutu.co.kr/img/kkutu/moremi/hand/${imageName}.png`;
                     
                     layers.push({
                         key: `hand-right-${index}`,
@@ -67,7 +67,7 @@ export default function ProfileAvatar({ profileData, itemsData }: ProfileAvatarP
                 
                 if (item) {
                     const imageName = item.name === 'def' ? 'def' : item.id;
-                    const imageUrl = `https://api.solidloop-studio.xyz/kkuko/img?url=https://cdn.kkutu.co.kr/img/kkutu/moremi/${group}/${imageName}.png`;
+                    const imageUrl = `https://cdn.kkutu.co.kr/img/kkutu/moremi/${group}/${imageName}.png`;
 
                     layers.push({
                         key: `${group}-${index}`,
@@ -77,7 +77,7 @@ export default function ProfileAvatar({ profileData, itemsData }: ProfileAvatarP
                     });
                 } else if (group !== 'badge' && item === undefined) {
                     const itemId = 'def';
-                    const imageUrl = `https://api.solidloop-studio.xyz/kkuko/img?url=https://cdn.kkutu.co.kr/img/kkutu/moremi/${group}/${itemId}.png`;
+                    const imageUrl = `https://cdn.kkutu.co.kr/img/kkutu/moremi/${group}/${itemId}.png`;
                     layers.push({
                         key: `${group}-${index}`,
                         url: imageUrl,
