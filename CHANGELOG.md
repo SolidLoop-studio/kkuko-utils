@@ -1,3 +1,10 @@
+# [v1.7.1](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.7.0...v1.7.1) - 2026-03-02
+
+## fix
+- ([fed4dd1](https://github.com/SolidLoop-studio/kkuko-utils/commit/fed4dd1)) - 이미지 캐싱시간 수정
+- ([b4ec430](https://github.com/SolidLoop-studio/kkuko-utils/commit/b4ec430)) - 테스트
+- ([fc0894d](https://github.com/SolidLoop-studio/kkuko-utils/commit/fc0894d)) - 개같은 에러수정시도
+
 # [v1.7.0](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.6.3...v1.7.0) - 2026-02-21
 
 ## fix
