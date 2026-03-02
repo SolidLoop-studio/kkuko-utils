@@ -15,7 +15,6 @@ import type { WaitWordWithUser } from '../../domain/word/WaitWordEntity';
 import type { ThemeEntity, WordThemeMapping, WaitThemeInfo } from '../../domain/word/ThemeEntity';
 import type { advancedQueryType } from '@/src/app/types/type';
 import { success } from '../../domain/result';
-import { InMemoryCache } from '../../infrastructure/cache/InMemoryCache';
 
 /** 2초 최소 응답 시간을 보장하기 위한 유틸리티 */
 async function ensureMinimumDelay<T>(startTime: number, result: T, minMs = 2000): Promise<T> {
@@ -34,19 +33,14 @@ async function ensureMinimumDelay<T>(startTime: number, result: T, minMs = 2000)
  * 읽기 전용 유즈케이스를 담당합니다.
  *
  * 2초 딜레이(rate limiting)는 이 레이어에서 적용합니다.
+ * 캐싱은 React Query의 queryClient.ensureQueryData를 활용하여 소비자 레이어에서 처리합니다.
  */
 export class WordQueryService {
-    private readonly letterCountCache: InMemoryCache<string, LetterCountInfo>;
-    private readonly wordListCache: InMemoryCache<string, WordListItem[]>;
-
     constructor(
         private readonly wordRepo: IWordRepository,
         private readonly waitWordRepo: IWaitWordRepository,
         private readonly themeRepo: IThemeRepository,
-    ) {
-        this.letterCountCache = new InMemoryCache<string, LetterCountInfo>();
-        this.wordListCache = new InMemoryCache<string, WordListItem[]>();
-    }
+    ) {}
 
     /**
      * 접두사로 단어를 검색합니다.
@@ -201,53 +195,31 @@ export class WordQueryService {
     }
 
     /**
-     * 글자별 단어 개수 정보를 조회합니다. (캐시 활용)
+     * 글자별 단어 개수 정보를 조회합니다.
      *
      * @returns 첫 글자/마지막 글자별 카운트 정보
      */
     async getLetterCounts(): Promise<Result<LetterCountInfo, CustomError>> {
-        const cached = this.letterCountCache.get('letterCounts');
-        if (cached) return success(cached);
-
-        const result = await this.wordRepo.findLetterCounts();
-        if (result.success) {
-            this.letterCountCache.set('letterCounts', result.data);
-        }
-        return result;
+        return this.wordRepo.findLetterCounts();
     }
 
     /**
-     * 단어조합기용 전체 단어를 조회합니다. (캐시 활용)
+     * 단어조합기용 전체 단어를 조회합니다.
      *
      * @returns 단어 목록 아이템 배열
      */
     async getAllForCombiner(): Promise<Result<WordListItem[], CustomError>> {
-        const cached = this.wordListCache.get('combiner');
-        if (cached) return success(cached);
-
-        const result = await this.wordRepo.findAllForCombiner();
-        if (result.success) {
-            this.wordListCache.set('combiner', result.data);
-        }
-        return result;
+        return this.wordRepo.findAllForCombiner();
     }
 
     /**
-     * 필터 조건에 맞는 전체 단어를 조회합니다. (캐시 활용)
+     * 필터 조건에 맞는 전체 단어를 조회합니다.
      *
      * @param filter - 단어 필터 옵션
      * @returns 단어 목록 아이템 배열
      */
     async getAllForDownload(filter: WordFilter): Promise<Result<WordListItem[], CustomError>> {
-        const cacheKey = `dl-${filter.includeAddReq}-${filter.includeDeleteReq}-${filter.includeInjung}-${filter.includeNoInjung}-${filter.onlyWordChain}`;
-        const cached = this.wordListCache.get(cacheKey);
-        if (cached) return success(cached);
-
-        const result = await this.wordRepo.findAll(filter);
-        if (result.success) {
-            this.wordListCache.set(cacheKey, result.data);
-        }
-        return result;
+        return this.wordRepo.findAll(filter);
     }
 
     /**
