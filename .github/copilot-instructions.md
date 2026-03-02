@@ -46,6 +46,18 @@ Always reference these instructions first and fallback to search or bash command
   - `npm run lint` -- takes ~3 seconds. ESLint passes with no warnings.
   - **ALWAYS** run linting before committing changes or CI will fail
 
+- **Rules for Code Implementation (Mandatory)**
+  - Use **React + Next.js** for coding. Use **Tailwind CSS** for styling; direct styles should only be used when unavoidable.
+  - For **Dark Mode**, use Tailwind's `dark:` prefix. In most cases, rely on the default `dark:` settings unless special styling is required.
+  - Adhere to the **SoC (Separation of Concerns)** principle.
+  - Actively utilize **shadcn** and **lucide-react** for design to ensure a consistent UI/UX.
+  - After writing code, perform **lint checks** and **type checks** using `tsc --noEmit`.
+  - Avoid using `unknown` or `any` types whenever possible.
+  - Use **PascalCase** for component filenames. However, use **kebab-case** for router/path names.
+  - Write **JSDoc comments** for major functions and components.
+  - For **error handling**, do not just use `console.error`. Use `ErrModal` to notify the user. (Exception: For errors like 4xx, use `FailModal.tsx` to notify them of the failure.)
+  - **Do not use** native `alert` or `confirm`. Instead, use custom React components such as `CompleteModal.tsx` and `ConfirmModal.tsx`.
+
 ## Validation
 
 - **ALWAYS** manually test any changes by running the development server and exercising the affected functionality
