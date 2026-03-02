@@ -18,10 +18,10 @@ const customJestConfig = {
     'node_modules/(?!(lucide-react)/)', // lucide-react는 변환 예외
   ],
   collectCoverageFrom: [
-    'src/app/**/*.{js,jsx,ts,tsx}',
-    '!src/app/**/_*.{js,jsx,ts,tsx}',
-    '!src/app/**/layout.{js,jsx,ts,tsx}',
-    '!src/app/**/page.{js,jsx,ts,tsx}',
+    'src/**/*.{js,jsx,ts,tsx}',
+    '!src/**/_*.{js,jsx,ts,tsx}',
+    '!src/**/layout.{js,jsx,ts,tsx}',
+    '!src/**/page.{js,jsx,ts,tsx}',
     '!**/*.d.ts',
     '!**/node_modules/**',
   ],
