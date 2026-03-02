@@ -1,4 +1,4 @@
-import { duemLaw, reverDuemLaw, isHangul } from '@/src/app/lib/hangulUtils';
+import { duemLaw, reverDuemLaw, isHangul } from '@/src/lib/hangulUtils';
 
 describe('duemLaw', () => {
     it('should apply duem law correctly for rule 1 (ㄹ -> ㄴ)', () => {
