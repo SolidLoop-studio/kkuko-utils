@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ItemInfo, ProfileData } from '@/src/app/types/kkuko.types';
 import TryRenderImg from '../../shared/components/TryRenderImg';
 import ProfileAvatar from '../../shared/components/ProfileAvatar';
-import { formatLastSeen, formatObservedAt, getNicknameStyle } from '../utils/profileHelper';
+import { formatObservedAt, getNicknameStyle } from '../utils/profileHelper';
 
 interface ProfileHeaderProps {
     profileData: ProfileData;

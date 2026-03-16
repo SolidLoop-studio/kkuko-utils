@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
             id: rankingData.id 
         });
 
-    } catch (error) {
+    } catch {
         return NextResponse.json(
             { error: 'Failed to fetch ranking data' },
             { status: 500 }
