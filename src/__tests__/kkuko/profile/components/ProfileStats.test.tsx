@@ -14,7 +14,7 @@ describe('ProfileStats', () => {
 
     beforeEach(() => {
         (profileHelper.calculateTotalOptions as jest.Mock).mockReturnValue({
-            'str': 10000,
+            'hEXP': 10000,
             'gEXP': 5000 
         });
         (profileHelper.getOptionName as jest.Mock).mockImplementation((key) => key);
@@ -24,8 +24,8 @@ describe('ProfileStats', () => {
     it('should render total options correctly', () => {
         render(<ProfileStats itemsData={mockItemsData} onShowDetail={mockOnShowDetail} />);
         
-        // STR: 10000 -> +10
-        expect(screen.getByText('str')).toBeInTheDocument();
+        // hEXP: 10000 -> +10
+        expect(screen.getByText('hEXP')).toBeInTheDocument();
         expect(screen.getByText('+10')).toBeInTheDocument();
 
         // gEXP: 5000 -> +5%p
