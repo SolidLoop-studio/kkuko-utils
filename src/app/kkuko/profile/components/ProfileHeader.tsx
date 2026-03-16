@@ -117,34 +117,6 @@ export default function ProfileHeader({
                             <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{formatObservedAt(profileData.user.observedAt)}</p>
                         </div> 
 
-                        <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">접속 상태</p>
-                            <p className="text-lg font-semibold">
-                                {profileData.presence.channelId ? (
-                                    <span className="text-green-600 dark:text-green-400">온라인</span>
-                                ) : (
-                                    <span className="text-gray-500 dark:text-gray-400">오프라인</span>
-                                )}
-                            </p>
-                            {profileData.presence.channelId ? (
-                                <p className="text-xs text-gray-600 dark:text-gray-400">채널: {profileData.presence.channelId}</p>
-                            ) : (
-                                profileData.presence.updatedAt !== null ?
-                                <p className="text-xs text-gray-600 dark:text-gray-400">마지막 접속: {formatLastSeen(profileData.presence.updatedAt)}</p> :
-                                null
-                            )}
-                        </div>
-
-                        <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">방 정보</p>
-                            <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                                {profileData.presence.roomId ? (
-                                    <span>방 {profileData.presence.roomId}</span>
-                                ) : (
-                                    <span className="text-gray-400 dark:text-gray-500">미입장</span>
-                                )}
-                            </p>
-                        </div>
                     </div>
                     <div className="flex justify-end mt-1 items-center gap-3">
                         <button
