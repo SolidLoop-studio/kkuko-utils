@@ -1,3 +1,11 @@
+# [v1.7.2](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.7.1...v1.7.2) - 2026-03-16
+
+## fix
+- ([f2ea0c3](https://github.com/SolidLoop-studio/kkuko-utils/commit/f2ea0c3)) - 이미 호출은 CF 워커 사용
+- ([aba630e](https://github.com/SolidLoop-studio/kkuko-utils/commit/aba630e)) - 끄코 프로필 랭킹 데이터 캐싱
+- ([9d213b5](https://github.com/SolidLoop-studio/kkuko-utils/commit/9d213b5)) - 프로필 온라인 정보 제거
+- ([fd7017e](https://github.com/SolidLoop-studio/kkuko-utils/commit/fd7017e)) - 이미지 로드 수정
+
 # [v1.7.1](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.7.0...v1.7.1) - 2026-03-02
 
 ## fix
