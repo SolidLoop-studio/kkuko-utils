@@ -29,10 +29,10 @@ export default function TryRenderImg({
 	const [attempt, setAttempt] = useState(0);
 	const [failed, setFailed] = useState(false);
 	const isCdn = url.startsWith('https://cdn.kkutu.co.kr/img/');
-	const [src, setSrc] = useState(`${isCdn ? 'https://api.solidloop-studio.xyz/kkuko/img?url=' : ''}${url}`);
+	const [src, setSrc] = useState(`${isCdn ? 'https://img-proxy.jtw7913.workers.dev?v=2&url=' : ''}${url}`);
 	
 	useEffect(() => {
-		setSrc(`${isCdn ? 'https://api.solidloop-studio.xyz/kkuko/img?url=' : ''}${url}`);
+		setSrc(`${isCdn ? 'https://img-proxy.jtw7913.workers.dev?v=2&url=' : ''}${url}`);
 		setAttempt(0);
 		setFailed(false);
 	}, [url]);
@@ -42,7 +42,7 @@ export default function TryRenderImg({
 			const next = attempt + 1;
 			setAttempt(next);
 			const separator = (url.includes("?") || isCdn) ? "&" : "?";
-			setSrc(`${isCdn ? 'https://api.solidloop-studio.xyz/kkuko/img?url=' : ''}${url}${separator}r=${next}&ts=${Date.now()}`);
+			setSrc(`${isCdn ? 'https://img-proxy.jtw7913.workers.dev?v=2&url=' : ''}${url}${separator}r=${next}&ts=${Date.now()}`);
 		} else {
 			setFailed(true);
 			onFailure?.();
