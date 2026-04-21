@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { Download } from 'lucide-react';
 import { ItemInfo, ProfileData } from '@/src/app/types/kkuko.types';
 import TryRenderImg from './TryRenderImg';
 
@@ -9,6 +10,63 @@ interface ProfileAvatarProps {
 
 export default function ProfileAvatar({ profileData, itemsData }: ProfileAvatarProps) {
     const [imgLoadedCount, setImgLoadedCount] = useState(0);
+    const [isDownloading, setIsDownloading] = useState(false);
+
+    const handleDownload = async () => {
+        try {
+            setIsDownloading(true);
+            const canvas = document.createElement('canvas');
+            canvas.width = 192;
+            canvas.height = 192;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            // 배경 그리기
+            ctx.fillStyle = document.documentElement.classList.contains('dark') ? '#374151' : '#f3f4f6';
+            ctx.fillRect(0, 0, 192, 192);
+
+            // 이미지 소스 수집 및 그리기
+            const imageUrls = characterLayers.map(layer => ({
+                url: `https://img-proxy.jtw7913.workers.dev?v=3&url=${layer.url}`,
+                flip: layer.className?.includes('scale-x-[-1]') || false
+            }));
+
+            for (const item of imageUrls) {
+                const img = new Image();
+                img.crossOrigin = 'anonymous'; // CORS 문제 방지
+                
+                await new Promise((resolve) => {
+                    img.onload = () => {
+                        if (item.flip) {
+                            ctx.save();
+                            ctx.scale(-1, 1);
+                            ctx.drawImage(img, -192, 0, 192, 192);
+                            ctx.restore();
+                        } else {
+                            ctx.drawImage(img, 0, 0, 192, 192);
+                        }
+                        resolve(null);
+                    };
+                    img.onerror = () => resolve(null); // 에러 발생 시 무시하고 진행
+                
+                    img.src = item.url 
+                });
+            }
+
+            const dataUrl = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = `${profileData.user.nickname}_avatar.png`;
+            link.href = dataUrl;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error('Error downloading avatar:', error);
+            alert('아바타 이미지 다운로드에 실패했습니다.');
+        } finally {
+            setIsDownloading(false);
+        }
+    };
 
     const characterLayers = useMemo(() => {
         if (!profileData) return [];
@@ -92,7 +150,7 @@ export default function ProfileAvatar({ profileData, itemsData }: ProfileAvatarP
     }, [profileData, itemsData]);
 
     return (
-        <div className="relative w-48 h-48 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
+        <div className="relative group w-48 h-48 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden flex-shrink-0">
             {imgLoadedCount < characterLayers.length && (
                 <div className="absolute inset-0 z-20 flex items-center justify-center bg-gray-100 dark:bg-gray-700">
                     <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -101,7 +159,7 @@ export default function ProfileAvatar({ profileData, itemsData }: ProfileAvatarP
             {characterLayers.map((layer) => (
                 <div
                     key={layer.key}
-                    className="absolute inset-0 flex items-center justify-center"
+                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
                 >
                     <TryRenderImg
                         placeholder={<div className="w-48 h-48" />}
@@ -115,6 +173,24 @@ export default function ProfileAvatar({ profileData, itemsData }: ProfileAvatarP
                     />
                 </div>
             ))}
+            
+            {/* Download Button */}
+            {imgLoadedCount >= characterLayers.length && (
+                <button
+                    onClick={handleDownload}
+                    disabled={isDownloading}
+                    className={`absolute bottom-2 right-2 p-2 rounded-full bg-white/80 dark:bg-black/60 shadow-sm backdrop-blur-sm text-gray-700 dark:text-gray-200 transition-all z-30
+                        ${isDownloading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white dark:hover:bg-black hover:scale-105 opacity-0 group-hover:opacity-100 focus:opacity-100'}`}
+                    title="아바타 이미지 다운로드"
+                    aria-label="Download avatar"
+                >
+                    {isDownloading ? (
+                        <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                        <Download className="w-5 h-5" />
+                    )}
+                </button>
+            )}
         </div>
     );
 }

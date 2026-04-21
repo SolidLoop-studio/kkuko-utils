@@ -124,7 +124,7 @@ const AuthPage = () => {
         }
 
         // 닉네임 등록
-        const { data, error:err } = await SCM.add().nickname(session.data.session.user.id, nickname)
+        const { data, error:err } = await SCM.add().nickname(nickname)
 
         if (err) {
             setErrorModalView({
