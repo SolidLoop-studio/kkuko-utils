@@ -35,7 +35,7 @@ export default function ProfileAvatar({ profileData, itemsData }: ProfileAvatarP
                 const img = new Image();
                 img.crossOrigin = 'anonymous'; // CORS 문제 방지
                 
-                await new Promise((resolve, reject) => {
+                await new Promise((resolve) => {
                     img.onload = () => {
                         if (item.flip) {
                             ctx.save();
