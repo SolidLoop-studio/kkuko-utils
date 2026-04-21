@@ -8,6 +8,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { SCM } from '@/src/app/lib/supabaseClient';
 import { PostgrestError } from '@supabase/supabase-js';
 import ErrorModal from '@/src/app/components/ErrModal';
+import Link from 'next/link';
 
 type DocsWaitRequest = {id: number, req_at: string, docs_name: string, req_by: string | null, initial_consonant: boolean, req_byId: string | null}
 
@@ -122,10 +123,12 @@ export default function DocsWaitManager({initialData}: {initialData?: DocsWaitRe
     <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto py-8">
         <div className="mb-4 flex">
-          <Button variant="outline">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            관리자 대시보드로 이동
-          </Button>
+          <Link href={'/admin'} className="mb-4 flex">
+            <Button variant="outline">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              관리자 대시보드로 이동
+            </Button>
+          </Link>
         </div>
         
         <Card className="w-full bg-white dark:bg-gray-800 border border-transparent dark:border-gray-700 shadow-sm">
