@@ -1,3 +1,13 @@
+# [v1.8.0](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.7.2...v1.8.0) - 2026-04-21
+
+## fix
+- ([f4098f7](https://github.com/SolidLoop-studio/kkuko-utils/commit/f4098f7)) - 닉네임 색 추가 반영
+- ([ee34736](https://github.com/SolidLoop-studio/kkuko-utils/commit/ee34736)) - 프로필 이미지 버그 수정, 간단한 시인성 수정
+- ([f85a684](https://github.com/SolidLoop-studio/kkuko-utils/commit/f85a684)) - 권한 상승 취약점 패치
+
+## feat
+- ([ed12b1c](https://github.com/SolidLoop-studio/kkuko-utils/commit/ed12b1c)) - 아바타 이미지 다운로드 추가
+
 # [v1.7.2](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.7.1...v1.7.2) - 2026-03-16
 
 ## fix
