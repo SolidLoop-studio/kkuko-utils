@@ -22,6 +22,13 @@ export const getNicknameStyle = (equipment: Equipment[], isDarkTheme: boolean): 
             WebkitBackgroundClip: 'text',
             backgroundClip: 'text'
         };
+    } else if (nikItem?.itemId === '9th_anniv_sumuk_name'){
+        return {
+            background: 'linear-gradient(127deg,rgba(44, 44, 44, 1) 0%, rgba(173, 181, 189, 1) 100%)',
+            color: 'transparent',
+            WebkitBackgroundClip: 'text',
+            backgroundClip: 'text'
+        };
     }
 
     return { color: getNicknameColor(equipment, isDarkTheme) };
