@@ -6,6 +6,7 @@ import DuemLaw, { reverDuemLaw } from '../hangulUtils';
 import { sum } from 'es-toolkit';
 import { StorageError } from '@supabase/storage-js';
 import { misssionCharMask } from '../lib';
+import axios from 'axios';
 
 const CACHE_DURATION = 10 * 60 * 1000;
 
@@ -53,8 +54,9 @@ class AddManager implements IAddManager {
     public async docs(docsInserQuery: { name: string, maker: string | null, duem: boolean, typez: "letter" }[]) {
         return await this.supabase.from('docs').insert(docsInserQuery);
     }
-    public async nickname(userId: string, nick: string) {
-        return this.supabase.from("users").insert({ id: userId, nickname: nick.trim() }).select("*").single();
+    public async nickname(nick: string) {
+        const res = await axios.post('/api/auth/set_nickname', { nickname: nick.trim() });
+        return res.data;
     }
     public async words(q: addWordQueryType[]) {
         return this.supabase.from('words').upsert(q, { ignoreDuplicates: true, onConflict: "word" }).select('*');
