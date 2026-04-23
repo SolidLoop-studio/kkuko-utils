@@ -29,7 +29,7 @@ const HelpModal = ({
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" className={triggerClassName}>
                     {showIcon && <HelpCircle className="w-4 h-4" />}
                     {triggerText && <span className="leading-none">{triggerText}</span>}
                 </Button>
