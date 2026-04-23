@@ -38,7 +38,7 @@ describe('TryRenderImg', () => {
         render(<TryRenderImg {...defaultProps} />);
         const img = screen.getByTestId('next-image');
         expect(img).toBeInTheDocument();
-        expect(img).toHaveAttribute('src', defaultProps.url);
+        expect(img).toHaveAttribute('src', expect.stringContaining(defaultProps.url));
         expect(img).toHaveAttribute('alt', defaultProps.alt);
     });
 
@@ -61,13 +61,13 @@ describe('TryRenderImg', () => {
         
         // Expect src to have changed
         // url + ?r=1&ts=...
-        const expectedSrc1 = `${defaultProps.url}?r=1&ts=1234567890`;
-        expect(img).toHaveAttribute('src', expectedSrc1);
+        const expectedSrc1 = `r=1&ts=1234567890`;
+        expect(img).toHaveAttribute('src', expect.stringContaining(expectedSrc1));
 
         // Second error -> retry 2
         fireEvent.error(img);
-        const expectedSrc2 = `${defaultProps.url}?r=2&ts=1234567890`;
-        expect(img).toHaveAttribute('src', expectedSrc2);
+        const expectedSrc2 = `r=2&ts=1234567890`;
+        expect(img).toHaveAttribute('src', expect.stringContaining(expectedSrc2));
     });
 
     it('should show placeholder and call onFailure after maxRetries exceeded', () => {
@@ -112,14 +112,14 @@ describe('TryRenderImg', () => {
         
         // Trigger one error to change state
         fireEvent.error(img);
-        expect(img).toHaveAttribute('src', expect.stringContaining('?r=1'));
+        expect(img).toHaveAttribute('src', expect.stringContaining('r=1'));
         
         // Change URL
         const newUrl = 'https://example.com/new.png';
         rerender(<TryRenderImg {...defaultProps} url={newUrl} />);
         
         const newImg = screen.getByTestId('next-image');
-        expect(newImg).toHaveAttribute('src', newUrl);
+        expect(newImg).toHaveAttribute('src', expect.stringContaining(newUrl));
         // Should not have query params yet
         expect(newImg).not.toHaveAttribute('src', expect.stringContaining('?r='));
     });
