@@ -104,9 +104,13 @@ async function run() {
 
     // Repo URL이 있으면 비교 링크 생성
     if (config.repoUrl) {
-      // 릴리즈 모드일 때는 이전 태그와 현재 버전 비교 필요 (구현 생략 - 단순화)
-       // PR 모드일 때는 현재 버전(old) .. 다음 버전(new)
-      const prevVersionTag = isReleaseMode ? '...' : `v${currentVersion}`;
+      // PR 모드일 때는 현재 버전(old) .. 다음 버전(new)
+      // 릴리즈 모드일 때는 GitHub latest release 태그(old) .. 현재 버전(new)
+      let prevVersionTag = `v${currentVersion}`;
+      if (isReleaseMode) {
+        prevVersionTag = await getPreviousReleaseTag();
+      }
+
       header = `# [${versionHeader}](${config.repoUrl}/compare/${prevVersionTag}...${versionHeader}) - ${date}`;
     }
 
@@ -239,6 +243,39 @@ async function createGitHubRelease(version, body, dryRun) {
   });
 
   console.log(`🎉 GitHub Release published: ${release.html_url}`);
+}
+
+async function getPreviousReleaseTag() {
+  const token = process.env.GITHUB_TOKEN;
+
+  // GitHub API 우선 시도 (latest release)
+  if (token) {
+    try {
+      const octokit = getOctokit(token);
+      const { data: latestRelease } = await octokit.rest.repos.getLatestRelease({
+        owner: context.repo.owner,
+        repo: context.repo.repo
+      });
+
+      if (latestRelease?.tag_name) {
+        return latestRelease.tag_name;
+      }
+    } catch (error) {
+      console.warn(`⚠️ Failed to fetch latest release tag from GitHub API: ${error.message}`);
+    }
+  }
+
+  // 폴백: 로컬 최신 git 태그
+  try {
+    const tags = await git.tags();
+    if (tags.latest) {
+      return tags.latest;
+    }
+  } catch (error) {
+    console.warn(`⚠️ Failed to fetch latest local git tag: ${error.message}`);
+  }
+
+  throw new Error('Unable to resolve previous version tag from GitHub latest release or local git tags.');
 }
 
 run();
