@@ -1,3 +1,15 @@
+# [v1.9.0](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.8.0...v1.9.0) - 2026-04-23
+
+## fix
+- ([8f7df2a](https://github.com/SolidLoop-studio/kkuko-utils/commit/8f7df2a)) - 삭제 요청시 완료모달의 텍스트가 잘못 표시되는 오류 수정
+- ([a0ec593](https://github.com/SolidLoop-studio/kkuko-utils/commit/a0ec593)) - 단어 조합기 단어 표시 로직 수정
+- ([42fbe54](https://github.com/SolidLoop-studio/kkuko-utils/commit/42fbe54)) - 오탈자 수정
+- ([2da272a](https://github.com/SolidLoop-studio/kkuko-utils/commit/2da272a)) - 관리자 페이지로 이동안됨 수정
+
+## feat
+- ([971bba6](https://github.com/SolidLoop-studio/kkuko-utils/commit/971bba6)) - 특정 글자가 포함된 단어 추출 추가
+- ([7e32b56](https://github.com/SolidLoop-studio/kkuko-utils/commit/7e32b56)) - 깃허브 릴리즈 확인 기능 추가
+
 # [v1.8.0](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.7.2...v1.8.0) - 2026-04-21
 
 ## fix
