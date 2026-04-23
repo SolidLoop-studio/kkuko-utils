@@ -7,6 +7,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/src/app/components/ui/dialog';
+import { Button } from './ui/button';
 
 interface HelpModalProps {
     title: string;
@@ -28,13 +29,10 @@ const HelpModal = ({
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-                <button
-                    className={`inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors ${triggerClassName}`}
-                    aria-label="도움말 열기"
-                >
+                <Button variant="outline" size="sm">
                     {showIcon && <HelpCircle className="w-4 h-4" />}
-                    {triggerText && <span className="text-sm">{triggerText}</span>}
-                </button>
+                    {triggerText && <span className="leading-none">{triggerText}</span>}
+                </Button>
             </DialogTrigger>
             <DialogContent className="max-w-xl w-full overflow-x-auto max-h-[80vh] overflow-y-auto bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100">
                 <DialogHeader>
