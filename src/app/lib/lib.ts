@@ -48,3 +48,30 @@ export function misssionCharMask(chars: string[]): number {
     }
     return base;
 }
+
+
+/**
+ * 한글 텍스트 필터링 함수
+ * 
+ * @param text 필터링할 텍스트
+ * @param search 검색할 텍스트
+ * @returns text가 search를 포함하는지 여부
+ */
+export function filterKoreanText(text: string, search: string): boolean {
+    if (search === "") return true;
+    let indexText = 0;
+    let indexSearch = 0;
+
+    while (indexText < text.length && indexSearch < search.length) {
+        if (
+            text[indexText] === search[indexSearch] ||
+            (("ㄱ" <= search[indexSearch] && search[indexSearch] <= "ㅎ") &&
+                calculateKoreanInitials(text[indexText]) === calculateKoreanInitials(search[indexSearch]))
+        ) {
+            indexSearch++;
+        }
+        indexText++;
+    }
+
+    return indexSearch === search.length;
+};
