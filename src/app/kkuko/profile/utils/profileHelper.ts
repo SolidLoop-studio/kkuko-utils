@@ -22,6 +22,13 @@ export const getNicknameStyle = (equipment: Equipment[], isDarkTheme: boolean): 
             WebkitBackgroundClip: 'text',
             backgroundClip: 'text'
         };
+    } else if (nikItem?.itemId === '9th_anniv_sumuk_name'){
+        return {
+            background: 'linear-gradient(127deg,rgba(44, 44, 44, 1) 0%, rgba(173, 181, 189, 1) 100%)',
+            color: 'transparent',
+            WebkitBackgroundClip: 'text',
+            backgroundClip: 'text'
+        };
     }
 
     return { color: getNicknameColor(equipment, isDarkTheme) };
@@ -108,6 +115,29 @@ export const formatObservedAt = (dateString: string): string => {
         minute: '2-digit',
         second: '2-digit'
     });
+};
+
+export const formatRelativeTime = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    
+    // Invalid date check
+    if (isNaN(diffMs)) return '알 수 없음';
+    
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (diffDays > 0) {
+        return diffHours > 0 ? `${diffDays}일 ${diffHours}시간 전` : `${diffDays}일 전`;
+    } else if (diffHours > 0) {
+        return diffMinutes > 0 ? `${diffHours}시간 ${diffMinutes}분 전` : `${diffHours}시간 전`;
+    } else if (diffMinutes > 0) {
+        return `${diffMinutes}분 전`;
+    } else {
+        return '방금 전';
+    }
 };
 
 export const getSlotName = (slot: string): string => {

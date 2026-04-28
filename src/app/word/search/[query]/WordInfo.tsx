@@ -565,7 +565,12 @@ const WordInfo = ({ wordInfo }: { wordInfo: WordInfoProps }) => {
             {completeModalOpen &&<CompleteModal
                 open={completeModalOpen !== null}
                 onClose={onCompleteModalClose}
-                title={completeModalOpen.s === "t" ? `단어 "${completeModalOpen.word}"에 대한 주제 수정 완료` : `${josa(wordInfo.word, "을/를")} ${wordInfo.status === "ok" ? "삭제 요청취소를" : (wordInfo.status === "삭제요청" ? (['admin','r4'].includes(user.role)) ? "삭제를" : "삭제 요청을" : "추가 요청취소를")} 하였습니다 ${wordInfo.status === "삭제요청" && ['admin','r4'].includes(user.role) ? "(새로고침을 한번 해주세요.)" :""}`}
+                title={completeModalOpen.s === "t"
+                    ? `단어 "${completeModalOpen.word}"에 대한 주제 수정 완료`
+                    : `${josa(wordInfo.word, "을/를")} ${completeModalOpen.work === "dr"
+                        ? (['admin','r4'].includes(user.role) && wordInfo.status === "ok" ? "삭제를" : "삭제 요청을")
+                        : (wordInfo.status === "추가요청" ? "추가 요청 취소를" : "삭제 요청 취소를")
+                    } 하였습니다 ${completeModalOpen.work === "dr" && ['admin','r4'].includes(user.role) && wordInfo.status === "ok" ? "(새로고침을 한번 해주세요.)" : ""}`}
                 description={completeModalOpen.s === "t" ? `주제 수정이 요청이 완료되었습니다. ${completeModalOpen.addThemes.length > 0 ? `추가 요청된 주제: ${completeModalOpen.addThemes.join(", ")}` : ``} ${completeModalOpen.delThemes.length > 0 ? `삭제 요청된 주제: ${completeModalOpen.delThemes.join(", ")}` : ``}` : ``}
                 />
             }

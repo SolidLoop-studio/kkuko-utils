@@ -44,7 +44,7 @@ export default function AdminHomeWrapper(){
             return;
         }
 
-        updateLoadingState(30, "단어 삭제/추가 요청 단아 가져오는 중...");
+        updateLoadingState(30, "단어 삭제/추가 요청 단어 가져오는 중...");
         const {data: waitWordsData, error: waitWordsError} = await SCM.get().allWaitWords();
         if (waitWordsError){
             MakeError(waitWordsError);

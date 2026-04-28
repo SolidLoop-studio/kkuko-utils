@@ -5,6 +5,7 @@ import {
   Type, 
   Hash, 
   ArrowRight, 
+  Search,
   RotateCcw, 
   Merge, 
   FileText, 
@@ -37,15 +38,24 @@ const ExtractHome: React.FC = () => {
     },
     { 
       id: 3, 
+      name: "X가 포함된 단어 추출", 
+      description: "지정한 글자나 문자열이 포함된 단어를 추출합니다.", 
+      link: "/containx",
+      icon: Search,
+      color: "from-cyan-500 to-sky-500",
+      bgColor: "group-hover:bg-cyan-50 dark:group-hover:bg-cyan-950/20"
+    },
+    { 
+      id: 4, 
       name: "X로 끝나는 단어 추출", 
-      description: "특정 접미사나 끝글자로 마무리되는 단어들을 추출합니다.", 
+      description: "특정 접미사로 마무리되는 단어들을 추출합니다.", 
       link: "/endx",
       icon: Type,
       color: "from-purple-500 to-violet-500",
       bgColor: "group-hover:bg-purple-50 dark:group-hover:bg-purple-950/20"
     },
     { 
-      id: 4, 
+      id: 5, 
       name: "돌림단어 추출", 
       description: "회문이나 대칭 구조를 가진 특별한 단어들을 추출합니다.", 
       link: "/loop",
@@ -54,7 +64,7 @@ const ExtractHome: React.FC = () => {
       bgColor: "group-hover:bg-orange-50 dark:group-hover:bg-orange-950/20"
     },
     { 
-      id: 5, 
+      id: 6, 
       name: "파일 합성", 
       description: "여러 텍스트 파일을 하나로 병합시킵니다.", 
       link: "/merge",
@@ -63,7 +73,7 @@ const ExtractHome: React.FC = () => {
       bgColor: "group-hover:bg-teal-50 dark:group-hover:bg-teal-950/20"
     },
     { 
-      id: 6, 
+      id: 7, 
       name: "한국어 미션단어 추출 - A", 
       description: "한국어 텍스트에서 미션 조건에 맞는 단어들을 추출합니다.", 
       link: "/korean-mission",
@@ -72,7 +82,7 @@ const ExtractHome: React.FC = () => {
       bgColor: "group-hover:bg-pink-50 dark:group-hover:bg-pink-950/20"
     },
     { 
-      id: 7, 
+      id: 8, 
       name: "영어 미션단어 추출", 
       description: "영어 텍스트에서 미션 조건을 만족하는 단어들을 추출합니다.", 
       link: "/english-mission",
@@ -81,7 +91,7 @@ const ExtractHome: React.FC = () => {
       bgColor: "group-hover:bg-indigo-50 dark:group-hover:bg-indigo-950/20"
     },
     { 
-      id: 8, 
+      id: 9, 
       name: "한국어 미션단어 추출 - B", 
       description: "1티어 미션단어만을 선별하여 단어를 추출합니다.", 
       link: "/korean-mission-b",
@@ -90,7 +100,7 @@ const ExtractHome: React.FC = () => {
       bgColor: "group-hover:bg-yellow-50 dark:group-hover:bg-yellow-950/20"
     },
     { 
-      id: 9, 
+      id: 10, 
       name: "기능 제안하기", 
       description: "새로운 기능이 필요하시다면 언제든 요청해주세요!",
       icon: HelpCircle,

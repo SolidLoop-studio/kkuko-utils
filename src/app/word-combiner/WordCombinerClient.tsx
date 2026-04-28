@@ -90,9 +90,9 @@ export default function WordCombinerClient({ prop }: { prop: WordCombinerWithDat
             setLoading(true);
             setTimeout(() => {
                 const manger6 = new CombinationManager(normalJOKAK.replace(/\s+/g, '').split('').sort().join(''), len6WordsData);
-                setLen6Date(manger6.getBests());
+                setLen6Date(manger6.getBests().sort());
                 const manger5 = new CombinationManager(manger6.remainStr(), len5WordsData);
-                setLen5Data(manger5.getBests());
+                setLen5Data(manger5.getBests().sort());
                 setLoading(false);
                 setNormalJOKAK(manger5.remainStr());
             }, 1)
@@ -122,9 +122,9 @@ export default function WordCombinerClient({ prop }: { prop: WordCombinerWithDat
             setLoading(true);
             setTimeout(() => {
                 const manger6 = new CombinationManager(highJOKAK.replace(/\s+/g, '').split('').sort().join(''), len6WordsData);
-                setLen6Date(manger6.getBests());
+                setLen6Date(manger6.getBests().sort());
                 const manger5 = new CombinationManager(manger6.remainStr(), len5WordsData);
-                setLen5Data(manger5.getBests());
+                setLen5Data(manger5.getBests().sort());
                 setLoading(false);
                 setHighJOKAK(manger5.remainStr());
             }, 1)
@@ -154,9 +154,9 @@ export default function WordCombinerClient({ prop }: { prop: WordCombinerWithDat
             setLoading(true);
             setTimeout(() => {
                 const manger6 = new CombinationManager(rareJOKAK.replace(/\s+/g, '').split('').sort().join(''), len6WordsData);
-                setLen6Date(manger6.getBests());
+                setLen6Date(manger6.getBests().sort());
                 const manger5 = new CombinationManager(manger6.remainStr(), len5WordsData);
-                setLen5Data(manger5.getBests());
+                setLen5Data(manger5.getBests().sort());
                 setLoading(false);
                 setRareJOKAK(manger5.remainStr());
             }, 1)

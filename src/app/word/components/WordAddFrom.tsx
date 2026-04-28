@@ -19,27 +19,7 @@ import ErrorModal from "@/src/app/components/ErrModal";
 import { fetcher } from "../lib";
 import { PostgrestError } from "@supabase/supabase-js";
 import HelpModal from "@/src/app/components/HelpModal";
-import { calculateKoreanInitials } from "@/src/app/lib/lib";
-
-// Utility function for Korean search filtering
-const filterKoreanText = (text: string, search: string) => {
-    if (search === "") return true;
-    let indexText = 0;
-    let indexSearch = 0;
-
-    while (indexText < text.length && indexSearch < search.length) {
-        if (
-            text[indexText] === search[indexSearch] ||
-            (("ㄱ" <= search[indexSearch] && search[indexSearch] <= "ㅎ") &&
-                calculateKoreanInitials(text[indexText]) === calculateKoreanInitials(search[indexSearch]))
-        ) {
-            indexSearch++;
-        }
-        indexText++;
-    }
-
-    return indexSearch === search.length;
-};
+import { calculateKoreanInitials, filterKoreanText } from "@/src/app/lib/lib";
 
 type TopicItemProps = {
     label: string;

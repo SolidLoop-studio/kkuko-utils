@@ -4,35 +4,29 @@ import ErrorModal from "@/src/app/components/ErrModal";
 import type { ErrorMessage } from '@/src/app/types/type'
 import Spinner from "@/src/app/components/Spinner";
 import FileContentDisplay from "../components/FileContentDisplay";
-import DuemLaw from "@/src/app/lib/hangulUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/app/components/ui/card";
 import { Button } from "@/src/app/components/ui/button";
 import { Input } from "@/src/app/components/ui/input";
 import { Label } from "@/src/app/components/ui/label";
-import { Badge } from "@/src/app/components/ui/badge";
-import { RadioGroup, RadioGroupItem } from "@/src/app/components/ui/radio-group";
-import { Download, Play, Settings, Zap, Home } from "lucide-react";
-import HelpModal from "./HelpModal";
-import Link from "next/link";
-import HelpModalA from "@/src/app/components/HelpModal";
 import { Checkbox } from "@/src/app/components/ui/checkbox";
+import { Badge } from "@/src/app/components/ui/badge";
+import { Download, Play, Settings, Zap, Home } from "lucide-react";
+import Link from "next/link";
+import HelpModal from "@/src/app/components/HelpModal";
 
-const LoopWordExtractorApp = () => {
+const WordExtractorApp = () => {
     const [file, setFile] = useState<File | null>(null);
     const [fileContent, setFileContent] = useState<string | null>(null);
     const [extractedWords, setExtractedWords] = useState<string[]>([]);
-    const [wordMod, setWordMod] = useState<"mode1" | "mode2" | "mode3" | "mode4" | "">('');
-    const [loopLetter, setLoopLetter] = useState<string>('');
+    const [sortChecked, setSortChecked] = useState<boolean>(true);
     const [errorModalView, seterrorModalView] = useState<ErrorMessage | null>(null);
     const [loading, setLoading] = useState(false);
-    const [sortChecked, setSortChecked] = useState<boolean>(true);
+    const [wordInclude, setWordInclude] = useState<string>('');
 
-    // 파일 업로드 처리
     const handleFileUpload = (content: string) => {
-        setFileContent(content.replace(/\r/g, "").replace(/\s+$/, "").replaceAll("\u200b", ""));
+        setFileContent(content);
     };
 
-    // 에러 처리
     const handleError = (error: unknown) => {
         if (error instanceof Error) {
             seterrorModalView({
@@ -51,70 +45,48 @@ const LoopWordExtractorApp = () => {
         }
     };
 
-    // 돌림단어 추출
     const extractWords = async () => {
         try {
             setLoading(true);
-            await new Promise(resolve => setTimeout(resolve, 1));
+            await new Promise(resolve => setTimeout(resolve, 1))
 
-            if (!fileContent || !loopLetter) return;
+            if (fileContent && wordInclude) {
+                const uniqueSet = new Set();
+                const result: string[] = [];
+                const words = fileContent.split(/\s+/);
 
-            switch (wordMod) {
-                case 'mode1':
-                    const words1 = fileContent.split(/\s+/).filter(word => word.startsWith(loopLetter) && word.endsWith(loopLetter));
-                    setExtractedWords(sortChecked ? words1.sort((a, b) => a.localeCompare(b, 'ko')) : words1);
-                    break;
-                case 'mode2':
-                    const loopl2 = DuemLaw(loopLetter[0]);
-                    const words2 = fileContent.split(/\s+/).filter(word => (word.startsWith(loopLetter) || word.startsWith(loopl2)) && word.endsWith(loopLetter));
-                    setExtractedWords(sortChecked ? words2.sort((a, b) => a.localeCompare(b, 'ko')) : words2);
-                    break;
-                case 'mode3':
-                    const loopl3 = DuemLaw(loopLetter[0]);
-                    const words3 = fileContent.split(/\s+/).filter(word => word.startsWith(loopLetter) && (word.endsWith(loopLetter) || word.endsWith(loopl3)));
-                    setExtractedWords(sortChecked ? words3.sort((a, b) => a.localeCompare(b, 'ko')) : words3);
-                    break;
-                case 'mode4':
-                    const loopl4 = DuemLaw(loopLetter[0]);
-                    const words4 = fileContent.split(/\s+/).filter(word => (word.startsWith(loopLetter) || word.startsWith(loopl4)) && (word.endsWith(loopLetter) || word.endsWith(loopl4)));
-                    setExtractedWords(sortChecked ? words4.sort((a, b) => a.localeCompare(b, 'ko')) : words4);
-                    break;
+                words.forEach(word => {
+                    const cleanedWord = word.replace(/[.,!?;:()]/g, '');
+                    if (cleanedWord && cleanedWord.includes(wordInclude) && !uniqueSet.has(cleanedWord)) {
+                        uniqueSet.add(cleanedWord);
+                        result.push(cleanedWord);
+                    }
+                });
+
+                setExtractedWords(sortChecked ? result.sort((a, b) => a.localeCompare(b, "ko")) : result);
             }
         } catch (err) {
             handleError(err);
         } finally {
-            setLoading(false);
+            setLoading(false)
         }
     };
 
-    // 다운로드 처리
     const downloadExtractedWords = () => {
         try {
             if (extractedWords.length === 0) return;
             const blob = new Blob([extractedWords.join("\n")], { type: "text/plain" });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.download = `${file?.name.substring(0, file?.name.lastIndexOf(".")) || "unknown"}_돌림단어목록.txt`;
+            link.download = `extracted_words_${wordInclude}_포함목록.txt`;
             link.click();
         } catch (err) {
             handleError(err);
         }
     };
 
-    // 모드 설명
-    const getModeDescription = (mode: string) => {
-        switch (mode) {
-            case 'mode1': return '시작=끝';
-            case 'mode2': return '시작(두음법칙)=끝';
-            case 'mode3': return '시작=끝(두음법칙)';
-            case 'mode4': return '시작(두음법칙)=끝(두음법칙)';
-            default: return '';
-        }
-    };
-
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-            {/* Header */}
             <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                     <div className="flex items-center justify-between">
@@ -124,10 +96,10 @@ const LoopWordExtractorApp = () => {
                             </div>
                             <div>
                                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                                    돌림단어 추출
+                                    X가 포함된 단어 추출
                                 </h1>
                                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                                    텍스트 파일에서 돌림단어들을 추출합니다
+                                    텍스트 파일에서 특정 문자열이 포함된 단어들을 추출합니다
                                 </p>
                             </div>
                         </div>
@@ -138,13 +110,12 @@ const LoopWordExtractorApp = () => {
                                     도구홈
                                 </Button>
                             </Link>
-                            <HelpModalA
-                                title="돌림단어 추출 사용법"
+                            <HelpModal
+                                title="X가 포함된 단어 추출 사용법"
                                 triggerText="도움말"
                                 triggerClassName="h-8 rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground [&_span]:text-xs [&_svg]:size-4"
                             >
                                 <div className="space-y-6">
-                                    {/* Step 0 */}
                                     <div className="space-y-3">
                                         <div className="flex items-center gap-2">
                                             <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-medium">0</span>
@@ -152,18 +123,17 @@ const LoopWordExtractorApp = () => {
                                         </div>
                                     </div>
 
-                                    {/* Step 1 */}
                                     <div className="space-y-3">
                                         <div className="flex items-center gap-2">
                                             <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-medium">1</span>
                                             <h3 className="font-semibold">설정</h3>
                                         </div>
                                         <div className="ml-6 space-y-2">
-                                            <p>원하는 돌림글자를 입력합니다. (예: &quot;라&quot;, &quot;기&quot;)</p>
+                                            <p>포함할 글자를 입력합니다. (예: &quot;가&quot;, &quot;미션&quot;)</p>
                                             <div className="bg-gray-50 p-3 rounded-lg border">
                                                 <div className="space-y-2">
-                                                    <Label className="text-sm font-medium">돌림글자</Label>
-                                                    <Input placeholder="돌림글자를 입력하세요" className="h-8" disabled />
+                                                    <Label className="text-sm font-medium">포함글자</Label>
+                                                    <Input placeholder="포함글자를 입력하세요" className="h-8" disabled />
                                                     <div className="flex items-center space-x-2">
                                                         <Checkbox disabled checked />
                                                         <Label className="text-sm">결과 정렬</Label>
@@ -173,48 +143,9 @@ const LoopWordExtractorApp = () => {
                                         </div>
                                     </div>
 
-                                    {/* Step 2 */}
                                     <div className="space-y-3">
                                         <div className="flex items-center gap-2">
                                             <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-medium">2</span>
-                                            <h3 className="font-semibold">모드</h3>
-                                        </div>
-                                        <div className="ml-6 space-y-2">
-                                            <p>추출모드를 선택합니다.</p>
-                                            <div className="bg-gray-50 p-3 rounded-lg border">
-                                                <RadioGroup
-                                                    disabled
-                                                    className="space-y-2"
-                                                >
-                                                    {[
-                                                        { value: 'mode1', label: '모드 1', description: '시작=끝' },
-                                                        { value: 'mode2', label: '모드 2', description: '시작(두음 ok)=끝' },
-                                                        { value: 'mode3', label: '모드 3', description: '시작=끝(두음 ok)' },
-                                                        { value: 'mode4', label: '모드 4', description: '시작(두음 ok)=끝(두음 ok)' }
-                                                    ].map((mode) => (
-                                                        <div key={mode.value} className="flex items-center space-x-2">
-                                                            <RadioGroupItem value={mode.value} id={mode.value} />
-                                                            <Label
-                                                                className="flex-1 cursor-pointer"
-                                                            >
-                                                                <div className="flex items-center justify-between">
-                                                                    <span className="font-medium">{mode.label}</span>
-                                                                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                                        {mode.description}
-                                                                    </span>
-                                                                </div>
-                                                            </Label>
-                                                        </div>
-                                                    ))}
-                                                </RadioGroup>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Step 3 */}
-                                    <div className="space-y-3">
-                                        <div className="flex items-center gap-2">
-                                            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-medium">3</span>
                                             <h3 className="font-semibold">실행</h3>
                                         </div>
                                         <div className="ml-6 space-y-2">
@@ -228,10 +159,9 @@ const LoopWordExtractorApp = () => {
                                         </div>
                                     </div>
 
-                                    {/* Step 4 */}
                                     <div className="space-y-3">
                                         <div className="flex items-center gap-2">
-                                            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-medium">4</span>
+                                            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-medium">3</span>
                                             <h3 className="font-semibold">결과 확인 및 다운로드</h3>
                                         </div>
                                         <div className="ml-6 space-y-2">
@@ -246,30 +176,54 @@ const LoopWordExtractorApp = () => {
                                         </div>
                                     </div>
 
-                                    {/* 예시 */}
                                     <div className="space-y-3">
                                         <h3 className="font-semibold">사용 예시</h3>
                                         <div className="space-y-3">
-                                            사용예시는 &quot;추출모드&quot; 글자옆의 ?버튼 눌러 확인하세요.
+                                            <div>
+                                                <p className="text-sm text-gray-600 mb-2">입력:</p>
+                                                <pre className="bg-gray-100 p-3 rounded text-xs overflow-x-auto">
+                                                    미션
+                                                    가을
+                                                    봄날
+                                                    겨울
+                                                    임무
+                                                </pre>
+                                            </div>
+                                            <div className="flex items-center justify-center">
+                                                <div className="text-center">
+                                                    <div className="text-sm text-gray-500">포함글자: &quot;미&quot; 추출</div>
+                                                    <div className="text-2xl">↓</div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p className="text-sm text-gray-600 mb-2">추출 결과:</p>
+                                                <div className="bg-green-50 p-3 rounded border border-green-200">
+                                                    <div className="text-sm space-y-1">
+                                                        <div>• 미션</div>
+                                                        <div>• 미로</div>
+                                                    </div>
+                                                    <div className="mt-2 text-xs text-green-600">
+                                                        총 2개 단어 추출됨
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
                                     <div className="mt-6 p-3 bg-blue-50 rounded-lg border border-blue-200">
                                         <p className="text-blue-800 text-sm">
-                                            <strong>💡 팁:</strong> 정렬 옵션을 체크하면 결과가 가나다순으로 정렬됩니다.
+                                            <strong>💡 팁:</strong> 포함글자에 여러 문자를 입력하면 해당 문자열이 들어간 단어만 추출됩니다.
                                         </p>
                                     </div>
                                 </div>
-                            </HelpModalA>
+                            </HelpModal>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Main Content */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
-                    {/* File Content Display - 3/4 width */}
                     <div className="xl:col-span-3">
                         <FileContentDisplay
                             fileContent={fileContent}
@@ -279,14 +233,12 @@ const LoopWordExtractorApp = () => {
                             onFileUpload={handleFileUpload}
                             onError={handleError}
                             resultData={extractedWords}
-                            resultTitle="돌림단어 목록"
+                            resultTitle={`"${wordInclude || "?"}"가 포함된 단어 목록`}
                         />
                     </div>
 
-                    {/* Control Panel - 1/4 width */}
                     <div className="xl:col-span-1">
                         <div className="space-y-6">
-                            {/* Settings Card */}
                             <Card className="dark:bg-gray-800 dark:border-gray-700">
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2 dark:text-white">
@@ -296,13 +248,12 @@ const LoopWordExtractorApp = () => {
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="loop-letter" className="dark:text-gray-200">돌림글자</Label>
+                                        <Label htmlFor="word-include" className="dark:text-gray-200">포함글자</Label>
                                         <Input
-                                            id="loop-letter"
-                                            type="text"
-                                            value={loopLetter}
-                                            onChange={(e) => setLoopLetter(e.target.value)}
-                                            placeholder="돌림글자를 입력하세요"
+                                            id="word-include"
+                                            value={wordInclude}
+                                            onChange={(e) => setWordInclude(e.target.value)}
+                                            placeholder="포함글자를 입력하세요"
                                         />
                                     </div>
 
@@ -319,44 +270,9 @@ const LoopWordExtractorApp = () => {
                                             결과 정렬
                                         </Label>
                                     </div>
-
-                                    <div className="space-y-3">
-                                        <div className="flex items-center gap-2">
-                                            <Label className="text-sm font-medium dark:text-gray-200">추출 모드</Label>
-                                            <HelpModal/>
-                                        </div>
-                                        <RadioGroup
-                                            value={wordMod}
-                                            onValueChange={(value) => setWordMod(value as typeof wordMod)}
-                                            className="space-y-2"
-                                        >
-                                            {[
-                                                { value: 'mode1', label: '모드 1', description: '시작=끝' },
-                                                { value: 'mode2', label: '모드 2', description: '시작(두음 ok)=끝' },
-                                                { value: 'mode3', label: '모드 3', description: '시작=끝(두음 ok)' },
-                                                { value: 'mode4', label: '모드 4', description: '시작(두음 ok)=끝(두음 ok)' }
-                                            ].map((mode) => (
-                                                <div key={mode.value} className="flex items-center space-x-2">
-                                                    <RadioGroupItem value={mode.value} id={mode.value} data-testid={`test-${mode.value}`}/>
-                                                    <Label
-                                                        htmlFor={mode.value}
-                                                        className="flex-1 cursor-pointer dark:text-gray-200"
-                                                    >
-                                                        <div className="flex items-center justify-between">
-                                                            <span className="font-medium">{mode.label}</span>
-                                                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                                {mode.description}
-                                                            </span>
-                                                        </div>
-                                                    </Label>
-                                                </div>
-                                            ))}
-                                        </RadioGroup>
-                                    </div>
                                 </CardContent>
                             </Card>
 
-                            {/* Actions Card */}
                             <Card className="dark:bg-gray-800 dark:border-gray-700">
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2 dark:text-white">
@@ -368,10 +284,10 @@ const LoopWordExtractorApp = () => {
                                     <Button
                                         onClick={extractWords}
                                         className="w-full"
-                                        disabled={!fileContent || !loopLetter || !wordMod || loading}
+                                        disabled={!fileContent || loading || !wordInclude}
                                     >
                                         <Play className="w-4 h-4 mr-2" />
-                                        {loading ? "처리중..." : "돌림단어 추출"}
+                                        {loading ? "처리중..." : "단어 추출"}
                                     </Button>
 
                                     <Button
@@ -391,32 +307,15 @@ const LoopWordExtractorApp = () => {
                                 </CardContent>
                             </Card>
 
-                            {/* Status Card */}
                             {fileContent && (
                                 <Card className="dark:bg-gray-800 dark:border-gray-700">
                                     <CardContent className="pt-6">
                                         <div className="text-center space-y-2">
                                             <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                                                {fileContent.split(/\s+/).length}
+                                                {fileContent.split('\n').length}
                                             </div>
                                             <div className="text-sm text-gray-500 dark:text-gray-400">
                                                 파일의 총 단어 수
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            )}
-
-                            {/* Selected Mode Info */}
-                            {wordMod && (
-                                <Card className="dark:bg-gray-800 dark:border-gray-700">
-                                    <CardContent className="pt-6">
-                                        <div className="text-center space-y-2">
-                                            <div className="text-lg font-semibold text-blue-600 dark:text-blue-400">
-                                                {getModeDescription(wordMod)}
-                                            </div>
-                                            <div className="text-sm text-gray-500 dark:text-gray-400">
-                                                선택된 추출 모드
                                             </div>
                                         </div>
                                     </CardContent>
@@ -427,7 +326,6 @@ const LoopWordExtractorApp = () => {
                 </div>
             </div>
 
-            {/* Modals */}
             {errorModalView && (
                 <ErrorModal
                     onClose={() => seterrorModalView(null)}
@@ -435,7 +333,6 @@ const LoopWordExtractorApp = () => {
                 />
             )}
 
-            {/* loading */}
             {loading && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <div className="bg-white dark:bg-gray-800 rounded-lg p-6 flex items-center space-x-4">
@@ -448,4 +345,4 @@ const LoopWordExtractorApp = () => {
     );
 };
 
-export default LoopWordExtractorApp;
+export default WordExtractorApp;

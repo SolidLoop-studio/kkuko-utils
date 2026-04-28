@@ -1,11 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { ItemInfo, ProfileData } from '@/src/app/types/kkuko.types';
 import TryRenderImg from '../../shared/components/TryRenderImg';
 import ProfileAvatar from '../../shared/components/ProfileAvatar';
-import { formatLastSeen, formatObservedAt, getNicknameStyle } from '../utils/profileHelper';
+import { formatObservedAt, formatRelativeTime, getNicknameStyle } from '../utils/profileHelper';
 
 interface ProfileHeaderProps {
     profileData: ProfileData;
@@ -22,6 +22,7 @@ export default function ProfileHeader({
     isRefreshing,
     onRefreshRequest 
 }: ProfileHeaderProps) {
+    const [showAbsoluteTime, setShowAbsoluteTime] = useState(false);
     const isDarkTheme = typeof window !== 'undefined' ? localStorage.getItem('theme') === 'dark' : false;
 
     const lvImgPlaceholder = () => (
@@ -114,48 +115,32 @@ export default function ProfileHeader({
 
                         <div className="col-span-2">
                             <p className="text-sm text-gray-500 dark:text-gray-400">정보 갱신 시각</p>
-                            <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{formatObservedAt(profileData.user.observedAt)}</p>
+                            <p 
+                                className="text-lg font-semibold text-gray-900 dark:text-gray-100 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors inline-block select-none"
+                                onClick={() => setShowAbsoluteTime(!showAbsoluteTime)}
+                                title={showAbsoluteTime ? "클릭하여 상대시간 보기" : "클릭하여 절대시각 보기"}
+                            >
+                                {showAbsoluteTime ? formatObservedAt(profileData.user.observedAt) : formatRelativeTime(profileData.user.observedAt)}
+                            </p>
                         </div> 
 
-                        <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">접속 상태</p>
-                            <p className="text-lg font-semibold">
-                                {profileData.presence.channelId ? (
-                                    <span className="text-green-600 dark:text-green-400">온라인</span>
-                                ) : (
-                                    <span className="text-gray-500 dark:text-gray-400">오프라인</span>
-                                )}
-                            </p>
-                            {profileData.presence.channelId ? (
-                                <p className="text-xs text-gray-600 dark:text-gray-400">채널: {profileData.presence.channelId}</p>
-                            ) : (
-                                profileData.presence.updatedAt !== null ?
-                                <p className="text-xs text-gray-600 dark:text-gray-400">마지막 접속: {formatLastSeen(profileData.presence.updatedAt)}</p> :
-                                null
-                            )}
-                        </div>
-
-                        <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">방 정보</p>
-                            <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                                {profileData.presence.roomId ? (
-                                    <span>방 {profileData.presence.roomId}</span>
-                                ) : (
-                                    <span className="text-gray-400 dark:text-gray-500">미입장</span>
-                                )}
-                            </p>
-                        </div>
                     </div>
-                    <div className="flex justify-end mt-1 items-center gap-3">
+                    <div className="flex justify-end mt-4 items-center gap-2">
                         <button
                             onClick={onRefreshRequest}
                             disabled={isRefreshing}
-                            className={`text-xs ${isRefreshing ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : 'text-gray-400 dark:text-gray-500 hover:underline'}`}
+                            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors border ${
+                                isRefreshing 
+                                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700 cursor-not-allowed' 
+                                    : 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/40'
+                            }`}
                         >
                             {isRefreshing ? '갱신 요청 중...' : '정보 강제 갱신'}
                         </button>
-                        <span className="text-xs text-gray-300 dark:text-gray-600">|</span>
-                        <Link href="/notification/9" className="text-xs text-gray-400 dark:text-gray-500 hover:underline">
+                        <Link 
+                            href="/notification/9" 
+                            className="px-3 py-1.5 rounded text-sm font-medium transition-colors border bg-white dark:bg-gray-800 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/40"
+                        >
                             정보 비공개 요청
                         </Link>
                     </div>

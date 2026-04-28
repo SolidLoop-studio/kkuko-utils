@@ -28,10 +28,11 @@ export default function TryRenderImg({
 }: Props) {
 	const [attempt, setAttempt] = useState(0);
 	const [failed, setFailed] = useState(false);
-	const [src, setSrc] = useState(url);
-
+	const isCdn = true; // url.startsWith('https://cdn.kkutu.co.kr/img/');
+	const [src, setSrc] = useState(`${isCdn ? 'https://img-proxy.jtw7913.workers.dev?v=3&url=' : ''}${url}`);
+	
 	useEffect(() => {
-		setSrc(url);
+		setSrc(`${isCdn ? 'https://img-proxy.jtw7913.workers.dev?v=3&url=' : ''}${url}`);
 		setAttempt(0);
 		setFailed(false);
 	}, [url]);
@@ -40,8 +41,8 @@ export default function TryRenderImg({
 		if (attempt < maxRetries) {
 			const next = attempt + 1;
 			setAttempt(next);
-			const separator = url.includes("?") ? "&" : "?";
-			setSrc(`${url}${separator}r=${next}&ts=${Date.now()}`);
+			const separator = (url.includes("?") || isCdn) ? "&" : "?";
+			setSrc(`${isCdn ? 'https://img-proxy.jtw7913.workers.dev?v=3&url=' : ''}${url}${separator}r=${next}&ts=${Date.now()}`);
 		} else {
 			setFailed(true);
 			onFailure?.();
@@ -66,6 +67,8 @@ export default function TryRenderImg({
 					className={className}
 					onError={handleError}
 					onLoad={onLoad}
+					unoptimized={isCdn}
+					crossOrigin={isCdn ? "anonymous" : undefined}
 				/>
 			) : (
 				<div style={{ position: "relative" }} className={className}>
@@ -77,6 +80,8 @@ export default function TryRenderImg({
 						style={{ objectFit: "cover" }}
 						onError={handleError}
 						onLoad={onLoad}
+						unoptimized={isCdn}
+						crossOrigin={isCdn ? "anonymous" : undefined}
 					/>
 				</div>
 			)}
