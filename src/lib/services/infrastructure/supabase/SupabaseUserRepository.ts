@@ -1,4 +1,4 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient, PostgrestError } from '@supabase/supabase-js';
 import type { Database } from '@/src/app/types/database.types';
 import type { IUserRepository } from '../../domain/user/UserRepository';
 import type { Result, CustomError } from '../../domain/result';
@@ -192,10 +192,12 @@ export class SupabaseUserRepository implements IUserRepository {
         return success(undefined);
     }
 
-    async setNickname(nickname: string): Promise<Result<void, CustomError>> {
+    async setNickname(nickname: string): Promise<Result<UserEntity, CustomError>> {
         try {
-            await axios.post('/api/auth/set_nickname', { nickname: nickname.trim() });
-            return success(undefined);
+            const res = await axios.post('/api/auth/set_nickname', { nickname: nickname.trim() });
+            const { data, error } = res.data as { data: null, error: PostgrestError } | { data: UserRow, error: null};
+            if (error) return failure(infrastructureError(error));
+            return success(toUserEntity(data));
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Unknown error';
             return failure(infrastructureError({ message }));

@@ -22,5 +22,5 @@ export interface IUserRepository {
     incrementContribution(userId: string, amount?: number): Promise<Result<void, CustomError>>;
     addStarDocs(userId: string, docsId: number): Promise<Result<void, CustomError>>;
     removeStarDocs(userId: string, docsId: number): Promise<Result<void, CustomError>>;
-    setNickname(nickname: string): Promise<Result<void, CustomError>>;
+    setNickname(nickname: string): Promise<Result<UserEntity, CustomError>>;
 }

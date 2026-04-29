@@ -71,10 +71,10 @@ export class UserService {
     }
 
     /**
-     * 월간 랭킹 순위를 조회합니다.
+     * 월간 기여도 랭킹 순위를 조회합니다.
      *
      * @param userId - 사용자 ID
-     * @returns 월간 랭킹 순위
+     * @returns 월간 기여도 랭킹 순위
      */
     async getUserMonthlyRank(userId: string): Promise<Result<number, CustomError>> {
         return this.userRepo.findMonthlyRank(userId);
@@ -164,9 +164,9 @@ export class UserService {
      * 현재 사용자의 닉네임을 변경합니다.
      *
      * @param nickname - 새 닉네임
-     * @returns 처리 결과
+     * @returns 사용자 엔티티 (변경된 닉네임 포함) 또는 에러
      */
-    async setNickname(nickname: string): Promise<Result<void, CustomError>> {
+    async setNickname(nickname: string): Promise<Result<UserEntity, CustomError>> {
         return this.userRepo.setNickname(nickname);
     }
 }

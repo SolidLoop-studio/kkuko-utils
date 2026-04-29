@@ -61,7 +61,7 @@ export async function POST(request: NextRequest){
         process.env.NEXT_PUBLIC_SUPABASE_URL, 
         process.env.SUPABASE_SERVICE_KEY
     )
-    const {data, error} = await supabaseServer.from('users').insert({id: user.id, nickname: nickname.trim()}).select('*').maybeSingle();
+    const {data, error} = await supabaseServer.from('users').upsert({id: user.id, nickname: nickname.trim()}).select('*').maybeSingle();
     if (error){
         return NextResponse.json({
             data,

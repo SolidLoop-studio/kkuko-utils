@@ -904,7 +904,7 @@ if (checkResult.data.length > 0) { setNicknameError("이미 사용 중인 닉네
 const setResult = await userContainer.userService.setNickname(nickname);
 if (!setResult.success) { setErrorModalView({ ... setResult.error }); setLoading(false); return; }
 
-// setNickname이 void를 반환하므로 사용자 정보를 별도 조회
+// setNickname이 void를 반환하므로 사용자 정보를 별도 조회 -> 변경됨: 사용자 정보를 제공함.
 const userResult = await userContainer.userService.getUserById(sessionResult.data.user.id);
 if (!userResult.success || !userResult.data) { router.push('/'); return; }
 dispatch(userAction.setInfo({
@@ -1629,7 +1629,7 @@ git commit -m "feat: SupabaseClientManager 제거 및 SCM 싱글톤 완전 이�
 
 1. **Result<T,E> 패턴 변환**: 모든 마이그레이션에서 `{ data, error }` → `result.success / result.data` 패턴 변환 필요
 2. **onAuthStateChange 구조 변환**: `{ data: { subscription: { unsubscribe } } }` → `{ unsubscribe: () => void }` (Task 5)
-3. **setNickname 이후 사용자 데이터 조회**: setNickname이 `void`를 반환하므로 getUserById 추가 호출 필요 (Task 5)
+3. **setNickname 이후 사용자 데이터 조회**: setNickname이 `void`를 반환하므로 getUserById 추가 호출 필요 (Task 5) -> 변경됨: 사용자 정보를 제공함.
 4. **camelCase vs snake_case 매핑**: 도메인 엔티티 필드명이 camelCase이므로 소비자 컴포넌트의 로컬 타입과 불일치 가능
 5. **서버 사이드 파일**: API 라우트는 브라우저 싱글톤 대신 레포지토리를 직접 생성해야 함
 6. **TableWorkFunc.tsx**: 가장 복잡한 파일, 마이그레이션 후 수동 테스트 필수
