@@ -9,6 +9,7 @@ import type { IDocsLogWriter, IWordLogWriter, IUserContributionUpdater } from '.
 import type { IWordRepository } from './domain/word/WordRepository';
 import type { IWaitWordRepository } from './domain/word/WaitWordRepository';
 import type { IThemeRepository } from './domain/word/ThemeRepository';
+import { createDocsServiceContainer } from './DocsServiceContainer';
 
 /**
  * Word 도메인 서비스 컨테이너
@@ -143,7 +144,8 @@ export class SupabaseUserContributionUpdater implements IUserContributionUpdater
 export function createWordServiceContainer(supabase: SupabaseClient<Database>): WordServiceContainer {
     const container = new WordServiceContainer(supabase);
 
-    const docsLogWriter = new SupabaseDocsLogWriter(supabase);
+    const docsContainer = createDocsServiceContainer(supabase);
+    const docsLogWriter = docsContainer.commandService;
     const wordLogWriter = new SupabaseWordLogWriter(supabase);
     const userContributionUpdater = new SupabaseUserContributionUpdater(supabase);
 
