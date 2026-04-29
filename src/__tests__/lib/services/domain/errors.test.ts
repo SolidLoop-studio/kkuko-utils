@@ -122,29 +122,29 @@ describe('Domain Errors', () => {
 
     describe('docsNotFoundError', () => {
         it('문자열 식별자로 에러를 생성한다', () => {
-            const error = docsNotFoundError('테스트문서');
+            const error = docsNotFoundError('테스트단어장');
             expect(error.name).toBe('DocsNotFoundError');
-            expect(error.message).toBe("문서 '테스트문서'를 찾을 수 없습니다.");
+            expect(error.message).toBe("단어장 '테스트단어장'를 찾을 수 없습니다.");
             expect(error.httpStatus).toBe(404);
             expect(error.code).toBe('DOCS_NOT_FOUND');
         });
         it('숫자 식별자로 에러를 생성한다', () => {
             const error = docsNotFoundError(1);
-            expect(error.message).toBe("문서 '1'를 찾을 수 없습니다.");
+            expect(error.message).toBe("단어장 '1'를 찾을 수 없습니다.");
         });
     });
 
     describe('waitDocsNotFoundError', () => {
         it('문자열 식별자로 에러를 생성한다', () => {
-            const error = waitDocsNotFoundError('대기문서');
+            const error = waitDocsNotFoundError('대기단어장');
             expect(error.name).toBe('WaitDocsNotFoundError');
-            expect(error.message).toBe("대기 문서 '대기문서'를 찾을 수 없습니다.");
+            expect(error.message).toBe("대기 단어장 '대기단어장'를 찾을 수 없습니다.");
             expect(error.httpStatus).toBe(404);
             expect(error.code).toBe('WAIT_DOCS_NOT_FOUND');
         });
         it('숫자 식별자로 에러를 생성한다', () => {
             const error = waitDocsNotFoundError(99);
-            expect(error.message).toBe("대기 문서 '99'를 찾을 수 없습니다.");
+            expect(error.message).toBe("대기 단어장 '99'를 찾을 수 없습니다.");
         });
     });
 });
