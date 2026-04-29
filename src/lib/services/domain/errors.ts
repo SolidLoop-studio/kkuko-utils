@@ -117,6 +117,36 @@ export function waitWordNotFoundError(identifier: string | number): CustomError 
 }
 
 /**
+ * 문서를 찾을 수 없을 때 발생하는 에러
+ *
+ * @param identifier - 문서 식별자 (ID 또는 이름)
+ * @returns CustomError
+ */
+export function docsNotFoundError(identifier: string | number): CustomError {
+    return createDomainError(
+        'DocsNotFoundError',
+        `문서 '${identifier}'를 찾을 수 없습니다.`,
+        404,
+        { code: 'DOCS_NOT_FOUND' }
+    );
+}
+
+/**
+ * 대기 문서를 찾을 수 없을 때 발생하는 에러
+ *
+ * @param identifier - 대기 문서 식별자 (ID 또는 이름)
+ * @returns CustomError
+ */
+export function waitDocsNotFoundError(identifier: string | number): CustomError {
+    return createDomainError(
+        'WaitDocsNotFoundError',
+        `대기 문서 '${identifier}'를 찾을 수 없습니다.`,
+        404,
+        { code: 'WAIT_DOCS_NOT_FOUND' }
+    );
+}
+
+/**
  * Supabase 인프라 레이어에서 발생하는 에러를 래핑하는 함수
  *
  * @param originalError - 원본 PostgrestError 또는 에러 객체
