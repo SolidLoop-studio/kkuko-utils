@@ -40,14 +40,14 @@ function makeMockStorageRepo(overrides: Partial<IStorageRepository> = {}): IStor
 
 describe('NotificationService', () => {
     describe('getActiveModal', () => {
-        it('활성 모달 알림 반환', async () => {
+        it('활성 모달 공지 반환', async () => {
             const service = new NotificationService(makeMockNotificationRepo(), makeMockStorageRepo());
             const result = await service.getActiveModal();
             expect(result.success).toBe(true);
             if (result.success) expect(result.data?.isModal).toBe(true);
         });
 
-        it('활성 알림 없으면 null 반환', async () => {
+        it('활성 공지 없으면 null 반환', async () => {
             const repo = makeMockNotificationRepo({ findActiveModal: jest.fn().mockResolvedValue(success(null)) });
             const service = new NotificationService(repo, makeMockStorageRepo());
             const result = await service.getActiveModal();
@@ -57,7 +57,7 @@ describe('NotificationService', () => {
     });
 
     describe('getAll', () => {
-        it('전체 알림 목록 반환', async () => {
+        it('전체 공지 목록 반환', async () => {
             const service = new NotificationService(makeMockNotificationRepo(), makeMockStorageRepo());
             const result = await service.getAll();
             expect(result.success).toBe(true);
@@ -66,14 +66,14 @@ describe('NotificationService', () => {
     });
 
     describe('getById', () => {
-        it('ID로 알림 반환', async () => {
+        it('ID로 공지 반환', async () => {
             const service = new NotificationService(makeMockNotificationRepo(), makeMockStorageRepo());
             const result = await service.getById(1);
             expect(result.success).toBe(true);
             if (result.success) expect(result.data?.id).toBe(1);
         });
 
-        it('존재하지 않는 알림은 null 반환', async () => {
+        it('존재하지 않는 공지는 null 반환', async () => {
             const repo = makeMockNotificationRepo({ findById: jest.fn().mockResolvedValue(success(null)) });
             const service = new NotificationService(repo, makeMockStorageRepo());
             const result = await service.getById(999);
@@ -83,7 +83,7 @@ describe('NotificationService', () => {
     });
 
     describe('create', () => {
-        it('새 알림 생성 성공', async () => {
+        it('새 공지 생성 성공', async () => {
             const repo = makeMockNotificationRepo();
             const service = new NotificationService(repo, makeMockStorageRepo());
             const newNotif: NewNotification = { title: '공지', body: '내용', endAt: '2099-12-31' };
@@ -94,7 +94,7 @@ describe('NotificationService', () => {
     });
 
     describe('update', () => {
-        it('알림 수정 성공', async () => {
+        it('공지 수정 성공', async () => {
             const repo = makeMockNotificationRepo();
             const service = new NotificationService(repo, makeMockStorageRepo());
             const updateData: UpdateNotification = { title: '변경', endAt: '2099-12-31' };
@@ -113,7 +113,7 @@ describe('NotificationService', () => {
     });
 
     describe('deleteById', () => {
-        it('알림 삭제 성공', async () => {
+        it('공지 삭제 성공', async () => {
             const repo = makeMockNotificationRepo();
             const service = new NotificationService(repo, makeMockStorageRepo());
             const result = await service.deleteById(1);

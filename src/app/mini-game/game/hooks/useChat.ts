@@ -41,7 +41,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [messages, setMessages] = useState<ChatMessage[]>([
         {
             id: 1,
-            username: '알림',
+            username: '공지',
             message: '게임방에 입장하셨습니다.',
             timestamp: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
             isNotice: true
@@ -83,7 +83,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const clearMessagesAndShowStartNotice = () => {
         const noticeMessage: ChatMessage = {
             id: Date.now(),
-            username: '알림',
+            username: '공지',
             message: '게임을 시작합니다!',
             timestamp: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
             isNotice: true

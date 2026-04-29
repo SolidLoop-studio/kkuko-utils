@@ -4,46 +4,46 @@ import type { NotificationEntity, NewNotification, UpdateNotification } from './
 /**
  * Notification 저장소 인터페이스
  *
- * 알림 데이터를 조회, 생성, 업데이트, 삭제하는 책임을 정의합니다.
+ * 공지 데이터를 조회, 생성, 업데이트, 삭제하는 책임을 정의합니다.
  */
 export interface INotificationRepository {
     /**
-     * 모든 알림을 조회합니다.
-     * @returns 알림 목록 또는 에러
+     * 모든 공지을 조회합니다.
+     * @returns 공지 목록 또는 에러
      */
     findAll(): Promise<Result<NotificationEntity[], CustomError>>;
 
     /**
-     * ID로 알림을 조회합니다.
-     * @param id 알림 ID
-     * @returns 알림 또는 null, 또는 에러
+     * ID로 공지을 조회합니다.
+     * @param id 공지 ID
+     * @returns 공지 또는 null, 또는 에러
      */
     findById(id: number): Promise<Result<NotificationEntity | null, CustomError>>;
 
     /**
-     * 활성 모달 알림을 조회합니다 (isModal=true, endAt이 현재 시각보다 이후).
-     * @returns 활성 모달 알림 또는 null, 또는 에러
+     * 활성 모달 공지을 조회합니다 (isModal=true, endAt이 현재 시각보다 이후).
+     * @returns 활성 모달 공지 또는 null, 또는 에러
      */
     findActiveModal(): Promise<Result<NotificationEntity | null, CustomError>>;
 
     /**
-     * 새로운 알림을 저장합니다.
-     * @param data 생성할 알림 데이터
-     * @returns 생성된 알림 또는 에러
+     * 새로운 공지을 저장합니다.
+     * @param data 생성할 공지 데이터
+     * @returns 생성된 공지 또는 에러
      */
     save(data: NewNotification): Promise<Result<NotificationEntity, CustomError>>;
 
     /**
-     * 알림을 업데이트합니다.
-     * @param id 알림 ID
-     * @param data 업데이트할 알림 데이터
-     * @returns 업데이트된 알림 또는 에러
+     * 공지을 업데이트합니다.
+     * @param id 공지 ID
+     * @param data 업데이트할 공지 데이터
+     * @returns 업데이트된 공지 또는 에러
      */
     update(id: number, data: UpdateNotification): Promise<Result<NotificationEntity, CustomError>>;
 
     /**
-     * 알림을 삭제합니다.
-     * @param id 알림 ID
+     * 공지을 삭제합니다.
+     * @param id 공지 ID
      * @returns 삭제 결과 또는 에러
      */
     deleteById(id: number): Promise<Result<void, CustomError>>;
@@ -52,7 +52,7 @@ export interface INotificationRepository {
 /**
  * Storage (파일 업로드) 저장소 인터페이스
  *
- * 알림 이미지 파일을 업로드, 삭제, URL 조회하는 책임을 정의합니다.
+ * 공지 이미지 파일을 업로드, 삭제, URL 조회하는 책임을 정의합니다.
  */
 export interface IStorageRepository {
     /**

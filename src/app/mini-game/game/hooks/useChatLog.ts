@@ -18,7 +18,7 @@ export const useChatLog = () => {
             if (trimmedInput === '/시작' || trimmedInput === '/ㄱ' || trimmedInput === '/r') {
                 const noticeMessage: ChatMessage = {
                     id: Date.now(),
-                    username: '알림',
+                    username: '공지',
                     message: '게임을 시작합니다!',
                     timestamp: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
                     isNotice: true
@@ -43,7 +43,7 @@ export const useChatLog = () => {
                 setChatInput('');
                 const noticeMessage: ChatMessage = {
                     id: Date.now(),
-                    username: '알림',
+                    username: '공지',
                     message: '게임을 종료합니다.',
                     timestamp: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
                     isNotice: true

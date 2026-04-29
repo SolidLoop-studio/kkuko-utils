@@ -186,15 +186,15 @@ export function userNotFoundError(identifier: string): CustomError {
 }
 
 /**
- * 알림을 찾을 수 없을 때 발생하는 에러
+ * 공지을 찾을 수 없을 때 발생하는 에러
  *
- * @param id - 알림 ID
+ * @param id - 공지 ID
  * @returns CustomError
  */
 export function notificationNotFoundError(id: number): CustomError {
     return createDomainError(
         'NotificationNotFoundError',
-        `알림 '${id}'를 찾을 수 없습니다.`,
+        `공지 '${id}'를 찾을 수 없습니다.`,
         404,
         { code: 'NOTIFICATION_NOT_FOUND' }
     );
