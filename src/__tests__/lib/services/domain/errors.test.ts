@@ -6,6 +6,8 @@ import {
     validationError,
     waitWordNotFoundError,
     infrastructureError,
+    docsNotFoundError,
+    waitDocsNotFoundError,
 } from '@/src/lib/services/domain/errors';
 
 describe('Domain Errors', () => {
@@ -115,6 +117,34 @@ describe('Domain Errors', () => {
             const error = infrastructureError({ message: 'unknown' });
 
             expect(error.code).toBe('INFRASTRUCTURE_ERROR');
+        });
+    });
+
+    describe('docsNotFoundError', () => {
+        it('문자열 식별자로 에러를 생성한다', () => {
+            const error = docsNotFoundError('테스트문서');
+            expect(error.name).toBe('DocsNotFoundError');
+            expect(error.message).toBe("문서 '테스트문서'를 찾을 수 없습니다.");
+            expect(error.httpStatus).toBe(404);
+            expect(error.code).toBe('DOCS_NOT_FOUND');
+        });
+        it('숫자 식별자로 에러를 생성한다', () => {
+            const error = docsNotFoundError(1);
+            expect(error.message).toBe("문서 '1'를 찾을 수 없습니다.");
+        });
+    });
+
+    describe('waitDocsNotFoundError', () => {
+        it('문자열 식별자로 에러를 생성한다', () => {
+            const error = waitDocsNotFoundError('대기문서');
+            expect(error.name).toBe('WaitDocsNotFoundError');
+            expect(error.message).toBe("대기 문서 '대기문서'를 찾을 수 없습니다.");
+            expect(error.httpStatus).toBe(404);
+            expect(error.code).toBe('WAIT_DOCS_NOT_FOUND');
+        });
+        it('숫자 식별자로 에러를 생성한다', () => {
+            const error = waitDocsNotFoundError(99);
+            expect(error.message).toBe("대기 문서 '99'를 찾을 수 없습니다.");
         });
     });
 });
