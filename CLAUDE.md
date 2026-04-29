@@ -21,7 +21,7 @@ npx jest src/__tests__/mini-game/game/lib/GameLogic.test.ts
 
 ## Architecture
 
-This is a Next.js 15 (App Router) utility site for the Korean word-chain game "끄코". It is deployed on Vercel and uses Supabase as the database and auth backend.
+This is a Next.js 15 (App Router) utility site for the Korean word-chain game "끄투코리아". It is deployed on Vercel and uses Supabase as the database and auth backend.
 
 ### Main Feature Areas
 
@@ -81,3 +81,9 @@ Tests live in `src/__tests__/`, mirroring the `src/app/` structure. The setup fi
 ## Commit Convention
 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org/) enforced by commitlint (`commitlint.config.js`). Husky runs the check on `commit-msg`. Use types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `ci`.
+
+## Main variable name
+- `kkuko` (끄투코리아) is the main variable name used throughout the codebase to refer to the core game logic, data, or features related to the 끄투코리아 word-chain game. It appears in function names, variable names, and component names that are directly related to the game's functionality.
+- `docs` is a collection that allows you to group and view multiple words based on specific criteria. For example, you can create a `docs` collection that gathers words frequently used in games or words recently added to a database. This is called a vocabulary list.
+- `k_canuse` is a column in the `words` table that stores whether the word can be used in general rules such as 끝말잇기, 앞말잇기, and 쿵쿵따. For Korean verbs and adjectives, it is usually false.
+- `noin_canuse` is a word that can be used in 끄투코리아 without turning on the special rule "어인정".

@@ -14,53 +14,53 @@ import type {
 /**
  * Docs Repository 인터페이스 (Port)
  *
- * 문제집 엔티티에 대한 데이터 접근 추상화 레이어입니다.
+ * 단어장 엔티티에 대한 데이터 접근 추상화 레이어입니다.
  * 인프라 구현체(Supabase 등)와 도메인을 분리합니다.
  */
 export interface IDocsRepository {
     // ========== 조회 메서드 ==========
 
     /**
-     * 모든 문제집을 조회합니다.
+     * 모든 단어장을 조회합니다.
      *
-     * @returns 사용자 정보가 포함된 문제집 배열
+     * @returns 사용자 정보가 포함된 단어장 배열
      */
     findAll(): Promise<Result<DocsWithUser[], CustomError>>;
 
     /**
-     * ID로 문제집을 조회합니다.
+     * ID로 단어장을 조회합니다.
      *
-     * @param id - 문제집 ID
-     * @returns 사용자 정보가 포함된 문제집 또는 null
+     * @param id - 단어장 ID
+     * @returns 사용자 정보가 포함된 단어장 또는 null
      */
     findById(id: number): Promise<Result<DocsWithUser | null, CustomError>>;
 
     /**
-     * 종류로 문제집을 조회합니다.
+     * 종류로 단어장을 조회합니다.
      *
-     * @param typez - 문제집 종류 ('letter' | 'theme')
-     * @returns 문제집 배열
+     * @param typez - 단어장 종류 ('letter' | 'theme')
+     * @returns 단어장 배열
      */
     findByType(typez: 'letter' | 'theme'): Promise<Result<DocsEntity[], CustomError>>;
 
     /**
-     * 테마 이름 배열로 문제집을 조회합니다.
+     * 테마 이름 배열로 단어장을 조회합니다.
      *
      * @param names - 테마 이름 배열
-     * @returns 문제집 배열
+     * @returns 단어장 배열
      */
     findByThemeNames(names: string[]): Promise<Result<DocsEntity[], CustomError>>;
 
     /**
-     * 문제집의 마지막 업데이트 시간을 조회합니다.
+     * 단어장의 마지막 업데이트 시간을 조회합니다.
      *
-     * @param id - 문제집 ID
+     * @param id - 단어장 ID
      * @returns 마지막 업데이트 시각 문자열 또는 null
      */
     findLastUpdate(id: number): Promise<Result<string | null, CustomError>>;
 
     /**
-     * 문제집의 단어 개수를 조회합니다.
+     * 단어장의 단어 개수를 조회합니다.
      *
      * @param input - 단어 개수 조회 입력 파라미터
      * @returns 단어 개수
@@ -68,25 +68,25 @@ export interface IDocsRepository {
     findWordCount(input: DocsWordCountInput): Promise<Result<number, CustomError>>;
 
     /**
-     * 문제집의 조회수 랭킹을 조회합니다.
+     * 단어장의 조회수 랭킹을 조회합니다.
      *
-     * @param id - 문제집 ID
+     * @param id - 단어장 ID
      * @returns 순위 번호
      */
     findViewRank(id: number): Promise<Result<number, CustomError>>;
 
     /**
-     * 문제집의 별 개수(좋아요 수)를 조회합니다.
+     * 단어장의 별 개수(좋아요 수)를 조회합니다.
      *
-     * @param id - 문제집 ID
+     * @param id - 단어장 ID
      * @returns 별 개수
      */
     findStarCount(id: number): Promise<Result<number, CustomError>>;
 
     /**
-     * 문제집을 별표한 사용자 목록을 조회합니다.
+     * 단어장을 별표한 사용자 목록을 조회합니다.
      *
-     * @param id - 문제집 ID
+     * @param id - 단어장 ID
      * @returns 사용자 ID 배열
      */
     findStarUsers(id: number): Promise<Result<string[], CustomError>>;
@@ -94,9 +94,9 @@ export interface IDocsRepository {
     // ========== 로그 메서드 ==========
 
     /**
-     * 특정 문제집의 변경 로그를 조회합니다.
+     * 특정 단어장의 변경 로그를 조회합니다.
      *
-     * @param docsId - 문제집 ID
+     * @param docsId - 단어장 ID
      * @returns 변경 로그 배열
      */
     findLogs(docsId: number): Promise<Result<DocsLogEntity[], CustomError>>;
@@ -105,7 +105,7 @@ export interface IDocsRepository {
      * 필터 조건에 맞는 변경 로그를 조회합니다.
      *
      * @param filter - 로그 필터 옵션
-     * @returns 문제집 정보가 포함된 로그 배열 및 전체 개수
+     * @returns 단어장 정보가 포함된 로그 배열 및 전체 개수
      */
     findLogsByFilter(
         filter: DocsLogFilter,
@@ -130,18 +130,18 @@ export interface IDocsRepository {
     // ========== 별표(좋아요) 메서드 ==========
 
     /**
-     * 문제집에 별표를 추가합니다.
+     * 단어장에 별표를 추가합니다.
      *
-     * @param docsId - 문제집 ID
+     * @param docsId - 단어장 ID
      * @param userId - 사용자 ID
      * @returns void
      */
     saveStar(docsId: number, userId: string): Promise<Result<void, CustomError>>;
 
     /**
-     * 문제집의 별표를 제거합니다.
+     * 단어장의 별표를 제거합니다.
      *
-     * @param docsId - 문제집 ID
+     * @param docsId - 단어장 ID
      * @param userId - 사용자 ID
      * @returns void
      */
@@ -150,25 +150,25 @@ export interface IDocsRepository {
     // ========== 쓰기 메서드 ==========
 
     /**
-     * 새로운 문제집을 추가합니다.
+     * 새로운 단어장을 추가합니다.
      *
-     * @param docs - 추가할 문제집 데이터 배열
-     * @returns 추가된 문제집 엔티티 배열
+     * @param docs - 추가할 단어장 데이터 배열
+     * @returns 추가된 단어장 엔티티 배열
      */
     save(docs: NewDocs[]): Promise<Result<DocsEntity[], CustomError>>;
 
     /**
-     * 문제집의 마지막 업데이트 시간을 갱신합니다.
+     * 단어장의 마지막 업데이트 시간을 갱신합니다.
      *
-     * @param docsIds - 업데이트할 문제집 ID 배열
+     * @param docsIds - 업데이트할 단어장 ID 배열
      * @returns void
      */
     updateLastUpdate(docsIds: number[]): Promise<Result<void, CustomError>>;
 
     /**
-     * 문제집의 조회수를 증가시킵니다.
+     * 단어장의 조회수를 증가시킵니다.
      *
-     * @param id - 문제집 ID
+     * @param id - 단어장 ID
      * @returns void
      */
     incrementView(id: number): Promise<Result<void, CustomError>>;

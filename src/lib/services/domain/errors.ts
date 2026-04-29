@@ -117,30 +117,30 @@ export function waitWordNotFoundError(identifier: string | number): CustomError 
 }
 
 /**
- * 문서를 찾을 수 없을 때 발생하는 에러
+ * 단어장를 찾을 수 없을 때 발생하는 에러
  *
- * @param identifier - 문서 식별자 (ID 또는 이름)
+ * @param identifier - 단어장 식별자 (ID 또는 이름)
  * @returns CustomError
  */
 export function docsNotFoundError(identifier: string | number): CustomError {
     return createDomainError(
         'DocsNotFoundError',
-        `문서 '${identifier}'를 찾을 수 없습니다.`,
+        `단어장 '${identifier}'를 찾을 수 없습니다.`,
         404,
         { code: 'DOCS_NOT_FOUND' }
     );
 }
 
 /**
- * 대기 문서를 찾을 수 없을 때 발생하는 에러
+ * 대기 단어장를 찾을 수 없을 때 발생하는 에러
  *
- * @param identifier - 대기 문서 식별자 (ID 또는 이름)
+ * @param identifier - 대기 단어장 식별자 (ID 또는 이름)
  * @returns CustomError
  */
 export function waitDocsNotFoundError(identifier: string | number): CustomError {
     return createDomainError(
         'WaitDocsNotFoundError',
-        `대기 문서 '${identifier}'를 찾을 수 없습니다.`,
+        `대기 단어장 '${identifier}'를 찾을 수 없습니다.`,
         404,
         { code: 'WAIT_DOCS_NOT_FOUND' }
     );

@@ -14,7 +14,7 @@ import type {
 /**
  * Docs 조회 서비스 (Application Layer)
  *
- * 문제집 및 대기 문제집 요청에 대한 읽기 전용 유즈케이스를 담당합니다.
+ * 단어장 및 대기 단어장 요청에 대한 읽기 전용 유즈케이스를 담당합니다.
  * 모든 메서드는 저장소(Repository)로 단순 위임합니다.
  */
 export class DocsQueryService {
@@ -24,47 +24,47 @@ export class DocsQueryService {
 	) {}
 
 	/**
-	 * 모든 문제집을 조회합니다.
+	 * 모든 단어장을 조회합니다.
 	 *
-	 * @returns 사용자 정보가 포함된 문제집 배열
+	 * @returns 사용자 정보가 포함된 단어장 배열
 	 */
 	async getAllDocs(): Promise<Result<DocsWithUser[], CustomError>> {
 		return this.docsRepo.findAll();
 	}
 
 	/**
-	 * ID로 문제집을 조회합니다.
+	 * ID로 단어장을 조회합니다.
 	 *
-	 * @param id - 문제집 ID
-	 * @returns 사용자 정보가 포함된 문제집 또는 null
+	 * @param id - 단어장 ID
+	 * @returns 사용자 정보가 포함된 단어장 또는 null
 	 */
 	async getDocsById(id: number): Promise<Result<DocsWithUser | null, CustomError>> {
 		return this.docsRepo.findById(id);
 	}
 
 	/**
-	 * 문자형 문제집을 조회합니다.
+	 * 문자형 단어장을 조회합니다.
 	 *
-	 * @returns 문자형 문제집 배열
+	 * @returns 문자형 단어장 배열
 	 */
 	async getLetterDocs(): Promise<Result<DocsEntity[], CustomError>> {
 		return this.docsRepo.findByType('letter');
 	}
 
 	/**
-	 * 테마 이름 배열로 문제집을 조회합니다.
+	 * 테마 이름 배열로 단어장을 조회합니다.
 	 *
 	 * @param names - 테마 이름 배열
-	 * @returns 문제집 배열
+	 * @returns 단어장 배열
 	 */
 	async getDocsByThemeNames(names: string[]): Promise<Result<DocsEntity[], CustomError>> {
 		return this.docsRepo.findByThemeNames(names);
 	}
 
 	/**
-	 * 문제집의 마지막 업데이트 시간을 조회합니다.
+	 * 단어장의 마지막 업데이트 시간을 조회합니다.
 	 *
-	 * @param id - 문제집 ID
+	 * @param id - 단어장 ID
 	 * @returns 마지막 업데이트 시각 문자열 또는 null
 	 */
 	async getDocsLastUpdate(id: number): Promise<Result<string | null, CustomError>> {
@@ -72,7 +72,7 @@ export class DocsQueryService {
 	}
 
 	/**
-	 * 문제집의 단어 개수를 조회합니다.
+	 * 단어장의 단어 개수를 조회합니다.
 	 *
 	 * @param input - 단어 개수 조회 입력 파라미터
 	 * @returns 단어 개수
@@ -82,9 +82,9 @@ export class DocsQueryService {
 	}
 
 	/**
-	 * 문제집의 조회수 랭킹을 조회합니다.
+	 * 단어장의 조회수 랭킹을 조회합니다.
 	 *
-	 * @param id - 문제집 ID
+	 * @param id - 단어장 ID
 	 * @returns 순위 번호
 	 */
 	async getDocsViewRank(id: number): Promise<Result<number, CustomError>> {
@@ -92,9 +92,9 @@ export class DocsQueryService {
 	}
 
 	/**
-	 * 문제집의 별 개수(좋아요 수)를 조회합니다.
+	 * 단어장의 별 개수(좋아요 수)를 조회합니다.
 	 *
-	 * @param id - 문제집 ID
+	 * @param id - 단어장 ID
 	 * @returns 별 개수
 	 */
 	async getDocsStarCount(id: number): Promise<Result<number, CustomError>> {
@@ -102,9 +102,9 @@ export class DocsQueryService {
 	}
 
 	/**
-	 * 문제집을 별표한 사용자 목록을 조회합니다.
+	 * 단어장을 별표한 사용자 목록을 조회합니다.
 	 *
-	 * @param id - 문제집 ID
+	 * @param id - 단어장 ID
 	 * @returns 사용자 ID 배열
 	 */
 	async getDocsStarUsers(id: number): Promise<Result<string[], CustomError>> {
@@ -112,9 +112,9 @@ export class DocsQueryService {
 	}
 
 	/**
-	 * 특정 문제집의 변경 로그를 조회합니다.
+	 * 특정 단어장의 변경 로그를 조회합니다.
 	 *
-	 * @param docsId - 문제집 ID
+	 * @param docsId - 단어장 ID
 	 * @returns 변경 로그 배열
 	 */
 	async getDocsLogs(docsId: number): Promise<Result<DocsLogEntity[], CustomError>> {
@@ -125,7 +125,7 @@ export class DocsQueryService {
 	 * 필터 조건에 맞는 변경 로그를 조회합니다.
 	 *
 	 * @param filter - 로그 필터 옵션
-	 * @returns 문제집 정보가 포함된 로그 배열 및 전체 개수
+	 * @returns 단어장 정보가 포함된 로그 배열 및 전체 개수
 	 */
 	async getDocsLogsByFilter(
 		filter: DocsLogFilter,
@@ -134,7 +134,7 @@ export class DocsQueryService {
 	}
 
 	/**
-	 * 모든 대기 중인 문제집 요청을 조회합니다.
+	 * 모든 대기 중인 단어장 요청을 조회합니다.
 	 *
 	 * @returns 사용자 정보가 포함된 대기 요청 배열
 	 */

@@ -4,13 +4,13 @@
  * DB의 `docs` 테이블 Row를 도메인 관점에서 표현한 타입입니다.
  */
 export interface DocsEntity {
-    /** 문제집 고유 ID */
+    /** 단어장 고유 ID */
     readonly id: number;
-    /** 문제집 이름 */
+    /** 단어장 이름 */
     readonly name: string;
-    /** 문제집 종류 */
+    /** 단어장 종류 */
     readonly typez: 'letter' | 'theme' | 'ect';
-    /** 문제집 작성자 ID */
+    /** 단어장 작성자 ID */
     readonly maker: string | null;
     /** 기한 있음 여부 */
     readonly duem: boolean;
@@ -25,7 +25,7 @@ export interface DocsEntity {
 }
 
 /**
- * 문제집 정보에 사용자 닉네임이 포함된 상세 타입
+ * 단어장 정보에 사용자 닉네임이 포함된 상세 타입
  */
 export interface DocsWithUser extends DocsEntity {
     /** 작성자 닉네임 */
@@ -40,7 +40,7 @@ export interface DocsWithUser extends DocsEntity {
 export interface DocsLogEntity {
     /** 로그 고유 ID */
     readonly id: number;
-    /** 문제집 ID */
+    /** 단어장 ID */
     readonly docsId: number;
     /** 단어 문자열 */
     readonly word: string;
@@ -53,22 +53,22 @@ export interface DocsLogEntity {
 }
 
 /**
- * 변경 로그에 문제집 이름이 포함된 상세 타입
+ * 변경 로그에 단어장 이름이 포함된 상세 타입
  */
 export interface DocsLogWithDocs extends DocsLogEntity {
-    /** 문제집 이름 */
+    /** 단어장 이름 */
     readonly docsName: string;
 }
 
 /**
- * 대기 중인 문제집 요청 엔티티
+ * 대기 중인 단어장 요청 엔티티
  *
  * DB의 `wait_docs` 테이블 Row를 도메인 관점에서 표현한 타입입니다.
  */
 export interface WaitDocsEntity {
     /** 대기 요청 고유 ID */
     readonly id: number;
-    /** 요청한 문제집 이름 */
+    /** 요청한 단어장 이름 */
     readonly docsName: string;
     /** 요청자 ID */
     readonly reqBy: string | null;
@@ -77,7 +77,7 @@ export interface WaitDocsEntity {
 }
 
 /**
- * 대기 중인 문제집 요청에 사용자 닉네임이 포함된 상세 타입
+ * 대기 중인 단어장 요청에 사용자 닉네임이 포함된 상세 타입
  */
 export interface WaitDocsWithUser extends WaitDocsEntity {
     /** 요청자 닉네임 */
@@ -85,24 +85,24 @@ export interface WaitDocsWithUser extends WaitDocsEntity {
 }
 
 /**
- * 새로운 문제집 추가 시 사용하는 입력 타입
+ * 새로운 단어장 추가 시 사용하는 입력 타입
  */
 export interface NewDocs {
-    /** 문제집 이름 */
+    /** 단어장 이름 */
     readonly name: string;
     /** 작성자 ID */
     readonly maker: string | null;
     /** 기한 있음 여부 */
     readonly duem: boolean;
-    /** 문제집 종류 */
+    /** 단어장 종류 */
     readonly typez: 'letter';
 }
 
 /**
- * 새로운 문제집 로그 추가 시 사용하는 입력 타입
+ * 새로운 단어장 로그 추가 시 사용하는 입력 타입
  */
 export interface NewDocsLog {
-    /** 문제집 ID */
+    /** 단어장 ID */
     readonly docsId: number;
     /** 단어 문자열 */
     readonly word: string;
@@ -116,7 +116,7 @@ export interface NewDocsLog {
  * Docs 로그 조회 필터 옵션
  */
 export interface DocsLogFilter {
-    /** 문제집 이름 (선택사항) */
+    /** 단어장 이름 (선택사항) */
     readonly docsName?: string;
     /** 로그 타입 필터 */
     readonly logType: 'add' | 'delete' | 'all';
