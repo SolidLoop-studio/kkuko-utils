@@ -318,7 +318,7 @@ export function userNotFoundError(identifier: string): CustomError {
 }
 
 /**
- * 공지을 찾을 수 없을 때 발생하는 에러
+ * 공지를 찾을 수 없을 때 발생하는 에러
  *
  * @param id - 공지 ID
  * @returns CustomError

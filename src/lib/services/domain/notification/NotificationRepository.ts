@@ -8,33 +8,33 @@ import type { NotificationEntity, NewNotification, UpdateNotification } from './
  */
 export interface INotificationRepository {
     /**
-     * 모든 공지을 조회합니다.
+     * 모든 공지를 조회합니다.
      * @returns 공지 목록 또는 에러
      */
     findAll(): Promise<Result<NotificationEntity[], CustomError>>;
 
     /**
-     * ID로 공지을 조회합니다.
+     * ID로 공지를 조회합니다.
      * @param id 공지 ID
      * @returns 공지 또는 null, 또는 에러
      */
     findById(id: number): Promise<Result<NotificationEntity | null, CustomError>>;
 
     /**
-     * 활성 모달 공지을 조회합니다 (isModal=true, endAt이 현재 시각보다 이후).
+     * 활성 모달 공지를 조회합니다 (isModal=true, endAt이 현재 시각보다 이후).
      * @returns 활성 모달 공지 또는 null, 또는 에러
      */
     findActiveModal(): Promise<Result<NotificationEntity | null, CustomError>>;
 
     /**
-     * 새로운 공지을 저장합니다.
+     * 새로운 공지를 저장합니다.
      * @param data 생성할 공지 데이터
      * @returns 생성된 공지 또는 에러
      */
     save(data: NewNotification): Promise<Result<NotificationEntity, CustomError>>;
 
     /**
-     * 공지을 업데이트합니다.
+     * 공지를 업데이트합니다.
      * @param id 공지 ID
      * @param data 업데이트할 공지 데이터
      * @returns 업데이트된 공지 또는 에러
@@ -42,7 +42,7 @@ export interface INotificationRepository {
     update(id: number, data: UpdateNotification): Promise<Result<NotificationEntity, CustomError>>;
 
     /**
-     * 공지을 삭제합니다.
+     * 공지를 삭제합니다.
      * @param id 공지 ID
      * @returns 삭제 결과 또는 에러
      */

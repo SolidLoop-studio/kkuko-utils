@@ -4,6 +4,11 @@ import { SupabaseNotificationRepository } from './infrastructure/supabase/Supaba
 import { SupabaseStorageRepository } from './infrastructure/supabase/SupabaseStorageRepository';
 import { NotificationService } from './application/notification/NotificationService';
 
+/**
+ * Notification 서비스 컨테이너
+ *
+ * 공지 및 스토리지 리포지토리를 구성하고 NotificationService를 제공합니다.
+ */
 export class NotificationServiceContainer {
     public readonly notificationService: NotificationService;
 
@@ -14,6 +19,12 @@ export class NotificationServiceContainer {
     }
 }
 
+/**
+ * NotificationServiceContainer 팩토리
+ *
+ * @param supabase - Supabase 클라이언트
+ * @returns NotificationServiceContainer 인스턴스
+ */
 export function createNotificationServiceContainer(
     supabase: SupabaseClient<Database>
 ): NotificationServiceContainer {
