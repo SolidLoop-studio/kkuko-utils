@@ -10,6 +10,7 @@ import type { IWordRepository } from './domain/word/WordRepository';
 import type { IWaitWordRepository } from './domain/word/WaitWordRepository';
 import type { IThemeRepository } from './domain/word/ThemeRepository';
 import { createDocsServiceContainer } from './DocsServiceContainer';
+import { createUserServiceContainer } from './UserServiceContainer';
 
 /**
  * Word 도메인 서비스 컨테이너
@@ -122,20 +123,6 @@ export class SupabaseWordLogWriter implements IWordLogWriter {
 }
 
 /**
- * Supabase 기반 기본 IUserContributionUpdater 구현체
- *
- * Phase 3에서 UserService로 대체될 예정입니다.
- */
-export class SupabaseUserContributionUpdater implements IUserContributionUpdater {
-    constructor(private readonly supabase: SupabaseClient<Database>) {}
-
-    /** @inheritdoc */
-    async incrementContribution(userId: string, amount: number = 1): Promise<void> {
-        await this.supabase.rpc('increment_contribution', { target_id: userId, inc_amount: amount });
-    }
-}
-
-/**
  * Supabase 클라이언트로 Word 서비스 컨테이너를 생성하고 CommandService까지 초기화합니다.
  *
  * @param supabase - Supabase 클라이언트
@@ -145,11 +132,13 @@ export function createWordServiceContainer(supabase: SupabaseClient<Database>): 
     const container = new WordServiceContainer(supabase);
 
     const docsContainer = createDocsServiceContainer(supabase);
-    const docsLogWriter = docsContainer.commandService;
-    const wordLogWriter = new SupabaseWordLogWriter(supabase);
-    const userContributionUpdater = new SupabaseUserContributionUpdater(supabase);
+    const userContainer = createUserServiceContainer(supabase);
 
-    container.initCommandService(docsLogWriter, wordLogWriter, userContributionUpdater);
+    container.initCommandService(
+        docsContainer.commandService,
+        new SupabaseWordLogWriter(supabase),
+        userContainer.userService,
+    );
 
     return container;
 }

@@ -33,7 +33,7 @@ export interface IWordLogWriter {
  */
 export interface IUserContributionUpdater {
     /** 유저 기여도를 증가시킵니다. */
-    incrementContribution(userId: string, amount?: number): Promise<void>;
+    incrementContribution(userId: string, amount?: number): Promise<Result<void, CustomError>>;
 }
 
 /**
