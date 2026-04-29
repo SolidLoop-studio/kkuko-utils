@@ -169,3 +169,33 @@ export function infrastructureError(originalError: {
         }
     );
 }
+
+/**
+ * 사용자를 찾을 수 없을 때 발생하는 에러
+ *
+ * @param identifier - 사용자 식별자 (ID 또는 닉네임)
+ * @returns CustomError
+ */
+export function userNotFoundError(identifier: string): CustomError {
+    return createDomainError(
+        'UserNotFoundError',
+        `사용자 '${identifier}'를 찾을 수 없습니다.`,
+        404,
+        { code: 'USER_NOT_FOUND' }
+    );
+}
+
+/**
+ * 알림을 찾을 수 없을 때 발생하는 에러
+ *
+ * @param id - 알림 ID
+ * @returns CustomError
+ */
+export function notificationNotFoundError(id: number): CustomError {
+    return createDomainError(
+        'NotificationNotFoundError',
+        `알림 '${id}'를 찾을 수 없습니다.`,
+        404,
+        { code: 'NOTIFICATION_NOT_FOUND' }
+    );
+}
