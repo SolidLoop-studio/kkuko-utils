@@ -88,9 +88,9 @@ export class WordServiceContainer {
 export function createWordServiceContainer(supabase: SupabaseClient<Database>): WordServiceContainer {
     const container = new WordServiceContainer(supabase);
 
-    const docsContainer = createDocsServiceContainer(supabase);
-    const userContainer = createUserServiceContainer(supabase);
     const logContainer = createLogServiceContainer(supabase);
+    const docsContainer = createDocsServiceContainer(supabase, logContainer.service);
+    const userContainer = createUserServiceContainer(supabase);
 
     container.initCommandService(
         docsContainer.commandService,

@@ -66,15 +66,11 @@ export class SupabaseLogRepository implements ILogRepository {
         return success(undefined);
     }
 
-    async saveWordLogs(logsData: { word: string; make_by: string | null; processed_by: string | null; r_type: 'add' | 'delete'; state: 'approved' | 'rejected' }[]): Promise<Result<void, CustomError>> {
-        const { error } = await this.supabase.from('logs').insert(logsData);
-        if (error) return failure(infrastructureError(error));
-        return success(undefined);
+    async saveWordLogs(logsData: { word: string; make_by: string | null; processed_by: string | null; r_type: 'add' | 'delete'; state: 'approved' | 'rejected' }[]): Promise<void> {
+        await this.supabase.from('logs').insert(logsData);
     }
 
-    async saveDocsLogs(logsData: { word: string; docs_id: number; add_by: string | null; type: 'add' | 'delete' }[]): Promise<Result<void, CustomError>> {
-        const { error } = await this.supabase.from('docs_logs').insert(logsData);
-        if (error) return failure(infrastructureError(error));
-        return success(undefined);
+    async saveDocsLogs(logsData: { word: string; docs_id: number; add_by: string | null; type: 'add' | 'delete' }[]): Promise<void> {
+        await this.supabase.from('docs_logs').insert(logsData);
     }
 }

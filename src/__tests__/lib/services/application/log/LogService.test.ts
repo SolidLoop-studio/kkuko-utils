@@ -64,13 +64,13 @@ test('deleteDocsLogsByIds — 성공', async () => {
 });
 
 test('writeWordLog — repo 호출 후 에러 무시', async () => {
-    mockLogRepo.saveWordLogs.mockResolvedValue(success(undefined));
+    mockLogRepo.saveWordLogs.mockResolvedValue(undefined);
     await service.writeWordLog([{ word: '사과', make_by: null, processed_by: null, r_type: 'add', state: 'approved' }]);
     expect(mockLogRepo.saveWordLogs).toHaveBeenCalledTimes(1);
 });
 
 test('writeDocsLog — repo 호출 후 에러 무시', async () => {
-    mockLogRepo.saveDocsLogs.mockResolvedValue(success(undefined));
+    mockLogRepo.saveDocsLogs.mockResolvedValue(undefined);
     await service.writeDocsLog([{ word: '사과', docs_id: 1, add_by: null, type: 'add' }]);
     expect(mockLogRepo.saveDocsLogs).toHaveBeenCalledTimes(1);
 });
