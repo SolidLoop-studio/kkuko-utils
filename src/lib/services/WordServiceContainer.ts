@@ -11,6 +11,7 @@ import type { IWaitWordRepository } from './domain/word/WaitWordRepository';
 import type { IThemeRepository } from './domain/word/ThemeRepository';
 import { createDocsServiceContainer } from './DocsServiceContainer';
 import { createUserServiceContainer } from './UserServiceContainer';
+import { createLogServiceContainer } from './LogServiceContainer';
 
 /**
  * Word 도메인 서비스 컨테이너
@@ -79,50 +80,6 @@ export class WordServiceContainer {
 }
 
 /**
- * Supabase 기반 기본 IDocsLogWriter 구현체
- *
- * Phase 2에서 DocsCommandService로 대체될 예정입니다.
- * 현재는 기존 SCM의 메서드를 브리징합니다.
- */
-export class SupabaseDocsLogWriter implements IDocsLogWriter {
-    constructor(private readonly supabase: SupabaseClient<Database>) {}
-
-    /** @inheritdoc */
-    async writeDocsLog(logsData: { word: string; docs_id: number; add_by: string | null; type: 'add' | 'delete' }[]): Promise<void> {
-        await this.supabase.from('docs_logs').insert(logsData);
-    }
-
-    /** @inheritdoc */
-    async getAllDocs(): Promise<{ id: number; name: string; typez: string }[]> {
-        let q = this.supabase.from('docs').select('*, users(*)');
-        if (process.env.NODE_ENV === 'production') {
-            q = q.eq('is_hidden', false);
-        }
-        const { data } = await q;
-        return (data ?? []).map((d) => ({ id: d.id, name: d.name, typez: d.typez }));
-    }
-
-    /** @inheritdoc */
-    async updateDocsLastUpdate(docsIds: number[]): Promise<void> {
-        await this.supabase.rpc('update_last_updates', { docs_ids: docsIds });
-    }
-}
-
-/**
- * Supabase 기반 기본 IWordLogWriter 구현체
- *
- * Phase 2에서 LogService로 대체될 예정입니다.
- */
-export class SupabaseWordLogWriter implements IWordLogWriter {
-    constructor(private readonly supabase: SupabaseClient<Database>) {}
-
-    /** @inheritdoc */
-    async writeWordLog(logsData: { word: string; make_by: string | null; processed_by: string | null; r_type: 'add' | 'delete'; state: 'approved' | 'rejected' }[]): Promise<void> {
-        await this.supabase.from('logs').insert(logsData);
-    }
-}
-
-/**
  * Supabase 클라이언트로 Word 서비스 컨테이너를 생성하고 CommandService까지 초기화합니다.
  *
  * @param supabase - Supabase 클라이언트
@@ -133,10 +90,11 @@ export function createWordServiceContainer(supabase: SupabaseClient<Database>): 
 
     const docsContainer = createDocsServiceContainer(supabase);
     const userContainer = createUserServiceContainer(supabase);
+    const logContainer = createLogServiceContainer(supabase);
 
     container.initCommandService(
         docsContainer.commandService,
-        new SupabaseWordLogWriter(supabase),
+        logContainer.service,
         userContainer.userService,
     );
 

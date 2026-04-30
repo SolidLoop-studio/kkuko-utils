@@ -1,6 +1,7 @@
 import { DocsCommandService } from '@/src/lib/services/application/docs/DocsCommandService';
 import type { IDocsRepository } from '@/src/lib/services/domain/docs/DocsRepository';
 import type { IWaitDocsRepository } from '@/src/lib/services/domain/docs/WaitDocsRepository';
+import type { LogService } from '@/src/lib/services/application/log/LogService';
 import { success, failure } from '@/src/lib/services/domain/result';
 import { infrastructureError } from '@/src/lib/services/domain/errors';
 import type { DocsWithUser } from '@/src/lib/services/domain/docs/DocsEntity';
@@ -36,6 +37,16 @@ function createMockWaitDocsRepo(): jest.Mocked<IWaitDocsRepository> {
     };
 }
 
+function createMockLogService(): jest.Mocked<LogService> {
+    return {
+        getWordLogsByFilter: jest.fn(),
+        deleteWordLogsByIds: jest.fn(),
+        deleteDocsLogsByIds: jest.fn(),
+        writeWordLog: jest.fn(),
+        writeDocsLog: jest.fn(),
+    } as unknown as jest.Mocked<LogService>;
+}
+
 const mockDocsWithUser: DocsWithUser = {
     id: 1,
     name: '테스트문서',
@@ -52,50 +63,52 @@ const mockDocsWithUser: DocsWithUser = {
 describe('DocsCommandService', () => {
     let docsRepo: jest.Mocked<IDocsRepository>;
     let waitDocsRepo: jest.Mocked<IWaitDocsRepository>;
+    let logService: jest.Mocked<LogService>;
     let service: DocsCommandService;
 
     beforeEach(() => {
         docsRepo = createMockDocsRepo();
         waitDocsRepo = createMockWaitDocsRepo();
-        service = new DocsCommandService(docsRepo, waitDocsRepo);
+        logService = createMockLogService();
+        service = new DocsCommandService(docsRepo, waitDocsRepo, logService);
     });
 
     describe('writeDocsLog', () => {
-        it('snake_case를 camelCase로 변환하여 saveLogs를 호출한다', async () => {
-            docsRepo.saveLogs.mockResolvedValue(success(undefined));
+        it('logService.writeDocsLog에 위임한다', async () => {
+            logService.writeDocsLog.mockResolvedValue(undefined);
 
             await service.writeDocsLog([
                 { word: '사과', docs_id: 1, add_by: 'user1', type: 'add' },
             ]);
 
-            expect(docsRepo.saveLogs).toHaveBeenCalledWith([
-                { word: '사과', docsId: 1, addBy: 'user1', type: 'add' },
+            expect(logService.writeDocsLog).toHaveBeenCalledWith([
+                { word: '사과', docs_id: 1, add_by: 'user1', type: 'add' },
             ]);
         });
 
-        it('여러 로그를 변환하여 저장한다', async () => {
-            docsRepo.saveLogs.mockResolvedValue(success(undefined));
+        it('여러 로그를 logService에 전달한다', async () => {
+            logService.writeDocsLog.mockResolvedValue(undefined);
 
             await service.writeDocsLog([
                 { word: '사과', docs_id: 1, add_by: 'user1', type: 'add' },
                 { word: '바나나', docs_id: 2, add_by: null, type: 'delete' },
             ]);
 
-            expect(docsRepo.saveLogs).toHaveBeenCalledWith([
-                { word: '사과', docsId: 1, addBy: 'user1', type: 'add' },
-                { word: '바나나', docsId: 2, addBy: null, type: 'delete' },
+            expect(logService.writeDocsLog).toHaveBeenCalledWith([
+                { word: '사과', docs_id: 1, add_by: 'user1', type: 'add' },
+                { word: '바나나', docs_id: 2, add_by: null, type: 'delete' },
             ]);
         });
 
         it('add_by가 null인 경우도 처리한다', async () => {
-            docsRepo.saveLogs.mockResolvedValue(success(undefined));
+            logService.writeDocsLog.mockResolvedValue(undefined);
 
             await service.writeDocsLog([
                 { word: '포도', docs_id: 3, add_by: null, type: 'add' },
             ]);
 
-            expect(docsRepo.saveLogs).toHaveBeenCalledWith([
-                { word: '포도', docsId: 3, addBy: null, type: 'add' },
+            expect(logService.writeDocsLog).toHaveBeenCalledWith([
+                { word: '포도', docs_id: 3, add_by: null, type: 'add' },
             ]);
         });
     });
@@ -241,17 +254,17 @@ describe('DocsCommandService', () => {
     });
 
     describe('deleteDocsLogs', () => {
-        it('docsRepo.deleteLogsByIds에 위임한다', async () => {
-            docsRepo.deleteLogsByIds.mockResolvedValue(success(undefined));
+        it('logService.deleteDocsLogsByIds에 위임한다', async () => {
+            logService.deleteDocsLogsByIds.mockResolvedValue(success(undefined));
 
             const result = await service.deleteDocsLogs([10, 20]);
 
             expect(result.success).toBe(true);
-            expect(docsRepo.deleteLogsByIds).toHaveBeenCalledWith([10, 20]);
+            expect(logService.deleteDocsLogsByIds).toHaveBeenCalledWith([10, 20]);
         });
 
         it('인프라 에러를 전파한다', async () => {
-            docsRepo.deleteLogsByIds.mockResolvedValue(failure(infrastructureError({ message: 'DB error' })));
+            logService.deleteDocsLogsByIds.mockResolvedValue(failure(infrastructureError({ message: 'DB error' })));
 
             const result = await service.deleteDocsLogs([10]);
 

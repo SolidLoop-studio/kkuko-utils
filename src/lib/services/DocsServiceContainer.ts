@@ -6,6 +6,7 @@ import { DocsQueryService } from './application/docs/DocsQueryService';
 import { DocsCommandService } from './application/docs/DocsCommandService';
 import type { IDocsRepository } from './domain/docs/DocsRepository';
 import type { IWaitDocsRepository } from './domain/docs/WaitDocsRepository';
+import { createLogServiceContainer } from './LogServiceContainer';
 
 /**
  * Docs 도메인 서비스 컨테이너
@@ -22,8 +23,9 @@ export class DocsServiceContainer {
     constructor(private readonly supabase: SupabaseClient<Database>) {
         this.docsRepo = new SupabaseDocsRepository(supabase);
         this.waitDocsRepo = new SupabaseWaitDocsRepository(supabase);
+        const logContainer = createLogServiceContainer(supabase);
         this.queryService = new DocsQueryService(this.docsRepo, this.waitDocsRepo);
-        this.commandService = new DocsCommandService(this.docsRepo, this.waitDocsRepo);
+        this.commandService = new DocsCommandService(this.docsRepo, this.waitDocsRepo, logContainer.service);
     }
 }
 

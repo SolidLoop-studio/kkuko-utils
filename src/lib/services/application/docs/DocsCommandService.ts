@@ -2,7 +2,7 @@ import type { IDocsRepository } from '../../domain/docs/DocsRepository';
 import type { IWaitDocsRepository } from '../../domain/docs/WaitDocsRepository';
 import type { Result, CustomError } from '../../domain/result';
 import type { IDocsLogWriter } from '../word/WordCommandService';
-import type { NewDocsLog } from '../../domain/docs/DocsEntity';
+import type { LogService } from '../log/LogService';
 
 /**
  * Docs 명령 서비스 (Application Layer)
@@ -13,6 +13,7 @@ export class DocsCommandService implements IDocsLogWriter {
 	constructor(
 		private readonly docsRepo: IDocsRepository,
 		private readonly waitDocsRepo: IWaitDocsRepository,
+		private readonly logService: LogService,
 	) {}
 
 	// ── IDocsLogWriter 구현 (WordCommandService가 사용) ──────────────
@@ -26,14 +27,7 @@ export class DocsCommandService implements IDocsLogWriter {
 	async writeDocsLog(
 		logsData: { word: string; docs_id: number; add_by: string | null; type: 'add' | 'delete' }[],
 	): Promise<void> {
-		const newLogsData: NewDocsLog[] = logsData.map((log) => ({
-			docsId: log.docs_id,
-			word: log.word,
-			type: log.type,
-			addBy: log.add_by,
-		}));
-
-		await this.docsRepo.saveLogs(newLogsData);
+		await this.logService.writeDocsLog(logsData);
 	}
 
 	/**
@@ -118,7 +112,7 @@ export class DocsCommandService implements IDocsLogWriter {
 	 * @returns 성공 or 에러
 	 */
 	async deleteDocsLogs(ids: number[]): Promise<Result<void, CustomError>> {
-		return this.docsRepo.deleteLogsByIds(ids);
+		return this.logService.deleteDocsLogsByIds(ids);
 	}
 
 	/**
