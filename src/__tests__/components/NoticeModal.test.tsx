@@ -67,7 +67,10 @@ describe("NoticeModal", () => {
         title: "테스트 공지",
         body: "# 마크다운 테스트\n\n**볼드 텍스트**입니다.",
         img: null,
-        created_at: "2024-02-12T12:00:00Z",
+        createdAt: "2024-02-12T12:00:00Z",
+        endAt: "2024-12-31T00:00:00Z",
+        isImportant: false,
+        isModal: true,
     };
 
     const mockOnClose = jest.fn();

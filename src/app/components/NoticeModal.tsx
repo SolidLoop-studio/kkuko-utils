@@ -7,19 +7,12 @@ import { useState } from "react";
 import { Info } from "lucide-react";
 import Image from "next/image";
 import MarkdownViewer from "./MarkdownViewer";
-
-interface NoticeData {
-    id: number;
-    title: string;
-    body: string;
-    img: string | null;
-    created_at: string;
-}
+import type { NotificationEntity } from '@/src/lib/services/domain/notification/NotificationEntity';
 
 interface NoticeModalProps {
     open: boolean;
     onClose: () => void;
-    notice: NoticeData;
+    notice: NotificationEntity;
 }
 
 export default function NoticeModal({ open, onClose, notice }: NoticeModalProps) {
@@ -60,7 +53,7 @@ export default function NoticeModal({ open, onClose, notice }: NoticeModalProps)
                         </DialogTitle>
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {formatDate(notice.created_at)}
+                        {formatDate(notice.createdAt)}
                     </div>
                 </DialogHeader>
 

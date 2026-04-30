@@ -1,7 +1,7 @@
 import NotificationWrite from "../../write/NotificationWrite";
 import { notFound } from "next/navigation";
 import { type Metadata } from "next";
-import { SCM } from "@/src/app/lib/supabaseClient";
+import { notificationContainer } from "@/src/app/lib/supabaseClient";
 
 interface PageProps {
     params: Promise<{ id: string }>;
@@ -19,12 +19,13 @@ export default async function NotificationEditPage({ params }: PageProps) {
         notFound();
     }
     
-    const { data: notification, error } = await SCM.get().notificationById(notificationId);
+    const result = await notificationContainer.notificationService.getById(notificationId);
 
-    if (error || !notification) {
-        if (error) console.error("Error fetching notification for edit:", error);
+    if (!result.success || !result.data) {
+        if (!result.success) console.error("Error fetching notification for edit:", result.error);
         notFound();
     }
+    const notification = result.data;
 
     return (
         <main className="container mx-auto py-8 px-4">

@@ -1,9 +1,9 @@
-import type { Database } from '@/src/app/types/database.types';
 import { useEffect, useRef, useState } from 'react';
 import { format } from "date-fns";
-import { SCM } from '@/src/app/lib/supabaseClient';
+import { notificationContainer } from '@/src/app/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import { PostgrestError } from "@supabase/supabase-js";
+import type { NotificationEntity } from '@/src/lib/services/domain/notification/NotificationEntity';
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/app/components/ui/card';
 import { Button } from "@/src/app/components/ui/button";
 import { ChevronLeft, Loader2, Upload, X } from 'lucide-react';
@@ -17,10 +17,8 @@ import Image from 'next/image';
 import { Textarea } from '@/src/app/components/ui/textarea';
 import CompleteModal from '@/src/app/components/CompleteModal';
 
-type NotificationType = Database['public']['Tables']['notification']['Row'];
-
 interface NotificationWriteProps {
-    notification?: NotificationType;
+    notification?: NotificationEntity;
     onError?: (error: PostgrestError) => void;
 }
 
@@ -35,10 +33,10 @@ export default function NotificationWriteForm({ notification, onError }: Notific
     const [title, setTitle] = useState(notification?.title || "");
     const [body, setBody] = useState(notification?.body || "");
     const [endDate, setEndDate] = useState(
-        notification ? format(new Date(notification.end_at), "yyyy-MM-dd") : ""
+        notification ? format(new Date(notification.endAt), "yyyy-MM-dd") : ""
     );
-    const [isImportant, setIsImportant] = useState(notification?.is_important || false);
-    const [isModal, setIsModal] = useState(notification?.is_modal || false);
+    const [isImportant, setIsImportant] = useState(notification?.isImportant || false);
+    const [isModal, setIsModal] = useState(notification?.isModal || false);
     const [uploading, setUploading] = useState(false);
     const [imageUrl, setImageUrl] = useState<string | null>(notification?.img || null);
     const [fileName, setFileName] = useState<string | null>(null);
@@ -49,9 +47,9 @@ export default function NotificationWriteForm({ notification, onError }: Notific
         if (notification) {
             setTitle(notification.title);
             setBody(notification.body);
-            setEndDate(format(new Date(notification.end_at), "yyyy-MM-dd"));
-            setIsImportant(notification.is_important || false);
-            setIsModal(notification.is_modal || false);
+            setEndDate(format(new Date(notification.endAt), "yyyy-MM-dd"));
+            setIsImportant(notification.isImportant || false);
+            setIsModal(notification.isModal || false);
             setImageUrl(notification.img);
         }
     }, [notification]);
@@ -63,15 +61,13 @@ export default function NotificationWriteForm({ notification, onError }: Notific
         try {
             setUploading(true);
             const path = `notifications/${Date.now()}_${file.name}`;
-            const { error: uploadError } = await SCM.uploadImage(file, path);
+            const uploadResult = await notificationContainer.notificationService.uploadImage(file, path);
 
-            if (uploadError) throw uploadError;
+            if (!uploadResult.success) throw uploadResult.error;
 
-            const { data } = SCM.getPublicUrl(path);
-            if (data?.publicUrl) {
-                setImageUrl(data.publicUrl);
-                setFileName(file.name);
-            }
+            const publicUrl = notificationContainer.notificationService.getPublicUrl(path);
+            setImageUrl(publicUrl);
+            setFileName(file.name);
         } catch (error) {
             console.error("Image upload failed:", error);
             onError?.(error as PostgrestError);
@@ -101,27 +97,27 @@ export default function NotificationWriteForm({ notification, onError }: Notific
 
             if (notification) {
                 // 수정
-                result = await SCM.update().notification(notification.id, {
+                result = await notificationContainer.notificationService.update(notification.id, {
                     title,
                     body,
                     img: imageUrl,
-                    end_at: endDate === "" ? new Date(Date.now()).toISOString() : new Date(endDate).toISOString(),
-                    is_important: isImportant,
-                    is_modal: isModal,
+                    endAt: endDate === "" ? new Date(Date.now()).toISOString() : new Date(endDate).toISOString(),
+                    isImportant,
+                    isModal,
                 });
             } else {
                 // 추가
-                result = await SCM.add().notification({
+                result = await notificationContainer.notificationService.create({
                     title,
                     body,
                     img: imageUrl,
-                    end_at: endDate === "" ? new Date(Date.now()).toISOString() : new Date(endDate).toISOString(),
-                    is_important: isImportant,
-                    is_modal: isModal,
+                    endAt: endDate === "" ? new Date(Date.now()).toISOString() : new Date(endDate).toISOString(),
+                    isImportant,
+                    isModal,
                 });
             }
 
-            if (result.error) throw result.error;
+            if (!result.success) throw result.error;
             // show success modal
             setCompleteState({
                 title: notification ? '공지사항이 수정되었습니다.' : '공지사항이 등록되었습니다.',

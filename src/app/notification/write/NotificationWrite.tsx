@@ -8,12 +8,10 @@ import { Button } from "@/src/app/components/ui/button";
 import NotificationWriteForm from "../components/NotificationWriteForm";
 import ErrorModal from "@/src/app/components/ErrModal";
 import type { ErrorMessage } from "@/src/app/types/type";
-import type { Database } from "@/src/app/types/database.types";
-
-type NotificationType = Database['public']['Tables']['notification']['Row'];
+import type { NotificationEntity } from '@/src/lib/services/domain/notification/NotificationEntity';
 
 interface NotificationWriteProps {
-    notification?: NotificationType;
+    notification?: NotificationEntity;
 }
 
 export default function NotificationWrite({ notification }: NotificationWriteProps) {

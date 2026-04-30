@@ -13,7 +13,7 @@ import { Separator } from "@/src/app/components/ui/separator";
 import ReactMarkdown from "react-markdown";
 import { useSelector } from "react-redux";
 import type { RootState } from "../../store/store";
-import { SCM } from "@/src/app/lib/supabaseClient";
+import { notificationContainer } from "@/src/app/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import ErrorModal from "@/src/app/components/ErrModal";
@@ -45,9 +45,9 @@ export default function NotificationDetail({ notification }: NotificationDetailP
     const handleDelete = async () => {
         try {
             setIsDeleting(true);
-            const { error } = await SCM.delete().notificationById(notification.id);
-            
-            if (error) throw error;
+            const result = await notificationContainer.notificationService.deleteById(notification.id);
+
+            if (!result.success) throw result.error;
             
             setCompleteStatus({
                 title: "공지사항이 삭제되었습니다.",
