@@ -3,6 +3,13 @@ import type { Database } from '@/src/app/types/database.types';
 import { SupabaseClientManager } from './supabase/SupabaseClientManager';
 import { chunk as chunkArray } from 'es-toolkit';
 import type { ProgressCallback, SupabaseResult, SupabaseArrayResult } from '@/src/app/types/supabase.types';
+import { createWordServiceContainer } from '@/src/lib/services/WordServiceContainer';
+import { createDocsServiceContainer } from '@/src/lib/services/DocsServiceContainer';
+import { createUserServiceContainer } from '@/src/lib/services/UserServiceContainer';
+import { createAuthServiceContainer } from '@/src/lib/services/AuthServiceContainer';
+import { createNotificationServiceContainer } from '@/src/lib/services/NotificationServiceContainer';
+import { createLogServiceContainer } from '@/src/lib/services/LogServiceContainer';
+import { createReleaseNoteServiceContainer } from '@/src/lib/services/ReleaseNoteServiceContainer';
 
 export const supabase = createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -86,3 +93,11 @@ export async function supabaseInQueryChunk<T, P>(
 
     return { data: result, error: null, count: result.length };
 }
+
+export const wordContainer = createWordServiceContainer(supabase);
+export const docsContainer = createDocsServiceContainer(supabase);
+export const userContainer = createUserServiceContainer(supabase);
+export const authContainer = createAuthServiceContainer(supabase);
+export const notificationContainer = createNotificationServiceContainer(supabase);
+export const logContainer = createLogServiceContainer(supabase);
+export const releaseNoteContainer = createReleaseNoteServiceContainer(supabase);
