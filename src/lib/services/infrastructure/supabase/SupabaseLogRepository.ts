@@ -6,6 +6,12 @@ import type { Result, CustomError } from '../../domain/result';
 import { success, failure } from '../../domain/result';
 import { infrastructureError } from '../../domain/errors';
 
+/**
+ * DB Row를 WordLogEntity 도메인 객체로 변환합니다.
+ *
+ * @param row - logs 테이블 Row
+ * @returns WordLogEntity
+ */
 function toWordLogEntity(row: {
     id: number;
     word: string;
@@ -30,9 +36,13 @@ function toWordLogEntity(row: {
     };
 }
 
+/**
+ * Supabase 기반 ILogRepository 구현체
+ */
 export class SupabaseLogRepository implements ILogRepository {
     constructor(private readonly supabase: SupabaseClient<Database>) {}
 
+    /** @inheritdoc */
     async findWordLogsByFilter(
         filter: WordLogFilter
     ): Promise<Result<{ data: WordLogEntity[]; count: number }, CustomError>> {
@@ -54,22 +64,26 @@ export class SupabaseLogRepository implements ILogRepository {
         return success({ data: (data ?? []).map((r) => toWordLogEntity(r as any)), count: count ?? 0 });
     }
 
+    /** @inheritdoc */
     async deleteWordLogsByIds(ids: number[]): Promise<Result<void, CustomError>> {
         const { error } = await this.supabase.from('logs').delete().in('id', ids);
         if (error) return failure(infrastructureError(error));
         return success(undefined);
     }
 
+    /** @inheritdoc */
     async deleteDocsLogsByIds(ids: number[]): Promise<Result<void, CustomError>> {
         const { error } = await this.supabase.from('docs_logs').delete().in('id', ids);
         if (error) return failure(infrastructureError(error));
         return success(undefined);
     }
 
+    /** @inheritdoc */
     async saveWordLogs(logsData: { word: string; make_by: string | null; processed_by: string | null; r_type: 'add' | 'delete'; state: 'approved' | 'rejected' }[]): Promise<void> {
         await this.supabase.from('logs').insert(logsData);
     }
 
+    /** @inheritdoc */
     async saveDocsLogs(logsData: { word: string; docs_id: number; add_by: string | null; type: 'add' | 'delete' }[]): Promise<void> {
         await this.supabase.from('docs_logs').insert(logsData);
     }

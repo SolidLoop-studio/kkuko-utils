@@ -6,9 +6,13 @@ import type { Result, CustomError } from '../../domain/result';
 import { success, failure } from '../../domain/result';
 import { infrastructureError } from '../../domain/errors';
 
+/**
+ * Supabase 기반 IReleaseNoteRepository 구현체
+ */
 export class SupabaseReleaseNoteRepository implements IReleaseNoteRepository {
     constructor(private readonly supabase: SupabaseClient<Database>) {}
 
+    /** @inheritdoc */
     async findAll(): Promise<Result<ReleaseNoteEntity[], CustomError>> {
         const { data, error } = await this.supabase
             .from('release_note')
