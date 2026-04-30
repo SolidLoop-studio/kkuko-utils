@@ -5,12 +5,12 @@ import { ReleaseNoteService } from './application/release-note/ReleaseNoteServic
 
 /**
  * ReleaseNote 서비스 컨테이너
-/**
- * ReleaseNoteServiceContainer 팩토리
  *
- * @param supabase - Supabase 클라이언트
- * @returns ReleaseNoteServiceContainer 인스턴스
+ * Supabase 기반 릴리즈 노트 리포지토리를 구성하고 ReleaseNoteService를 제공합니다.
  */
+export class ReleaseNoteServiceContainer {
+    public readonly service: ReleaseNoteService;
+
     constructor(supabase: SupabaseClient<Database>) {
         this.service = new ReleaseNoteService(new SupabaseReleaseNoteRepository(supabase));
     }
@@ -19,7 +19,7 @@ import { ReleaseNoteService } from './application/release-note/ReleaseNoteServic
 /**
  * ReleaseNoteServiceContainer 팩토리
  *
-     * @param supabase - Supabase 클라이언트
+ * @param supabase - Supabase 클라이언트
  * @returns ReleaseNoteServiceContainer 인스턴스
  */
 export function createReleaseNoteServiceContainer(
