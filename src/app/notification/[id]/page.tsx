@@ -2,6 +2,7 @@ import { createSupabaseServerClient } from "@/src/app/lib/supabaseServer";
 import NotificationDetail from "./NotificationDetail";
 import { notFound } from "next/navigation";
 import { type Metadata } from "next";
+import type { NotificationEntity } from "@/src/lib/services/domain/notification/NotificationEntity";
 
 interface PageProps {
     params: Promise<{ id: string }>;
@@ -55,9 +56,20 @@ export default async function NotificationDetailPage({ params }: PageProps) {
         notFound();
     }
 
+    const notificationEntity: NotificationEntity = {
+        id: notification.id,
+        title: notification.title,
+        body: notification.body,
+        img: notification.img ?? null,
+        endAt: notification.end_at,
+        isImportant: notification.is_important ?? false,
+        isModal: notification.is_modal ?? false,
+        createdAt: notification.created_at,
+    };
+
     return (
         <main className="container mx-auto py-8">
-            <NotificationDetail notification={notification} />
+            <NotificationDetail notification={notificationEntity} />
         </main>
     );
 }

@@ -6,7 +6,7 @@ import { Button } from "@/src/app/components/ui/button";
 import { Calendar, ChevronLeft, Pin, Edit, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
-import type { Database } from "@/src/app/types/database.types";
+import type { NotificationEntity } from "@/src/lib/services/domain/notification/NotificationEntity";
 import Image from "next/image";
 import Link from "next/link";
 import { Separator } from "@/src/app/components/ui/separator";
@@ -22,17 +22,15 @@ import ConfirmModal from "@/src/app/components/ConfirmModal";
 import { PostgrestError } from "@supabase/supabase-js";
 import CompleteModal from "@/src/app/components/CompleteModal";
 
-type NotificationType = Database['public']['Tables']['notification']['Row'];
-
 interface NotificationDetailProps {
-    notification: NotificationType;
+    notification: NotificationEntity;
 }
 
 /**
  * 공지사항 상세 내용을 표시하는 컴포넌트입니다.
  * 
  * @param {Object} props - 컴포넌트 props
- * @param {NotificationType} props.notification - 표시할 공지사항 데이터
+ * @param {NotificationEntity} props.notification - 표시할 공지사항 데이터
  */
 export default function NotificationDetail({ notification }: NotificationDetailProps) {
     const user = useSelector((state: RootState) => state.user);
@@ -130,13 +128,13 @@ export default function NotificationDetail({ notification }: NotificationDetailP
                 <CardHeader className="space-y-4">
                     <div className="space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
-                            {notification.is_important && (
+                            {notification.isImportant && (
                                 <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 gap-1">
                                     <Pin className="w-3 h-3 fill-primary" />
                                     필독
                                 </Badge>
                             )}
-                            {notification.is_modal && (
+                            {notification.isModal && (
                                 <Badge variant="outline" className="text-muted-foreground">
                                     팝업 공지
                                 </Badge>
@@ -147,7 +145,7 @@ export default function NotificationDetail({ notification }: NotificationDetailP
                     
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Calendar className="w-4 h-4" />
-                        <span>{format(new Date(notification.created_at), "yyyy년 M월 d일 a h:mm", { locale: ko })}</span>
+                        <span>{format(new Date(notification.createdAt), "yyyy년 M월 d일 a h:mm", { locale: ko })}</span>
                     </div>
                 </CardHeader>
                 
