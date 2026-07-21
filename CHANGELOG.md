@@ -1,3 +1,11 @@
+# [v1.9.1](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.9.0...v1.9.1) - 2026-07-21
+
+## fix
+- ([151fb2a](https://github.com/SolidLoop-studio/kkuko-utils/commit/151fb2a)) - fix: 프로필 등록 요청 문구 추가
+- ([497089c](https://github.com/SolidLoop-studio/kkuko-utils/commit/497089c)) - 서비스이용약관 업데이트
+- ([a1f7cea](https://github.com/SolidLoop-studio/kkuko-utils/commit/a1f7cea)) - 자퀴 단어 검색에서 주제 선택 모달의 검색 부분의 오류 수정
+- ([75cf457](https://github.com/SolidLoop-studio/kkuko-utils/commit/75cf457)) - 통일되지 않은 버튼 디자인 수정
+
 # [v1.9.0](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.8.0...v1.9.0) - 2026-04-23
 
 ## fix
