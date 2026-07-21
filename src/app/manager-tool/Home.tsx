@@ -47,7 +47,7 @@ export default function Home() {
             </div>
             <div className="flex items-center">
               <div className="w-2 h-2 bg-blue-400 rounded-full mr-3"></div>
-              등등
+              미션 단어 추출
             </div>
           </div>
           

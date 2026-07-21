@@ -109,14 +109,14 @@ const WordExtractorApp = () => {
                         <div className="flex items-center space-x-2">
                             <Link href="/manager-tool/extract">
                                 <Button variant="outline" size="sm">
-                                    <Home className="sm"/>
+                                    <Home className="w-4 h-4" />
                                     도구홈
                                 </Button>
                             </Link>
                             <HelpModal
                                 title="X 글자수 단어 추출 사용법"
                                 triggerText="도움말"
-                                triggerClassName="border border-gray-200 border-1 rounded-md p-2"
+                                triggerClassName="h-8 rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground [&_span]:text-xs [&_svg]:size-4"
                             >
                                 <div className="space-y-6">
                                     {/* Step 0 */}

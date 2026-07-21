@@ -84,7 +84,7 @@ const WordSearchHelpModal = () => {
                             <strong>매너:</strong> 한방 단어를 표시 하지 않습니다.
                         </li>
                         <li>
-                            <strong>젠틀:</strong> 후속단어 수가 5개 미만인 단어를 표시 하지 않습니다.
+                            <strong>젠틀:</strong> 후속단어 수가 10개 미만인 단어를 표시 하지 않습니다.
                         </li>
                         <li>
                             <strong>에티켓:</strong> 노인정을 기준으로 한방 글자를 산정한 한방단어를 표시하지 않습니다.

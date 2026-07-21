@@ -4,6 +4,7 @@ import { X, Loader2 } from 'lucide-react';
 import { SCM } from '@/src/app/lib/supabaseClient';
 import { Theme } from '../types';
 import { disassemble } from 'es-hangul';
+import { filterKoreanText } from '@/src/app/lib/lib';
 
 interface ThemeSelectionModalProps {
     isOpen: boolean;
@@ -39,9 +40,7 @@ export default function ThemeSelectionModal({
         const filtered = themeSearchQuery.trim() === ''
             ? themes
             : themes.filter(theme => 
-                theme.name.toLowerCase().includes(themeSearchQuery.toLowerCase()) ||
-                theme.code.toLowerCase().includes(themeSearchQuery.toLowerCase()) ||
-                theme.name.split('').map(c => disassemble(c)[0]).join('').includes(cho)
+                filterKoreanText(theme.name, themeSearchQuery) || filterKoreanText(theme.name, cho)
             );
 
         const groupA = filtered.filter(theme => /^\d+$/.test(theme.code));

@@ -107,7 +107,8 @@ export default function KkukoProfile() {
                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
                     <p className="text-red-700 dark:text-red-400 font-semibold">{error}</p>
                     <p className="text-red-600 dark:text-red-500 text-sm mt-2">
-                        2026-01-18 17시 이후 게임 접속한 유저에 대해서 조회할 수 있습니다.
+                        2026-01-18 17시 ~ 2026-03-03 00시 사이에 게임 접속한 유저에 대해서 조회할 수 있습니다.
+                        프로필 등록을 원하신다면 id검색을 이용해주세요.
                     </p>
                 </div>
             )}
