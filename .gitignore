@@ -48,3 +48,4 @@ app/api/test
 # Idea
 /.idea
 /.claude
+/.worktrees
