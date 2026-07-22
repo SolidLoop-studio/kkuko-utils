@@ -6,6 +6,8 @@ interface GameInputProps {
     value?: string;
     onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
     onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+    onCompositionStart?: () => void;
+    onCompositionEnd?: () => void;
     className?: string;
     inputRef?: React.RefObject<HTMLInputElement | null>;
 }
@@ -20,6 +22,8 @@ const GameInput = ({
     value,
     onChange,
     onKeyDown,
+    onCompositionStart,
+    onCompositionEnd,
     className = "",
     inputRef
 }: GameInputProps) => {
@@ -43,6 +47,8 @@ const GameInput = ({
                 value={value}
                 onChange={onChange}
                 onKeyDown={onKeyDown}
+                onCompositionStart={onCompositionStart}
+                onCompositionEnd={onCompositionEnd}
                 ref={inputRef}
                 autoComplete="off"
                 className="
