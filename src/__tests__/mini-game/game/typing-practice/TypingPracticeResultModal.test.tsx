@@ -21,7 +21,7 @@ const metrics: TypingPracticeMetrics = {
 };
 
 describe('TypingPracticeResultModal', () => {
-    it('exposes dialog semantics, focuses close, and closes on Escape', async () => {
+    it('exposes dialog semantics, focuses the dialog, and closes on Escape', async () => {
         const user = userEvent.setup();
         const onClose = jest.fn();
 
@@ -35,13 +35,34 @@ describe('TypingPracticeResultModal', () => {
             />,
         );
 
-        expect(screen.getByRole('dialog', { name: '타자 연습 결과' })).toHaveAttribute('aria-modal', 'true');
-        expect(screen.getByRole('button', { name: '결과 닫기' })).toHaveFocus();
+        const dialog = screen.getByRole('dialog', { name: '타자 연습 결과' });
+        expect(dialog).toHaveAttribute('aria-modal', 'true');
+        expect(dialog).toHaveFocus();
         expect(screen.getByText('연습 시간')).toBeInTheDocument();
         expect(screen.getByText('1.0초')).toBeInTheDocument();
 
         await user.keyboard('{Escape}');
         expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not close from a buffered Enter key when the result opens', async () => {
+        const user = userEvent.setup();
+        const onClose = jest.fn();
+
+        render(
+            <TypingPracticeResultModal
+                metrics={metrics}
+                attempts={[]}
+                onRestart={jest.fn()}
+                onExitToSetup={jest.fn()}
+                onClose={onClose}
+            />,
+        );
+
+        await user.keyboard('{Enter}');
+
+        expect(onClose).not.toHaveBeenCalled();
+        expect(screen.getByRole('dialog', { name: '타자 연습 결과' })).toBeInTheDocument();
     });
 
     it('keeps keyboard focus within the dialog', async () => {
@@ -89,7 +110,7 @@ describe('TypingPracticeResultModal', () => {
         previous.remove();
     });
 
-    it('labels recent attempts with explicit success and failure status', () => {
+    it('shows a characters-per-minute timeline chart instead of recent attempts', () => {
         render(
             <TypingPracticeResultModal
                 metrics={metrics}
@@ -119,7 +140,65 @@ describe('TypingPracticeResultModal', () => {
             />,
         );
 
-        expect(screen.getByText('성공')).toBeInTheDocument();
-        expect(screen.getByText('실패')).toBeInTheDocument();
+        expect(screen.getByText('분당타자수 추이')).toBeInTheDocument();
+        expect(screen.getByText('시간(초)')).toBeInTheDocument();
+        expect(screen.getAllByText('분당타자수').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByTestId('typing-cpm-chart')).toBeInTheDocument();
+        expect(screen.queryByText('최근 입력')).not.toBeInTheDocument();
+        expect(screen.queryByText('성공')).not.toBeInTheDocument();
+        expect(screen.queryByText('실패')).not.toBeInTheDocument();
+    });
+
+    it('uses the final session elapsed time for the chart final characters-per-minute value', () => {
+        render(
+            <TypingPracticeResultModal
+                metrics={{
+                    ...metrics,
+                    charactersPerMinute: 54,
+                    elapsedMs: 10_000,
+                }}
+                attempts={[
+                    {
+                        target: '가방',
+                        submitted: '가방',
+                        isCorrect: true,
+                        correctCharacters: 2,
+                        submittedCharacters: 2,
+                        typingUnits: 5,
+                        completedAt: 2_000,
+                    },
+                    {
+                        target: '나무',
+                        submitted: '나무',
+                        isCorrect: true,
+                        correctCharacters: 2,
+                        submittedCharacters: 2,
+                        typingUnits: 4,
+                        completedAt: 4_000,
+                    },
+                ]}
+                onRestart={jest.fn()}
+                onExitToSetup={jest.fn()}
+                onClose={jest.fn()}
+            />,
+        );
+
+        expect(screen.getByText('54.0')).toBeInTheDocument();
+        expect(screen.getByText('최종 54.0')).toBeInTheDocument();
+    });
+
+    it('shows an empty chart message when there is not enough timeline data', () => {
+        render(
+            <TypingPracticeResultModal
+                metrics={metrics}
+                attempts={[]}
+                onRestart={jest.fn()}
+                onExitToSetup={jest.fn()}
+                onClose={jest.fn()}
+            />,
+        );
+
+        expect(screen.getByText('분당타자수 추이')).toBeInTheDocument();
+        expect(screen.getByText('기록이 부족합니다')).toBeInTheDocument();
     });
 });

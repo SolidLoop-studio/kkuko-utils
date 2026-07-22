@@ -28,6 +28,7 @@ const Game = () => {
     const [typingSessionKey, setTypingSessionKey] = useState(0);
     const [typingExitRequestToken, setTypingExitRequestToken] = useState(0);
     const [typingExitConfirmOpen, setTypingExitConfirmOpen] = useState(false);
+    const [isTypingPracticeFinished, setIsTypingPracticeFinished] = useState(false);
 
     // 컴포넌트 마운트 시 사운드 리소스 로드
     useEffect(() => {
@@ -63,6 +64,7 @@ const Game = () => {
             }
 
             setTypingSessionKey((current) => current + 1);
+            setIsTypingPracticeFinished(false);
             startPractice();
         } catch (e) {
             console.error(e);
@@ -71,6 +73,7 @@ const Game = () => {
     };
 
     const handleRestartTypingPractice = () => {
+        setIsTypingPracticeFinished(false);
         setTypingSessionKey((current) => current + 1);
     };
 
@@ -86,6 +89,11 @@ const Game = () => {
                     onStartTypingPractice={handleStartTypingPractice}
                     onRequestTypingPracticeExit={handleRequestTypingPracticeExit}
                     onTypingPracticeExitConfirmChange={setTypingExitConfirmOpen}
+                    isTypingPracticeFinished={isTypingPracticeFinished}
+                    onExitFinishedTypingPractice={() => {
+                        setTypingExitConfirmOpen(false);
+                        exitGame();
+                    }}
                 />
                 {isPlaying ? (
                     <GameBox>
@@ -96,6 +104,7 @@ const Game = () => {
                                 onExitToSetup={() => exitGame()}
                                 exitRequestToken={typingExitRequestToken}
                                 isExitConfirmOpen={typingExitConfirmOpen}
+                                onFinishedChange={setIsTypingPracticeFinished}
                             />
                         ) : (
                             <GameBody />

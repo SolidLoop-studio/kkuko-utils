@@ -12,6 +12,7 @@ type Props = {
     onExitToSetup: () => void;
     exitRequestToken?: number;
     isExitConfirmOpen?: boolean;
+    onFinishedChange?: (isFinished: boolean) => void;
 };
 
 const formatNumber = (value: number) => Number.isFinite(value) ? value.toFixed(1) : '0.0';
@@ -38,14 +39,14 @@ const renderTarget = (target: string, input: string, isComposing: boolean) => {
     return <><span className="sr-only">{target}</span>{characters}{hasExtraInput && <span className="text-red-300 underline" aria-hidden="true">!</span>}</>;
 };
 
-const TypingPracticeBody = ({ settings, onExitToSetup, exitRequestToken = 0, isExitConfirmOpen = false }: Props) => {
+const TypingPracticeBody = ({ settings, onExitToSetup, exitRequestToken = 0, isExitConfirmOpen = false, onFinishedChange }: Props) => {
     const practice = useTypingPractice(settings);
     const inputRef = React.useRef<HTMLInputElement>(null);
     const lastExitRequestTokenRef = React.useRef(exitRequestToken);
 
     React.useEffect(() => {
-        if (practice.targetWord && !practice.resultOpen && !practice.isFinished) inputRef.current?.focus();
-    }, [practice.isFinished, practice.resultOpen, practice.targetWord]);
+        if (practice.targetWord && !practice.resultOpen && !practice.isFinished && !practice.isStarting) inputRef.current?.focus();
+    }, [practice.isFinished, practice.isStarting, practice.resultOpen, practice.targetWord]);
 
     React.useEffect(() => {
         if (practice.isFinished) inputRef.current?.blur();
@@ -60,6 +61,10 @@ const TypingPracticeBody = ({ settings, onExitToSetup, exitRequestToken = 0, isE
         lastExitRequestTokenRef.current = exitRequestToken;
         practice.finish(undefined, 'exit');
     }, [exitRequestToken, practice.finish]);
+
+    React.useEffect(() => {
+        onFinishedChange?.(practice.isFinished);
+    }, [onFinishedChange, practice.isFinished]);
 
     const remainingProgress = Math.max(practice.progressMax - practice.progressValue, 0);
     const progressLabel = settings.sessionMode === 'timed'
@@ -89,23 +94,31 @@ const TypingPracticeBody = ({ settings, onExitToSetup, exitRequestToken = 0, isE
             <div data-testid="typing-practice-surface" className={isExitConfirmOpen ? 'blur-sm pointer-events-none select-none' : undefined}>
             <div className="relative">
                 <div className="game-head flex items-start">
-                    <div className="items pt-[50px] mt-[50px] mx-[40px] ml-[105px] w-[100px] h-[110px] text-[24px] text-[#EEEEEE] font-bold text-center bg-[url('/img/lefthand.png')] bg-no-repeat" style={{ textShadow: '0px 1px 5px #141414' }}>
-                    </div>
+                    <div className="mt-[50px] mx-[40px] ml-[105px] w-[100px] h-[110px]" />
 
                     <div className="jjoriping w-[500px]">
                         <div className="p-[20px_5px_5px_5px] border-2 border-black rounded-bl-[10px] rounded-br-[10px] mt-[40px] w-[486px] h-[100px] bg-[#DEAF56] ml-8">
                             <div className="p-[8px_5px] rounded-[10px] rounded-bl-none rounded-br-none w-[474px] h-[40px] text-[20px] text-center bg-black/70 whitespace-nowrap overflow-hidden text-ellipsis">
-                                {practice.targetWord ? renderTarget(practice.targetWord, practice.input, practice.isComposing) : '단어를 불러오는 중...'}
+                                {practice.isStarting
+                                    ? practice.displayWord
+                                    : practice.targetWord
+                                        ? renderTarget(practice.targetWord, practice.input, practice.isComposing)
+                                        : '단어를 불러오는 중...'}
                             </div>
-                            <div data-testid="typing-practice-next-word-bar">
+                            <div data-testid="typing-practice-next-word-bar" className="relative">
                                 <GraphBar
                                     className="border-l border-r border-black/70 w-[474px] h-[20px] bg-[#70712D]"
                                     min={0}
                                     val={practice.progressMax}
                                     max={practice.progressMax}
                                     bgc="#E6E846"
-                                    label={practice.nextWord ? `다음: ${practice.nextWord}` : '다음: -'}
+                                    label=""
                                 />
+                                {practice.nextWord && (
+                                    <div className="absolute inset-0 px-2 flex items-center justify-center text-[12px] font-bold text-black text-center whitespace-nowrap overflow-hidden text-ellipsis pointer-events-none">
+                                        {`다음: ${practice.nextWord}`}
+                                    </div>
+                                )}
                             </div>
                             <div data-testid="typing-practice-progress-bar">
                                 <GraphBar
@@ -135,7 +148,7 @@ const TypingPracticeBody = ({ settings, onExitToSetup, exitRequestToken = 0, isE
                     onKeyDown={practice.handleKeyDown}
                     onCompositionStart={practice.handleCompositionStart}
                     onCompositionEnd={practice.handleCompositionEnd}
-                    readonly={practice.isFinished || isExitConfirmOpen}
+                    readonly={practice.isFinished || practice.isStarting || isExitConfirmOpen}
                 />
                 <div data-testid="typing-practice-live-stats" className="mt-2 w-[460px] border-2 border-black rounded-[8px] bg-[#223C6C] text-white text-xs flex justify-around py-2 shadow">
                     <span><span>WPM</span> {formatNumber(practice.metrics.wpm)}</span>

@@ -1,7 +1,6 @@
 export type TypingPracticeSessionMode = 'timed' | 'fixed-count';
 export type TypingPracticeLanguage = 'ko' | 'en' | 'all';
 export type TypingPracticeOrder = 'random' | 'sorted';
-export type TypingPracticeJudgmentMode = 'loose' | 'strict';
 
 export type TypingPracticeSettings = {
     sessionMode: TypingPracticeSessionMode;
@@ -9,7 +8,6 @@ export type TypingPracticeSettings = {
     wordCount: 10 | 25 | 50;
     language: TypingPracticeLanguage;
     order: TypingPracticeOrder;
-    judgmentMode?: TypingPracticeJudgmentMode;
     minLength: number;
 };
 

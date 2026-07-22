@@ -1,7 +1,6 @@
 import { disassemble } from 'es-hangul';
 import type {
     TypingPracticeAttempt,
-    TypingPracticeJudgmentMode,
     TypingPracticeMetrics,
     TypingPracticeSettings,
 } from '../types/typing-practice.types';
@@ -9,6 +8,11 @@ import type {
 const KOREAN_START = /^[가-힣ㄱ-ㅎㅏ-ㅣ]/;
 const ENGLISH_START = /^[a-zA-Z]/;
 const WORD_PATTERN = /[^a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ]/g;
+
+export type TypingPracticeCpmPoint = {
+    elapsedSeconds: number;
+    charactersPerMinute: number;
+};
 
 export class TypingPracticeLogic {
     public static normalizeWord(word: string): string {
@@ -51,7 +55,6 @@ export class TypingPracticeLogic {
         target: string,
         submitted: string,
         completedAt = Date.now(),
-        _judgmentMode: TypingPracticeJudgmentMode = 'loose',
     ): TypingPracticeAttempt {
         const normalizedTarget = this.normalizeWord(target);
         const normalizedSubmitted = this.normalizeWord(submitted);
@@ -76,15 +79,6 @@ export class TypingPracticeLogic {
         };
     }
 
-    public static evaluateStrictInput(target: string, submitted: string): { accepted: boolean } {
-        const normalizedTarget = this.normalizeWord(target);
-        const normalizedSubmitted = this.normalizeWord(submitted);
-        return {
-            accepted: submitted === normalizedSubmitted
-                && disassemble(normalizedTarget).startsWith(disassemble(normalizedSubmitted)),
-        };
-    }
-
     public static nextCombo(
         attempt: TypingPracticeAttempt,
         currentCombo: number,
@@ -104,7 +98,6 @@ export class TypingPracticeLogic {
         combo: number,
         maxCombo: number,
         mistakeCount = 0,
-        judgmentMode: TypingPracticeJudgmentMode = 'loose',
     ): TypingPracticeMetrics {
         const rawElapsedMs = Math.max(elapsedMs, 0);
         const rateElapsedMinutes = Math.max(rawElapsedMs, 1000) / 60000;
@@ -113,15 +106,14 @@ export class TypingPracticeLogic {
         const typingUnits = attempts.reduce((sum, attempt) => sum + attempt.typingUnits, 0);
         const completedWords = attempts.filter((attempt) => attempt.isCorrect).length;
         const failedWords = attempts.length - completedWords;
-        const looseAccuracy = (correctCharacters / Math.max(totalSubmittedCharacters, 1)) * 100;
-        const strictAccuracy = (typingUnits / Math.max(typingUnits + mistakeCount, 1)) * 100;
+        const accuracy = (correctCharacters / Math.max(totalSubmittedCharacters, 1)) * 100;
 
         return {
             correctCharacters,
             totalSubmittedCharacters,
             typingUnits,
             mistakeCount,
-            accuracy: judgmentMode === 'strict' ? strictAccuracy : looseAccuracy,
+            accuracy,
             wpm: typingUnits / 5 / rateElapsedMinutes,
             charactersPerMinute: typingUnits / rateElapsedMinutes,
             completedWords,
@@ -132,6 +124,50 @@ export class TypingPracticeLogic {
             maxCombo,
             elapsedMs: rawElapsedMs,
         };
+    }
+
+    public static buildCpmTimeline(attempts: TypingPracticeAttempt[], elapsedMs?: number): TypingPracticeCpmPoint[] {
+        if (attempts.length === 0) {
+            return [];
+        }
+
+        let typingUnits = 0;
+        const points = [
+            { elapsedSeconds: 0, charactersPerMinute: 0 },
+            ...attempts.map((attempt) => {
+                if (attempt.isCorrect) {
+                    typingUnits += attempt.typingUnits;
+                }
+
+                const elapsedSeconds = Math.max(attempt.completedAt / 1000, 0);
+                const charactersPerMinute = elapsedSeconds > 0
+                    ? (typingUnits / elapsedSeconds) * 60
+                    : 0;
+
+                return {
+                    elapsedSeconds,
+                    charactersPerMinute,
+                };
+            }),
+        ];
+
+        if (typeof elapsedMs !== 'number') {
+            return points;
+        }
+
+        const elapsedSeconds = Math.max(elapsedMs / 1000, 0);
+        const lastPoint = points[points.length - 1];
+        if (elapsedSeconds <= lastPoint.elapsedSeconds) {
+            return points;
+        }
+
+        return [
+            ...points,
+            {
+                elapsedSeconds,
+                charactersPerMinute: elapsedSeconds > 0 ? (typingUnits / elapsedSeconds) * 60 : 0,
+            },
+        ];
     }
 
     private static shuffle(words: string[], random: () => number): string[] {

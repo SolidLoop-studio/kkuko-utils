@@ -12,13 +12,22 @@ type Props = {
     onStartTypingPractice: () => Promise<void>;
     onRequestTypingPracticeExit: () => void;
     onTypingPracticeExitConfirmChange?: (open: boolean) => void;
+    isTypingPracticeFinished?: boolean;
+    onExitFinishedTypingPractice?: () => void;
 };
 
 /**
  * 게임 상단 메뉴 컴포넌트
  * 도움말, 설정, 사전, 시작, 나가기 버튼을 포함합니다.
  */
-const KkutuMenu = ({ practiceType, onStartTypingPractice, onRequestTypingPracticeExit, onTypingPracticeExitConfirmChange }: Props) => {
+const KkutuMenu = ({
+    practiceType,
+    onStartTypingPractice,
+    onRequestTypingPracticeExit,
+    onTypingPracticeExitConfirmChange,
+    isTypingPracticeFinished = false,
+    onExitFinishedTypingPractice,
+}: Props) => {
     const {
         isPlaying,
         requestStart,
@@ -47,6 +56,13 @@ const KkutuMenu = ({ practiceType, onStartTypingPractice, onRequestTypingPractic
 
         if (buttonId === 'exit') {
             if (practiceType === 'typing-practice') {
+                if (isTypingPracticeFinished) {
+                    setExitConfirmOpen(false);
+                    onTypingPracticeExitConfirmChange?.(false);
+                    onExitFinishedTypingPractice?.();
+                    return;
+                }
+
                 setExitConfirmOpen(true);
                 onTypingPracticeExitConfirmChange?.(true);
                 return;

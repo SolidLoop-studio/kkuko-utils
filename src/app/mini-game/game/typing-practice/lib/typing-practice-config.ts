@@ -11,7 +11,6 @@ export const DEFAULT_TYPING_PRACTICE_SETTINGS: TypingPracticeSettings = {
     wordCount: 25,
     language: 'all',
     order: 'random',
-    judgmentMode: 'loose',
     minLength: 2,
 };
 
@@ -50,9 +49,6 @@ const parseTypingPracticeSetting = (value: unknown): TypingPracticeSettings => {
         order: value.order === 'sorted' || value.order === 'random'
             ? value.order
             : DEFAULT_TYPING_PRACTICE_SETTINGS.order,
-        judgmentMode: value.judgmentMode === 'strict' || value.judgmentMode === 'loose'
-            ? value.judgmentMode
-            : DEFAULT_TYPING_PRACTICE_SETTINGS.judgmentMode,
         minLength: typeof value.minLength === 'number'
             && Number.isInteger(value.minLength)
             && value.minLength >= 2

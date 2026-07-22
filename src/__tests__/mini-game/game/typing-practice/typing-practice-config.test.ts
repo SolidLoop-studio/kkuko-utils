@@ -36,7 +36,6 @@ describe('typing practice persisted config', () => {
                 wordCount: 50,
                 language: 'ko',
                 order: 'sorted',
-                judgmentMode: 'strict',
                 minLength: 7,
             },
         });

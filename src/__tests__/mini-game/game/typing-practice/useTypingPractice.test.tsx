@@ -8,6 +8,7 @@ jest.mock('../../../../app/mini-game/game/lib/wordDB', () => ({
 jest.mock('../../../../app/mini-game/game/lib/SoundManager', () => ({
     soundManager: {
         play: jest.fn(),
+        playWithEnd: jest.fn((_: string, onEnd: () => void) => onEnd()),
         stop: jest.fn(),
     },
 }));
@@ -28,6 +29,7 @@ describe('useTypingPractice', () => {
     beforeEach(() => {
         jest.useFakeTimers();
         jest.setSystemTime(new Date('2026-07-22T00:00:00Z'));
+        soundManager.playWithEnd.mockImplementation((_: string, onEnd: () => void) => onEnd());
         getAllWords.mockResolvedValue([
             { word: '가방', theme: '자유' },
             { word: '나무', theme: '자유' },
@@ -43,7 +45,59 @@ describe('useTypingPractice', () => {
         const { result } = renderHook(() => useTypingPractice(settings));
 
         await waitFor(() => expect(result.current.targetWord).toBe('가방'));
+        expect(result.current.isStarting).toBe(false);
         expect(result.current.blockedMessage).toBeNull();
+    });
+
+    it('shows the first word after game_start but waits for round_start before accepting input or advancing time', async () => {
+        const soundCallbacks = new Map<string, () => void>();
+        soundManager.playWithEnd.mockImplementation((soundName: string, onEnd: () => void) => {
+            soundCallbacks.set(soundName, onEnd);
+        });
+        const timedSettings: TypingPracticeSettings = {
+            ...settings,
+            sessionMode: 'timed',
+        };
+        const { result } = renderHook(() => useTypingPractice(timedSettings));
+
+        await waitFor(() => expect(result.current.targetWord).toBe('가방'));
+        expect(result.current.isStarting).toBe(true);
+        expect(result.current.displayWord).toBe('게임이 곧 시작됩니다');
+        expect(result.current.nextWord).toBe('');
+
+        act(() => {
+            result.current.handleInputChange({ target: { value: '가방' } } as React.ChangeEvent<HTMLInputElement>);
+            jest.advanceTimersByTime(1_000);
+        });
+
+        expect(result.current.input).toBe('');
+        expect(result.current.progressValue).toBe(0);
+
+        act(() => {
+            soundCallbacks.get('game_start')?.();
+        });
+
+        expect(result.current.isStarting).toBe(true);
+        expect(result.current.displayWord).toBe('가방');
+        expect(result.current.nextWord).toBe('');
+        expect(soundManager.playWithEnd).toHaveBeenCalledWith('round_start', expect.any(Function));
+
+        act(() => {
+            result.current.handleInputChange({ target: { value: '가방' } } as React.ChangeEvent<HTMLInputElement>);
+            jest.advanceTimersByTime(1_000);
+        });
+
+        expect(result.current.input).toBe('');
+        expect(result.current.progressValue).toBe(0);
+
+        act(() => {
+            soundCallbacks.get('round_start')?.();
+        });
+
+        expect(result.current.isStarting).toBe(false);
+        expect(soundManager.playWithEnd).toHaveBeenCalledWith('game_start', expect.any(Function));
+        expect(soundManager.play).toHaveBeenCalledWith('jaqwiBGM');
+        expect(result.current.nextWord).toBe('나무');
     });
 
     it('does not advance timed progress while word loading is pending', async () => {
@@ -113,7 +167,7 @@ describe('useTypingPractice', () => {
         const { result } = renderHook(() => useTypingPractice(settings));
         await waitFor(() => expect(result.current.targetWord).toBe('가방'));
 
-        expect(soundManager.play).toHaveBeenCalledWith('round_start');
+        expect(soundManager.playWithEnd).toHaveBeenCalledWith('round_start', expect.any(Function));
         expect(soundManager.play).toHaveBeenCalledWith('jaqwiBGM');
 
         act(() => {
@@ -178,11 +232,11 @@ describe('useTypingPractice', () => {
         expect(soundManager.play).toHaveBeenCalledWith('timeout');
     });
 
-    it('rejects invalid strict input and counts it as a mistake', async () => {
+    it('ignores legacy strict settings and keeps loose input behavior', async () => {
         jest.useRealTimers();
         getAllWords.mockResolvedValueOnce([{ word: '가나다', theme: '자유' }]);
-        const strictSettings: TypingPracticeSettings = { ...settings, judgmentMode: 'strict' };
-        const { result } = renderHook(() => useTypingPractice(strictSettings));
+        const legacyStrictSettings = { ...settings, judgmentMode: 'strict' } as TypingPracticeSettings & { judgmentMode: 'strict' };
+        const { result } = renderHook(() => useTypingPractice(legacyStrictSettings));
         await waitFor(() => expect(result.current.targetWord).toBe('가나다'));
 
         act(() => {
@@ -192,9 +246,8 @@ describe('useTypingPractice', () => {
             result.current.handleInputChange({ target: { value: '가나ㅏ' } } as React.ChangeEvent<HTMLInputElement>);
         });
 
-        expect(result.current.input).toBe('가나');
-        expect(result.current.metrics.mistakeCount).toBe(1);
-        expect(result.current.metrics.accuracy).toBe(0);
+        expect(result.current.input).toBe('가나ㅏ');
+        expect(result.current.metrics.mistakeCount).toBe(0);
     });
 
     it('blocks when filters remove all words', async () => {

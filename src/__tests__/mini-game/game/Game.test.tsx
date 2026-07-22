@@ -55,6 +55,7 @@ describe('Game', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         localStorage.clear();
+        (soundManager.playWithEnd as jest.Mock | undefined)?.mockImplementation((_: string, onEnd: () => void) => onEnd());
         const { getAllWords, hasWords } = jest.requireMock('@/app/mini-game/game/lib/wordDB');
         getAllWords.mockResolvedValue([
             { word: '가방', theme: '자유' },
@@ -186,5 +187,35 @@ describe('Game', () => {
         expect(canGameStart).not.toHaveBeenCalled();
         expect(consoleError).toHaveBeenCalledWith(error);
         consoleError.mockRestore();
+    });
+
+    it('returns to setup when exiting after a finished typing result is closed', async () => {
+        localStorage.setItem('kkutu_practice_type', 'typing-practice');
+        localStorage.setItem('kkutu_typing_practice_setting', JSON.stringify({
+            sessionMode: 'fixed-count',
+            durationSeconds: 60,
+            wordCount: 10,
+            language: 'all',
+            order: 'sorted',
+            minLength: 2,
+        }));
+
+        renderGame();
+
+        await screen.findByText(/Setup: typing-practice/);
+        await userEvent.click(screen.getByRole('button', { name: /시작/ }));
+
+        const input = await screen.findByPlaceholderText('표시된 단어를 정확히 입력하세요.');
+        await userEvent.type(input, '가방{enter}');
+        await userEvent.type(input, '나무{enter}');
+        await screen.findByRole('dialog', { name: '타자 연습 결과' });
+
+        await userEvent.click(screen.getByRole('button', { name: '닫기' }));
+        expect(screen.queryByRole('dialog', { name: '타자 연습 결과' })).not.toBeInTheDocument();
+
+        await userEvent.click(screen.getByRole('button', { name: '나가기' }));
+
+        expect(await screen.findByTestId('game-setup')).toBeInTheDocument();
+        expect(screen.queryByText('타자 연습을 종료하시겠습니까?')).not.toBeInTheDocument();
     });
 });

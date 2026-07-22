@@ -25,25 +25,39 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
     const [blockedMessage, setBlockedMessage] = useState<string | null>(null);
     const [canRetry, setCanRetry] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [isStarting, setIsStarting] = useState(false);
+    const [isStartWordVisible, setIsStartWordVisible] = useState(false);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const startTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const isMountedRef = useRef(true);
     const loadRequestIdRef = useRef(0);
+
+    const clearStartTimeout = useCallback(() => {
+        if (startTimeoutRef.current) {
+            clearTimeout(startTimeoutRef.current);
+            startTimeoutRef.current = null;
+        }
+    }, []);
 
     useEffect(() => {
         isMountedRef.current = true;
         return () => {
             isMountedRef.current = false;
             loadRequestIdRef.current += 1;
+            clearStartTimeout();
             try { soundManager.stop('jaqwiBGM'); } catch (e) { console.error(e); }
         };
-    }, []);
+    }, [clearStartTimeout]);
 
     const loadQueue = useCallback(async () => {
         if (!isMountedRef.current) return;
 
         const requestId = loadRequestIdRef.current + 1;
         loadRequestIdRef.current = requestId;
+        clearStartTimeout();
         setIsLoading(true);
+        setIsStarting(false);
+        setIsStartWordVisible(false);
         setCanRetry(false);
 
         try {
@@ -64,18 +78,51 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
             setIsComposing(false);
             setIsFinished(false);
             setResultOpen(false);
+            setIsStartWordVisible(false);
 
             if (nextQueue.length === 0) {
                 setBlockedMessage('조건에 맞는 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.');
                 setQueue([]);
+                setIsStarting(false);
                 try { soundManager.stop('jaqwiBGM'); } catch (e) { console.error(e); }
                 return;
             }
 
             setBlockedMessage(null);
             setQueue(nextQueue);
-            try { soundManager.play('round_start'); } catch (e) { console.error(e); }
-            try { soundManager.play('jaqwiBGM'); } catch (e) { console.error(e); }
+            setIsStarting(true);
+            setIsStartWordVisible(false);
+
+            const beginSession = () => {
+                if (!isMountedRef.current || requestId !== loadRequestIdRef.current) return;
+                clearStartTimeout();
+                const nextStartedAtMs = Date.now();
+                setStartedAt(nextStartedAtMs);
+                setNow(nextStartedAtMs);
+                setIsStarting(false);
+                setIsStartWordVisible(false);
+                try { soundManager.play('jaqwiBGM'); } catch (e) { console.error(e); }
+            };
+
+            const beginRoundStart = () => {
+                if (!isMountedRef.current || requestId !== loadRequestIdRef.current) return;
+                clearStartTimeout();
+                setIsStartWordVisible(true);
+                startTimeoutRef.current = setTimeout(beginSession, 3000);
+                try {
+                    soundManager.playWithEnd('round_start', beginSession);
+                } catch (e) {
+                    console.error(e);
+                }
+            };
+
+            startTimeoutRef.current = setTimeout(beginRoundStart, 3000);
+
+            try {
+                soundManager.playWithEnd('game_start', beginRoundStart);
+            } catch (e) {
+                console.error(e);
+            }
         } catch (error) {
             if (!isMountedRef.current || requestId !== loadRequestIdRef.current) return;
 
@@ -90,6 +137,8 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
             setIsComposing(false);
             setIsFinished(false);
             setResultOpen(false);
+            setIsStarting(false);
+            setIsStartWordVisible(false);
             setBlockedMessage('단어를 불러오지 못했습니다. 다시 시도해주세요.');
             setCanRetry(true);
             try { soundManager.stop('jaqwiBGM'); } catch (e) { console.error(e); }
@@ -98,7 +147,7 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
                 setIsLoading(false);
             }
         }
-    }, [settings]);
+    }, [clearStartTimeout, settings]);
 
     useEffect(() => {
         void loadQueue();
@@ -108,25 +157,27 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
     }, [loadQueue]);
 
     useEffect(() => {
-        if (isLoading || isFinished || blockedMessage) return;
+        if (isLoading || isStarting || isFinished || blockedMessage) return;
         timerRef.current = setInterval(() => setNow(Date.now()), 250);
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);
         };
-    }, [blockedMessage, isFinished, isLoading, startedAt]);
+    }, [blockedMessage, isFinished, isLoading, isStarting, startedAt]);
 
-    const elapsedMs = Math.max(now - startedAt, 0);
+    const elapsedMs = isStarting ? 0 : Math.max(now - startedAt, 0);
     const targetWord = queue[currentIndex] ?? '';
-    const judgmentMode = settings.judgmentMode ?? 'loose';
     const metrics = useMemo(
-        () => TypingPracticeLogic.calculateMetrics(attempts, elapsedMs, combo, maxCombo, mistakeCount, judgmentMode),
-        [attempts, combo, elapsedMs, judgmentMode, maxCombo, mistakeCount],
+        () => TypingPracticeLogic.calculateMetrics(attempts, elapsedMs, combo, maxCombo, mistakeCount),
+        [attempts, combo, elapsedMs, maxCombo, mistakeCount],
     );
 
     const finish = useCallback((endedAt = Date.now(), reason: 'complete' | 'timeout' | 'exit' = 'complete') => {
         loadRequestIdRef.current += 1;
+        clearStartTimeout();
         setNow(endedAt);
         setIsLoading(false);
+        setIsStarting(false);
+        setIsStartWordVisible(false);
         setIsFinished(true);
         setResultOpen(true);
         if (timerRef.current) clearInterval(timerRef.current);
@@ -134,7 +185,7 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
         if (reason === 'timeout') {
             try { soundManager.play('timeout'); } catch (e) { console.error(e); }
         }
-    }, []);
+    }, [clearStartTimeout]);
 
     useEffect(() => {
         if (settings.sessionMode === 'timed' && elapsedMs >= settings.durationSeconds * 1000) {
@@ -143,7 +194,7 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
     }, [elapsedMs, finish, settings.durationSeconds, settings.sessionMode, startedAt]);
 
     const submit = useCallback(() => {
-        if (!targetWord || input.trim() === '' || isFinished || isComposing) return;
+        if (!targetWord || input.trim() === '' || isStarting || isFinished || isComposing) return;
         const submittedAt = Date.now();
 
         if (settings.sessionMode === 'timed' && submittedAt - startedAt >= settings.durationSeconds * 1000) {
@@ -151,16 +202,7 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
             return;
         }
 
-        if (judgmentMode === 'strict' && (
-            !TypingPracticeLogic.evaluateStrictInput(targetWord, input).accepted
-            || TypingPracticeLogic.normalizeWord(targetWord) !== TypingPracticeLogic.normalizeWord(input)
-        )) {
-            setMistakeCount((current) => current + 1);
-            try { soundManager.play('fail'); } catch (e) { console.error(e); }
-            return;
-        }
-
-        const attempt = TypingPracticeLogic.scoreAttempt(targetWord, input, submittedAt, judgmentMode);
+        const attempt = TypingPracticeLogic.scoreAttempt(targetWord, input, submittedAt - startedAt);
         const nextCombo = TypingPracticeLogic.nextCombo(attempt, combo, maxCombo);
         const nextAttempts = [...attempts, attempt];
         const nextIndex = currentIndex + 1;
@@ -184,18 +226,11 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
         }
 
         setCurrentIndex(settings.sessionMode === 'timed' ? nextIndex % queue.length : nextIndex);
-    }, [attempts, combo, currentIndex, finish, input, isComposing, isFinished, judgmentMode, maxCombo, queue.length, settings.durationSeconds, settings.sessionMode, settings.wordCount, startedAt, targetWord]);
+    }, [attempts, combo, currentIndex, finish, input, isComposing, isFinished, isStarting, maxCombo, queue.length, settings.durationSeconds, settings.sessionMode, settings.wordCount, startedAt, targetWord]);
 
     const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (isStarting || isFinished) return;
         const nextInput = event.target.value;
-        if (judgmentMode === 'strict'
-            && targetWord
-            && !TypingPracticeLogic.evaluateStrictInput(targetWord, nextInput).accepted
-        ) {
-            setMistakeCount((current) => current + 1);
-            try { soundManager.play('fail'); } catch (e) { console.error(e); }
-            return;
-        }
         setInput(nextInput);
     };
 
@@ -208,7 +243,9 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
 
     const progressMax = settings.sessionMode === 'timed' ? settings.durationSeconds : Math.min(settings.wordCount, queue.length || settings.wordCount);
     const progressValue = settings.sessionMode === 'timed' ? Math.min(elapsedMs / 1000, settings.durationSeconds) : attempts.length;
-    const nextWord = queue[settings.sessionMode === 'timed' ? (currentIndex + 1) % Math.max(queue.length, 1) : currentIndex + 1] ?? '';
+    const nextWord = isStarting
+        ? ''
+        : queue[settings.sessionMode === 'timed' ? (currentIndex + 1) % Math.max(queue.length, 1) : currentIndex + 1] ?? '';
 
     return {
         targetWord,
@@ -219,8 +256,10 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
         progressValue,
         progressMax,
         isComposing,
+        isStarting,
         isFinished,
         resultOpen,
+        displayWord: isStarting && !isStartWordVisible ? '게임이 곧 시작됩니다' : targetWord,
         blockedMessage,
         canRetry,
         isLoading,

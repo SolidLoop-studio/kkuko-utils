@@ -87,25 +87,25 @@ describe('TypingPracticeLogic', () => {
         });
     });
 
-    it('counts Korean typing units by disassembled jamo and English units by length for loose correct words', () => {
-        expect(TypingPracticeLogic.scoreAttempt('가방', '가방', 0, 'loose')).toMatchObject({
+    it('counts Korean typing units by disassembled jamo and English units by length for correct words', () => {
+        expect(TypingPracticeLogic.scoreAttempt('가방', '가방', 0)).toMatchObject({
             isCorrect: true,
             typingUnits: 5,
         });
 
-        expect(TypingPracticeLogic.scoreAttempt('apple', 'apple', 0, 'loose')).toMatchObject({
+        expect(TypingPracticeLogic.scoreAttempt('apple', 'apple', 0)).toMatchObject({
             isCorrect: true,
             typingUnits: 5,
         });
 
-        expect(TypingPracticeLogic.scoreAttempt('가방', '가자', 0, 'loose')).toMatchObject({
+        expect(TypingPracticeLogic.scoreAttempt('가방', '가자', 0)).toMatchObject({
             isCorrect: false,
             typingUnits: 0,
         });
     });
 
     it('uses typing units rather than syllable count for WPM and characters per minute', () => {
-        const attempts = [TypingPracticeLogic.scoreAttempt('가방', '가방', 0, 'loose')];
+        const attempts = [TypingPracticeLogic.scoreAttempt('가방', '가방', 0)];
 
         const metrics = TypingPracticeLogic.calculateMetrics(attempts, 60_000, 1, 1);
 
@@ -114,20 +114,33 @@ describe('TypingPracticeLogic', () => {
         expect(metrics.wpm).toBe(1);
     });
 
-    it('calculates strict accuracy from accepted typing units and mistakes', () => {
-        const attempts = [TypingPracticeLogic.scoreAttempt('가방', '가방', 0, 'strict')];
+    it('builds a cumulative characters-per-minute timeline from successful attempts', () => {
+        const attempts = [
+            TypingPracticeLogic.scoreAttempt('가방', '가방', 2_000),
+            TypingPracticeLogic.scoreAttempt('나무', '나비', 4_000),
+            TypingPracticeLogic.scoreAttempt('다리', '다리', 6_000),
+        ];
 
-        const metrics = TypingPracticeLogic.calculateMetrics(attempts, 60_000, 1, 1, 1, 'strict');
-
-        expect(metrics.typingUnits).toBe(5);
-        expect(metrics.mistakeCount).toBe(1);
-        expect(metrics.accuracy).toBeCloseTo((5 / 6) * 100, 4);
+        expect(TypingPracticeLogic.buildCpmTimeline(attempts)).toEqual([
+            { elapsedSeconds: 0, charactersPerMinute: 0 },
+            { elapsedSeconds: 2, charactersPerMinute: 150 },
+            { elapsedSeconds: 4, charactersPerMinute: 75 },
+            { elapsedSeconds: 6, charactersPerMinute: 90 },
+        ]);
     });
 
-    it('rejects strict input when the next value is not a valid target prefix', () => {
-        expect(TypingPracticeLogic.evaluateStrictInput('가나다', '가나')).toEqual({ accepted: true });
-        expect(TypingPracticeLogic.evaluateStrictInput('가나다', '가나ㅏ')).toEqual({ accepted: false });
-        expect(TypingPracticeLogic.evaluateStrictInput('가나다', '가!')).toEqual({ accepted: false });
+    it('extends the characters-per-minute timeline to the final session elapsed time', () => {
+        const attempts = [
+            TypingPracticeLogic.scoreAttempt('가방', '가방', 2_000),
+            TypingPracticeLogic.scoreAttempt('나무', '나무', 4_000),
+        ];
+
+        expect(TypingPracticeLogic.buildCpmTimeline(attempts, 10_000)).toEqual([
+            { elapsedSeconds: 0, charactersPerMinute: 0 },
+            { elapsedSeconds: 2, charactersPerMinute: 150 },
+            { elapsedSeconds: 4, charactersPerMinute: 135 },
+            { elapsedSeconds: 10, charactersPerMinute: 54 },
+        ]);
     });
 
     it('keeps raw elapsed time while clamping only rate denominators', () => {

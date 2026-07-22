@@ -2,6 +2,7 @@
 
 import React, { useEffect, useId, useRef } from 'react';
 import type { TypingPracticeAttempt, TypingPracticeMetrics } from './types/typing-practice.types';
+import { TypingPracticeLogic } from './lib/TypingPracticeLogic';
 
 type Props = {
     metrics: TypingPracticeMetrics;
@@ -13,11 +14,68 @@ type Props = {
 
 const formatNumber = (value: number) => Number.isFinite(value) ? value.toFixed(1) : '0.0';
 
+const Chart = ({ attempts, elapsedMs }: { attempts: TypingPracticeAttempt[]; elapsedMs: number }) => {
+    const points = TypingPracticeLogic.buildCpmTimeline(attempts, elapsedMs);
+    const drawablePoints = points.filter((point) => point.elapsedSeconds > 0);
+
+    if (drawablePoints.length < 2) {
+        return (
+            <div className="h-[170px] border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-900 flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+                기록이 부족합니다
+            </div>
+        );
+    }
+
+    const width = 500;
+    const height = 170;
+    const paddingLeft = 44;
+    const paddingRight = 16;
+    const paddingTop = 16;
+    const paddingBottom = 34;
+    const chartWidth = width - paddingLeft - paddingRight;
+    const chartHeight = height - paddingTop - paddingBottom;
+    const maxSeconds = Math.max(...points.map((point) => point.elapsedSeconds), 1);
+    const maxCpm = Math.max(...points.map((point) => point.charactersPerMinute), 1);
+    const toX = (seconds: number) => paddingLeft + (seconds / maxSeconds) * chartWidth;
+    const toY = (cpm: number) => paddingTop + chartHeight - (cpm / maxCpm) * chartHeight;
+    const path = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${toX(point.elapsedSeconds).toFixed(2)} ${toY(point.charactersPerMinute).toFixed(2)}`).join(' ');
+    const lastPoint = points[points.length - 1];
+
+    return (
+        <div className="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2">
+            <svg
+                data-testid="typing-cpm-chart"
+                viewBox={`0 0 ${width} ${height}`}
+                role="img"
+                aria-label="시간에 따른 분당타자수 꺾은선 그래프"
+                className="w-full h-[170px]"
+            >
+                <line x1={paddingLeft} y1={paddingTop} x2={paddingLeft} y2={paddingTop + chartHeight} stroke="#94A3B8" strokeWidth="1" />
+                <line x1={paddingLeft} y1={paddingTop + chartHeight} x2={paddingLeft + chartWidth} y2={paddingTop + chartHeight} stroke="#94A3B8" strokeWidth="1" />
+                <line x1={paddingLeft} y1={toY(maxCpm / 2)} x2={paddingLeft + chartWidth} y2={toY(maxCpm / 2)} stroke="#E2E8F0" strokeWidth="1" strokeDasharray="4 4" />
+                <line x1={paddingLeft} y1={toY(maxCpm)} x2={paddingLeft + chartWidth} y2={toY(maxCpm)} stroke="#E2E8F0" strokeWidth="1" strokeDasharray="4 4" />
+                <path d={path} fill="none" stroke="#2563EB" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                {points.map((point, index) => (
+                    <circle key={`${point.elapsedSeconds}-${index}`} cx={toX(point.elapsedSeconds)} cy={toY(point.charactersPerMinute)} r="3.2" fill="#2563EB" />
+                ))}
+                <text x={paddingLeft - 8} y={toY(maxCpm)} textAnchor="end" className="fill-gray-500 text-[10px]">{Math.ceil(maxCpm)}</text>
+                <text x={paddingLeft - 8} y={toY(maxCpm / 2)} textAnchor="end" className="fill-gray-500 text-[10px]">{Math.ceil(maxCpm / 2)}</text>
+                <text x={paddingLeft - 8} y={paddingTop + chartHeight + 4} textAnchor="end" className="fill-gray-500 text-[10px]">0</text>
+                <text x={paddingLeft} y={height - 8} textAnchor="middle" className="fill-gray-500 text-[10px]">0초</text>
+                <text x={paddingLeft + chartWidth} y={height - 8} textAnchor="middle" className="fill-gray-500 text-[10px]">{Math.ceil(maxSeconds)}초</text>
+                <text x={width / 2} y={height - 8} textAnchor="middle" className="fill-gray-700 dark:fill-gray-200 text-[11px]">시간(초)</text>
+                <text x="12" y={height / 2} textAnchor="middle" transform={`rotate(-90 12 ${height / 2})`} className="fill-gray-700 dark:fill-gray-200 text-[11px]">분당타자수</text>
+                <text x={paddingLeft + chartWidth - 4} y={paddingTop + 12} textAnchor="end" className="fill-blue-700 dark:fill-blue-300 text-[11px]">
+                    최종 {formatNumber(lastPoint.charactersPerMinute)}
+                </text>
+            </svg>
+        </div>
+    );
+};
+
 const TypingPracticeResultModal = ({ metrics, attempts, onRestart, onExitToSetup, onClose }: Props) => {
-    const recentAttempts = attempts.slice(-5).reverse();
     const titleId = useId();
     const dialogRef = useRef<HTMLDivElement>(null);
-    const closeButtonRef = useRef<HTMLButtonElement>(null);
     const onCloseRef = useRef(onClose);
 
     useEffect(() => {
@@ -47,7 +105,7 @@ const TypingPracticeResultModal = ({ metrics, attempts, onRestart, onExitToSetup
         };
 
         document.addEventListener('keydown', handleKeyDown);
-        closeButtonRef.current?.focus();
+        dialogRef.current?.focus();
 
         return () => {
             document.removeEventListener('keydown', handleKeyDown);
@@ -62,12 +120,13 @@ const TypingPracticeResultModal = ({ metrics, attempts, onRestart, onExitToSetup
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}
+                tabIndex={-1}
                 className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-[560px] p-6"
                 onClick={(event) => event.stopPropagation()}
             >
                 <div className="flex justify-between items-center mb-4">
                     <h3 id={titleId} className="text-lg font-semibold text-gray-800 dark:text-gray-100">타자 연습 결과</h3>
-                    <button ref={closeButtonRef} type="button" aria-label="결과 닫기" onClick={onClose} className="text-gray-500 dark:text-gray-300">&times;</button>
+                    <button type="button" aria-label="결과 닫기" onClick={onClose} className="text-gray-500 dark:text-gray-300">&times;</button>
                 </div>
 
                 <div className="grid grid-cols-3 gap-3 mb-4 text-center">
@@ -81,20 +140,8 @@ const TypingPracticeResultModal = ({ metrics, attempts, onRestart, onExitToSetup
                 </div>
 
                 <div className="mb-4">
-                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">최근 입력</h4>
-                    <div className="space-y-1">
-                        {recentAttempts.map((attempt) => (
-                            <div key={`${attempt.target}-${attempt.completedAt}`} className="flex justify-between text-sm">
-                                <span className="text-gray-700 dark:text-gray-200">{attempt.target}</span>
-                                <span className="flex gap-2">
-                                    <span className={attempt.isCorrect ? 'text-green-600' : 'text-red-600'}>
-                                        {attempt.isCorrect ? '성공' : '실패'}
-                                    </span>
-                                    <span className="text-gray-700 dark:text-gray-200">{attempt.submitted}</span>
-                                </span>
-                            </div>
-                        ))}
-                    </div>
+                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">분당타자수 추이</h4>
+                    <Chart attempts={attempts} elapsedMs={metrics.elapsedMs} />
                 </div>
 
                 <div className="flex gap-2">
