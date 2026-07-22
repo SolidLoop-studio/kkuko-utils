@@ -5,8 +5,14 @@ import type { TypingPracticeSettings } from '../../../../app/mini-game/game/typi
 jest.mock('../../../../app/mini-game/game/lib/wordDB', () => ({
     getAllWords: jest.fn(),
 }));
+jest.mock('../../../../app/mini-game/game/lib/SoundManager', () => ({
+    soundManager: {
+        play: jest.fn(),
+    },
+}));
 
 const { getAllWords } = jest.requireMock('../../../../app/mini-game/game/lib/wordDB');
+const { soundManager } = jest.requireMock('../../../../app/mini-game/game/lib/SoundManager');
 
 const settings: TypingPracticeSettings = {
     sessionMode: 'fixed-count',
@@ -95,6 +101,31 @@ describe('useTypingPractice', () => {
         expect(result.current.metrics.combo).toBe(0);
         expect(result.current.isFinished).toBe(true);
         expect(result.current.resultOpen).toBe(true);
+    });
+
+    it('plays existing sounds for start, correct submit, wrong submit, and finish', async () => {
+        const { result } = renderHook(() => useTypingPractice(settings));
+        await waitFor(() => expect(result.current.targetWord).toBe('가방'));
+
+        expect(soundManager.play).toHaveBeenCalledWith('round_start');
+
+        act(() => {
+            result.current.handleInputChange({ target: { value: '가방' } } as React.ChangeEvent<HTMLInputElement>);
+        });
+        act(() => {
+            result.current.handleKeyDown({ key: 'Enter', preventDefault: jest.fn() } as unknown as React.KeyboardEvent<HTMLInputElement>);
+        });
+        expect(soundManager.play).toHaveBeenCalledWith('K0');
+
+        act(() => {
+            result.current.handleInputChange({ target: { value: '나비' } } as React.ChangeEvent<HTMLInputElement>);
+        });
+        act(() => {
+            result.current.handleKeyDown({ key: 'Enter', preventDefault: jest.fn() } as unknown as React.KeyboardEvent<HTMLInputElement>);
+        });
+
+        expect(soundManager.play).toHaveBeenCalledWith('fail');
+        expect(soundManager.play).toHaveBeenCalledWith('timeout');
     });
 
     it('blocks when filters remove all words', async () => {

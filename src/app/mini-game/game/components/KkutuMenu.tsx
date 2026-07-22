@@ -10,13 +10,14 @@ import type { PracticeType } from '../typing-practice/lib/typing-practice-config
 type Props = {
     practiceType: PracticeType;
     onStartTypingPractice: () => Promise<void>;
+    onRequestTypingPracticeExit: () => void;
 };
 
 /**
  * 게임 상단 메뉴 컴포넌트
  * 도움말, 설정, 사전, 시작, 나가기 버튼을 포함합니다.
  */
-const KkutuMenu = ({ practiceType, onStartTypingPractice }: Props) => {
+const KkutuMenu = ({ practiceType, onStartTypingPractice, onRequestTypingPracticeExit }: Props) => {
     const {
         isPlaying,
         requestStart,
@@ -154,7 +155,7 @@ const KkutuMenu = ({ practiceType, onStartTypingPractice }: Props) => {
                     message="타자 연습을 종료하시겠습니까?"
                     onConfirm={() => {
                         setExitConfirmOpen(false);
-                        exitGame();
+                        onRequestTypingPracticeExit();
                     }}
                     onCancel={() => setExitConfirmOpen(false)}
                 />

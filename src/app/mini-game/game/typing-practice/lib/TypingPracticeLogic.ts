@@ -39,16 +39,20 @@ export class TypingPracticeLogic {
     }
 
     public static scoreAttempt(target: string, submitted: string, completedAt = Date.now()): TypingPracticeAttempt {
-        const correctCharacters = Array.from(submitted).reduce((count, char, index) => {
-            return count + (Array.from(target)[index] === char ? 1 : 0);
+        const normalizedTarget = this.normalizeWord(target);
+        const normalizedSubmitted = this.normalizeWord(submitted);
+        const targetCharacters = Array.from(normalizedTarget);
+        const submittedCharacters = Array.from(normalizedSubmitted);
+        const correctCharacters = submittedCharacters.reduce((count, char, index) => {
+            return count + (targetCharacters[index] === char ? 1 : 0);
         }, 0);
 
         return {
-            target,
-            submitted,
-            isCorrect: target === submitted,
+            target: normalizedTarget,
+            submitted: normalizedSubmitted,
+            isCorrect: normalizedTarget === normalizedSubmitted,
             correctCharacters,
-            submittedCharacters: Array.from(submitted).length,
+            submittedCharacters: submittedCharacters.length,
             completedAt,
         };
     }

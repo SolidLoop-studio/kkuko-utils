@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getAllWords } from '../../lib/wordDB';
+import { soundManager } from '../../lib/SoundManager';
 import { TypingPracticeLogic } from '../lib/TypingPracticeLogic';
 import type {
     TypingPracticeAttempt,
@@ -69,6 +70,7 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
 
             setBlockedMessage(null);
             setQueue(nextQueue);
+            try { soundManager.play('round_start'); } catch (e) { console.error(e); }
         } catch (error) {
             if (!isMountedRef.current || requestId !== loadRequestIdRef.current) return;
 
@@ -114,10 +116,13 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
     );
 
     const finish = useCallback((endedAt = Date.now()) => {
+        loadRequestIdRef.current += 1;
         setNow(endedAt);
+        setIsLoading(false);
         setIsFinished(true);
         setResultOpen(true);
         if (timerRef.current) clearInterval(timerRef.current);
+        try { soundManager.play('timeout'); } catch (e) { console.error(e); }
     }, []);
 
     useEffect(() => {
@@ -144,6 +149,7 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
         setCombo(nextCombo.combo);
         setMaxCombo(nextCombo.maxCombo);
         setInput('');
+        try { soundManager.play(attempt.isCorrect ? 'K0' : 'fail'); } catch (e) { console.error(e); }
 
         const isFixedCountComplete = settings.sessionMode === 'fixed-count'
             && nextAttempts.length >= Math.min(settings.wordCount, queue.length);

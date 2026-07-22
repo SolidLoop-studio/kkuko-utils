@@ -73,6 +73,20 @@ describe('TypingPracticeLogic', () => {
         });
     });
 
+    it('normalizes submitted attempts before scoring character metrics', () => {
+        expect(TypingPracticeLogic.scoreAttempt('단순누진율', '단수누')).toMatchObject({
+            isCorrect: false,
+            correctCharacters: 2,
+            submittedCharacters: 3,
+        });
+
+        expect(TypingPracticeLogic.scoreAttempt('가방', '가 방')).toMatchObject({
+            isCorrect: true,
+            correctCharacters: 2,
+            submittedCharacters: 2,
+        });
+    });
+
     it('keeps raw elapsed time while clamping only rate denominators', () => {
         const attempts = [
             TypingPracticeLogic.scoreAttempt('apple', 'apple'),

@@ -10,30 +10,37 @@ import type { TypingPracticeSettings } from './types/typing-practice.types';
 type Props = {
     settings: TypingPracticeSettings;
     onExitToSetup: () => void;
+    exitRequestToken?: number;
 };
 
 const formatNumber = (value: number) => Number.isFinite(value) ? value.toFixed(1) : '0.0';
 
 const renderTarget = (target: string, input: string, isComposing: boolean) => {
-    const characters = target.split('').map((char, index) => {
-        const typed = input[index];
+    const targetCharacters = Array.from(target);
+    const inputCharacters = Array.from(input);
+    const activeComposingIndex = isComposing ? inputCharacters.length - 1 : -1;
+    const hasExtraInput = inputCharacters.length > targetCharacters.length;
+
+    const characters = targetCharacters.map((char, index) => {
+        const typed = inputCharacters[index];
         const className = typed === undefined
             ? 'text-[#EEEEEE]'
-            : isComposing
+            : isComposing && index === activeComposingIndex
                 ? 'text-yellow-200'
             : typed === char
                 ? 'text-green-300'
                 : 'text-red-300 underline';
 
-        return <span key={`${char}-${index}`} className={className} aria-hidden="true">{char}</span>;
+        return <span key={`${char}-${index}`} data-testid="typing-target-character" className={className} aria-hidden="true">{char}</span>;
     });
 
-    return <><span className="sr-only">{target}</span>{characters}</>;
+    return <><span className="sr-only">{target}</span>{characters}{hasExtraInput && <span className="text-red-300 underline" aria-hidden="true">!</span>}</>;
 };
 
-const TypingPracticeBody = ({ settings, onExitToSetup }: Props) => {
+const TypingPracticeBody = ({ settings, onExitToSetup, exitRequestToken = 0 }: Props) => {
     const practice = useTypingPractice(settings);
     const inputRef = React.useRef<HTMLInputElement>(null);
+    const lastExitRequestTokenRef = React.useRef(exitRequestToken);
 
     React.useEffect(() => {
         if (practice.targetWord && !practice.resultOpen && !practice.isFinished) inputRef.current?.focus();
@@ -42,6 +49,17 @@ const TypingPracticeBody = ({ settings, onExitToSetup }: Props) => {
     React.useEffect(() => {
         if (practice.isFinished) inputRef.current?.blur();
     }, [practice.isFinished, practice.resultOpen]);
+
+    React.useEffect(() => {
+        if (exitRequestToken === lastExitRequestTokenRef.current) return;
+        lastExitRequestTokenRef.current = exitRequestToken;
+        practice.finish();
+    }, [exitRequestToken, practice.finish]);
+
+    const remainingProgress = Math.max(practice.progressMax - practice.progressValue, 0);
+    const progressLabel = settings.sessionMode === 'timed'
+        ? `${remainingProgress.toFixed(1)}초`
+        : `남은 단어 ${Math.ceil(remainingProgress)}개`;
 
     if (practice.blockedMessage) {
         return (
@@ -66,32 +84,26 @@ const TypingPracticeBody = ({ settings, onExitToSetup }: Props) => {
             <div className="relative">
                 <div className="game-head flex items-start">
                     <div className="items pt-[50px] mt-[50px] mx-[40px] ml-[105px] w-[100px] h-[110px] text-[24px] text-[#EEEEEE] font-bold text-center bg-[url('/img/lefthand.png')] bg-no-repeat" style={{ textShadow: '0px 1px 5px #141414' }}>
-                        {practice.metrics.combo}
                     </div>
 
                     <div className="jjoriping w-[500px]">
-                        <div className="p-[20px_5px_5px_5px] border-2 border-black rounded-bl-[10px] rounded-br-[10px] mt-[40px] w-[486px] h-[120px] bg-[#DEAF56] ml-8">
+                        <div className="p-[20px_5px_5px_5px] border-2 border-black rounded-bl-[10px] rounded-br-[10px] mt-[40px] w-[486px] h-[100px] bg-[#DEAF56] ml-8">
                             <div className="p-[8px_5px] rounded-[10px] rounded-bl-none rounded-br-none w-[474px] h-[40px] text-[20px] text-center bg-black/70 whitespace-nowrap overflow-hidden text-ellipsis">
                                 {practice.targetWord ? renderTarget(practice.targetWord, practice.input, practice.isComposing) : '단어를 불러오는 중...'}
                             </div>
                             <GraphBar
                                 className="border-l border-r border-black/70 w-[474px] h-[20px] bg-[#70712D]"
                                 min={0}
-                                val={practice.progressValue}
+                                val={remainingProgress}
                                 max={practice.progressMax}
                                 bgc="#E6E846"
-                                label={`${Math.floor(practice.progressValue)} / ${practice.progressMax}`}
+                                label={progressLabel}
                             />
-                            <div className="border-l border-r border-b border-black/70 rounded-bl-[10px] rounded-br-[10px] w-[474px] h-[20px] bg-[#223C6C] text-white text-xs flex justify-around">
-                                <span><span>WPM</span> {formatNumber(practice.metrics.wpm)}</span>
-                                <span><span>분당타자수</span> {formatNumber(practice.metrics.charactersPerMinute)}</span>
-                                <span>정확도 {formatNumber(practice.metrics.accuracy)}%</span>
-                            </div>
                         </div>
                     </div>
 
                     <div className="chain pt-[50px] mt-[50px] mx-[105px] mr-[40px] w-[100px] h-[110px] text-[24px] text-[#EEEEEE] font-bold text-center bg-[url('/img/righthand.png')] bg-no-repeat" style={{ textShadow: '0px 1px 5px #141414' }}>
-                        {Math.round(practice.metrics.accuracy)}%
+                        {practice.metrics.completedWords}
                     </div>
                 </div>
             </div>
@@ -107,6 +119,12 @@ const TypingPracticeBody = ({ settings, onExitToSetup }: Props) => {
                     onCompositionEnd={practice.handleCompositionEnd}
                     readonly={practice.isFinished}
                 />
+                <div data-testid="typing-practice-live-stats" className="mt-2 w-[460px] border-2 border-black rounded-[8px] bg-[#223C6C] text-white text-xs flex justify-around py-2 shadow">
+                    <span><span>WPM</span> {formatNumber(practice.metrics.wpm)}</span>
+                    <span><span>분당타자수</span> {formatNumber(practice.metrics.charactersPerMinute)}</span>
+                    <span>정확도 {formatNumber(practice.metrics.accuracy)}%</span>
+                    <span>콤보 {practice.metrics.combo}</span>
+                </div>
             </div>
 
             {practice.resultOpen && (

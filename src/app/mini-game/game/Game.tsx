@@ -8,8 +8,9 @@ import GameSetup from "./GameSetup";
 import { ChatProvider } from "./hooks/useChat";
 import { soundManager } from "./lib/SoundManager";
 import { useGameState } from "./hooks/useGameState";
-import { hasWords } from "./lib/wordDB";
+import { getAllWords, hasWords } from "./lib/wordDB";
 import TypingPracticeBody from "./typing-practice/TypingPracticeBody";
+import { TypingPracticeLogic } from "./typing-practice/lib/TypingPracticeLogic";
 import {
     DEFAULT_PRACTICE_CONFIG,
     loadPracticeConfig,
@@ -25,6 +26,7 @@ const Game = () => {
     const { isPlaying, startPractice, exitGame, blockStart } = useGameState();
     const [practiceConfig, setPracticeConfig] = useState(DEFAULT_PRACTICE_CONFIG);
     const [typingSessionKey, setTypingSessionKey] = useState(0);
+    const [typingExitRequestToken, setTypingExitRequestToken] = useState(0);
 
     // 컴포넌트 마운트 시 사운드 리소스 로드
     useEffect(() => {
@@ -52,6 +54,13 @@ const Game = () => {
                 return;
             }
 
+            const words = await getAllWords();
+            const queue = TypingPracticeLogic.prepareQueue(words, practiceConfig.typingSettings);
+            if (queue.length === 0) {
+                blockStart('조건에 맞는 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.');
+                return;
+            }
+
             setTypingSessionKey((current) => current + 1);
             startPractice();
         } catch (e) {
@@ -64,14 +73,27 @@ const Game = () => {
         setTypingSessionKey((current) => current + 1);
     };
 
+    const handleRequestTypingPracticeExit = () => {
+        setTypingExitRequestToken((current) => current + 1);
+    };
+
     return (
         <ChatProvider>
             <div>
-                <KkutuMenu practiceType={practiceConfig.practiceType} onStartTypingPractice={handleStartTypingPractice} />
+                <KkutuMenu
+                    practiceType={practiceConfig.practiceType}
+                    onStartTypingPractice={handleStartTypingPractice}
+                    onRequestTypingPracticeExit={handleRequestTypingPracticeExit}
+                />
                 {isPlaying ? (
                     <GameBox>
                         {practiceConfig.practiceType === 'typing-practice' ? (
-                            <TypingPracticeBody key={typingSessionKey} settings={practiceConfig.typingSettings} onExitToSetup={() => exitGame()} />
+                            <TypingPracticeBody
+                                key={typingSessionKey}
+                                settings={practiceConfig.typingSettings}
+                                onExitToSetup={() => exitGame()}
+                                exitRequestToken={typingExitRequestToken}
+                            />
                         ) : (
                             <GameBody />
                         )}
@@ -88,7 +110,7 @@ const Game = () => {
                     practiceType={practiceConfig.practiceType}
                     onStartTypingPractice={handleStartTypingPractice}
                     onRestartTypingPractice={handleRestartTypingPractice}
-                    onExitTypingPractice={() => exitGame()}
+                    onExitTypingPractice={handleRequestTypingPracticeExit}
                 />
             </div>
         </ChatProvider>

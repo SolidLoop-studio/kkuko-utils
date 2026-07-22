@@ -55,7 +55,11 @@ describe('Game', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         localStorage.clear();
-        const { hasWords } = jest.requireMock('@/app/mini-game/game/lib/wordDB');
+        const { getAllWords, hasWords } = jest.requireMock('@/app/mini-game/game/lib/wordDB');
+        getAllWords.mockResolvedValue([
+            { word: '가방', theme: '자유' },
+            { word: '나무', theme: '자유' },
+        ]);
         hasWords.mockResolvedValue(true);
     });
 
@@ -97,6 +101,28 @@ describe('Game', () => {
         await userEvent.click(screen.getByRole('button', { name: /시작/ }));
 
         expect(await screen.findByText('조건에 맞는 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.')).toBeInTheDocument();
+    });
+
+    it('blocks typing practice before mounting the game when the filtered queue is empty', async () => {
+        const { getAllWords } = jest.requireMock('@/app/mini-game/game/lib/wordDB');
+        getAllWords.mockResolvedValue([{ word: 'a', theme: '짧음' }]);
+        localStorage.setItem('kkutu_practice_type', 'typing-practice');
+        localStorage.setItem('kkutu_typing_practice_setting', JSON.stringify({
+            sessionMode: 'fixed-count',
+            durationSeconds: 60,
+            wordCount: 10,
+            language: 'ko',
+            order: 'sorted',
+            minLength: 2,
+        }));
+
+        renderGame();
+        await screen.findByText(/Setup: typing-practice/);
+
+        await userEvent.click(screen.getByRole('button', { name: /시작/ }));
+
+        expect(await screen.findByText('조건에 맞는 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.')).toBeInTheDocument();
+        expect(screen.queryByTestId('game-box')).not.toBeInTheDocument();
     });
 
     it('uses the latest practice type on start without mounting the word-chain body', async () => {

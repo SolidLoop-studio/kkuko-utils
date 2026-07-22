@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import TypingPracticeBody from '../../../../app/mini-game/game/typing-practice/TypingPracticeBody';
 import type { TypingPracticeSettings } from '../../../../app/mini-game/game/typing-practice/types/typing-practice.types';
@@ -65,6 +65,22 @@ describe('TypingPracticeBody', () => {
         expect(container.querySelector('.text-red-300')).toBeInTheDocument();
     });
 
+    it('marks committed Korean IME mismatches red while only the active syllable is provisional', async () => {
+        getAllWords.mockResolvedValueOnce([{ word: '단순누진율', theme: '경제' }]);
+        const { container } = render(<TypingPracticeBody settings={settings} onExitToSetup={jest.fn()} />);
+        const input = await screen.findByRole('textbox');
+        await screen.findByText('단순누진율');
+
+        fireEvent.compositionStart(input);
+        fireEvent.change(input, { target: { value: '단수누' } });
+
+        const targetCharacters = Array.from(container.querySelectorAll('[data-testid="typing-target-character"]'));
+        expect(targetCharacters.map((node) => node.textContent)).toEqual(['단', '순', '누', '진', '율']);
+        expect(targetCharacters[0]).toHaveClass('text-green-300');
+        expect(targetCharacters[1]).toHaveClass('text-red-300');
+        expect(targetCharacters[2]).toHaveClass('text-yellow-200');
+    });
+
     it('keeps highlighted target characters hidden from assistive technology', async () => {
         const { container } = render(<TypingPracticeBody settings={settings} onExitToSetup={jest.fn()} />);
         await screen.findByText('가방');
@@ -72,6 +88,42 @@ describe('TypingPracticeBody', () => {
         const highlightedCharacters = container.querySelectorAll('[aria-hidden="true"]');
         expect(highlightedCharacters).toHaveLength(2);
         expect(screen.getByText('가방')).toHaveClass('sr-only');
+    });
+
+    it('uses word-practice style progress, places stats below input, and shows success count in chain', async () => {
+        const user = userEvent.setup();
+        const { container } = render(<TypingPracticeBody settings={{ ...settings, sessionMode: 'timed', durationSeconds: 60 }} onExitToSetup={jest.fn()} />);
+        const input = await screen.findByRole('textbox');
+
+        expect(screen.getByText(/초$/)).toBeInTheDocument();
+        expect(screen.queryByText(/0 \/ 60/)).not.toBeInTheDocument();
+        expect(container.querySelector('.items')).toBeEmptyDOMElement();
+        expect(container.querySelector('.chain')).toHaveTextContent('0');
+
+        const statPanel = screen.getByTestId('typing-practice-live-stats');
+        expect(statPanel.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+
+        await user.type(input, '가방{enter}');
+        expect(container.querySelector('.chain')).toHaveTextContent('1');
+    });
+
+    it('keeps the exit result open when word loading resolves after exit is confirmed', async () => {
+        let resolveWords: (nextWords: typeof words) => void = () => undefined;
+        getAllWords.mockImplementationOnce(() => new Promise((resolve) => {
+            resolveWords = resolve;
+        }));
+
+        const { rerender } = render(<TypingPracticeBody settings={settings} onExitToSetup={jest.fn()} exitRequestToken={0} />);
+
+        rerender(<TypingPracticeBody settings={settings} onExitToSetup={jest.fn()} exitRequestToken={1} />);
+        expect(await screen.findByRole('dialog', { name: '타자 연습 결과' })).toBeInTheDocument();
+
+        await act(async () => {
+            resolveWords(words);
+        });
+
+        expect(screen.getByRole('dialog', { name: '타자 연습 결과' })).toBeInTheDocument();
+        expect(screen.queryByText('가방')).not.toBeInTheDocument();
     });
 
     it('focuses the input when a target loads and after restart', async () => {
