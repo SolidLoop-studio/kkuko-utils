@@ -25,7 +25,7 @@ const renderTarget = (target: string, input: string, isComposing: boolean) => {
                 ? 'text-green-300'
                 : 'text-red-300 underline';
 
-        return <span key={`${char}-${index}`} className={className}>{char}</span>;
+        return <span key={`${char}-${index}`} className={className} aria-hidden="true">{char}</span>;
     });
 
     return <><span className="sr-only">{target}</span>{characters}</>;

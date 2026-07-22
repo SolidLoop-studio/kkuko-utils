@@ -79,6 +79,19 @@ export const useChatLog = ({
 
             // 힌트 명령어 (/ㅍ 또는 /v)
             if (trimmedInput === '/ㅍ' || trimmedInput === '/v') {
+                if (practiceType === 'typing-practice') {
+                    const noticeMessage: ChatMessage = {
+                        id: Date.now(),
+                        username: '알림',
+                        message: '타자 연습에서는 힌트를 사용할 수 없습니다.',
+                        timestamp: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+                        isNotice: true
+                    };
+                    setMessages(prev => [...prev, noticeMessage]);
+                    setChatInput('');
+                    return;
+                }
+
                 const hint = gameManager.getHintWord();
                 if (hint === null) { setChatInput(''); return; }
                 const hintMsg: ChatMessage = {

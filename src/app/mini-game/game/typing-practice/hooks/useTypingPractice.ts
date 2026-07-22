@@ -113,8 +113,8 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
         [attempts, elapsedMs, combo, maxCombo],
     );
 
-    const finish = useCallback(() => {
-        setNow(Date.now());
+    const finish = useCallback((endedAt = Date.now()) => {
+        setNow(endedAt);
         setIsFinished(true);
         setResultOpen(true);
         if (timerRef.current) clearInterval(timerRef.current);
@@ -122,16 +122,16 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
 
     useEffect(() => {
         if (settings.sessionMode === 'timed' && elapsedMs >= settings.durationSeconds * 1000) {
-            finish();
+            finish(startedAt + settings.durationSeconds * 1000);
         }
-    }, [elapsedMs, finish, settings.durationSeconds, settings.sessionMode]);
+    }, [elapsedMs, finish, settings.durationSeconds, settings.sessionMode, startedAt]);
 
     const submit = useCallback(() => {
         if (!targetWord || input.trim() === '' || isFinished || isComposing) return;
         const submittedAt = Date.now();
 
         if (settings.sessionMode === 'timed' && submittedAt - startedAt >= settings.durationSeconds * 1000) {
-            finish();
+            finish(startedAt + settings.durationSeconds * 1000);
             return;
         }
 

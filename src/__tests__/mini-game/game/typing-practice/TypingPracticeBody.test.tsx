@@ -65,6 +65,15 @@ describe('TypingPracticeBody', () => {
         expect(container.querySelector('.text-red-300')).toBeInTheDocument();
     });
 
+    it('keeps highlighted target characters hidden from assistive technology', async () => {
+        const { container } = render(<TypingPracticeBody settings={settings} onExitToSetup={jest.fn()} />);
+        await screen.findByText('가방');
+
+        const highlightedCharacters = container.querySelectorAll('[aria-hidden="true"]');
+        expect(highlightedCharacters).toHaveLength(2);
+        expect(screen.getByText('가방')).toHaveClass('sr-only');
+    });
+
     it('focuses the input when a target loads and after restart', async () => {
         const user = userEvent.setup();
         render(<TypingPracticeBody settings={settings} onExitToSetup={jest.fn()} />);

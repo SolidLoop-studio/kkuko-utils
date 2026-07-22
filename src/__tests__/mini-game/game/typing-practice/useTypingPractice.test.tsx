@@ -232,6 +232,25 @@ describe('useTypingPractice', () => {
         expect(result.current.resultOpen).toBe(true);
     });
 
+    it('caps timed session elapsed metrics at the configured duration when timer callbacks are delayed', async () => {
+        const timedSettings: TypingPracticeSettings = {
+            ...settings,
+            sessionMode: 'timed',
+            durationSeconds: 30,
+        };
+        const { result } = renderHook(() => useTypingPractice(timedSettings));
+        await waitFor(() => expect(result.current.targetWord).toBe('가방'));
+
+        act(() => {
+            jest.setSystemTime(Date.now() + 120_000);
+            jest.advanceTimersByTime(250);
+        });
+
+        expect(result.current.isFinished).toBe(true);
+        expect(result.current.metrics.elapsedMs).toBe(30_000);
+        expect(result.current.progressValue).toBe(30);
+    });
+
     it('exposes a retryable blocked state when loading words fails', async () => {
         jest.useRealTimers();
         const error = new Error('indexed db unavailable');

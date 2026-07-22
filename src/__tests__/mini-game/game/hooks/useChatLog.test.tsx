@@ -213,6 +213,36 @@ describe('useChatLog', () => {
         expect(mockCallGameInput).not.toHaveBeenCalled();
     });
 
+    it('blocks hint commands in typing practice without reading word-chain hints', () => {
+        (useChat as jest.Mock).mockReturnValue({
+            messages: [],
+            setMessages: mockSetMessages,
+            chatInput: '/ㅍ',
+            setChatInput: mockSetChatInput,
+            callGameInput: mockCallGameInput,
+            registerSendHint: mockRegisterSendHint,
+            chatRef: { current: null },
+        });
+
+        const { result } = renderHook(() => useChatLog({ practiceType: 'typing-practice' }));
+
+        act(() => {
+            result.current.handleSendMessage();
+        });
+
+        expect(gameManager.getHintWord).not.toHaveBeenCalled();
+        expect(mockSetMessages).toHaveBeenCalledWith(expect.any(Function));
+        const appendMessage = mockSetMessages.mock.calls[0][0];
+        expect(appendMessage([])).toEqual([
+            expect.objectContaining({
+                username: '알림',
+                message: '타자 연습에서는 힌트를 사용할 수 없습니다.',
+                isNotice: true,
+            }),
+        ]);
+        expect(mockSetChatInput).toHaveBeenCalledWith('');
+    });
+
     it('should handle hint command', () => {
         (useChat as jest.Mock).mockReturnValue({
             messages: [],
