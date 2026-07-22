@@ -21,38 +21,81 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
     const [isFinished, setIsFinished] = useState(false);
     const [resultOpen, setResultOpen] = useState(false);
     const [blockedMessage, setBlockedMessage] = useState<string | null>(null);
+    const [canRetry, setCanRetry] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const isMountedRef = useRef(true);
+    const loadRequestIdRef = useRef(0);
+
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+            loadRequestIdRef.current += 1;
+        };
+    }, []);
 
     const loadQueue = useCallback(async () => {
+        if (!isMountedRef.current) return;
+
+        const requestId = loadRequestIdRef.current + 1;
+        loadRequestIdRef.current = requestId;
         setIsLoading(true);
-        const words = await getAllWords();
-        const nextQueue = TypingPracticeLogic.prepareQueue(words, settings);
+        setCanRetry(false);
 
-        setCurrentIndex(0);
-        setInput('');
-        setAttempts([]);
-        setCombo(0);
-        setMaxCombo(0);
-        setStartedAt(Date.now());
-        setNow(Date.now());
-        setIsFinished(false);
-        setResultOpen(false);
+        try {
+            const words = await getAllWords();
+            if (!isMountedRef.current || requestId !== loadRequestIdRef.current) return;
 
-        if (nextQueue.length === 0) {
-            setBlockedMessage('조건에 맞는 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.');
+            const nextQueue = TypingPracticeLogic.prepareQueue(words, settings);
+            const startedAtMs = Date.now();
+
+            setCurrentIndex(0);
+            setInput('');
+            setAttempts([]);
+            setCombo(0);
+            setMaxCombo(0);
+            setStartedAt(startedAtMs);
+            setNow(startedAtMs);
+            setIsComposing(false);
+            setIsFinished(false);
+            setResultOpen(false);
+
+            if (nextQueue.length === 0) {
+                setBlockedMessage('조건에 맞는 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.');
+                setQueue([]);
+                return;
+            }
+
+            setBlockedMessage(null);
+            setQueue(nextQueue);
+        } catch (error) {
+            if (!isMountedRef.current || requestId !== loadRequestIdRef.current) return;
+
+            console.error(error);
             setQueue([]);
-            setIsLoading(false);
-            return;
+            setCurrentIndex(0);
+            setInput('');
+            setAttempts([]);
+            setCombo(0);
+            setMaxCombo(0);
+            setIsComposing(false);
+            setIsFinished(false);
+            setResultOpen(false);
+            setBlockedMessage('단어를 불러오지 못했습니다. 다시 시도해주세요.');
+            setCanRetry(true);
+        } finally {
+            if (isMountedRef.current && requestId === loadRequestIdRef.current) {
+                setIsLoading(false);
+            }
         }
-
-        setBlockedMessage(null);
-        setQueue(nextQueue);
-        setIsLoading(false);
     }, [settings]);
 
     useEffect(() => {
         void loadQueue();
+        return () => {
+            loadRequestIdRef.current += 1;
+        };
     }, [loadQueue]);
 
     useEffect(() => {
@@ -63,7 +106,7 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
         };
     }, [blockedMessage, isFinished, isLoading, startedAt]);
 
-    const elapsedMs = Math.max(now - startedAt, 1000);
+    const elapsedMs = Math.max(now - startedAt, 0);
     const targetWord = queue[currentIndex] ?? '';
     const metrics = useMemo(
         () => TypingPracticeLogic.calculateMetrics(attempts, elapsedMs, combo, maxCombo),
@@ -71,6 +114,7 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
     );
 
     const finish = useCallback(() => {
+        setNow(Date.now());
         setIsFinished(true);
         setResultOpen(true);
         if (timerRef.current) clearInterval(timerRef.current);
@@ -95,16 +139,17 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
         setMaxCombo(nextCombo.maxCombo);
         setInput('');
 
-        const countComplete = settings.sessionMode === 'fixed-count' && nextAttempts.length >= Math.min(settings.wordCount, queue.length);
-        const queueComplete = nextIndex >= queue.length;
+        const isFixedCountComplete = settings.sessionMode === 'fixed-count'
+            && nextAttempts.length >= Math.min(settings.wordCount, queue.length);
+        const isFixedQueueComplete = settings.sessionMode === 'fixed-count' && nextIndex >= queue.length;
 
-        if (countComplete || queueComplete) {
+        if (isFixedCountComplete || isFixedQueueComplete) {
             setCurrentIndex(Math.min(nextIndex, queue.length - 1));
             finish();
             return;
         }
 
-        setCurrentIndex(nextIndex);
+        setCurrentIndex(settings.sessionMode === 'timed' ? nextIndex % queue.length : nextIndex);
     }, [attempts, combo, currentIndex, finish, input, isComposing, isFinished, maxCombo, queue.length, settings.sessionMode, settings.wordCount, targetWord]);
 
     const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -132,6 +177,8 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
         isFinished,
         resultOpen,
         blockedMessage,
+        canRetry,
+        isLoading,
         handleInputChange,
         handleKeyDown,
         handleCompositionStart: () => setIsComposing(true),

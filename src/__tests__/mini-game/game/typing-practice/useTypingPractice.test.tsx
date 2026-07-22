@@ -11,7 +11,7 @@ const { getAllWords } = jest.requireMock('../../../../app/mini-game/game/lib/wor
 const settings: TypingPracticeSettings = {
     sessionMode: 'fixed-count',
     durationSeconds: 60,
-    wordCount: 2,
+    wordCount: 10,
     language: 'all',
     order: 'sorted',
     minLength: 2,
@@ -55,8 +55,8 @@ describe('useTypingPractice', () => {
             jest.advanceTimersByTime(10_000);
         });
 
-        expect(result.current.progressValue).toBe(1);
-        expect(result.current.metrics.elapsedMs).toBe(1_000);
+        expect(result.current.progressValue).toBe(0);
+        expect(result.current.metrics.elapsedMs).toBe(0);
 
         await act(async () => {
             resolveWords([
@@ -66,7 +66,7 @@ describe('useTypingPractice', () => {
         });
 
         expect(result.current.targetWord).toBe('가방');
-        expect(result.current.progressValue).toBe(1);
+        expect(result.current.progressValue).toBe(0);
     });
 
     it('submits correct and incorrect attempts with combo updates', async () => {
@@ -176,5 +176,103 @@ describe('useTypingPractice', () => {
         expect(result.current.resultOpen).toBe(true);
         expect(result.current.progressValue).toBe(30);
         expect(jest.getTimerCount()).toBe(0);
+    });
+
+    it('cycles a timed queue and remains active until the timer expires', async () => {
+        const timedSettings: TypingPracticeSettings = {
+            ...settings,
+            sessionMode: 'timed',
+            durationSeconds: 30,
+        };
+        const { result } = renderHook(() => useTypingPractice(timedSettings));
+        await waitFor(() => expect(result.current.targetWord).toBe('가방'));
+
+        act(() => {
+            result.current.handleInputChange({ target: { value: '가방' } } as React.ChangeEvent<HTMLInputElement>);
+        });
+        act(() => {
+            result.current.handleKeyDown({ key: 'Enter', preventDefault: jest.fn() } as unknown as React.KeyboardEvent<HTMLInputElement>);
+        });
+        expect(result.current.targetWord).toBe('나무');
+
+        act(() => {
+            result.current.handleInputChange({ target: { value: '나무' } } as React.ChangeEvent<HTMLInputElement>);
+        });
+        act(() => {
+            result.current.handleKeyDown({ key: 'Enter', preventDefault: jest.fn() } as unknown as React.KeyboardEvent<HTMLInputElement>);
+        });
+
+        expect(result.current.targetWord).toBe('가방');
+        expect(result.current.attempts).toHaveLength(2);
+        expect(result.current.isFinished).toBe(false);
+        expect(result.current.resultOpen).toBe(false);
+    });
+
+    it('exposes a retryable blocked state when loading words fails', async () => {
+        jest.useRealTimers();
+        const error = new Error('indexed db unavailable');
+        const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+        getAllWords.mockRejectedValueOnce(error);
+        const { result } = renderHook(() => useTypingPractice(settings));
+
+        await waitFor(() => expect(result.current.blockedMessage).toBe('단어를 불러오지 못했습니다. 다시 시도해주세요.'));
+        expect(result.current.isLoading).toBe(false);
+        expect(consoleError).toHaveBeenCalledWith(error);
+
+        getAllWords.mockResolvedValue([
+            { word: '가방', theme: '자유' },
+            { word: '나무', theme: '자유' },
+        ]);
+        await act(async () => {
+            await result.current.restart();
+        });
+
+        expect(result.current.targetWord).toBe('가방');
+        expect(result.current.blockedMessage).toBeNull();
+        consoleError.mockRestore();
+    });
+
+    it('ignores a stale word load after settings change', async () => {
+        jest.useRealTimers();
+        let resolveFirstLoad: (words: { word: string; theme: string }[]) => void;
+        getAllWords
+            .mockImplementationOnce(() => new Promise((resolve) => {
+                resolveFirstLoad = resolve;
+            }))
+            .mockResolvedValueOnce([{ word: 'apple', theme: '자유' }]);
+
+        const { result, rerender } = renderHook(
+            ({ currentSettings }) => useTypingPractice(currentSettings),
+            { initialProps: { currentSettings: settings } },
+        );
+
+        rerender({ currentSettings: { ...settings, language: 'en' } });
+        await waitFor(() => expect(result.current.targetWord).toBe('apple'));
+
+        await act(async () => {
+            resolveFirstLoad([{ word: '가방', theme: '자유' }]);
+        });
+
+        expect(result.current.targetWord).toBe('apple');
+        expect(result.current.blockedMessage).toBeNull();
+    });
+
+    it('does not commit a pending word load after unmount', async () => {
+        let resolveLoad: (words: { word: string; theme: string }[]) => void = () => undefined;
+        getAllWords.mockImplementationOnce(() => new Promise((resolve) => {
+            resolveLoad = resolve;
+        }));
+        const { result, unmount } = renderHook(() => useTypingPractice(settings));
+        const restart = result.current.restart;
+
+        unmount();
+        await act(async () => {
+            resolveLoad([{ word: '가방', theme: '자유' }]);
+        });
+
+        await act(async () => {
+            await restart();
+        });
+        expect(getAllWords).toHaveBeenCalledTimes(1);
     });
 });

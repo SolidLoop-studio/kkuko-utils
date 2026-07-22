@@ -72,8 +72,8 @@ export class TypingPracticeLogic {
         combo: number,
         maxCombo: number,
     ): TypingPracticeMetrics {
-        const safeElapsedMs = Math.max(elapsedMs, 1000);
-        const elapsedMinutes = safeElapsedMs / 60000;
+        const rawElapsedMs = Math.max(elapsedMs, 0);
+        const rateElapsedMinutes = Math.max(rawElapsedMs, 1000) / 60000;
         const correctCharacters = attempts.reduce((sum, attempt) => sum + attempt.correctCharacters, 0);
         const totalSubmittedCharacters = attempts.reduce((sum, attempt) => sum + attempt.submittedCharacters, 0);
         const completedWords = attempts.filter((attempt) => attempt.isCorrect).length;
@@ -83,15 +83,15 @@ export class TypingPracticeLogic {
             correctCharacters,
             totalSubmittedCharacters,
             accuracy: (correctCharacters / Math.max(totalSubmittedCharacters, 1)) * 100,
-            wpm: correctCharacters / 5 / elapsedMinutes,
-            charactersPerMinute: correctCharacters / elapsedMinutes,
+            wpm: correctCharacters / 5 / rateElapsedMinutes,
+            charactersPerMinute: correctCharacters / rateElapsedMinutes,
             completedWords,
             failedWords,
             totalAttempts: attempts.length,
-            averageWordTime: attempts.length > 0 ? safeElapsedMs / attempts.length : 0,
+            averageWordTime: attempts.length > 0 ? rawElapsedMs / attempts.length : 0,
             combo,
             maxCombo,
-            elapsedMs: safeElapsedMs,
+            elapsedMs: rawElapsedMs,
         };
     }
 

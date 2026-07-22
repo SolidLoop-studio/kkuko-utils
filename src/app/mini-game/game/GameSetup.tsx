@@ -8,26 +8,25 @@ import gameManager from './lib/GameManager';
 import { soundManager } from './lib/SoundManager';
 import TypingPracticeSettingsPanel from './typing-practice/TypingPracticeSettings';
 import type { TypingPracticeSettings } from './typing-practice/types/typing-practice.types';
+import type { PracticeType } from './typing-practice/lib/typing-practice-config';
 
-export const PRACTICE_TYPE_STORAGE_KEY = 'kkutu_practice_type';
-export const TYPING_SETTING_STORAGE_KEY = 'kkutu_typing_practice_setting';
-
-type PracticeType = 'word-chain' | 'typing-practice';
-
-const defaultTypingPracticeSetting: TypingPracticeSettings = {
-    sessionMode: 'timed',
-    durationSeconds: 60,
-    wordCount: 25,
-    language: 'all',
-    order: 'random',
-    minLength: 2,
+type GameSetupProps = {
+    practiceType: PracticeType;
+    typingPracticeSettings: TypingPracticeSettings;
+    onPracticeTypeChange: (practiceType: PracticeType) => void;
+    onTypingPracticeSettingsChange: (settings: TypingPracticeSettings) => void;
 };
 
 /**
  * 게임 시작 전 준비 화면 컴포넌트
  * 단어 데이터베이스 업로드 및 설정을 담당합니다.
  */
-const GameSetup = () => {
+const GameSetup = ({
+    practiceType,
+    typingPracticeSettings,
+    onPracticeTypeChange,
+    onTypingPracticeSettingsChange,
+}: GameSetupProps) => {
     const [file, setFile] = useState<File | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const [message, setMessage] = useState<string>('');
@@ -36,8 +35,6 @@ const GameSetup = () => {
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [isStartCharModalOpen, setIsStartCharModalOpen] = useState(false);
     const [startCharInput, setStartCharInput] = useState<string>('');
-    const [practiceType, setPracticeType] = useState<PracticeType>('word-chain');
-    const [typingPracticeSetting, setTypingPracticeSetting] = useState<TypingPracticeSettings>(defaultTypingPracticeSetting);
     const [localSetting, setLocalSetting] = useState<{
         roundTimeSeconds: number;
         notAgainSameChar: boolean;
@@ -51,8 +48,6 @@ const GameSetup = () => {
     useEffect(() => {
         checkExistingWords();
         loadLocalSetting();
-        loadPracticeType();
-        loadTypingPracticeSetting();
         soundManager.stopAllSounds();
     }, []);
 
@@ -94,49 +89,12 @@ const GameSetup = () => {
         }
     };
 
-    const loadPracticeType = () => {
-        try {
-            const raw = localStorage.getItem(PRACTICE_TYPE_STORAGE_KEY);
-            setPracticeType(raw === 'typing-practice' ? 'typing-practice' : 'word-chain');
-        } catch (e) {
-            console.error(e);
-        }
-    };
-
-    const loadTypingPracticeSetting = () => {
-        try {
-            const raw = localStorage.getItem(TYPING_SETTING_STORAGE_KEY);
-            if (!raw) return;
-            const parsed = JSON.parse(raw);
-            setTypingPracticeSetting({
-                sessionMode: parsed.sessionMode === 'fixed-count' ? 'fixed-count' : 'timed',
-                durationSeconds: [30, 60, 120].includes(parsed.durationSeconds) ? parsed.durationSeconds : 60,
-                wordCount: [10, 25, 50].includes(parsed.wordCount) ? parsed.wordCount : 25,
-                language: ['ko', 'en', 'all'].includes(parsed.language) ? parsed.language : 'all',
-                order: parsed.order === 'sorted' ? 'sorted' : 'random',
-                minLength: Math.min(10, Math.max(2, Number(parsed.minLength) || 2)),
-            });
-        } catch (e) {
-            console.error(e);
-        }
-    };
-
     const handlePracticeTypeChange = (next: PracticeType) => {
-        setPracticeType(next);
-        try {
-            localStorage.setItem(PRACTICE_TYPE_STORAGE_KEY, next);
-        } catch (e) {
-            console.error(e);
-        }
+        onPracticeTypeChange(next);
     };
 
     const handleTypingPracticeSettingChange = (next: TypingPracticeSettings) => {
-        setTypingPracticeSetting(next);
-        try {
-            localStorage.setItem(TYPING_SETTING_STORAGE_KEY, JSON.stringify(next));
-        } catch (e) {
-            console.error(e);
-        }
+        onTypingPracticeSettingsChange(next);
     };
     const handleSettingChange = async (partial: Partial<{ roundTimeSeconds: number; notAgainSameChar: boolean; lang: 'ko' | 'en'; mode: 'normal' | 'mission'; hintMode: 'special' | 'auto' }>) => {
         const cur = gameManager.getSetting();
@@ -444,7 +402,7 @@ const GameSetup = () => {
                         )}
                         {practiceType === 'typing-practice' && (
                             <TypingPracticeSettingsPanel
-                                value={typingPracticeSetting}
+                                value={typingPracticeSettings}
                                 onChange={handleTypingPracticeSettingChange}
                             />
                         )}

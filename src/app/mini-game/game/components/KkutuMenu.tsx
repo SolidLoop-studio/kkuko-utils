@@ -6,13 +6,17 @@ import SettingsModal from './SettingsModal';
 import DictionaryModal from './DictionaryModal';
 import ConfirmModal from './ConfirmModal';
 import { hasWords } from '../lib/wordDB';
-import { PRACTICE_TYPE_STORAGE_KEY } from '../GameSetup';
+import type { PracticeType } from '../typing-practice/lib/typing-practice-config';
+
+type Props = {
+    practiceType: PracticeType;
+};
 
 /**
  * 게임 상단 메뉴 컴포넌트
  * 도움말, 설정, 사전, 시작, 나가기 버튼을 포함합니다.
  */
-const KkutuMenu = () => {
+const KkutuMenu = ({ practiceType }: Props) => {
     const {
         isPlaying,
         requestStart,
@@ -27,12 +31,12 @@ const KkutuMenu = () => {
     const [helpOpen, setHelpOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [dictOpen, setDictOpen] = useState(false);
+    const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
 
     // 버튼 클릭 핸들러
     const handleButtonClick = async (buttonId: string) => {
         if (buttonId === 'start') {
             try {
-                const practiceType = localStorage.getItem(PRACTICE_TYPE_STORAGE_KEY);
                 if (practiceType === 'typing-practice' && !(await hasWords())) {
                     blockStart('단어를 먼저 업로드해주세요.');
                     return;
@@ -52,6 +56,10 @@ const KkutuMenu = () => {
         }
 
         if (buttonId === 'exit') {
+            if (practiceType === 'typing-practice') {
+                setExitConfirmOpen(true);
+                return;
+            }
             exitGame();
             return;
         }
@@ -150,6 +158,17 @@ const KkutuMenu = () => {
                     message={startBlockedMessage ?? '게임을 시작할 수 없습니다.'}
                     onConfirm={() => dismissStartBlocked()}
                     onCancel={() => dismissStartBlocked()}
+                />
+            )}
+
+            {exitConfirmOpen && (
+                <ConfirmModal
+                    message="타자 연습을 종료하시겠습니까?"
+                    onConfirm={() => {
+                        setExitConfirmOpen(false);
+                        exitGame();
+                    }}
+                    onCancel={() => setExitConfirmOpen(false)}
                 />
             )}
         </div>

@@ -26,19 +26,19 @@ describe('TypingPracticeLogic', () => {
         expect(queue).toEqual(['가방', '나무']);
     });
 
-    it('filters English words and caps fixed-count queue length', () => {
+    it('filters English words in fixed-count mode', () => {
         const queue = TypingPracticeLogic.prepareQueue(
             [{ word: 'banana' }, { word: 'apple' }, { word: '가방' }],
-            { ...baseSettings, language: 'en', order: 'sorted', wordCount: 1 },
+            { ...baseSettings, language: 'en', order: 'sorted', wordCount: 10 },
         );
 
-        expect(queue).toEqual(['apple']);
+        expect(queue).toEqual(['apple', 'banana']);
     });
 
     it('random order keeps the same words without duplicates when random is deterministic', () => {
         const queue = TypingPracticeLogic.prepareQueue(
             [{ word: '가방' }, { word: '나무' }, { word: '다리' }],
-            { ...baseSettings, order: 'random', wordCount: 3 },
+            { ...baseSettings, order: 'random', wordCount: 10 },
             () => 0.99,
         );
 
@@ -73,7 +73,7 @@ describe('TypingPracticeLogic', () => {
         });
     });
 
-    it('calculates metrics with elapsed time clamped to at least one second', () => {
+    it('keeps raw elapsed time while clamping only rate denominators', () => {
         const attempts = [
             TypingPracticeLogic.scoreAttempt('apple', 'apple'),
             TypingPracticeLogic.scoreAttempt('가방', '가자'),
@@ -88,6 +88,19 @@ describe('TypingPracticeLogic', () => {
         expect(metrics.charactersPerMinute).toBeCloseTo(360, 4);
         expect(metrics.completedWords).toBe(1);
         expect(metrics.failedWords).toBe(1);
+        expect(metrics.averageWordTime).toBe(0);
+        expect(metrics.elapsedMs).toBe(0);
+    });
+
+    it('normalizes negative elapsed time without inflating session duration', () => {
+        const attempts = [TypingPracticeLogic.scoreAttempt('apple', 'apple')];
+
+        const metrics = TypingPracticeLogic.calculateMetrics(attempts, -500, 1, 1);
+
+        expect(metrics.elapsedMs).toBe(0);
+        expect(metrics.averageWordTime).toBe(0);
+        expect(metrics.wpm).toBeCloseTo(60, 4);
+        expect(metrics.charactersPerMinute).toBeCloseTo(300, 4);
     });
 
     it('updates combo and max combo from attempt correctness', () => {

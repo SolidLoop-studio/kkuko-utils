@@ -14,11 +14,13 @@ type Props = {
 
 const formatNumber = (value: number) => Number.isFinite(value) ? value.toFixed(1) : '0.0';
 
-const renderTarget = (target: string, input: string) => {
+const renderTarget = (target: string, input: string, isComposing: boolean) => {
     const characters = target.split('').map((char, index) => {
         const typed = input[index];
         const className = typed === undefined
             ? 'text-[#EEEEEE]'
+            : isComposing
+                ? 'text-yellow-200'
             : typed === char
                 ? 'text-green-300'
                 : 'text-red-300 underline';
@@ -31,11 +33,26 @@ const renderTarget = (target: string, input: string) => {
 
 const TypingPracticeBody = ({ settings, onExitToSetup }: Props) => {
     const practice = useTypingPractice(settings);
+    const inputRef = React.useRef<HTMLInputElement>(null);
+
+    React.useEffect(() => {
+        if (practice.targetWord && !practice.resultOpen) inputRef.current?.focus();
+    }, [practice.resultOpen, practice.targetWord]);
 
     if (practice.blockedMessage) {
         return (
             <div className="h-[410px] w-[1000px] bg-white dark:bg-gray-900 p-8 text-center text-gray-800 dark:text-gray-100">
-                {practice.blockedMessage}
+                <p>{practice.blockedMessage}</p>
+                {practice.canRetry && (
+                    <button
+                        type="button"
+                        onClick={() => void practice.restart()}
+                        disabled={practice.isLoading}
+                        className="mt-4 px-4 py-2 rounded bg-blue-600 text-white disabled:bg-gray-400"
+                    >
+                        다시 시도
+                    </button>
+                )}
             </div>
         );
     }
@@ -51,7 +68,7 @@ const TypingPracticeBody = ({ settings, onExitToSetup }: Props) => {
                     <div className="jjoriping w-[500px]">
                         <div className="p-[20px_5px_5px_5px] border-2 border-black rounded-bl-[10px] rounded-br-[10px] mt-[40px] w-[486px] h-[120px] bg-[#DEAF56] ml-8">
                             <div className="p-[8px_5px] rounded-[10px] rounded-bl-none rounded-br-none w-[474px] h-[40px] text-[20px] text-center bg-black/70 whitespace-nowrap overflow-hidden text-ellipsis">
-                                {practice.targetWord ? renderTarget(practice.targetWord, practice.input) : '단어를 불러오는 중...'}
+                                {practice.targetWord ? renderTarget(practice.targetWord, practice.input, practice.isComposing) : '단어를 불러오는 중...'}
                             </div>
                             <GraphBar
                                 className="border-l border-r border-black/70 w-[474px] h-[20px] bg-[#70712D]"
@@ -77,6 +94,7 @@ const TypingPracticeBody = ({ settings, onExitToSetup }: Props) => {
 
             <div className="ml-[270px]">
                 <GameInput
+                    inputRef={inputRef}
                     placeholder="표시된 단어를 정확히 입력하세요."
                     value={practice.input}
                     onChange={practice.handleInputChange}

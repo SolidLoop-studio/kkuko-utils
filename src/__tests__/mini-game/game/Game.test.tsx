@@ -20,11 +20,22 @@ jest.mock('@/app/mini-game/game/hooks/useChat', () => ({
     ChatProvider: ({ children }: any) => <div data-testid="chat-provider">{children}</div>
 }));
 jest.mock('@/app/mini-game/game/GameBox', () => ({ children }: any) => <div data-testid="game-box">{children}</div>);
-jest.mock('@/app/mini-game/game/GameBody', () => () => <div data-testid="game-body">Head</div>);
+jest.mock('@/app/mini-game/game/GameBody', () => jest.fn(() => <div data-testid="game-body">Head</div>));
 jest.mock('@/app/mini-game/game/GameSetup', () => ({
     __esModule: true,
     ...jest.requireActual('@/app/mini-game/game/GameSetup'),
-    default: () => <div data-testid="game-setup">Setup</div>,
+    default: ({
+        practiceType,
+        typingPracticeSettings,
+        onPracticeTypeChange,
+        onTypingPracticeSettingsChange,
+    }: any) => (
+        <div data-testid="game-setup">
+            Setup: {practiceType} / {typingPracticeSettings.wordCount} / {typingPracticeSettings.minLength}
+            <button onClick={() => onPracticeTypeChange('typing-practice')}>타자 연습 선택</button>
+            <button onClick={() => onTypingPracticeSettingsChange({ ...typingPracticeSettings, minLength: 10 })}>최소 길이 10</button>
+        </div>
+    ),
 }));
 jest.mock('@/app/mini-game/game/GameChat', () => () => <div data-testid="game-chat">Chat</div>);
 jest.mock('@/app/mini-game/game/components/HelpModal', () => () => null);
@@ -71,8 +82,49 @@ describe('Game', () => {
 
         renderGame();
 
+        await screen.findByText(/Setup: typing-practice/);
+
         await userEvent.click(screen.getByRole('button', { name: /시작/ }));
 
+        expect(await screen.findByPlaceholderText('표시된 단어를 정확히 입력하세요.')).toBeInTheDocument();
+    });
+
+    it('starts with the currently selected validated mode and settings', async () => {
+        renderGame();
+
+        await userEvent.click(screen.getByRole('button', { name: '타자 연습 선택' }));
+        await userEvent.click(screen.getByRole('button', { name: '최소 길이 10' }));
+        await userEvent.click(screen.getByRole('button', { name: /시작/ }));
+
+        expect(await screen.findByText('조건에 맞는 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.')).toBeInTheDocument();
+    });
+
+    it('uses the latest practice type on start without mounting the word-chain body', async () => {
+        const gameBody = jest.requireMock('@/app/mini-game/game/GameBody');
+        renderGame();
+
+        await userEvent.click(screen.getByRole('button', { name: '타자 연습 선택' }));
+        await userEvent.click(screen.getByRole('button', { name: /시작/ }));
+
+        expect(await screen.findByPlaceholderText('표시된 단어를 정확히 입력하세요.')).toBeInTheDocument();
+        expect(gameBody).not.toHaveBeenCalled();
+    });
+
+    it('validates persisted typing settings before starting', async () => {
+        localStorage.setItem('kkutu_practice_type', 'typing-practice');
+        localStorage.setItem('kkutu_typing_practice_setting', JSON.stringify({
+            sessionMode: 'fixed-count',
+            durationSeconds: 999,
+            wordCount: 1,
+            language: 'unknown',
+            order: 'unknown',
+            minLength: 99,
+        }));
+
+        renderGame();
+        expect(await screen.findByText('Setup: typing-practice / 25 / 2')).toBeInTheDocument();
+
+        await userEvent.click(screen.getByRole('button', { name: /시작/ }));
         expect(await screen.findByPlaceholderText('표시된 단어를 정확히 입력하세요.')).toBeInTheDocument();
     });
 
@@ -82,6 +134,8 @@ describe('Game', () => {
         localStorage.setItem('kkutu_practice_type', 'typing-practice');
 
         renderGame();
+
+        await screen.findByText(/Setup: typing-practice/);
 
         await userEvent.click(screen.getByRole('button', { name: /시작/ }));
 
@@ -97,6 +151,8 @@ describe('Game', () => {
         localStorage.setItem('kkutu_practice_type', 'typing-practice');
 
         renderGame();
+
+        await screen.findByText(/Setup: typing-practice/);
 
         await userEvent.click(screen.getByRole('button', { name: /시작/ }));
 
