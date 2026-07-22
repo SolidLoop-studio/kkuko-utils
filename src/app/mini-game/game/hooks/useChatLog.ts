@@ -2,11 +2,24 @@ import { useEffect } from 'react';
 import { useChat, ChatMessage } from './useChat';
 import { useGameState } from './useGameState';
 import gameManager from '../lib/GameManager';
+import type { PracticeType } from '../typing-practice/lib/typing-practice-config';
+
+type UseChatLogOptions = {
+    practiceType?: PracticeType;
+    onStartTypingPractice?: () => Promise<void>;
+    onRestartTypingPractice?: () => void;
+    onExitTypingPractice?: () => void;
+};
 
 /**
  * 채팅 메시지 목록 및 전송 로직을 관리하는 커스텀 훅
  */
-export const useChatLog = () => {
+export const useChatLog = ({
+    practiceType = 'word-chain',
+    onStartTypingPractice,
+    onRestartTypingPractice,
+    onExitTypingPractice,
+}: UseChatLogOptions = {}) => {
     const { messages, setMessages, chatInput, setChatInput, callGameInput, registerSendHint, chatRef } = useChat();
     const { requestStart, isPlaying } = useGameState();
 
@@ -25,6 +38,14 @@ export const useChatLog = () => {
                 };
                 setMessages((prev) => [...prev, noticeMessage]);
                 setChatInput('');
+                if (practiceType === 'typing-practice') {
+                    if (!isPlaying) {
+                        void onStartTypingPractice?.();
+                    } else {
+                        onRestartTypingPractice?.();
+                    }
+                    return;
+                }
                 // If game UI is already active, forward the start to the mounted game handler
                 // so it can restart if the current game has ended. Otherwise request a new
                 // game UI to be shown.
@@ -39,7 +60,11 @@ export const useChatLog = () => {
             // 게임 종료 명령어 (채팅에서 바로 종료 요청)
             if (trimmedInput === '/gg' || trimmedInput === '/ㅈㅈ') {
                 setChatInput('');
-                try { callGameInput(trimmedInput); } catch (e) { console.error(e); }
+                if (practiceType === 'typing-practice') {
+                    onExitTypingPractice?.();
+                } else {
+                    try { callGameInput(trimmedInput); } catch (e) { console.error(e); }
+                }
                 setChatInput('');
                 const noticeMessage: ChatMessage = {
                     id: Date.now(),

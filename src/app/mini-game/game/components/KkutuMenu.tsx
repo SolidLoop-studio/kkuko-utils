@@ -5,27 +5,25 @@ import HelpModal from './HelpModal';
 import SettingsModal from './SettingsModal';
 import DictionaryModal from './DictionaryModal';
 import ConfirmModal from './ConfirmModal';
-import { hasWords } from '../lib/wordDB';
 import type { PracticeType } from '../typing-practice/lib/typing-practice-config';
 
 type Props = {
     practiceType: PracticeType;
+    onStartTypingPractice: () => Promise<void>;
 };
 
 /**
  * 게임 상단 메뉴 컴포넌트
  * 도움말, 설정, 사전, 시작, 나가기 버튼을 포함합니다.
  */
-const KkutuMenu = ({ practiceType }: Props) => {
+const KkutuMenu = ({ practiceType, onStartTypingPractice }: Props) => {
     const {
         isPlaying,
         requestStart,
-        startPractice,
         exitGame,
         startBlocked,
         startBlockedMessage,
         dismissStartBlocked,
-        blockStart,
     } = useGameState();
 
     const [helpOpen, setHelpOpen] = useState(false);
@@ -36,18 +34,8 @@ const KkutuMenu = ({ practiceType }: Props) => {
     // 버튼 클릭 핸들러
     const handleButtonClick = async (buttonId: string) => {
         if (buttonId === 'start') {
-            try {
-                if (practiceType === 'typing-practice' && !(await hasWords())) {
-                    blockStart('단어를 먼저 업로드해주세요.');
-                    return;
-                }
-                if (practiceType === 'typing-practice') {
-                    startPractice();
-                    return;
-                }
-            } catch (e) {
-                console.error(e);
-                blockStart('단어를 확인할 수 없습니다. 다시 시도해주세요.');
+            if (practiceType === 'typing-practice') {
+                await onStartTypingPractice();
                 return;
             }
 

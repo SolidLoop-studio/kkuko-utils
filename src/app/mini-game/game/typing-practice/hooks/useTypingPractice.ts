@@ -128,6 +128,12 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
 
     const submit = useCallback(() => {
         if (!targetWord || input.trim() === '' || isFinished || isComposing) return;
+        const submittedAt = Date.now();
+
+        if (settings.sessionMode === 'timed' && submittedAt - startedAt >= settings.durationSeconds * 1000) {
+            finish();
+            return;
+        }
 
         const attempt = TypingPracticeLogic.scoreAttempt(targetWord, input);
         const nextCombo = TypingPracticeLogic.nextCombo(attempt, combo, maxCombo);
@@ -150,7 +156,7 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
         }
 
         setCurrentIndex(settings.sessionMode === 'timed' ? nextIndex % queue.length : nextIndex);
-    }, [attempts, combo, currentIndex, finish, input, isComposing, isFinished, maxCombo, queue.length, settings.sessionMode, settings.wordCount, targetWord]);
+    }, [attempts, combo, currentIndex, finish, input, isComposing, isFinished, maxCombo, queue.length, settings.durationSeconds, settings.sessionMode, settings.wordCount, startedAt, targetWord]);
 
     const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setInput(event.target.value);

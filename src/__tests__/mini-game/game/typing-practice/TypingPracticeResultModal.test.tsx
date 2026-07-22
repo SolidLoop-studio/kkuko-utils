@@ -86,4 +86,36 @@ describe('TypingPracticeResultModal', () => {
         expect(previous).toHaveFocus();
         previous.remove();
     });
+
+    it('labels recent attempts with explicit success and failure status', () => {
+        render(
+            <TypingPracticeResultModal
+                metrics={metrics}
+                attempts={[
+                    {
+                        target: '가방',
+                        submitted: '가방',
+                        isCorrect: true,
+                        correctCharacters: 2,
+                        submittedCharacters: 2,
+                        completedAt: 1,
+                    },
+                    {
+                        target: '나무',
+                        submitted: '나비',
+                        isCorrect: false,
+                        correctCharacters: 1,
+                        submittedCharacters: 2,
+                        completedAt: 2,
+                    },
+                ]}
+                onRestart={jest.fn()}
+                onExitToSetup={jest.fn()}
+                onClose={jest.fn()}
+            />,
+        );
+
+        expect(screen.getByText('성공')).toBeInTheDocument();
+        expect(screen.getByText('실패')).toBeInTheDocument();
+    });
 });

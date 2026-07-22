@@ -80,6 +80,21 @@ describe('TypingPracticeBody', () => {
         await waitFor(() => expect(input).toHaveFocus());
     });
 
+    it('keeps the input read-only after a finished result is closed', async () => {
+        const user = userEvent.setup();
+        render(<TypingPracticeBody settings={settings} onExitToSetup={jest.fn()} />);
+        const input = await screen.findByRole('textbox');
+
+        await user.type(input, '가방{enter}');
+        await user.type(input, '나무{enter}');
+        await screen.findByRole('dialog', { name: '타자 연습 결과' });
+
+        await user.click(screen.getByRole('button', { name: '닫기' }));
+
+        expect(input).toHaveAttribute('readonly');
+        expect(input).not.toHaveFocus();
+    });
+
     it('offers a retry when loading words fails', async () => {
         jest.spyOn(console, 'error').mockImplementation(() => {});
         getAllWords.mockRejectedValueOnce(new Error('indexed db unavailable')).mockResolvedValueOnce(words);

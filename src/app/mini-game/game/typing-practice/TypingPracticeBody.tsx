@@ -36,8 +36,12 @@ const TypingPracticeBody = ({ settings, onExitToSetup }: Props) => {
     const inputRef = React.useRef<HTMLInputElement>(null);
 
     React.useEffect(() => {
-        if (practice.targetWord && !practice.resultOpen) inputRef.current?.focus();
-    }, [practice.resultOpen, practice.targetWord]);
+        if (practice.targetWord && !practice.resultOpen && !practice.isFinished) inputRef.current?.focus();
+    }, [practice.isFinished, practice.resultOpen, practice.targetWord]);
+
+    React.useEffect(() => {
+        if (practice.isFinished) inputRef.current?.blur();
+    }, [practice.isFinished, practice.resultOpen]);
 
     if (practice.blockedMessage) {
         return (
@@ -101,6 +105,7 @@ const TypingPracticeBody = ({ settings, onExitToSetup }: Props) => {
                     onKeyDown={practice.handleKeyDown}
                     onCompositionStart={practice.handleCompositionStart}
                     onCompositionEnd={practice.handleCompositionEnd}
+                    readonly={practice.isFinished}
                 />
             </div>
 

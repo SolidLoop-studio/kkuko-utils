@@ -13,6 +13,9 @@ describe('useChatLog', () => {
     const mockCallGameInput = jest.fn();
     const mockRegisterSendHint = jest.fn();
     const mockRequestStart = jest.fn();
+    const mockStartTypingPractice = jest.fn();
+    const mockRestartTypingPractice = jest.fn();
+    const mockExitTypingPractice = jest.fn();
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -122,6 +125,92 @@ describe('useChatLog', () => {
         
         expect(mockCallGameInput).toHaveBeenCalledWith('/gg');
         expect(mockSetMessages).toHaveBeenCalled(); // Notice message
+    });
+
+    it('starts typing practice from chat without using word-chain start', () => {
+        (useChat as jest.Mock).mockReturnValue({
+            messages: [],
+            setMessages: mockSetMessages,
+            chatInput: '/시작',
+            setChatInput: mockSetChatInput,
+            callGameInput: mockCallGameInput,
+            registerSendHint: mockRegisterSendHint,
+            chatRef: { current: null },
+        });
+
+        const { result } = renderHook(() => useChatLog({
+            practiceType: 'typing-practice',
+            onStartTypingPractice: mockStartTypingPractice,
+            onRestartTypingPractice: mockRestartTypingPractice,
+            onExitTypingPractice: mockExitTypingPractice,
+        }));
+
+        act(() => {
+            result.current.handleSendMessage();
+        });
+
+        expect(mockStartTypingPractice).toHaveBeenCalledTimes(1);
+        expect(mockRequestStart).not.toHaveBeenCalled();
+        expect(mockCallGameInput).not.toHaveBeenCalled();
+    });
+
+    it('restarts active typing practice from chat without forwarding to word-chain input', () => {
+        (useChat as jest.Mock).mockReturnValue({
+            messages: [],
+            setMessages: mockSetMessages,
+            chatInput: '/r',
+            setChatInput: mockSetChatInput,
+            callGameInput: mockCallGameInput,
+            registerSendHint: mockRegisterSendHint,
+            chatRef: { current: null },
+        });
+        (useGameState as unknown as jest.Mock).mockImplementation((selector) => {
+            const state = {
+                requestStart: mockRequestStart,
+                isPlaying: true,
+            };
+            return selector ? selector(state) : state;
+        });
+
+        const { result } = renderHook(() => useChatLog({
+            practiceType: 'typing-practice',
+            onStartTypingPractice: mockStartTypingPractice,
+            onRestartTypingPractice: mockRestartTypingPractice,
+            onExitTypingPractice: mockExitTypingPractice,
+        }));
+
+        act(() => {
+            result.current.handleSendMessage();
+        });
+
+        expect(mockRestartTypingPractice).toHaveBeenCalledTimes(1);
+        expect(mockCallGameInput).not.toHaveBeenCalled();
+    });
+
+    it('exits active typing practice from chat without forwarding to word-chain input', () => {
+        (useChat as jest.Mock).mockReturnValue({
+            messages: [],
+            setMessages: mockSetMessages,
+            chatInput: '/gg',
+            setChatInput: mockSetChatInput,
+            callGameInput: mockCallGameInput,
+            registerSendHint: mockRegisterSendHint,
+            chatRef: { current: null },
+        });
+
+        const { result } = renderHook(() => useChatLog({
+            practiceType: 'typing-practice',
+            onStartTypingPractice: mockStartTypingPractice,
+            onRestartTypingPractice: mockRestartTypingPractice,
+            onExitTypingPractice: mockExitTypingPractice,
+        }));
+
+        act(() => {
+            result.current.handleSendMessage();
+        });
+
+        expect(mockExitTypingPractice).toHaveBeenCalledTimes(1);
+        expect(mockCallGameInput).not.toHaveBeenCalled();
     });
 
     it('should handle hint command', () => {

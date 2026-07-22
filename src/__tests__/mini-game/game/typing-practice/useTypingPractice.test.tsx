@@ -208,6 +208,30 @@ describe('useTypingPractice', () => {
         expect(result.current.resultOpen).toBe(false);
     });
 
+    it('rejects a timed submission at the deadline before the sampled timer ticks', async () => {
+        const timedSettings: TypingPracticeSettings = {
+            ...settings,
+            sessionMode: 'timed',
+            durationSeconds: 30,
+        };
+        const { result } = renderHook(() => useTypingPractice(timedSettings));
+        await waitFor(() => expect(result.current.targetWord).toBe('가방'));
+
+        act(() => {
+            result.current.handleInputChange({ target: { value: '가방' } } as React.ChangeEvent<HTMLInputElement>);
+        });
+
+        act(() => {
+            jest.advanceTimersByTime(29_999);
+            jest.setSystemTime(Date.now() + 1);
+            result.current.handleKeyDown({ key: 'Enter', preventDefault: jest.fn() } as unknown as React.KeyboardEvent<HTMLInputElement>);
+        });
+
+        expect(result.current.attempts).toHaveLength(0);
+        expect(result.current.isFinished).toBe(true);
+        expect(result.current.resultOpen).toBe(true);
+    });
+
     it('exposes a retryable blocked state when loading words fails', async () => {
         jest.useRealTimers();
         const error = new Error('indexed db unavailable');

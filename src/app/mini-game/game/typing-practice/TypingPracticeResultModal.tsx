@@ -86,7 +86,12 @@ const TypingPracticeResultModal = ({ metrics, attempts, onRestart, onExitToSetup
                         {recentAttempts.map((attempt) => (
                             <div key={`${attempt.target}-${attempt.completedAt}`} className="flex justify-between text-sm">
                                 <span className="text-gray-700 dark:text-gray-200">{attempt.target}</span>
-                                <span className={attempt.isCorrect ? 'text-green-600' : 'text-red-600'}>{attempt.submitted}</span>
+                                <span className="flex gap-2">
+                                    <span className={attempt.isCorrect ? 'text-green-600' : 'text-red-600'}>
+                                        {attempt.isCorrect ? '성공' : '실패'}
+                                    </span>
+                                    <span className="text-gray-700 dark:text-gray-200">{attempt.submitted}</span>
+                                </span>
                             </div>
                         ))}
                     </div>

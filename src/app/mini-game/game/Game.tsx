@@ -8,6 +8,7 @@ import GameSetup from "./GameSetup";
 import { ChatProvider } from "./hooks/useChat";
 import { soundManager } from "./lib/SoundManager";
 import { useGameState } from "./hooks/useGameState";
+import { hasWords } from "./lib/wordDB";
 import TypingPracticeBody from "./typing-practice/TypingPracticeBody";
 import {
     DEFAULT_PRACTICE_CONFIG,
@@ -21,8 +22,9 @@ import {
  * 사운드 로드 및 주요 컴포넌트 배치를 담당합니다.
  */
 const Game = () => {
-    const { isPlaying, exitGame } = useGameState();
+    const { isPlaying, startPractice, exitGame, blockStart } = useGameState();
     const [practiceConfig, setPracticeConfig] = useState(DEFAULT_PRACTICE_CONFIG);
+    const [typingSessionKey, setTypingSessionKey] = useState(0);
 
     // 컴포넌트 마운트 시 사운드 리소스 로드
     useEffect(() => {
@@ -43,14 +45,33 @@ const Game = () => {
         setPracticeConfig((current) => ({ ...current, typingSettings }));
     };
 
+    const handleStartTypingPractice = async () => {
+        try {
+            if (!(await hasWords())) {
+                blockStart('단어를 먼저 업로드해주세요.');
+                return;
+            }
+
+            setTypingSessionKey((current) => current + 1);
+            startPractice();
+        } catch (e) {
+            console.error(e);
+            blockStart('단어를 확인할 수 없습니다. 다시 시도해주세요.');
+        }
+    };
+
+    const handleRestartTypingPractice = () => {
+        setTypingSessionKey((current) => current + 1);
+    };
+
     return (
         <ChatProvider>
             <div>
-                <KkutuMenu practiceType={practiceConfig.practiceType} />
+                <KkutuMenu practiceType={practiceConfig.practiceType} onStartTypingPractice={handleStartTypingPractice} />
                 {isPlaying ? (
                     <GameBox>
                         {practiceConfig.practiceType === 'typing-practice' ? (
-                            <TypingPracticeBody settings={practiceConfig.typingSettings} onExitToSetup={() => exitGame()} />
+                            <TypingPracticeBody key={typingSessionKey} settings={practiceConfig.typingSettings} onExitToSetup={() => exitGame()} />
                         ) : (
                             <GameBody />
                         )}
@@ -63,7 +84,12 @@ const Game = () => {
                         onTypingPracticeSettingsChange={handleTypingPracticeSettingsChange}
                     />
                 )}
-                <KkutuChat />
+                <KkutuChat
+                    practiceType={practiceConfig.practiceType}
+                    onStartTypingPractice={handleStartTypingPractice}
+                    onRestartTypingPractice={handleRestartTypingPractice}
+                    onExitTypingPractice={() => exitGame()}
+                />
             </div>
         </ChatProvider>
     );

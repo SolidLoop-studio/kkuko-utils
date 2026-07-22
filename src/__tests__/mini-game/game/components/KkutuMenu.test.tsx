@@ -19,6 +19,7 @@ describe('KkutuMenu', () => {
     const mockRequestStart = jest.fn();
     const mockExitGame = jest.fn();
     const mockDismissStartBlocked = jest.fn();
+    const mockStartTypingPractice = jest.fn();
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -33,7 +34,7 @@ describe('KkutuMenu', () => {
     });
 
     it('should render buttons correctly when not playing', () => {
-        render(<KkutuMenu practiceType="word-chain" />);
+        render(<KkutuMenu practiceType="word-chain" onStartTypingPractice={mockStartTypingPractice} />);
         expect(screen.getByText('도움말')).toBeInTheDocument();
         expect(screen.getByText('설정')).toBeInTheDocument();
         expect(screen.getByText('사전')).toBeInTheDocument();
@@ -50,33 +51,40 @@ describe('KkutuMenu', () => {
             startBlockedMessage: null,
             dismissStartBlocked: mockDismissStartBlocked,
         });
-        render(<KkutuMenu practiceType="word-chain" />);
+        render(<KkutuMenu practiceType="word-chain" onStartTypingPractice={mockStartTypingPractice} />);
         expect(screen.queryByText('시작')).not.toBeInTheDocument();
         expect(screen.getByText('나가기')).toBeInTheDocument();
     });
 
     it('should open help modal', () => {
-        render(<KkutuMenu practiceType="word-chain" />);
+        render(<KkutuMenu practiceType="word-chain" onStartTypingPractice={mockStartTypingPractice} />);
         fireEvent.click(screen.getByText('도움말'));
         expect(screen.getByTestId('help-modal')).toBeInTheDocument();
     });
 
     it('should open settings modal', () => {
-        render(<KkutuMenu practiceType="word-chain" />);
+        render(<KkutuMenu practiceType="word-chain" onStartTypingPractice={mockStartTypingPractice} />);
         fireEvent.click(screen.getByText('설정'));
         expect(screen.getByTestId('settings-modal')).toBeInTheDocument();
     });
 
     it('should open dictionary modal', () => {
-        render(<KkutuMenu practiceType="word-chain" />);
+        render(<KkutuMenu practiceType="word-chain" onStartTypingPractice={mockStartTypingPractice} />);
         fireEvent.click(screen.getByText('사전'));
         expect(screen.getByTestId('dict-modal')).toBeInTheDocument();
     });
 
     it('should call requestStart when start button is clicked', () => {
-        render(<KkutuMenu practiceType="word-chain" />);
+        render(<KkutuMenu practiceType="word-chain" onStartTypingPractice={mockStartTypingPractice} />);
         fireEvent.click(screen.getByText('시작'));
         expect(mockRequestStart).toHaveBeenCalled();
+    });
+
+    it('should call typing practice start handler when typing start button is clicked', () => {
+        render(<KkutuMenu practiceType="typing-practice" onStartTypingPractice={mockStartTypingPractice} />);
+        fireEvent.click(screen.getByText('시작'));
+        expect(mockStartTypingPractice).toHaveBeenCalledTimes(1);
+        expect(mockRequestStart).not.toHaveBeenCalled();
     });
 
     it('should call exitGame when exit button is clicked', () => {
@@ -88,7 +96,7 @@ describe('KkutuMenu', () => {
             startBlockedMessage: null,
             dismissStartBlocked: mockDismissStartBlocked,
         });
-        render(<KkutuMenu practiceType="word-chain" />);
+        render(<KkutuMenu practiceType="word-chain" onStartTypingPractice={mockStartTypingPractice} />);
         fireEvent.click(screen.getByText('나가기'));
         expect(mockExitGame).toHaveBeenCalled();
     });
@@ -102,7 +110,7 @@ describe('KkutuMenu', () => {
             startBlockedMessage: null,
             dismissStartBlocked: mockDismissStartBlocked,
         });
-        render(<KkutuMenu practiceType="typing-practice" />);
+        render(<KkutuMenu practiceType="typing-practice" onStartTypingPractice={mockStartTypingPractice} />);
 
         fireEvent.click(screen.getByText('나가기'));
 
@@ -122,7 +130,7 @@ describe('KkutuMenu', () => {
             startBlockedMessage: null,
             dismissStartBlocked: mockDismissStartBlocked,
         });
-        render(<KkutuMenu practiceType="typing-practice" />);
+        render(<KkutuMenu practiceType="typing-practice" onStartTypingPractice={mockStartTypingPractice} />);
 
         fireEvent.click(screen.getByText('나가기'));
         fireEvent.click(screen.getByText('Cancel'));
@@ -140,7 +148,7 @@ describe('KkutuMenu', () => {
             startBlockedMessage: 'Blocked',
             dismissStartBlocked: mockDismissStartBlocked,
         });
-        render(<KkutuMenu practiceType="word-chain" />);
+        render(<KkutuMenu practiceType="word-chain" onStartTypingPractice={mockStartTypingPractice} />);
         expect(screen.getByTestId('confirm-modal')).toBeInTheDocument();
         expect(screen.getByText('Blocked')).toBeInTheDocument();
         
