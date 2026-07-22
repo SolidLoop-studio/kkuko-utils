@@ -33,4 +33,13 @@ describe('HelpModal', () => {
         fireEvent.click(container.firstChild as Element);
         expect(onClose).toHaveBeenCalled();
     });
+
+    it('documents typing practice mode', () => {
+        render(<HelpModal onClose={jest.fn()} />);
+
+        expect(screen.getByText('타자 연습 관련')).toBeInTheDocument();
+        expect(screen.getByText(/WPM/)).toBeInTheDocument();
+        expect(screen.getByText(/분당타자수/)).toBeInTheDocument();
+        expect(screen.getAllByText(/콤보/)).toHaveLength(2);
+    });
 });
