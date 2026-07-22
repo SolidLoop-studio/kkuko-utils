@@ -101,3 +101,9 @@ Tests: 12 passed, 12 total
 git diff --check
 clean
 ```
+
+## Task 5 Test Noise Fix
+
+The expected `hasWords()` rejection test now suppresses and asserts its
+`console.error` call, keeping the focused Jest output clean without changing
+production behavior.

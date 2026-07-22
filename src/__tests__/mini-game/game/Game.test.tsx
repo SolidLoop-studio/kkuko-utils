@@ -90,7 +90,9 @@ describe('Game', () => {
 
     it('blocks typing practice start when checking words fails without using the word-chain start path', async () => {
         const { hasWords } = jest.requireMock('@/app/mini-game/game/lib/wordDB');
-        hasWords.mockRejectedValue(new Error('word storage unavailable'));
+        const error = new Error('word storage unavailable');
+        hasWords.mockRejectedValue(error);
+        const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
         const canGameStart = jest.spyOn(gameManager, 'canGameStart');
         localStorage.setItem('kkutu_practice_type', 'typing-practice');
 
@@ -100,5 +102,7 @@ describe('Game', () => {
 
         expect(await screen.findByText('단어를 확인할 수 없습니다. 다시 시도해주세요.')).toBeInTheDocument();
         expect(canGameStart).not.toHaveBeenCalled();
+        expect(consoleError).toHaveBeenCalledWith(error);
+        consoleError.mockRestore();
     });
 });
