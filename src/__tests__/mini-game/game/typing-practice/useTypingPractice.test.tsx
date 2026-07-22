@@ -39,6 +39,36 @@ describe('useTypingPractice', () => {
         expect(result.current.blockedMessage).toBeNull();
     });
 
+    it('does not advance timed progress while word loading is pending', async () => {
+        const timedSettings: TypingPracticeSettings = {
+            ...settings,
+            sessionMode: 'timed',
+        };
+        let resolveWords: (words: { word: string; theme: string }[]) => void;
+        getAllWords.mockImplementation(() => new Promise((resolve) => {
+            resolveWords = resolve;
+        }));
+
+        const { result } = renderHook(() => useTypingPractice(timedSettings));
+
+        act(() => {
+            jest.advanceTimersByTime(10_000);
+        });
+
+        expect(result.current.progressValue).toBe(1);
+        expect(result.current.metrics.elapsedMs).toBe(1_000);
+
+        await act(async () => {
+            resolveWords([
+                { word: '가방', theme: '자유' },
+                { word: '나무', theme: '자유' },
+            ]);
+        });
+
+        expect(result.current.targetWord).toBe('가방');
+        expect(result.current.progressValue).toBe(1);
+    });
+
     it('submits correct and incorrect attempts with combo updates', async () => {
         const { result } = renderHook(() => useTypingPractice(settings));
         await waitFor(() => expect(result.current.targetWord).toBe('가방'));

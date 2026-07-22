@@ -21,9 +21,11 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
     const [isFinished, setIsFinished] = useState(false);
     const [resultOpen, setResultOpen] = useState(false);
     const [blockedMessage, setBlockedMessage] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
     const loadQueue = useCallback(async () => {
+        setIsLoading(true);
         const words = await getAllWords();
         const nextQueue = TypingPracticeLogic.prepareQueue(words, settings);
 
@@ -40,11 +42,13 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
         if (nextQueue.length === 0) {
             setBlockedMessage('조건에 맞는 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.');
             setQueue([]);
+            setIsLoading(false);
             return;
         }
 
         setBlockedMessage(null);
         setQueue(nextQueue);
+        setIsLoading(false);
     }, [settings]);
 
     useEffect(() => {
@@ -52,12 +56,12 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
     }, [loadQueue]);
 
     useEffect(() => {
-        if (isFinished || blockedMessage) return;
+        if (isLoading || isFinished || blockedMessage) return;
         timerRef.current = setInterval(() => setNow(Date.now()), 250);
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);
         };
-    }, [blockedMessage, isFinished, startedAt]);
+    }, [blockedMessage, isFinished, isLoading, startedAt]);
 
     const elapsedMs = Math.max(now - startedAt, 1000);
     const targetWord = queue[currentIndex] ?? '';
