@@ -6,6 +6,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import Game from '@/src/app/mini-game/game/Game';
 import { soundManager } from '@/src/app/mini-game/game/lib/SoundManager';
 import gameReducer from '@/src/app/mini-game/game/store/gameSlice';
+import gameManager from '@/src/app/mini-game/game/lib/GameManager';
 
 jest.mock('@/app/mini-game/game/lib/SoundManager');
 jest.mock('@/app/mini-game/game/lib/wordDB', () => ({
@@ -85,5 +86,19 @@ describe('Game', () => {
         await userEvent.click(screen.getByRole('button', { name: /시작/ }));
 
         expect(await screen.findByText('단어를 먼저 업로드해주세요.')).toBeInTheDocument();
+    });
+
+    it('blocks typing practice start when checking words fails without using the word-chain start path', async () => {
+        const { hasWords } = jest.requireMock('@/app/mini-game/game/lib/wordDB');
+        hasWords.mockRejectedValue(new Error('word storage unavailable'));
+        const canGameStart = jest.spyOn(gameManager, 'canGameStart');
+        localStorage.setItem('kkutu_practice_type', 'typing-practice');
+
+        renderGame();
+
+        await userEvent.click(screen.getByRole('button', { name: /시작/ }));
+
+        expect(await screen.findByText('단어를 확인할 수 없습니다. 다시 시도해주세요.')).toBeInTheDocument();
+        expect(canGameStart).not.toHaveBeenCalled();
     });
 });

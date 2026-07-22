@@ -75,3 +75,29 @@ PASS src/__tests__/mini-game/game/Game.test.tsx
 Test Suites: 2 passed, 2 total
 Tests: 11 passed, 11 total
 ```
+
+## Review Fix: Error Path Must Stay Blocked
+
+### Finding
+
+When the typing-practice word check threw, `KkutuMenu` logged the error and
+fell through to the word-chain `requestStart()` path.
+
+### Fix
+
+- Blocked the start with `단어를 확인할 수 없습니다. 다시 시도해주세요.` when
+  the typing-practice check throws.
+- Returned immediately from the catch so `GameManager.canGameStart()` is not
+  invoked.
+- Left the normal word-chain start path unchanged.
+
+### Verification
+
+```text
+npx jest src/__tests__/mini-game/game/Game.test.tsx src/__tests__/mini-game/game/hooks/useGameState.test.tsx --coverage=false
+Test Suites: 2 passed, 2 total
+Tests: 12 passed, 12 total
+
+git diff --check
+clean
+```

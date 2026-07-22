@@ -43,6 +43,8 @@ const KkutuMenu = () => {
                 }
             } catch (e) {
                 console.error(e);
+                blockStart('단어를 확인할 수 없습니다. 다시 시도해주세요.');
+                return;
             }
 
             requestStart();
