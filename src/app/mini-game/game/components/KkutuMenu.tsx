@@ -5,32 +5,68 @@ import HelpModal from './HelpModal';
 import SettingsModal from './SettingsModal';
 import DictionaryModal from './DictionaryModal';
 import ConfirmModal from './ConfirmModal';
+import { hasWords } from '../lib/wordDB';
+import { PRACTICE_TYPE_STORAGE_KEY } from '../GameSetup';
 
 /**
  * 게임 상단 메뉴 컴포넌트
  * 도움말, 설정, 사전, 시작, 나가기 버튼을 포함합니다.
  */
 const KkutuMenu = () => {
-    const { isPlaying, requestStart, exitGame, startBlocked, startBlockedMessage, dismissStartBlocked } = useGameState();
+    const {
+        isPlaying,
+        requestStart,
+        startPractice,
+        exitGame,
+        startBlocked,
+        startBlockedMessage,
+        dismissStartBlocked,
+        blockStart,
+    } = useGameState();
 
     const [helpOpen, setHelpOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [dictOpen, setDictOpen] = useState(false);
 
     // 버튼 클릭 핸들러
-    const handleButtonClick = (buttonId: string) => {
+    const handleButtonClick = async (buttonId: string) => {
         if (buttonId === 'start') {
+            try {
+                const practiceType = localStorage.getItem(PRACTICE_TYPE_STORAGE_KEY);
+                if (practiceType === 'typing-practice' && !(await hasWords())) {
+                    blockStart('단어를 먼저 업로드해주세요.');
+                    return;
+                }
+                if (practiceType === 'typing-practice') {
+                    startPractice();
+                    return;
+                }
+            } catch (e) {
+                console.error(e);
+            }
+
             requestStart();
-        } else if (buttonId === 'exit') {
+            return;
+        }
+
+        if (buttonId === 'exit') {
             exitGame();
-        } else if (buttonId === 'help') {
+            return;
+        }
+
+        if (buttonId === 'help') {
             setHelpOpen(true);
-        } else if (buttonId === 'settings') {
+            return;
+        }
+
+        if (buttonId === 'settings') {
             setSettingsOpen(true);
-        } else if (buttonId === 'dict') {
+            return;
+        }
+
+        if (buttonId === 'dict') {
             setDictOpen(true);
         }
-        // 추후 기능 구현 예정 (settings, dict)
     };
 
     const buttonBaseClasses = "border-none rounded-t-lg h-8 transition-all duration-200 hover:scale-115 hover:shadow-lg shadow-md px-6 mt-5 origin-bottom text-gray-800 border-gray-800";
@@ -41,7 +77,7 @@ const KkutuMenu = () => {
             <button
                 id="HelpBtn"
                 className={`${buttonBaseClasses} bg-gray-400 hover:bg-gray-500 flex items-center justify-center gap-1 text-sm font-medium`}
-                onClick={() => handleButtonClick('help')}
+                onClick={() => void handleButtonClick('help')}
                 aria-label="도움말"
             >
                 <HelpCircle size={16} />
@@ -52,7 +88,7 @@ const KkutuMenu = () => {
             <button
                 id="SettingBtn"
                 className={`${buttonBaseClasses} bg-gray-500 hover:bg-gray-600 flex items-center justify-center gap-1 text-sm font-medium`}
-                onClick={() => handleButtonClick('settings')}
+                onClick={() => void handleButtonClick('settings')}
                 aria-label="설정"
             >
                 <Settings size={16} color='white' />
@@ -63,7 +99,7 @@ const KkutuMenu = () => {
             <button
                 id="DictionaryBtn"
                 className={`${buttonBaseClasses} bg-green-400 hover:bg-green-500 flex items-center justify-center gap-1 text-sm font-medium`}
-                onClick={() => handleButtonClick('dict')}
+                onClick={() => void handleButtonClick('dict')}
             >
                 <Book size={14} />
                 <span>사전</span>
@@ -75,7 +111,7 @@ const KkutuMenu = () => {
                     id="StartBtn"
                     className={`${buttonBaseClasses} flex items-center justify-center gap-1 text-sm font-medium`}
                     style={{ backgroundColor: '#FFB576' }}
-                    onClick={() => handleButtonClick('start')}
+                    onClick={() => void handleButtonClick('start')}
                 >
                     <Play size={14} />
                     <span>시작</span>
@@ -87,7 +123,7 @@ const KkutuMenu = () => {
                 <button
                     id="ExitBtn"
                     className={`${buttonBaseClasses} bg-red-300 hover:bg-red-400 flex items-center justify-center gap-1 text-sm font-medium`}
-                    onClick={() => handleButtonClick('exit')}
+                    onClick={() => void handleButtonClick('exit')}
                 >
                     <LogOut size={14} />
                     <span>나가기</span>

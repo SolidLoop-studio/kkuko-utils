@@ -24,6 +24,7 @@ export const useGameState = () => {
         }
     };
 
+    const startPractice = () => dispatch(setPlaying(true));
     const clearPendingStart = () => dispatch(setPendingStart(false));
     const exitGame = () => dispatch(resetGame());
     const dismissStartBlocked = () => dispatch(setStartBlocked({ blocked: false, message: null }));
@@ -35,6 +36,7 @@ export const useGameState = () => {
         startBlocked,
         startBlockedMessage,
         requestStart,
+        startPractice,
         clearPendingStart,
         exitGame,
         dismissStartBlocked,
