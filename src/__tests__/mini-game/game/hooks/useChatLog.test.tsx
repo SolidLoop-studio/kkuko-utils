@@ -213,11 +213,11 @@ describe('useChatLog', () => {
         expect(mockCallGameInput).not.toHaveBeenCalled();
     });
 
-    it('blocks hint commands in typing practice without reading word-chain hints', () => {
+    it.each(['/ㅍ', '/v'])('blocks %s hint commands in typing practice without reading word-chain hints', (command) => {
         (useChat as jest.Mock).mockReturnValue({
             messages: [],
             setMessages: mockSetMessages,
-            chatInput: '/ㅍ',
+            chatInput: command,
             setChatInput: mockSetChatInput,
             callGameInput: mockCallGameInput,
             registerSendHint: mockRegisterSendHint,
@@ -240,6 +240,31 @@ describe('useChatLog', () => {
                 isNotice: true,
             }),
         ]);
+        expect(mockSetChatInput).toHaveBeenCalledWith('');
+    });
+
+    it('blocks returned typing-practice sendHint without reading word-chain hints', () => {
+        const { result } = renderHook(() => useChatLog({ practiceType: 'typing-practice' }));
+
+        act(() => {
+            result.current.sendHint();
+        });
+
+        expect(gameManager.getHintWord).not.toHaveBeenCalled();
+        expect(mockSetMessages).toHaveBeenCalledWith(expect.any(Function));
+        expect(mockSetChatInput).toHaveBeenCalledWith('');
+    });
+
+    it('registers a mode-aware typing-practice hint callback', () => {
+        renderHook(() => useChatLog({ practiceType: 'typing-practice' }));
+        const registeredHint = mockRegisterSendHint.mock.calls[0][0];
+
+        act(() => {
+            registeredHint();
+        });
+
+        expect(gameManager.getHintWord).not.toHaveBeenCalled();
+        expect(mockSetMessages).toHaveBeenCalledWith(expect.any(Function));
         expect(mockSetChatInput).toHaveBeenCalledWith('');
     });
 

@@ -251,6 +251,44 @@ describe('useTypingPractice', () => {
         expect(result.current.progressValue).toBe(30);
     });
 
+    it('uses actual elapsed time when a fixed-count session finishes', async () => {
+        const fixedCountWords = Array.from({ length: 10 }, (_, index) => ({
+            word: `단어${index}`,
+            theme: '자유',
+        }));
+        getAllWords.mockResolvedValueOnce(fixedCountWords);
+        const { result } = renderHook(() => useTypingPractice(settings));
+        await waitFor(() => expect(result.current.targetWord).toBe('단어0'));
+
+        act(() => {
+            jest.advanceTimersByTime(12_345);
+        });
+
+        for (let index = 0; index < 9; index += 1) {
+            const currentTarget = result.current.targetWord;
+            act(() => {
+                result.current.handleInputChange({ target: { value: currentTarget } } as React.ChangeEvent<HTMLInputElement>);
+            });
+            act(() => {
+                result.current.handleKeyDown({ key: 'Enter', preventDefault: jest.fn() } as unknown as React.KeyboardEvent<HTMLInputElement>);
+            });
+            await waitFor(() => expect(result.current.attempts).toHaveLength(index + 1));
+        }
+
+        act(() => {
+            jest.advanceTimersByTime(4_321);
+        });
+        act(() => {
+            result.current.handleInputChange({ target: { value: result.current.targetWord } } as React.ChangeEvent<HTMLInputElement>);
+        });
+        act(() => {
+            result.current.handleKeyDown({ key: 'Enter', preventDefault: jest.fn() } as unknown as React.KeyboardEvent<HTMLInputElement>);
+        });
+
+        await waitFor(() => expect(result.current.isFinished).toBe(true));
+        expect(result.current.metrics.elapsedMs).toBe(16_666);
+    });
+
     it('exposes a retryable blocked state when loading words fails', async () => {
         jest.useRealTimers();
         const error = new Error('indexed db unavailable');

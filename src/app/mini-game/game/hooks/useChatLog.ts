@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useChat, ChatMessage } from './useChat';
 import { useGameState } from './useGameState';
 import gameManager from '../lib/GameManager';
@@ -22,6 +22,33 @@ export const useChatLog = ({
 }: UseChatLogOptions = {}) => {
     const { messages, setMessages, chatInput, setChatInput, callGameInput, registerSendHint, chatRef } = useChat();
     const { requestStart, isPlaying } = useGameState();
+
+    const sendHint = useCallback(() => {
+        if (practiceType === 'typing-practice') {
+            const noticeMessage: ChatMessage = {
+                id: Date.now(),
+                username: '알림',
+                message: '타자 연습에서는 힌트를 사용할 수 없습니다.',
+                timestamp: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+                isNotice: true
+            };
+            setMessages(prev => [...prev, noticeMessage]);
+            setChatInput('');
+            return;
+        }
+
+        const hint = gameManager.getHintWord();
+        if (hint === null) { setChatInput(''); return; }
+        const hintMsg: ChatMessage = {
+            id: Date.now(),
+            username: '힌트',
+            message: hint ? `힌트: ${hint}` : '힌트가 없습니다.',
+            timestamp: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+            isNotice: false
+        };
+        setMessages(prev => [...prev, hintMsg]);
+        setChatInput('');
+    }, [practiceType, setChatInput, setMessages]);
 
     const handleSendMessage = () => {
         if (chatInput.trim()) {
@@ -79,30 +106,7 @@ export const useChatLog = ({
 
             // 힌트 명령어 (/ㅍ 또는 /v)
             if (trimmedInput === '/ㅍ' || trimmedInput === '/v') {
-                if (practiceType === 'typing-practice') {
-                    const noticeMessage: ChatMessage = {
-                        id: Date.now(),
-                        username: '알림',
-                        message: '타자 연습에서는 힌트를 사용할 수 없습니다.',
-                        timestamp: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-                        isNotice: true
-                    };
-                    setMessages(prev => [...prev, noticeMessage]);
-                    setChatInput('');
-                    return;
-                }
-
-                const hint = gameManager.getHintWord();
-                if (hint === null) { setChatInput(''); return; }
-                const hintMsg: ChatMessage = {
-                    id: Date.now(),
-                    username: '힌트',
-                    message: hint ? `힌트: ${hint}` : '힌트가 없습니다.',
-                    timestamp: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-                    isNotice: false
-                };
-                setMessages(prev => [...prev, hintMsg]);
-                setChatInput('');
+                sendHint();
                 return;
             }
 
@@ -120,21 +124,9 @@ export const useChatLog = ({
 
     // register our hint sender so other UI (GameHead) can trigger it
     useEffect(() => {
-        registerSendHint(() => {
-            const hint = gameManager.getHintWord();
-            if (hint === null) { setChatInput(''); return; }
-            const hintMsg: ChatMessage = {
-                id: Date.now(),
-                username: '힌트',
-                message: hint ? `힌트: ${hint}` : '힌트가 없습니다.',
-                timestamp: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-                isNotice: false
-            };
-            setMessages(prev => [...prev, hintMsg]);
-            setChatInput('');
-        });
+        registerSendHint(sendHint);
         return () => registerSendHint(null);
-    }, [registerSendHint, setMessages, setChatInput]);
+    }, [registerSendHint, sendHint]);
 
     const handleKeyPress = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
@@ -154,18 +146,6 @@ export const useChatLog = ({
         chatRef,
         handleSendMessage,
         handleKeyPress,
-        sendHint: () => {
-            const hint = gameManager.getHintWord();
-            if (hint === null) { setChatInput(''); return; }
-            const hintMsg: ChatMessage = {
-                id: Date.now(),
-                username: '힌트',
-                message: hint ? `힌트: ${hint}` : '힌트가 없습니다.',
-                timestamp: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-                isNotice: false
-            };
-            setMessages(prev => [...prev, hintMsg]);
-            setChatInput('');
-        }
+        sendHint
     };
 };

@@ -87,4 +87,20 @@ describe('KkutuChat', () => {
         expect(mockSendHint).toHaveBeenCalled();
         expect(mockCallGameInput).not.toHaveBeenCalled();
     });
+
+    it('uses mode-aware hint handling when typing practice has a stale visible game input', () => {
+        (useChat as jest.Mock).mockReturnValue({
+            chatInput: '/v',
+            handleChatInputChange: mockHandleChatInputChange,
+            callGameInput: mockCallGameInput,
+            gameInputVisible: true,
+        });
+        render(<KkutuChat practiceType="typing-practice" />);
+        const input = screen.getByPlaceholderText('메시지를 입력하세요...');
+
+        fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+
+        expect(mockSendHint).toHaveBeenCalledTimes(1);
+        expect(mockCallGameInput).not.toHaveBeenCalled();
+    });
 });
