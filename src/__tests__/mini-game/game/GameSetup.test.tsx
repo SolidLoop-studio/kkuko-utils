@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import GameSetup from '@/src/app/mini-game/game/GameSetup';
 import * as wordDB from '@/src/app/mini-game/game/lib/wordDB';
 import gameManager from '@/src/app/mini-game/game/lib/GameManager';
@@ -76,6 +77,16 @@ describe('GameSetup', () => {
         });
         expect(screen.getByText(/게임 설정/i)).toBeInTheDocument();
         expect(screen.getByText(/단어 데이터베이스 설정/i)).toBeInTheDocument();
+    });
+
+    it('persists typing practice as the selected practice type', async () => {
+        const user = userEvent.setup();
+        render(<GameSetup />);
+
+        await user.click(screen.getByRole('radio', { name: '타자 연습' }));
+
+        expect(localStorage.getItem('kkutu_practice_type')).toBe('typing-practice');
+        expect(screen.getByText('타자 연습 설정')).toBeInTheDocument();
     });
 
     it('should load existing words on mount', async () => {

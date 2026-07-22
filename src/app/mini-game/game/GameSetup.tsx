@@ -6,6 +6,22 @@ import ConfirmModal from './components/ConfirmModal';
 import StartCharModal from './components/StartCharModal';
 import gameManager from './lib/GameManager';
 import { soundManager } from './lib/SoundManager';
+import TypingPracticeSettingsPanel from './typing-practice/TypingPracticeSettings';
+import type { TypingPracticeSettings } from './typing-practice/types/typing-practice.types';
+
+export const PRACTICE_TYPE_STORAGE_KEY = 'kkutu_practice_type';
+export const TYPING_SETTING_STORAGE_KEY = 'kkutu_typing_practice_setting';
+
+type PracticeType = 'word-chain' | 'typing-practice';
+
+const defaultTypingPracticeSetting: TypingPracticeSettings = {
+    sessionMode: 'timed',
+    durationSeconds: 60,
+    wordCount: 25,
+    language: 'all',
+    order: 'random',
+    minLength: 2,
+};
 
 /**
  * 게임 시작 전 준비 화면 컴포넌트
@@ -20,6 +36,8 @@ const GameSetup = () => {
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [isStartCharModalOpen, setIsStartCharModalOpen] = useState(false);
     const [startCharInput, setStartCharInput] = useState<string>('');
+    const [practiceType, setPracticeType] = useState<PracticeType>('word-chain');
+    const [typingPracticeSetting, setTypingPracticeSetting] = useState<TypingPracticeSettings>(defaultTypingPracticeSetting);
     const [localSetting, setLocalSetting] = useState<{
         roundTimeSeconds: number;
         notAgainSameChar: boolean;
@@ -33,6 +51,8 @@ const GameSetup = () => {
     useEffect(() => {
         checkExistingWords();
         loadLocalSetting();
+        loadPracticeType();
+        loadTypingPracticeSetting();
         soundManager.stopAllSounds();
     }, []);
 
@@ -70,6 +90,51 @@ const GameSetup = () => {
             const startCharsStr = Array.from(cur.wantStartChar).join('');
             setLocalSetting({ roundTimeSeconds: Math.round(cur.roundTime / 1000), notAgainSameChar: cur.notAgainSameChar, lang: cur.lang, mode: cur.mode, hintMode: cur.hintMode, startChars: startCharsStr });
             setStartCharInput(startCharsStr);
+            console.error(e);
+        }
+    };
+
+    const loadPracticeType = () => {
+        try {
+            const raw = localStorage.getItem(PRACTICE_TYPE_STORAGE_KEY);
+            setPracticeType(raw === 'typing-practice' ? 'typing-practice' : 'word-chain');
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const loadTypingPracticeSetting = () => {
+        try {
+            const raw = localStorage.getItem(TYPING_SETTING_STORAGE_KEY);
+            if (!raw) return;
+            const parsed = JSON.parse(raw);
+            setTypingPracticeSetting({
+                sessionMode: parsed.sessionMode === 'fixed-count' ? 'fixed-count' : 'timed',
+                durationSeconds: [30, 60, 120].includes(parsed.durationSeconds) ? parsed.durationSeconds : 60,
+                wordCount: [10, 25, 50].includes(parsed.wordCount) ? parsed.wordCount : 25,
+                language: ['ko', 'en', 'all'].includes(parsed.language) ? parsed.language : 'all',
+                order: parsed.order === 'sorted' ? 'sorted' : 'random',
+                minLength: Math.min(10, Math.max(2, Number(parsed.minLength) || 2)),
+            });
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const handlePracticeTypeChange = (next: PracticeType) => {
+        setPracticeType(next);
+        try {
+            localStorage.setItem(PRACTICE_TYPE_STORAGE_KEY, next);
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const handleTypingPracticeSettingChange = (next: TypingPracticeSettings) => {
+        setTypingPracticeSetting(next);
+        try {
+            localStorage.setItem(TYPING_SETTING_STORAGE_KEY, JSON.stringify(next));
+        } catch (e) {
             console.error(e);
         }
     };
@@ -245,6 +310,30 @@ const GameSetup = () => {
                     {/* 게임 설정 (오른쪽) */}
                     <div className="w-[320px] p-4 rounded-lg bg-gray-50 dark:bg-gray-800 dark:text-gray-200 max-h-[320px] overflow-auto">
                         <h2 className="text-xl font-semibold mb-4 text-gray-700 dark:text-gray-200">게임 설정</h2>
+                        <div className="mb-4">
+                            <label className="block text-sm text-gray-700 dark:text-gray-200 mb-2">연습 종류</label>
+                            <div className="flex gap-3">
+                                <label className="inline-flex items-center gap-2">
+                                    <input
+                                        type="radio"
+                                        name="practiceType"
+                                        checked={practiceType === 'word-chain'}
+                                        onChange={() => handlePracticeTypeChange('word-chain')}
+                                    />
+                                    <span className="text-sm text-gray-700 dark:text-gray-200">단어 연습</span>
+                                </label>
+                                <label className="inline-flex items-center gap-2">
+                                    <input
+                                        type="radio"
+                                        name="practiceType"
+                                        checked={practiceType === 'typing-practice'}
+                                        onChange={() => handlePracticeTypeChange('typing-practice')}
+                                    />
+                                    <span className="text-sm text-gray-700 dark:text-gray-200">타자 연습</span>
+                                </label>
+                            </div>
+                        </div>
+                        {practiceType === 'word-chain' && (
                         <div className="space-y-3">
                             <div>
                                 <label className="block text-sm text-gray-700 dark:text-gray-200 mb-2">라운드 시간</label>
@@ -352,6 +441,13 @@ const GameSetup = () => {
                             </div>
 
                         </div>
+                        )}
+                        {practiceType === 'typing-practice' && (
+                            <TypingPracticeSettingsPanel
+                                value={typingPracticeSetting}
+                                onChange={handleTypingPracticeSettingChange}
+                            />
+                        )}
                     </div>
                 </div>
             </div>
