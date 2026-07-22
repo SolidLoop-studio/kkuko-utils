@@ -75,4 +75,76 @@ describe('useTypingPractice', () => {
 
         await waitFor(() => expect(result.current.blockedMessage).toBe('조건에 맞는 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.'));
     });
+
+    it('resets the completed session when restart finds no matching words', async () => {
+        const { result } = renderHook(() => useTypingPractice(settings));
+        await waitFor(() => expect(result.current.targetWord).toBe('가방'));
+
+        act(() => {
+            result.current.handleInputChange({ target: { value: '가방' } } as React.ChangeEvent<HTMLInputElement>);
+        });
+
+        act(() => {
+            result.current.handleKeyDown({ key: 'Enter', preventDefault: jest.fn() } as unknown as React.KeyboardEvent<HTMLInputElement>);
+        });
+
+        act(() => {
+            result.current.handleInputChange({ target: { value: '나무' } } as React.ChangeEvent<HTMLInputElement>);
+        });
+
+        act(() => {
+            result.current.handleKeyDown({ key: 'Enter', preventDefault: jest.fn() } as unknown as React.KeyboardEvent<HTMLInputElement>);
+        });
+
+        expect(result.current.isFinished).toBe(true);
+        expect(result.current.resultOpen).toBe(true);
+
+        act(() => {
+            result.current.handleInputChange({ target: { value: 'residual input' } } as React.ChangeEvent<HTMLInputElement>);
+        });
+
+        getAllWords.mockResolvedValue([{ word: '!!', theme: '자유' }]);
+
+        await act(async () => {
+            await result.current.restart();
+        });
+
+        expect(result.current).toMatchObject({
+            targetWord: '',
+            input: '',
+            attempts: [],
+            isFinished: false,
+            resultOpen: false,
+            blockedMessage: '조건에 맞는 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.',
+        });
+        expect(result.current.metrics.combo).toBe(0);
+    });
+
+    it('finishes a timed session at its duration and clears the interval', async () => {
+        const timedSettings: TypingPracticeSettings = {
+            ...settings,
+            sessionMode: 'timed',
+            durationSeconds: 30,
+        };
+        const { result } = renderHook(() => useTypingPractice(timedSettings));
+        await waitFor(() => expect(result.current.targetWord).toBe('가방'));
+
+        await act(async () => {
+            await result.current.restart();
+        });
+
+        act(() => {
+            jest.advanceTimersByTime(29_750);
+        });
+        expect(result.current.isFinished).toBe(false);
+
+        act(() => {
+            jest.advanceTimersByTime(250);
+        });
+
+        expect(result.current.isFinished).toBe(true);
+        expect(result.current.resultOpen).toBe(true);
+        expect(result.current.progressValue).toBe(30);
+        expect(jest.getTimerCount()).toBe(0);
+    });
 });

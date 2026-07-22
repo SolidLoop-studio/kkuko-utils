@@ -5,24 +5,8 @@ import { getAllWords } from '../../lib/wordDB';
 import { TypingPracticeLogic } from '../lib/TypingPracticeLogic';
 import type {
     TypingPracticeAttempt,
-    TypingPracticeMetrics,
     TypingPracticeSettings,
 } from '../types/typing-practice.types';
-
-const EMPTY_METRICS: TypingPracticeMetrics = {
-    correctCharacters: 0,
-    totalSubmittedCharacters: 0,
-    accuracy: 0,
-    wpm: 0,
-    charactersPerMinute: 0,
-    completedWords: 0,
-    failedWords: 0,
-    totalAttempts: 0,
-    averageWordTime: 0,
-    combo: 0,
-    maxCombo: 0,
-    elapsedMs: 1000,
-};
 
 export const useTypingPractice = (settings: TypingPracticeSettings) => {
     const [queue, setQueue] = useState<string[]>([]);
@@ -42,14 +26,7 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
     const loadQueue = useCallback(async () => {
         const words = await getAllWords();
         const nextQueue = TypingPracticeLogic.prepareQueue(words, settings);
-        if (nextQueue.length === 0) {
-            setBlockedMessage('조건에 맞는 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.');
-            setQueue([]);
-            return;
-        }
 
-        setBlockedMessage(null);
-        setQueue(nextQueue);
         setCurrentIndex(0);
         setInput('');
         setAttempts([]);
@@ -59,6 +36,15 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
         setNow(Date.now());
         setIsFinished(false);
         setResultOpen(false);
+
+        if (nextQueue.length === 0) {
+            setBlockedMessage('조건에 맞는 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.');
+            setQueue([]);
+            return;
+        }
+
+        setBlockedMessage(null);
+        setQueue(nextQueue);
     }, [settings]);
 
     useEffect(() => {
@@ -71,7 +57,7 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);
         };
-    }, [isFinished, blockedMessage]);
+    }, [blockedMessage, isFinished, startedAt]);
 
     const elapsedMs = Math.max(now - startedAt, 1000);
     const targetWord = queue[currentIndex] ?? '';
