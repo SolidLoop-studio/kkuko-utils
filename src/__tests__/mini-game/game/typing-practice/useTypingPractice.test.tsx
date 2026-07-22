@@ -8,6 +8,7 @@ jest.mock('../../../../app/mini-game/game/lib/wordDB', () => ({
 jest.mock('../../../../app/mini-game/game/lib/SoundManager', () => ({
     soundManager: {
         play: jest.fn(),
+        stop: jest.fn(),
     },
 }));
 
@@ -103,11 +104,17 @@ describe('useTypingPractice', () => {
         expect(result.current.resultOpen).toBe(true);
     });
 
-    it('plays existing sounds for start, correct submit, wrong submit, and finish', async () => {
+    it('plays existing sounds for start, correct submit, and non-final wrong submit', async () => {
+        getAllWords.mockResolvedValueOnce([
+            { word: '가방', theme: '자유' },
+            { word: '나무', theme: '자유' },
+            { word: '다리', theme: '자유' },
+        ]);
         const { result } = renderHook(() => useTypingPractice(settings));
         await waitFor(() => expect(result.current.targetWord).toBe('가방'));
 
         expect(soundManager.play).toHaveBeenCalledWith('round_start');
+        expect(soundManager.play).toHaveBeenCalledWith('jaqwiBGM');
 
         act(() => {
             result.current.handleInputChange({ target: { value: '가방' } } as React.ChangeEvent<HTMLInputElement>);
@@ -125,7 +132,69 @@ describe('useTypingPractice', () => {
         });
 
         expect(soundManager.play).toHaveBeenCalledWith('fail');
+        expect(soundManager.play).not.toHaveBeenCalledWith('timeout');
+    });
+
+    it('does not play fail when a wrong final word completes a fixed-count session', async () => {
+        const { result } = renderHook(() => useTypingPractice(settings));
+        await waitFor(() => expect(result.current.targetWord).toBe('가방'));
+
+        act(() => {
+            result.current.handleInputChange({ target: { value: '가방' } } as React.ChangeEvent<HTMLInputElement>);
+        });
+        act(() => {
+            result.current.handleKeyDown({ key: 'Enter', preventDefault: jest.fn() } as unknown as React.KeyboardEvent<HTMLInputElement>);
+        });
+
+        jest.clearAllMocks();
+
+        act(() => {
+            result.current.handleInputChange({ target: { value: '나비' } } as React.ChangeEvent<HTMLInputElement>);
+        });
+        act(() => {
+            result.current.handleKeyDown({ key: 'Enter', preventDefault: jest.fn() } as unknown as React.KeyboardEvent<HTMLInputElement>);
+        });
+
+        expect(result.current.isFinished).toBe(true);
+        expect(soundManager.play).not.toHaveBeenCalledWith('fail');
+        expect(soundManager.play).not.toHaveBeenCalledWith('timeout');
+        expect(soundManager.stop).toHaveBeenCalledWith('jaqwiBGM');
+    });
+
+    it('plays timeout only when a timed session expires', async () => {
+        const timedSettings: TypingPracticeSettings = {
+            ...settings,
+            sessionMode: 'timed',
+            durationSeconds: 30,
+        };
+        const { result } = renderHook(() => useTypingPractice(timedSettings));
+        await waitFor(() => expect(result.current.targetWord).toBe('가방'));
+
+        act(() => {
+            jest.advanceTimersByTime(30_000);
+        });
+
+        expect(result.current.isFinished).toBe(true);
         expect(soundManager.play).toHaveBeenCalledWith('timeout');
+    });
+
+    it('rejects invalid strict input and counts it as a mistake', async () => {
+        jest.useRealTimers();
+        getAllWords.mockResolvedValueOnce([{ word: '가나다', theme: '자유' }]);
+        const strictSettings: TypingPracticeSettings = { ...settings, judgmentMode: 'strict' };
+        const { result } = renderHook(() => useTypingPractice(strictSettings));
+        await waitFor(() => expect(result.current.targetWord).toBe('가나다'));
+
+        act(() => {
+            result.current.handleInputChange({ target: { value: '가나' } } as React.ChangeEvent<HTMLInputElement>);
+        });
+        act(() => {
+            result.current.handleInputChange({ target: { value: '가나ㅏ' } } as React.ChangeEvent<HTMLInputElement>);
+        });
+
+        expect(result.current.input).toBe('가나');
+        expect(result.current.metrics.mistakeCount).toBe(1);
+        expect(result.current.metrics.accuracy).toBe(0);
     });
 
     it('blocks when filters remove all words', async () => {

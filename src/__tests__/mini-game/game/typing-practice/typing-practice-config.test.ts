@@ -20,6 +20,7 @@ describe('typing practice persisted config', () => {
                         wordCount: 50,
                         language: 'ko',
                         order: 'sorted',
+                        judgmentMode: 'strict',
                         minLength: 7,
                     });
                 }
@@ -35,6 +36,7 @@ describe('typing practice persisted config', () => {
                 wordCount: 50,
                 language: 'ko',
                 order: 'sorted',
+                judgmentMode: 'strict',
                 minLength: 7,
             },
         });
@@ -50,6 +52,7 @@ describe('typing practice persisted config', () => {
                     wordCount: 2,
                     language: 'ko',
                     order: 'sorted',
+                    judgmentMode: 'invalid',
                     minLength: 99,
                 })),
         };

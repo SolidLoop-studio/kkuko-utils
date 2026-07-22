@@ -6,6 +6,8 @@ import type { TypingPracticeMetrics } from '@/src/app/mini-game/game/typing-prac
 const metrics: TypingPracticeMetrics = {
     correctCharacters: 10,
     totalSubmittedCharacters: 10,
+    typingUnits: 10,
+    mistakeCount: 0,
     accuracy: 100,
     wpm: 20,
     charactersPerMinute: 100,
@@ -98,6 +100,7 @@ describe('TypingPracticeResultModal', () => {
                         isCorrect: true,
                         correctCharacters: 2,
                         submittedCharacters: 2,
+                        typingUnits: 5,
                         completedAt: 1,
                     },
                     {
@@ -106,6 +109,7 @@ describe('TypingPracticeResultModal', () => {
                         isCorrect: false,
                         correctCharacters: 1,
                         submittedCharacters: 2,
+                        typingUnits: 0,
                         completedAt: 2,
                     },
                 ]}

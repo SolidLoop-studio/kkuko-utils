@@ -94,9 +94,14 @@ describe('TypingPracticeBody', () => {
         const user = userEvent.setup();
         const { container } = render(<TypingPracticeBody settings={{ ...settings, sessionMode: 'timed', durationSeconds: 60 }} onExitToSetup={jest.fn()} />);
         const input = await screen.findByRole('textbox');
+        await screen.findByText('다음: 나무');
 
         expect(screen.getByText(/초$/)).toBeInTheDocument();
         expect(screen.queryByText(/0 \/ 60/)).not.toBeInTheDocument();
+        const progressFill = screen.getByTestId('typing-practice-progress-bar').firstElementChild?.firstElementChild;
+        const nextWordFill = screen.getByTestId('typing-practice-next-word-bar').firstElementChild?.firstElementChild;
+        expect(progressFill).toHaveStyle({ backgroundColor: '#223C6C' });
+        expect(nextWordFill).toHaveStyle({ backgroundColor: '#E6E846' });
         expect(container.querySelector('.items')).toBeEmptyDOMElement();
         expect(container.querySelector('.chain')).toHaveTextContent('0');
 
@@ -105,6 +110,14 @@ describe('TypingPracticeBody', () => {
 
         await user.type(input, '가방{enter}');
         expect(container.querySelector('.chain')).toHaveTextContent('1');
+    });
+
+    it('blurs the typing practice surface while the exit confirm modal is open', async () => {
+        render(<TypingPracticeBody settings={settings} onExitToSetup={jest.fn()} isExitConfirmOpen />);
+        await screen.findByRole('textbox');
+
+        expect(screen.getByTestId('typing-practice-surface')).toHaveClass('blur-sm');
+        expect(screen.getByRole('textbox')).toHaveAttribute('readonly');
     });
 
     it('keeps the exit result open when word loading resolves after exit is confirmed', async () => {

@@ -1,6 +1,7 @@
 export type TypingPracticeSessionMode = 'timed' | 'fixed-count';
 export type TypingPracticeLanguage = 'ko' | 'en' | 'all';
 export type TypingPracticeOrder = 'random' | 'sorted';
+export type TypingPracticeJudgmentMode = 'loose' | 'strict';
 
 export type TypingPracticeSettings = {
     sessionMode: TypingPracticeSessionMode;
@@ -8,6 +9,7 @@ export type TypingPracticeSettings = {
     wordCount: 10 | 25 | 50;
     language: TypingPracticeLanguage;
     order: TypingPracticeOrder;
+    judgmentMode?: TypingPracticeJudgmentMode;
     minLength: number;
 };
 
@@ -17,12 +19,15 @@ export type TypingPracticeAttempt = {
     isCorrect: boolean;
     correctCharacters: number;
     submittedCharacters: number;
+    typingUnits: number;
     completedAt: number;
 };
 
 export type TypingPracticeMetrics = {
     correctCharacters: number;
     totalSubmittedCharacters: number;
+    typingUnits: number;
+    mistakeCount: number;
     accuracy: number;
     wpm: number;
     charactersPerMinute: number;

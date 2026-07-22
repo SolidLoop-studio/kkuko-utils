@@ -34,6 +34,9 @@ describe('TypingPracticeSettingsPanel', () => {
         await user.click(screen.getByRole('radio', { name: '가나다순' }));
         expect(onChange).toHaveBeenCalledWith({ ...value, order: 'sorted' });
 
+        await user.click(screen.getByRole('radio', { name: '엄격' }));
+        expect(onChange).toHaveBeenCalledWith({ ...value, judgmentMode: 'strict' });
+
         await user.clear(screen.getByLabelText('최소 글자 수'));
         await user.type(screen.getByLabelText('최소 글자 수'), '4');
         expect(onChange).toHaveBeenLastCalledWith({ ...value, minLength: 4 });

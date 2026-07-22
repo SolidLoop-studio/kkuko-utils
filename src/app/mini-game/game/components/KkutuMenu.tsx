@@ -11,13 +11,14 @@ type Props = {
     practiceType: PracticeType;
     onStartTypingPractice: () => Promise<void>;
     onRequestTypingPracticeExit: () => void;
+    onTypingPracticeExitConfirmChange?: (open: boolean) => void;
 };
 
 /**
  * 게임 상단 메뉴 컴포넌트
  * 도움말, 설정, 사전, 시작, 나가기 버튼을 포함합니다.
  */
-const KkutuMenu = ({ practiceType, onStartTypingPractice, onRequestTypingPracticeExit }: Props) => {
+const KkutuMenu = ({ practiceType, onStartTypingPractice, onRequestTypingPracticeExit, onTypingPracticeExitConfirmChange }: Props) => {
     const {
         isPlaying,
         requestStart,
@@ -47,6 +48,7 @@ const KkutuMenu = ({ practiceType, onStartTypingPractice, onRequestTypingPractic
         if (buttonId === 'exit') {
             if (practiceType === 'typing-practice') {
                 setExitConfirmOpen(true);
+                onTypingPracticeExitConfirmChange?.(true);
                 return;
             }
             exitGame();
@@ -155,9 +157,13 @@ const KkutuMenu = ({ practiceType, onStartTypingPractice, onRequestTypingPractic
                     message="타자 연습을 종료하시겠습니까?"
                     onConfirm={() => {
                         setExitConfirmOpen(false);
+                        onTypingPracticeExitConfirmChange?.(false);
                         onRequestTypingPracticeExit();
                     }}
-                    onCancel={() => setExitConfirmOpen(false)}
+                    onCancel={() => {
+                        setExitConfirmOpen(false);
+                        onTypingPracticeExitConfirmChange?.(false);
+                    }}
                 />
             )}
         </div>

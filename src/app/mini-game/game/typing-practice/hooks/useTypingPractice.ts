@@ -14,6 +14,7 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [input, setInput] = useState('');
     const [attempts, setAttempts] = useState<TypingPracticeAttempt[]>([]);
+    const [mistakeCount, setMistakeCount] = useState(0);
     const [combo, setCombo] = useState(0);
     const [maxCombo, setMaxCombo] = useState(0);
     const [now, setNow] = useState(() => Date.now());
@@ -33,6 +34,7 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
         return () => {
             isMountedRef.current = false;
             loadRequestIdRef.current += 1;
+            try { soundManager.stop('jaqwiBGM'); } catch (e) { console.error(e); }
         };
     }, []);
 
@@ -54,6 +56,7 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
             setCurrentIndex(0);
             setInput('');
             setAttempts([]);
+            setMistakeCount(0);
             setCombo(0);
             setMaxCombo(0);
             setStartedAt(startedAtMs);
@@ -65,12 +68,14 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
             if (nextQueue.length === 0) {
                 setBlockedMessage('조건에 맞는 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.');
                 setQueue([]);
+                try { soundManager.stop('jaqwiBGM'); } catch (e) { console.error(e); }
                 return;
             }
 
             setBlockedMessage(null);
             setQueue(nextQueue);
             try { soundManager.play('round_start'); } catch (e) { console.error(e); }
+            try { soundManager.play('jaqwiBGM'); } catch (e) { console.error(e); }
         } catch (error) {
             if (!isMountedRef.current || requestId !== loadRequestIdRef.current) return;
 
@@ -79,6 +84,7 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
             setCurrentIndex(0);
             setInput('');
             setAttempts([]);
+            setMistakeCount(0);
             setCombo(0);
             setMaxCombo(0);
             setIsComposing(false);
@@ -86,6 +92,7 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
             setResultOpen(false);
             setBlockedMessage('단어를 불러오지 못했습니다. 다시 시도해주세요.');
             setCanRetry(true);
+            try { soundManager.stop('jaqwiBGM'); } catch (e) { console.error(e); }
         } finally {
             if (isMountedRef.current && requestId === loadRequestIdRef.current) {
                 setIsLoading(false);
@@ -110,24 +117,28 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
 
     const elapsedMs = Math.max(now - startedAt, 0);
     const targetWord = queue[currentIndex] ?? '';
+    const judgmentMode = settings.judgmentMode ?? 'loose';
     const metrics = useMemo(
-        () => TypingPracticeLogic.calculateMetrics(attempts, elapsedMs, combo, maxCombo),
-        [attempts, elapsedMs, combo, maxCombo],
+        () => TypingPracticeLogic.calculateMetrics(attempts, elapsedMs, combo, maxCombo, mistakeCount, judgmentMode),
+        [attempts, combo, elapsedMs, judgmentMode, maxCombo, mistakeCount],
     );
 
-    const finish = useCallback((endedAt = Date.now()) => {
+    const finish = useCallback((endedAt = Date.now(), reason: 'complete' | 'timeout' | 'exit' = 'complete') => {
         loadRequestIdRef.current += 1;
         setNow(endedAt);
         setIsLoading(false);
         setIsFinished(true);
         setResultOpen(true);
         if (timerRef.current) clearInterval(timerRef.current);
-        try { soundManager.play('timeout'); } catch (e) { console.error(e); }
+        try { soundManager.stop('jaqwiBGM'); } catch (e) { console.error(e); }
+        if (reason === 'timeout') {
+            try { soundManager.play('timeout'); } catch (e) { console.error(e); }
+        }
     }, []);
 
     useEffect(() => {
         if (settings.sessionMode === 'timed' && elapsedMs >= settings.durationSeconds * 1000) {
-            finish(startedAt + settings.durationSeconds * 1000);
+            finish(startedAt + settings.durationSeconds * 1000, 'timeout');
         }
     }, [elapsedMs, finish, settings.durationSeconds, settings.sessionMode, startedAt]);
 
@@ -136,36 +147,56 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
         const submittedAt = Date.now();
 
         if (settings.sessionMode === 'timed' && submittedAt - startedAt >= settings.durationSeconds * 1000) {
-            finish(startedAt + settings.durationSeconds * 1000);
+            finish(startedAt + settings.durationSeconds * 1000, 'timeout');
             return;
         }
 
-        const attempt = TypingPracticeLogic.scoreAttempt(targetWord, input);
+        if (judgmentMode === 'strict' && (
+            !TypingPracticeLogic.evaluateStrictInput(targetWord, input).accepted
+            || TypingPracticeLogic.normalizeWord(targetWord) !== TypingPracticeLogic.normalizeWord(input)
+        )) {
+            setMistakeCount((current) => current + 1);
+            try { soundManager.play('fail'); } catch (e) { console.error(e); }
+            return;
+        }
+
+        const attempt = TypingPracticeLogic.scoreAttempt(targetWord, input, submittedAt, judgmentMode);
         const nextCombo = TypingPracticeLogic.nextCombo(attempt, combo, maxCombo);
         const nextAttempts = [...attempts, attempt];
         const nextIndex = currentIndex + 1;
+        const isFixedCountComplete = settings.sessionMode === 'fixed-count'
+            && nextAttempts.length >= Math.min(settings.wordCount, queue.length);
+        const isFixedQueueComplete = settings.sessionMode === 'fixed-count' && nextIndex >= queue.length;
+        const isCompletingFixedSession = isFixedCountComplete || isFixedQueueComplete;
 
         setAttempts(nextAttempts);
         setCombo(nextCombo.combo);
         setMaxCombo(nextCombo.maxCombo);
         setInput('');
-        try { soundManager.play(attempt.isCorrect ? 'K0' : 'fail'); } catch (e) { console.error(e); }
+        if (attempt.isCorrect || !isCompletingFixedSession) {
+            try { soundManager.play(attempt.isCorrect ? 'K0' : 'fail'); } catch (e) { console.error(e); }
+        }
 
-        const isFixedCountComplete = settings.sessionMode === 'fixed-count'
-            && nextAttempts.length >= Math.min(settings.wordCount, queue.length);
-        const isFixedQueueComplete = settings.sessionMode === 'fixed-count' && nextIndex >= queue.length;
-
-        if (isFixedCountComplete || isFixedQueueComplete) {
+        if (isCompletingFixedSession) {
             setCurrentIndex(Math.min(nextIndex, queue.length - 1));
-            finish();
+            finish(undefined, 'complete');
             return;
         }
 
         setCurrentIndex(settings.sessionMode === 'timed' ? nextIndex % queue.length : nextIndex);
-    }, [attempts, combo, currentIndex, finish, input, isComposing, isFinished, maxCombo, queue.length, settings.durationSeconds, settings.sessionMode, settings.wordCount, startedAt, targetWord]);
+    }, [attempts, combo, currentIndex, finish, input, isComposing, isFinished, judgmentMode, maxCombo, queue.length, settings.durationSeconds, settings.sessionMode, settings.wordCount, startedAt, targetWord]);
 
     const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        setInput(event.target.value);
+        const nextInput = event.target.value;
+        if (judgmentMode === 'strict'
+            && targetWord
+            && !TypingPracticeLogic.evaluateStrictInput(targetWord, nextInput).accepted
+        ) {
+            setMistakeCount((current) => current + 1);
+            try { soundManager.play('fail'); } catch (e) { console.error(e); }
+            return;
+        }
+        setInput(nextInput);
     };
 
     const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -177,9 +208,11 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
 
     const progressMax = settings.sessionMode === 'timed' ? settings.durationSeconds : Math.min(settings.wordCount, queue.length || settings.wordCount);
     const progressValue = settings.sessionMode === 'timed' ? Math.min(elapsedMs / 1000, settings.durationSeconds) : attempts.length;
+    const nextWord = queue[settings.sessionMode === 'timed' ? (currentIndex + 1) % Math.max(queue.length, 1) : currentIndex + 1] ?? '';
 
     return {
         targetWord,
+        nextWord,
         input,
         attempts,
         metrics,

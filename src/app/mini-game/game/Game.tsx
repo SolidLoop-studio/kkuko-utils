@@ -27,6 +27,7 @@ const Game = () => {
     const [practiceConfig, setPracticeConfig] = useState(DEFAULT_PRACTICE_CONFIG);
     const [typingSessionKey, setTypingSessionKey] = useState(0);
     const [typingExitRequestToken, setTypingExitRequestToken] = useState(0);
+    const [typingExitConfirmOpen, setTypingExitConfirmOpen] = useState(false);
 
     // 컴포넌트 마운트 시 사운드 리소스 로드
     useEffect(() => {
@@ -84,6 +85,7 @@ const Game = () => {
                     practiceType={practiceConfig.practiceType}
                     onStartTypingPractice={handleStartTypingPractice}
                     onRequestTypingPracticeExit={handleRequestTypingPracticeExit}
+                    onTypingPracticeExitConfirmChange={setTypingExitConfirmOpen}
                 />
                 {isPlaying ? (
                     <GameBox>
@@ -93,6 +95,7 @@ const Game = () => {
                                 settings={practiceConfig.typingSettings}
                                 onExitToSetup={() => exitGame()}
                                 exitRequestToken={typingExitRequestToken}
+                                isExitConfirmOpen={typingExitConfirmOpen}
                             />
                         ) : (
                             <GameBody />

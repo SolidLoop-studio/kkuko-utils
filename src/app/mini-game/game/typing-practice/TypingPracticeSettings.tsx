@@ -82,6 +82,14 @@ const TypingPracticeSettingsPanel = ({ value, onChange }: TypingPracticeSettings
             </div>
 
             <div>
+                <label className="block text-sm text-gray-700 dark:text-gray-200 mb-2">판정 방식</label>
+                <div className="flex gap-3">
+                    {renderRadio('typing-judgment-mode', '느슨', (value.judgmentMode ?? 'loose') === 'loose', () => update({ judgmentMode: 'loose' }))}
+                    {renderRadio('typing-judgment-mode', '엄격', value.judgmentMode === 'strict', () => update({ judgmentMode: 'strict' }))}
+                </div>
+            </div>
+
+            <div>
                 <label htmlFor="typing-min-length" className="block text-sm text-gray-700 dark:text-gray-200 mb-2">최소 글자 수</label>
                 <input
                     id="typing-min-length"

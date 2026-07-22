@@ -87,6 +87,49 @@ describe('TypingPracticeLogic', () => {
         });
     });
 
+    it('counts Korean typing units by disassembled jamo and English units by length for loose correct words', () => {
+        expect(TypingPracticeLogic.scoreAttempt('가방', '가방', 0, 'loose')).toMatchObject({
+            isCorrect: true,
+            typingUnits: 5,
+        });
+
+        expect(TypingPracticeLogic.scoreAttempt('apple', 'apple', 0, 'loose')).toMatchObject({
+            isCorrect: true,
+            typingUnits: 5,
+        });
+
+        expect(TypingPracticeLogic.scoreAttempt('가방', '가자', 0, 'loose')).toMatchObject({
+            isCorrect: false,
+            typingUnits: 0,
+        });
+    });
+
+    it('uses typing units rather than syllable count for WPM and characters per minute', () => {
+        const attempts = [TypingPracticeLogic.scoreAttempt('가방', '가방', 0, 'loose')];
+
+        const metrics = TypingPracticeLogic.calculateMetrics(attempts, 60_000, 1, 1);
+
+        expect(metrics.typingUnits).toBe(5);
+        expect(metrics.charactersPerMinute).toBe(5);
+        expect(metrics.wpm).toBe(1);
+    });
+
+    it('calculates strict accuracy from accepted typing units and mistakes', () => {
+        const attempts = [TypingPracticeLogic.scoreAttempt('가방', '가방', 0, 'strict')];
+
+        const metrics = TypingPracticeLogic.calculateMetrics(attempts, 60_000, 1, 1, 1, 'strict');
+
+        expect(metrics.typingUnits).toBe(5);
+        expect(metrics.mistakeCount).toBe(1);
+        expect(metrics.accuracy).toBeCloseTo((5 / 6) * 100, 4);
+    });
+
+    it('rejects strict input when the next value is not a valid target prefix', () => {
+        expect(TypingPracticeLogic.evaluateStrictInput('가나다', '가나')).toEqual({ accepted: true });
+        expect(TypingPracticeLogic.evaluateStrictInput('가나다', '가나ㅏ')).toEqual({ accepted: false });
+        expect(TypingPracticeLogic.evaluateStrictInput('가나다', '가!')).toEqual({ accepted: false });
+    });
+
     it('keeps raw elapsed time while clamping only rate denominators', () => {
         const attempts = [
             TypingPracticeLogic.scoreAttempt('apple', 'apple'),
@@ -97,9 +140,10 @@ describe('TypingPracticeLogic', () => {
 
         expect(metrics.correctCharacters).toBe(6);
         expect(metrics.totalSubmittedCharacters).toBe(7);
+        expect(metrics.typingUnits).toBe(5);
         expect(metrics.accuracy).toBeCloseTo((6 / 7) * 100, 4);
-        expect(metrics.wpm).toBeCloseTo(72, 4);
-        expect(metrics.charactersPerMinute).toBeCloseTo(360, 4);
+        expect(metrics.wpm).toBeCloseTo(60, 4);
+        expect(metrics.charactersPerMinute).toBeCloseTo(300, 4);
         expect(metrics.completedWords).toBe(1);
         expect(metrics.failedWords).toBe(1);
         expect(metrics.averageWordTime).toBe(0);
