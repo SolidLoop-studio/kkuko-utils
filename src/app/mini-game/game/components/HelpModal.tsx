@@ -41,7 +41,7 @@ const HelpModal = ({ onClose }: Props) => {
 
                     <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-gray-700 dark:to-gray-800 p-4 rounded-xl border border-purple-200 dark:border-purple-700 shadow-sm">
                         <h4 className="font-bold text-purple-800 dark:text-purple-200 mb-2 flex items-center gap-2 text-base">
-                            🎯 게임중/종료 관련
+                            🎯 단어 연습 게임중/종료 관련
                         </h4>
                         <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-200 ml-2">
                             <li>게임 시작후 나오는 시작글자에 맞춰 업로드한 파일에 있는 단어를 입력하면 됩니다.</li>
@@ -61,6 +61,7 @@ const HelpModal = ({ onClose }: Props) => {
                         <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-200 ml-2">
                             <li>타자 연습은 업로드한 단어를 보고 정확히 입력하는 모드입니다.</li>
                             <li>WPM, 분당타자수, 정확도, 콤보를 실시간으로 확인할 수 있습니다.</li>
+                            <li>성공 입력 타자수 = 오타 없이 입력 된 단어들의 타자수입니다. (초성1, 중성1, 종성이 있으면 1, 이중모음이면 추가로1, 겹받침이면 추가로1)</li>
                             <li>분당타자수 = 성공 입력 타자수 / 경과 시간(초) × 60 입니다.</li>
                             <li>WPM = 분당타자수 / 5 입니다.</li>
                             <li>정확도 = 정타 글자 수 / 입력 글자 수 × 100 입니다.</li>

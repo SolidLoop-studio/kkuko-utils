@@ -67,7 +67,6 @@ const TypingPracticeSettingsPanel = ({ value, onChange }: TypingPracticeSettings
             <div>
                 <label className="block text-sm text-gray-700 dark:text-gray-200 mb-2">언어</label>
                 <div className="flex gap-3">
-                    {renderRadio('typing-language', '전체', value.language === 'all', () => update({ language: 'all' }))}
                     {renderRadio('typing-language', '한국어', value.language === 'ko', () => update({ language: 'ko' }))}
                     {renderRadio('typing-language', 'English', value.language === 'en', () => update({ language: 'en' }))}
                 </div>

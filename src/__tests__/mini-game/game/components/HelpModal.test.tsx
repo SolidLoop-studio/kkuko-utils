@@ -8,7 +8,7 @@ describe('HelpModal', () => {
         expect(screen.getByText('📖 도움말')).toBeInTheDocument();
         expect(screen.getByText('🎮 게임시작 관련')).toBeInTheDocument();
         expect(screen.getByText('⚙️ 설정 관련')).toBeInTheDocument();
-        expect(screen.getByText('🎯 게임중/종료 관련')).toBeInTheDocument();
+        expect(screen.getByText('🎯 단어 연습 게임중/종료 관련')).toBeInTheDocument();
         expect(screen.getByText('💡 기타 도움말')).toBeInTheDocument();
     });
 

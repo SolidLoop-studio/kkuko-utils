@@ -293,6 +293,8 @@ const GameSetup = ({
                         </div>
                         {practiceType === 'word-chain' && (
                         <div className="space-y-3">
+                            <h2 className="text-xl font-semibold mb-4 text-gray-700 dark:text-gray-200">단어 연습 설정</h2>
+
                             <div>
                                 <label className="block text-sm text-gray-700 dark:text-gray-200 mb-2">라운드 시간</label>
                                 <select value={localSetting?.roundTimeSeconds ?? 60} onChange={(e) => handleSettingChange({ roundTimeSeconds: parseInt(e.target.value, 10) })} className="w-full px-3 py-2 border rounded-lg">
