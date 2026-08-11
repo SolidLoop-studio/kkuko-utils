@@ -27,6 +27,7 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
     const [isLoading, setIsLoading] = useState(true);
     const [isStarting, setIsStarting] = useState(false);
     const [isStartWordVisible, setIsStartWordVisible] = useState(false);
+    const [incompleteSubmissionMessage, setIncompleteSubmissionMessage] = useState<string | null>(null);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
     const startTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const isMountedRef = useRef(true);
@@ -79,6 +80,7 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
             setIsFinished(false);
             setResultOpen(false);
             setIsStartWordVisible(false);
+            setIncompleteSubmissionMessage(null);
 
             if (nextQueue.length === 0) {
                 setBlockedMessage('조건에 맞는 100자 이하 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.');
@@ -139,6 +141,7 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
             setResultOpen(false);
             setIsStarting(false);
             setIsStartWordVisible(false);
+            setIncompleteSubmissionMessage(null);
             setBlockedMessage('단어를 불러오지 못했습니다. 다시 시도해주세요.');
             setCanRetry(true);
             try { soundManager.stop('jaqwiBGM'); } catch (e) { console.error(e); }
@@ -194,7 +197,7 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
     }, [elapsedMs, finish, settings.durationSeconds, settings.sessionMode, startedAt]);
 
     const submit = useCallback(() => {
-        if (!targetWord || input.trim() === '' || isStarting || isFinished || isComposing) return;
+        if (!targetWord || isStarting || isFinished || isComposing) return;
         const submittedAt = Date.now();
 
         if (settings.sessionMode === 'timed' && submittedAt - startedAt >= settings.durationSeconds * 1000) {
@@ -202,6 +205,17 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
             return;
         }
 
+        const normalizedTarget = TypingPracticeLogic.normalizeWord(targetWord);
+        const normalizedInput = TypingPracticeLogic.normalizeWord(input);
+        if (normalizedInput === '') return;
+
+        const remainingCharacters = Array.from(normalizedTarget).length - Array.from(normalizedInput).length;
+        if (remainingCharacters > 0) {
+            setIncompleteSubmissionMessage(`${remainingCharacters}자가 남았습니다.`);
+            return;
+        }
+
+        setIncompleteSubmissionMessage(null);
         const attempt = TypingPracticeLogic.scoreAttempt(targetWord, input, submittedAt - startedAt);
         const nextCombo = TypingPracticeLogic.nextCombo(attempt, combo, maxCombo);
         const nextAttempts = [...attempts, attempt];
@@ -232,6 +246,7 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
         if (isStarting || isFinished) return;
         const nextInput = event.target.value;
         setInput(nextInput);
+        setIncompleteSubmissionMessage(null);
     };
 
     const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -261,6 +276,7 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
         resultOpen,
         displayWord: isStarting && !isStartWordVisible ? '게임이 곧 시작됩니다' : targetWord,
         blockedMessage,
+        incompleteSubmissionMessage,
         canRetry,
         isLoading,
         handleInputChange,

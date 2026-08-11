@@ -158,6 +158,56 @@ describe('useTypingPractice', () => {
         expect(result.current.resultOpen).toBe(true);
     });
 
+    it('keeps an incomplete normalized submission on the current target', async () => {
+        const { result } = renderHook(() => useTypingPractice(settings));
+        await waitFor(() => expect(result.current.targetWord).toBe('가방'));
+
+        act(() => {
+            result.current.handleInputChange({ target: { value: '가 ' } } as React.ChangeEvent<HTMLInputElement>);
+        });
+        act(() => {
+            result.current.handleKeyDown({
+                key: 'Enter',
+                preventDefault: jest.fn(),
+            } as unknown as React.KeyboardEvent<HTMLInputElement>);
+        });
+
+        expect(result.current.targetWord).toBe('가방');
+        expect(result.current.input).toBe('가 ');
+        expect(result.current.attempts).toHaveLength(0);
+        expect(result.current.incompleteSubmissionMessage).toBe('1자가 남았습니다.');
+        expect(soundManager.play).not.toHaveBeenCalledWith('fail');
+
+        act(() => {
+            result.current.handleInputChange({ target: { value: '가방' } } as React.ChangeEvent<HTMLInputElement>);
+        });
+        expect(result.current.incompleteSubmissionMessage).toBeNull();
+    });
+
+    it('scores an exact 100-character submission against the complete target', async () => {
+        const longWord = '가'.repeat(100);
+        getAllWords.mockResolvedValueOnce([{ word: longWord, theme: '장문' }]);
+        const { result } = renderHook(() => useTypingPractice(settings));
+        await waitFor(() => expect(result.current.targetWord).toBe(longWord));
+
+        act(() => {
+            result.current.handleInputChange({ target: { value: longWord } } as React.ChangeEvent<HTMLInputElement>);
+        });
+        act(() => {
+            result.current.handleKeyDown({
+                key: 'Enter',
+                preventDefault: jest.fn(),
+            } as unknown as React.KeyboardEvent<HTMLInputElement>);
+        });
+
+        expect(result.current.attempts).toHaveLength(1);
+        expect(result.current.attempts[0]).toMatchObject({
+            target: longWord,
+            submitted: longWord,
+            isCorrect: true,
+        });
+    });
+
     it('plays existing sounds for start, correct submit, and non-final wrong submit', async () => {
         getAllWords.mockResolvedValueOnce([
             { word: '가방', theme: '자유' },
