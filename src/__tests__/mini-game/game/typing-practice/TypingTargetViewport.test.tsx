@@ -32,7 +32,8 @@ describe('TypingTargetViewport', () => {
         render(<TypingTargetViewport target="가방" input="" isComposing={false} />);
         const viewport = screen.getByTestId('typing-target-viewport');
         const track = screen.getByTestId('typing-target-track');
-        const active = track.children[0];
+        const characters = track.querySelectorAll('[data-testid="typing-target-character"]');
+        const active = characters[0];
         setDimension(viewport, 'clientWidth', 400);
         setDimension(track, 'scrollWidth', 100);
         setDimension(active, 'offsetLeft', 0);
@@ -51,7 +52,8 @@ describe('TypingTargetViewport', () => {
         render(<TypingTargetViewport target={target} input="" isComposing={false} />);
         const viewport = screen.getByTestId('typing-target-viewport');
         const track = screen.getByTestId('typing-target-track');
-        const active = track.children[0];
+        const characters = track.querySelectorAll('[data-testid="typing-target-character"]');
+        const active = characters[0];
         setDimension(viewport, 'clientWidth', 400);
         setDimension(track, 'scrollWidth', 2000);
         setDimension(active, 'offsetLeft', 0);
@@ -70,7 +72,8 @@ describe('TypingTargetViewport', () => {
 
         const viewport = screen.getByTestId('typing-target-viewport');
         const track = screen.getByTestId('typing-target-track');
-        const active = track.children[50];
+        const characters = track.querySelectorAll('[data-testid="typing-target-character"]');
+        const active = characters[50];
         setDimension(viewport, 'clientWidth', 400);
         setDimension(track, 'scrollWidth', 2000);
         setDimension(active, 'offsetLeft', 1000);
@@ -88,7 +91,8 @@ describe('TypingTargetViewport', () => {
         render(<TypingTargetViewport target={target} input={target} isComposing={false} />);
         const viewport = screen.getByTestId('typing-target-viewport');
         const track = screen.getByTestId('typing-target-track');
-        const active = track.children[99];
+        const characters = track.querySelectorAll('[data-testid="typing-target-character"]');
+        const active = characters[99];
         setDimension(viewport, 'clientWidth', 400);
         setDimension(track, 'scrollWidth', 2000);
         setDimension(active, 'offsetLeft', 1980);

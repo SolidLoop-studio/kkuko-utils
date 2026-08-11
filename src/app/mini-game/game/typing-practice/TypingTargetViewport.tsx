@@ -35,7 +35,9 @@ const TypingTargetViewport = ({ target, input, isComposing }: Props) => {
     const measure = useCallback(() => {
         const viewport = viewportRef.current;
         const track = trackRef.current;
-        const activeCharacter = track?.children.item(activeIndex) as HTMLElement | null;
+        const activeCharacter = track
+            ?.querySelectorAll<HTMLElement>('[data-testid="typing-target-character"]')
+            .item(activeIndex);
         if (!viewport || !track || !activeCharacter) {
             setLayout(initialLayout);
             return;
