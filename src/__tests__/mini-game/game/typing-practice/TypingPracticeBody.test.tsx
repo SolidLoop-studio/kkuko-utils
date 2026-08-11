@@ -90,6 +90,25 @@ describe('TypingPracticeBody', () => {
         expect(targetCharacters[2]).toHaveClass('text-yellow-200');
     });
 
+    it('keeps a partial visible fragment on a 100-character target', async () => {
+        const longWord = '가'.repeat(100);
+        getAllWords.mockResolvedValueOnce([{ word: longWord, theme: '장문' }]);
+        const { container } = render(
+            <TypingPracticeBody settings={settings} onExitToSetup={jest.fn()} />,
+        );
+        const input = await screen.findByRole('textbox');
+        await screen.findByText(longWord);
+
+        fireEvent.change(input, { target: { value: '가'.repeat(40) } });
+        fireEvent.keyDown(input, { key: 'Enter' });
+
+        expect(input).toHaveValue('가'.repeat(40));
+        expect(screen.getByRole('status')).toHaveTextContent('60자가 남았습니다.');
+        expect(screen.getByTestId('typing-target-count')).toHaveTextContent('40 / 100');
+        expect(container.querySelectorAll('[data-testid="typing-target-character"]')).toHaveLength(100);
+        expect(screen.queryByRole('dialog', { name: '타자 연습 결과' })).not.toBeInTheDocument();
+    });
+
     it('keeps highlighted target characters hidden from assistive technology', async () => {
         const { container } = render(<TypingPracticeBody settings={settings} onExitToSetup={jest.fn()} />);
         await screen.findByText('가방');

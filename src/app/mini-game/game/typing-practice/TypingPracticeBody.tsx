@@ -5,6 +5,7 @@ import GameInput from '../components/GameInput';
 import GraphBar from '../components/GraphBar';
 import { useTypingPractice } from './hooks/useTypingPractice';
 import TypingPracticeResultModal from './TypingPracticeResultModal';
+import TypingTargetViewport from './TypingTargetViewport';
 import type { TypingPracticeSettings } from './types/typing-practice.types';
 
 type Props = {
@@ -16,28 +17,6 @@ type Props = {
 };
 
 const formatNumber = (value: number) => Number.isFinite(value) ? value.toFixed(1) : '0.0';
-
-const renderTarget = (target: string, input: string, isComposing: boolean) => {
-    const targetCharacters = Array.from(target);
-    const inputCharacters = Array.from(input);
-    const activeComposingIndex = isComposing ? inputCharacters.length - 1 : -1;
-    const hasExtraInput = inputCharacters.length > targetCharacters.length;
-
-    const characters = targetCharacters.map((char, index) => {
-        const typed = inputCharacters[index];
-        const className = typed === undefined
-            ? 'text-[#EEEEEE]'
-            : isComposing && index === activeComposingIndex
-                ? 'text-yellow-200'
-            : typed === char
-                ? 'text-green-300'
-                : 'text-red-300 underline';
-
-        return <span key={`${char}-${index}`} data-testid="typing-target-character" className={className} aria-hidden="true">{char}</span>;
-    });
-
-    return <><span className="sr-only">{target}</span>{characters}{hasExtraInput && <span className="text-red-300 underline" aria-hidden="true">!</span>}</>;
-};
 
 const TypingPracticeBody = ({ settings, onExitToSetup, exitRequestToken = 0, isExitConfirmOpen = false, onFinishedChange }: Props) => {
     const practice = useTypingPractice(settings);
@@ -98,12 +77,18 @@ const TypingPracticeBody = ({ settings, onExitToSetup, exitRequestToken = 0, isE
 
                     <div className="jjoriping w-[500px]">
                         <div className="p-[20px_5px_5px_5px] border-2 border-black rounded-bl-[10px] rounded-br-[10px] mt-[40px] w-[486px] h-[100px] bg-[#DEAF56] ml-8">
-                            <div className="p-[8px_5px] rounded-[10px] rounded-bl-none rounded-br-none w-[474px] h-[40px] text-[20px] text-center bg-black/70 whitespace-nowrap overflow-hidden text-ellipsis">
-                                {practice.isStarting
-                                    ? practice.displayWord
-                                    : practice.targetWord
-                                        ? renderTarget(practice.targetWord, practice.input, practice.isComposing)
-                                        : '단어를 불러오는 중...'}
+                            <div className="p-[8px_5px] rounded-[10px] rounded-bl-none rounded-br-none w-[474px] h-[40px] text-[20px] bg-black/70 whitespace-nowrap overflow-hidden">
+                                {practice.isStarting ? (
+                                    <div className="flex h-full items-center justify-center">{practice.displayWord}</div>
+                                ) : practice.targetWord ? (
+                                    <TypingTargetViewport
+                                        target={practice.targetWord}
+                                        input={practice.input}
+                                        isComposing={practice.isComposing}
+                                    />
+                                ) : (
+                                    <div className="flex h-full items-center justify-center">단어를 불러오는 중...</div>
+                                )}
                             </div>
                             <div data-testid="typing-practice-next-word-bar" className="relative">
                                 <GraphBar
@@ -150,6 +135,13 @@ const TypingPracticeBody = ({ settings, onExitToSetup, exitRequestToken = 0, isE
                     onCompositionEnd={practice.handleCompositionEnd}
                     readonly={practice.isFinished || practice.isStarting || isExitConfirmOpen}
                 />
+                <p
+                    role="status"
+                    aria-live="polite"
+                    className="min-h-[20px] w-[460px] pt-1 text-center text-sm text-yellow-700 dark:text-yellow-200"
+                >
+                    {practice.incompleteSubmissionMessage ?? ''}
+                </p>
                 <div data-testid="typing-practice-live-stats" className="mt-2 w-[460px] border-2 border-black rounded-[8px] bg-[#223C6C] text-white text-xs flex justify-around py-2 shadow">
                     <span><span>WPM</span> {formatNumber(practice.metrics.wpm)}</span>
                     <span><span>분당타자수</span> {formatNumber(practice.metrics.charactersPerMinute)}</span>
