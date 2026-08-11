@@ -256,7 +256,7 @@ describe('useTypingPractice', () => {
 
         const { result } = renderHook(() => useTypingPractice({ ...settings, language: 'ko' }));
 
-        await waitFor(() => expect(result.current.blockedMessage).toBe('조건에 맞는 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.'));
+        await waitFor(() => expect(result.current.blockedMessage).toBe('조건에 맞는 100자 이하 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.'));
     });
 
     it('resets the completed session when restart finds no matching words', async () => {
@@ -298,7 +298,7 @@ describe('useTypingPractice', () => {
             attempts: [],
             isFinished: false,
             resultOpen: false,
-            blockedMessage: '조건에 맞는 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.',
+            blockedMessage: '조건에 맞는 100자 이하 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.',
         });
         expect(result.current.metrics.combo).toBe(0);
     });

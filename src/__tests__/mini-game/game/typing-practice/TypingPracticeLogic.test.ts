@@ -35,6 +35,18 @@ describe('TypingPracticeLogic', () => {
         expect(queue).toEqual(['apple', 'banana']);
     });
 
+    it('includes 100-character words and excludes longer words', () => {
+        const wordAtLimit = '가'.repeat(100);
+        const wordOverLimit = '나'.repeat(101);
+
+        const queue = TypingPracticeLogic.prepareQueue(
+            [{ word: wordAtLimit }, { word: wordOverLimit }],
+            baseSettings,
+        );
+
+        expect(queue).toEqual([wordAtLimit]);
+    });
+
     it('random order keeps the same words without duplicates when random is deterministic', () => {
         const queue = TypingPracticeLogic.prepareQueue(
             [{ word: '가방' }, { word: '나무' }, { word: '다리' }],

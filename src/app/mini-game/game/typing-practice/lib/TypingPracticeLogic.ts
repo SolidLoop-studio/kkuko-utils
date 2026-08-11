@@ -8,6 +8,7 @@ import type {
 const KOREAN_START = /^[가-힣ㄱ-ㅎㅏ-ㅣ]/;
 const ENGLISH_START = /^[a-zA-Z]/;
 const WORD_PATTERN = /[^a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ]/g;
+export const MAX_TYPING_WORD_LENGTH = 100;
 
 export type TypingPracticeCpmPoint = {
     elapsedSeconds: number;
@@ -33,7 +34,10 @@ export class TypingPracticeLogic {
     ): string[] {
         const filtered = words
             .map((entry) => this.normalizeWord(entry.word))
-            .filter((word) => word.length >= settings.minLength)
+            .filter((word) => {
+                const wordLength = Array.from(word).length;
+                return wordLength >= settings.minLength && wordLength <= MAX_TYPING_WORD_LENGTH;
+            })
             .filter((word) => {
                 if (settings.language === 'ko') return KOREAN_START.test(word);
                 if (settings.language === 'en') return ENGLISH_START.test(word);

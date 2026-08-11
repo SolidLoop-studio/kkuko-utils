@@ -59,7 +59,7 @@ const Game = () => {
             const words = await getAllWords();
             const queue = TypingPracticeLogic.prepareQueue(words, practiceConfig.typingSettings);
             if (queue.length === 0) {
-                blockStart('조건에 맞는 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.');
+                blockStart('조건에 맞는 100자 이하 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.');
                 return;
             }
 

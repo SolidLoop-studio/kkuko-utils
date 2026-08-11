@@ -81,7 +81,7 @@ export const useTypingPractice = (settings: TypingPracticeSettings) => {
             setIsStartWordVisible(false);
 
             if (nextQueue.length === 0) {
-                setBlockedMessage('조건에 맞는 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.');
+                setBlockedMessage('조건에 맞는 100자 이하 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.');
                 setQueue([]);
                 setIsStarting(false);
                 try { soundManager.stop('jaqwiBGM'); } catch (e) { console.error(e); }

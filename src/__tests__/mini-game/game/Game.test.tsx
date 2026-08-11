@@ -101,7 +101,7 @@ describe('Game', () => {
         await userEvent.click(screen.getByRole('button', { name: '최소 길이 10' }));
         await userEvent.click(screen.getByRole('button', { name: /시작/ }));
 
-        expect(await screen.findByText('조건에 맞는 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.')).toBeInTheDocument();
+        expect(await screen.findByText('조건에 맞는 100자 이하 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.')).toBeInTheDocument();
     });
 
     it('blocks typing practice before mounting the game when the filtered queue is empty', async () => {
@@ -122,7 +122,7 @@ describe('Game', () => {
 
         await userEvent.click(screen.getByRole('button', { name: /시작/ }));
 
-        expect(await screen.findByText('조건에 맞는 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.')).toBeInTheDocument();
+        expect(await screen.findByText('조건에 맞는 100자 이하 단어가 없습니다. 언어나 최소 글자 수를 조정해주세요.')).toBeInTheDocument();
         expect(screen.queryByTestId('game-box')).not.toBeInTheDocument();
     });
 
