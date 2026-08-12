@@ -49,3 +49,7 @@ app/api/test
 /.idea
 /.claude
 /.worktrees
+
+/.codex
+/.superpowers
+/docs/superpowers
