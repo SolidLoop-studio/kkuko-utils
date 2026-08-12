@@ -58,7 +58,7 @@ This site is a utility application for the Korean word-chain game **Kkutu Korea*
 | `/words-docs`            | Allows users to browse groups of words based on the open database. Subpages provide access to individual word collections. |
 | `/word/*`                | Provides access to the administrator-managed open database and its data. Subpages provide features such as word search and word downloads. |
 | `/kkuko/profile`         | Allows users to look up Kkutu Korea user profiles. |
-| `/kkuko/ranking`         | Displays custom rankings based on Kkutu Korea user data, such as wins in specific modes or experience rankings. |
+| `/kkuko/ranking`         | Displays custom rankings based on Kkutu Korea user data, such as wins in specific modes or level rankings. |
 | `/mini-game`             | Allows users to practice words or typing using word lists uploaded by the user. |
 | `/programs`              | Displays useful Kkutu Korea-related programs registered by administrators. Subpages provide detailed information about individual programs. |
 | `/replay-analyzer`       | Provides tools for analyzing downloaded game replays to identify new words, mistakes, and other useful information. |
