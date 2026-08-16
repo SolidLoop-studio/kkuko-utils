@@ -3,7 +3,7 @@ import type { PostgrestError, PostgrestSingleResponse, Session, SupabaseClient }
 import type { Database } from '@/src/app/types/database.types';
 import type { addWordQueryType, addWordThemeQueryType, DocsLogData, WordLogData, advancedQueryType } from '@/src/app/types/type';
 import DuemLaw, { reverDuemLaw } from '../hangulUtils';
-import { sum } from 'es-toolkit';
+import { sum, chunk } from 'es-toolkit';
 import { StorageError } from '@supabase/storage-js';
 import { misssionCharMask } from '../lib';
 import axios from 'axios';
@@ -461,7 +461,14 @@ class GetManager implements IGetManager {
         return await this.supabase.from('word_themes_wait').select('*,words(word,id),themes(*),users(*)');
     }
     public async waitWordsThemes(waitWordIds: number[]) {
-        return await this.supabase.from('wait_word_themes').select('*,themes(*),wait_words(word)').in('wait_word_id', waitWordIds)
+        const result = [];
+        const chunkedIds = chunk(waitWordIds, 300);
+        for (const ids of chunkedIds) {
+            const { data, error } = await this.supabase.from('wait_word_themes').select('*,themes(*),wait_words(word)').in('wait_word_id', ids);
+            if (error) return { data: null, error };
+            result.push(...data);
+        }
+        return { data: result, error: null };
     }
     public async wordsByWords(words: string[]) {
         return await this.supabase.rpc('get_words_with_themes', { words_input: words });
