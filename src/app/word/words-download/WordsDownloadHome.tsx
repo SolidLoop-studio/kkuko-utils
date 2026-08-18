@@ -12,9 +12,11 @@ import {
 import { Label } from '@/src/app/components/ui/label';
 import { Button } from '@/src/app/components/ui/button';
 import { Checkbox } from '@/src/app/components/ui/checkbox';
-import { Download, Filter, AlertCircle, Loader2, BarChart3, Database } from 'lucide-react';
+import { Download, Filter, AlertCircle, Loader2, BarChart3, Database, LockKeyhole, Sprout, TrendingUp, CircleCheck } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/src/app/components/ui/alert';
 import { SCM } from '@/src/app/lib/supabaseClient';
+import { useSelector } from 'react-redux';
+import type { RootState } from '@/src/app/store/store';
 
 
 type ChartItem = {
@@ -145,7 +147,7 @@ const fetchWordData = async (params: {
     }
 };
 
-export default function KoreanWordStats() {
+function KoreanWordStats() {
     // 필터 상태
     const [includeAdded, setIncludeAdded] = useState(false); // 추가 요청 단어 포함
     const [includeDeleted, setIncludeDeleted] = useState(false); // 삭제 요청 단어 포함
@@ -499,4 +501,80 @@ export default function KoreanWordStats() {
             </Card>
         </div>
     );
+}
+
+function WordsDownloadUnavailable({ role }: { role: RootState['user']['role'] }) {
+    const currentStatus = role === 'guest' ? '비로그인' : '새싹(r1)';
+
+    return (
+        <div className="min-h-[70vh] bg-gradient-to-b from-gray-50 to-gray-100 px-4 py-12 dark:from-gray-900 dark:to-gray-800">
+            <div className="container mx-auto max-w-3xl">
+                <Card className="overflow-hidden border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                    <CardHeader className="items-center bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-10 text-center text-white dark:from-amber-600 dark:to-orange-600">
+                        <div className="mb-3 rounded-full bg-white/20 p-4">
+                            <LockKeyhole className="h-9 w-9" aria-hidden="true" />
+                        </div>
+                        <CardTitle>
+                            <h1 className="text-2xl font-bold sm:text-3xl">오픈 DB 다운로드를 현재 사용할 수 없습니다</h1>
+                        </CardTitle>
+                        <CardDescription className="text-base text-amber-50">
+                            일반 등급 이상인 회원만 이용할 수 있습니다.<br/>
+                            불편을 드려 죄송합니다. 최대한 빠르게 이용 가능하도록 하겠습니다.
+                        </CardDescription>
+                    </CardHeader>
+
+                    <CardContent className="space-y-6 p-6 sm:p-8">
+                        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/50">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">현재 상태</p>
+                            <p className="mt-1 font-semibold text-gray-900 dark:text-gray-100">{currentStatus}</p>
+                        </div>
+
+                        <section aria-labelledby="eligible-roles-title">
+                            <div className="mb-3 flex items-center gap-2">
+                                <CircleCheck className="h-5 w-5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
+                                <h2 id="eligible-roles-title" className="font-semibold text-gray-900 dark:text-gray-100">이용 가능 등급</h2>
+                            </div>
+                            <p className="rounded-lg bg-blue-50 px-4 py-3 font-medium text-blue-900 dark:bg-blue-950/40 dark:text-blue-200">
+                                일반 · 활동가 · 베테랑 · 관리자
+                            </p>
+                        </section>
+
+                        <section aria-labelledby="promotion-requirements-title">
+                            <div className="mb-3 flex items-center gap-2">
+                                <TrendingUp className="h-5 w-5 text-purple-600 dark:text-purple-400" aria-hidden="true" />
+                                <h2 id="promotion-requirements-title" className="font-semibold text-gray-900 dark:text-gray-100">등급 승급 기준</h2>
+                            </div>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950/30">
+                                    <div className="flex items-center gap-2 font-semibold text-green-900 dark:text-green-200">
+                                        <Sprout className="h-5 w-5" aria-hidden="true" />
+                                        <span>새싹 → 일반</span>
+                                    </div>
+                                    <p className="mt-2 text-sm text-green-800 dark:text-green-300">누적 기여도 500점</p>
+                                </div>
+                                <div className="rounded-lg border border-purple-200 bg-purple-50 p-4 dark:border-purple-900 dark:bg-purple-950/30">
+                                    <p className="font-semibold text-purple-900 dark:text-purple-200">일반 → 활동가</p>
+                                    <p className="mt-2 text-sm text-purple-800 dark:text-purple-300">누적 기여도 3,500점</p>
+                                </div>
+                            </div>
+                        </section>
+
+                        <p className="text-center text-sm text-gray-500 dark:text-gray-400">
+                            등급은 프로필에 표시되는 누적 기여도를 기준으로 합니다.
+                        </p>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    );
+}
+
+export default function WordsDownloadHome() {
+    const role = useSelector((state: RootState) => state.user.role);
+
+    if (role === 'guest' || role === 'r1') {
+        return <WordsDownloadUnavailable role={role} />;
+    }
+
+    return <KoreanWordStats />;
 }

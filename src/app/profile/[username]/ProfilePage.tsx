@@ -452,7 +452,7 @@ const ProfilePage = ({ userName }: { userName: string }) => {
             case 'r1':
                 return {
                     current: contribution,
-                    target: 1000,
+                    target: 500,
                     nextRole: 'r2',
                     nextRoleName: '일반',
                     showProgress: true
@@ -460,7 +460,7 @@ const ProfilePage = ({ userName }: { userName: string }) => {
             case 'r2':
                 return {
                     current: contribution,
-                    target: 5000,
+                    target: 3500,
                     nextRole: 'r3',
                     nextRoleName: '활동가',
                     showProgress: true
@@ -487,7 +487,7 @@ const ProfilePage = ({ userName }: { userName: string }) => {
             default:
                 return {
                     current: 0,
-                    target: 1000,
+                    target: 500,
                     nextRole: 'r2',
                     nextRoleName: '일반',
                     showProgress: true
