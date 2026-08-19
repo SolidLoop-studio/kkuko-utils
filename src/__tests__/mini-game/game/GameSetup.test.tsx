@@ -1,8 +1,11 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import GameSetup from '@/src/app/mini-game/game/GameSetup';
 import * as wordDB from '@/src/app/mini-game/game/lib/wordDB';
 import gameManager from '@/src/app/mini-game/game/lib/GameManager';
+import type { PracticeType } from '@/src/app/mini-game/game/typing-practice/lib/typing-practice-config';
+import type { TypingPracticeSettings } from '@/src/app/mini-game/game/typing-practice/types/typing-practice.types';
 
 jest.mock('@/app/mini-game/game/lib/wordDB');
 jest.mock('@/app/mini-game/game/lib/GameManager');
@@ -22,6 +25,33 @@ jest.mock('@/app/mini-game/game/components/StartCharModal', () => ({ onClose, on
         <button onClick={onClose}>Close</button>
     </div>
 ));
+
+const defaultTypingSettings: TypingPracticeSettings = {
+    sessionMode: 'timed',
+    durationSeconds: 60,
+    wordCount: 25,
+    language: 'all',
+    order: 'random',
+    minLength: 2,
+};
+
+const renderGameSetup = () => {
+    const ControlledSetup = () => {
+        const [practiceType, setPracticeType] = React.useState<PracticeType>('word-chain');
+        const [typingPracticeSettings, setTypingPracticeSettings] = React.useState(defaultTypingSettings);
+
+        return (
+            <GameSetup
+                practiceType={practiceType}
+                typingPracticeSettings={typingPracticeSettings}
+                onPracticeTypeChange={setPracticeType}
+                onTypingPracticeSettingsChange={setTypingPracticeSettings}
+            />
+        );
+    };
+
+    return render(<ControlledSetup />);
+};
 
 describe('GameSetup', () => {
     const mockUpdateSetting = jest.fn();
@@ -72,10 +102,20 @@ describe('GameSetup', () => {
 
     it('should render correctly', async () => {
         await act(async () => {
-            render(<GameSetup />);
+            renderGameSetup();
         });
         expect(screen.getByText(/게임 설정/i)).toBeInTheDocument();
         expect(screen.getByText(/단어 데이터베이스 설정/i)).toBeInTheDocument();
+    });
+
+    it('uses the currently selected controlled practice type', async () => {
+        const user = userEvent.setup();
+        renderGameSetup();
+
+        await user.click(screen.getByRole('radio', { name: '타자 연습' }));
+
+        expect(screen.getByRole('radio', { name: '타자 연습' })).toBeChecked();
+        expect(screen.getByText('타자 연습 설정')).toBeInTheDocument();
     });
 
     it('should load existing words on mount', async () => {
@@ -83,7 +123,7 @@ describe('GameSetup', () => {
         (wordDB.getAllWords as jest.Mock).mockResolvedValue([{ word: '사과', theme: 'fruit' }]);
         
         await act(async () => {
-            render(<GameSetup />);
+            renderGameSetup();
         });
         
         await waitFor(() => {
@@ -96,7 +136,7 @@ describe('GameSetup', () => {
 
     it('should handle file upload', async () => {
         await act(async () => {
-            render(<GameSetup />);
+            renderGameSetup();
         });
         
         const file = new File(['test'], 'test.txt', { type: 'text/plain' });
@@ -121,7 +161,7 @@ describe('GameSetup', () => {
 
     it('should handle setting changes', async () => {
         await act(async () => {
-            render(<GameSetup />);
+            renderGameSetup();
         });
         
         // Find select by display value since label is not associated
@@ -135,7 +175,7 @@ describe('GameSetup', () => {
 
     it('should open and close word manager modal', async () => {
         await act(async () => {
-            render(<GameSetup />);
+            renderGameSetup();
         });
         
         fireEvent.click(screen.getByText(/단어 목록 조회/i));
@@ -151,7 +191,7 @@ describe('GameSetup', () => {
         (wordDB.getAllWords as jest.Mock).mockResolvedValue([{ word: '사과', theme: 'fruit' }]);
         
         await act(async () => {
-            render(<GameSetup />);
+            renderGameSetup();
         });
         
         await waitFor(() => {
@@ -172,7 +212,7 @@ describe('GameSetup', () => {
 
     it('should handle start char modal', async () => {
         await act(async () => {
-            render(<GameSetup />);
+            renderGameSetup();
         });
         
         fireEvent.click(screen.getByRole('button', { name: '제시어 설정' }));

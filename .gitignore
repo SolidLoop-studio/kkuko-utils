@@ -48,3 +48,9 @@ app/api/test
 # Idea
 /.idea
 /.claude
+/.worktrees
+
+/.codex
+/.superpowers
+/docs/superpowers
+/.agents

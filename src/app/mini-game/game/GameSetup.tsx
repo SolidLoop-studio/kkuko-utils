@@ -6,12 +6,27 @@ import ConfirmModal from './components/ConfirmModal';
 import StartCharModal from './components/StartCharModal';
 import gameManager from './lib/GameManager';
 import { soundManager } from './lib/SoundManager';
+import TypingPracticeSettingsPanel from './typing-practice/TypingPracticeSettings';
+import type { TypingPracticeSettings } from './typing-practice/types/typing-practice.types';
+import type { PracticeType } from './typing-practice/lib/typing-practice-config';
+
+type GameSetupProps = {
+    practiceType: PracticeType;
+    typingPracticeSettings: TypingPracticeSettings;
+    onPracticeTypeChange: (practiceType: PracticeType) => void;
+    onTypingPracticeSettingsChange: (settings: TypingPracticeSettings) => void;
+};
 
 /**
  * 게임 시작 전 준비 화면 컴포넌트
  * 단어 데이터베이스 업로드 및 설정을 담당합니다.
  */
-const GameSetup = () => {
+const GameSetup = ({
+    practiceType,
+    typingPracticeSettings,
+    onPracticeTypeChange,
+    onTypingPracticeSettingsChange,
+}: GameSetupProps) => {
     const [file, setFile] = useState<File | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const [message, setMessage] = useState<string>('');
@@ -72,6 +87,14 @@ const GameSetup = () => {
             setStartCharInput(startCharsStr);
             console.error(e);
         }
+    };
+
+    const handlePracticeTypeChange = (next: PracticeType) => {
+        onPracticeTypeChange(next);
+    };
+
+    const handleTypingPracticeSettingChange = (next: TypingPracticeSettings) => {
+        onTypingPracticeSettingsChange(next);
     };
     const handleSettingChange = async (partial: Partial<{ roundTimeSeconds: number; notAgainSameChar: boolean; lang: 'ko' | 'en'; mode: 'normal' | 'mission'; hintMode: 'special' | 'auto' }>) => {
         const cur = gameManager.getSetting();
@@ -245,7 +268,33 @@ const GameSetup = () => {
                     {/* 게임 설정 (오른쪽) */}
                     <div className="w-[320px] p-4 rounded-lg bg-gray-50 dark:bg-gray-800 dark:text-gray-200 max-h-[320px] overflow-auto">
                         <h2 className="text-xl font-semibold mb-4 text-gray-700 dark:text-gray-200">게임 설정</h2>
+                        <div className="mb-4">
+                            <label className="block text-sm text-gray-700 dark:text-gray-200 mb-2">연습 종류</label>
+                            <div className="flex gap-3">
+                                <label className="inline-flex items-center gap-2">
+                                    <input
+                                        type="radio"
+                                        name="practiceType"
+                                        checked={practiceType === 'word-chain'}
+                                        onChange={() => handlePracticeTypeChange('word-chain')}
+                                    />
+                                    <span className="text-sm text-gray-700 dark:text-gray-200">단어 연습</span>
+                                </label>
+                                <label className="inline-flex items-center gap-2">
+                                    <input
+                                        type="radio"
+                                        name="practiceType"
+                                        checked={practiceType === 'typing-practice'}
+                                        onChange={() => handlePracticeTypeChange('typing-practice')}
+                                    />
+                                    <span className="text-sm text-gray-700 dark:text-gray-200">타자 연습</span>
+                                </label>
+                            </div>
+                        </div>
+                        {practiceType === 'word-chain' && (
                         <div className="space-y-3">
+                            <h2 className="text-xl font-semibold mb-4 text-gray-700 dark:text-gray-200">단어 연습 설정</h2>
+
                             <div>
                                 <label className="block text-sm text-gray-700 dark:text-gray-200 mb-2">라운드 시간</label>
                                 <select value={localSetting?.roundTimeSeconds ?? 60} onChange={(e) => handleSettingChange({ roundTimeSeconds: parseInt(e.target.value, 10) })} className="w-full px-3 py-2 border rounded-lg">
@@ -352,6 +401,13 @@ const GameSetup = () => {
                             </div>
 
                         </div>
+                        )}
+                        {practiceType === 'typing-practice' && (
+                            <TypingPracticeSettingsPanel
+                                value={typingPracticeSettings}
+                                onChange={handleTypingPracticeSettingChange}
+                            />
+                        )}
                     </div>
                 </div>
             </div>

@@ -9,7 +9,7 @@ interface Props {
 
 const ConfirmModal = ({ message, onConfirm, onCancel }: Props) => {
     return (
-        <div className="fixed inset-0 backdrop-blur-md bg-black/30 dark:bg-black/40 flex items-center justify-center z-60" onClick={onCancel}>
+        <div className="fixed inset-0 backdrop-blur-md bg-black/30 dark:bg-black/40 flex items-center justify-center z-[60]" onClick={onCancel}>
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-[420px] p-6" onClick={(e) => e.stopPropagation()}>
                 <div className="text-lg font-medium mb-4 text-gray-800 dark:text-gray-100">확인</div>
                 <div className="mb-6 text-sm text-gray-700 dark:text-gray-200">{message}</div>

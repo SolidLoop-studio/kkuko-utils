@@ -2,14 +2,32 @@ import React from 'react';
 import { Send, MessageCircle } from 'lucide-react';
 import { useChat } from './hooks/useChat';
 import { useChatLog } from './hooks/useChatLog';
+import type { PracticeType } from './typing-practice/lib/typing-practice-config';
+
+type Props = {
+    practiceType?: PracticeType;
+    onStartTypingPractice?: () => Promise<void>;
+    onRestartTypingPractice?: () => void;
+    onExitTypingPractice?: () => void;
+};
 
 /**
  * 게임 내 채팅창 컴포넌트
  * 메시지 목록을 표시하고 채팅 입력을 처리합니다.
  */
-const KkutuChat = () => {
+const KkutuChat = ({
+    practiceType = 'word-chain',
+    onStartTypingPractice,
+    onRestartTypingPractice,
+    onExitTypingPractice,
+}: Props) => {
     const { chatInput, handleChatInputChange } = useChat();
-    const { messages, chatRef, handleSendMessage, sendHint } = useChatLog();
+    const { messages, chatRef, handleSendMessage, sendHint } = useChatLog({
+        practiceType,
+        onStartTypingPractice,
+        onRestartTypingPractice,
+        onExitTypingPractice,
+    });
     const { callGameInput, gameInputVisible } = useChat();
 
     return (

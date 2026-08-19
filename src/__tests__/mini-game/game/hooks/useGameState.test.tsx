@@ -55,6 +55,19 @@ describe('useGameState', () => {
         expect(mockDispatch).toHaveBeenCalledWith(setPendingStart(true));
     });
 
+    it('should start typing practice without checking word-chain state', () => {
+        const { result } = renderHook(() => useGameState());
+
+        act(() => {
+            result.current.startPractice();
+        });
+
+        expect(gameManager.canGameStart).not.toHaveBeenCalled();
+        expect(mockDispatch).toHaveBeenCalledTimes(1);
+        expect(mockDispatch).toHaveBeenCalledWith(setPlaying(true));
+        expect(mockDispatch).not.toHaveBeenCalledWith(setPendingStart(true));
+    });
+
     it('should block start if gameManager says no', () => {
         (gameManager.canGameStart as jest.Mock).mockReturnValue(false);
         

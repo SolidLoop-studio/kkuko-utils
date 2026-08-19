@@ -41,7 +41,7 @@ const HelpModal = ({ onClose }: Props) => {
 
                     <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-gray-700 dark:to-gray-800 p-4 rounded-xl border border-purple-200 dark:border-purple-700 shadow-sm">
                         <h4 className="font-bold text-purple-800 dark:text-purple-200 mb-2 flex items-center gap-2 text-base">
-                            🎯 게임중/종료 관련
+                            🎯 단어 연습 게임중/종료 관련
                         </h4>
                         <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-200 ml-2">
                             <li>게임 시작후 나오는 시작글자에 맞춰 업로드한 파일에 있는 단어를 입력하면 됩니다.</li>
@@ -51,6 +51,24 @@ const HelpModal = ({ onClose }: Props) => {
                             <li>힌트를 요청 시 해당 시작글자에 대해 처음 요청이면 초성만, 2번째면 1/3은 공개 나머지는 초성, 3번째는 절반, 4번째는 2/3, 5번째는 전체를 공개합니다.</li>
                             <li>게임 종료 시 사용했던 단어들을 알려주며 게임후 다시 확인하여 복습할 수 있습니다.</li>
                             <li>게임 종료후 채팅창에 <strong className="text-purple-700 dark:text-purple-300">/r</strong>, <strong className="text-purple-700 dark:text-purple-300">/ㄱ</strong>으로 게임을 나가지 않고 같은 설정으로 다시 시작할 수 있습니다.</li>
+                        </ul>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-cyan-50 to-sky-50 dark:from-gray-700 dark:to-gray-800 p-4 rounded-xl border border-cyan-200 dark:border-cyan-700 shadow-sm">
+                        <h4 className="font-bold text-cyan-800 dark:text-cyan-200 mb-2 flex items-center gap-2 text-base">
+                            타자 연습 관련
+                        </h4>
+                        <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-200 ml-2">
+                            <li>타자 연습은 업로드한 단어를 보고 정확히 입력하는 모드입니다.</li>
+                            <li>WPM, 분당타자수, 정확도, 콤보를 실시간으로 확인할 수 있습니다.</li>
+                            <li>성공 입력 타자수 = 오타 없이 입력 된 단어들의 타자수입니다. (초성1, 중성1, 종성이 있으면 1, 이중모음이면 추가로1, 겹받침이면 추가로1)</li>
+                            <li>분당타자수 = 성공 입력 타자수 / 경과 시간(초) × 60 입니다.</li>
+                            <li>WPM = 분당타자수 / 5 입니다.</li>
+                            <li>정확도 = 정타 글자 수 / 입력 글자 수 × 100 입니다.</li>
+                            <li>한국어 타자수는 자모 분해 기준으로 계산합니다. 예를 들어 완성형 글자도 초성, 중성, 종성 단위로 나누어 집계합니다.</li>
+                            <li>결과 화면의 꺾은선 그래프는 시간(초)에 따른 누적 분당타자수 변화를 보여줍니다.</li>
+                            <li>오타가 있는 상태로 제출하면 해당 단어는 실패로 기록되고 콤보가 초기화됩니다.</li>
+                            <li>시간 제한 또는 단어 수 제한을 선택해 연습할 수 있습니다.</li>
                         </ul>
                     </div>
 

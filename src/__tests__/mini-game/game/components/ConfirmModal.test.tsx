@@ -38,4 +38,16 @@ describe('ConfirmModal', () => {
         fireEvent.click(screen.getByText('Test'));
         expect(onCancel).not.toHaveBeenCalled();
     });
+
+    it('renders above later stacking contexts used by the blurred game surface', () => {
+        const { container } = render(
+            <>
+                <ConfirmModal message="Test" onConfirm={() => {}} onCancel={() => {}} />
+                <div data-testid="blurred-game-surface" className="blur-sm">WPM</div>
+            </>,
+        );
+
+        expect(container.firstElementChild).toHaveClass('fixed', 'z-[60]');
+        expect(screen.getByTestId('blurred-game-surface')).toHaveClass('blur-sm');
+    });
 });
