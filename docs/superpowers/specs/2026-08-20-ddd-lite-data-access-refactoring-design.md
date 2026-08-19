@@ -583,8 +583,8 @@ Mutation batch executor는 `operationId`, `batchIndex`, `payloadHash`가 있는 
 - 사용자가 제출한 UUID를 권한 또는 감사 로그의 actor로 그대로 사용하지 않는다.
 - `public`과 `anon`에는 승인 RPC 실행 권한을 부여하지 않고 `authenticated`에만 명시적으로 `EXECUTE`를 부여한다.
 - 관련 테이블의 브라우저 직접 mutation 권한은 가능한 한 제거하고 승인 RPC만 노출한다.
-- 노출된 `public` RPC는 입력 크기와 형식을 검사하는 `SECURITY INVOKER` wrapper로 둔다. 실제 다중 테이블 변경은 Data API에 노출되지 않은 schema의 `SECURITY DEFINER` 함수가 수행한다.
-- Private definer 함수는 `search_path = ''`, schema-qualified relation, 함수 내부 관리자 재검증과 최소 실행 권한을 적용한다. `public`, `anon`에는 wrapper와 private 함수 실행 권한을 부여하지 않는다.
+- 승인 RPC는 RLS로 보호된 여러 테이블을 하나의 transaction에서 변경해야 하므로 Data API에 노출되는 `public` 함수 자체를 `SECURITY DEFINER`로 둔다. `SECURITY INVOKER` wrapper가 실행 권한 없는 private 함수를 대신 호출하는 구조는 사용하지 않는다.
+- 모든 definer RPC는 `search_path = ''`, schema-qualified relation, 함수 내부 관리자 재검증과 최소 실행 권한을 적용한다. `PUBLIC`과 `anon`의 실행 권한을 revoke하고 `authenticated`에 필요한 public RPC만 명시적으로 grant한다.
 - service-role key는 브라우저에서 절대 사용하지 않으며 관리자 승인 흐름에도 사용하지 않는다.
 - RLS와 RPC 내부 권한 검사를 함께 사용한다.
 
@@ -625,7 +625,7 @@ SQL 파일은 가능한 범위에서 하나의 명시적 transaction으로 구�
 - 필요한 schema와 table 생성
 - primary key, foreign key, check 및 unique constraint
 - operation/batch 조회와 처리 RPC
-- public wrapper와 private implementation
+- hardened public `SECURITY DEFINER` RPC와 필요한 private helper
 - RLS 활성화 및 policy
 - `public`/`anon` revoke와 `authenticated` grant
 - 함수 comment와 안전한 공개 오류 code
