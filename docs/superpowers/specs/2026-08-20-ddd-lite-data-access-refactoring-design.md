@@ -89,6 +89,7 @@
 - `database.types.ts`를 수동 수정하지 않는다.
 - 첫 구현에서 `SCM`의 모든 사용처를 제거하지 않는다.
 - Kkutu Korea 비공식 API와 미니게임의 기존 IndexedDB 데이터 흐름은 이번 리팩터링 대상에 포함하지 않는다. 단, 대량 승인 작업 재개를 위한 별도 IndexedDB store는 추가한다.
+- Codex가 프로덕션 Supabase에 migration을 직접 적용하거나 `supabase db push`를 실행하지 않는다.
 
 ## 설계 원칙
 
@@ -611,7 +612,33 @@ Client Component에는 안정적인 오류 kind, code와 사용자용 message만
 - operation 및 영향받은 요청 row의 동시성 제어
 - 실패 시 전체 배치 rollback
 
-Migration 적용 후 `npm run gen-type`으로 `src/app/types/database.types.ts`를 재생성한다. 생성 파일은 직접 수정하지 않는다.
+### 프로덕션 수동 배포 체크포인트
+
+RPC, operation/batch 테이블, index, constraint, grant와 RLS 변경은 애플리케이션 코드와 분리된 단일 SQL migration 파일로 작성한다.
+
+```text
+supabase/migrations/<timestamp>_add_word_approval_batch.sql
+```
+
+SQL 파일은 가능한 범위에서 하나의 명시적 transaction으로 구성하고, 다음 내용을 함께 포함한다.
+
+- 필요한 schema와 table 생성
+- primary key, foreign key, check 및 unique constraint
+- operation/batch 조회와 처리 RPC
+- public wrapper와 private implementation
+- RLS 활성화 및 policy
+- `public`/`anon` revoke와 `authenticated` grant
+- 함수 comment와 안전한 공개 오류 code
+
+Codex는 SQL 파일을 작성하고 정적 검토 및 가능한 로컬 검증을 수행한 뒤 커밋한다. 그 다음 사용자에게 다음 정보를 전달하고 프로덕션 적용이 확인될 때까지 DB 의존 구현을 중단한다.
+
+- SQL 파일의 정확한 경로와 commit
+- 생성·변경되는 DB object 목록
+- Supabase SQL Editor 또는 사용자가 선택한 배포 수단으로 적용하는 순서
+- 적용 후 확인할 최소 검증 query
+- 적용 실패 시 수집할 오류 정보
+
+Codex는 프로덕션 Supabase Dashboard를 조작하거나 remote migration, `supabase db push`를 실행하지 않는다. 사용자가 적용 완료를 명시적으로 알려준 후에만 원격 schema를 기준으로 `npm run gen-type`을 실행하고 RPC adapter 연동과 통합 검증을 계속한다. `src/app/types/database.types.ts`는 직접 수정하지 않는다.
 
 ## 테스트 전략
 
@@ -693,7 +720,10 @@ DB 호출은 아직 기존 구현을 사용하더라도 domain/application 테�
 
 ### 3단계: 브라우저 직접 RPC와 원자적 배치
 
-- operation/batch 상태, 승인 transaction과 idempotency migration 추가
+- operation/batch 상태, 승인 transaction과 idempotency를 포함한 별도 SQL migration 파일 작성 및 검증
+- SQL 파일을 커밋하고 사용자에게 프로덕션 수동 적용 방법 전달
+- 사용자 적용 완료 확인까지 DB 의존 구현 중단
+- 적용 확인 후 `npm run gen-type`으로 원격 schema 타입 재생성
 - 브라우저 Supabase approval gateway 구현
 - IndexedDB approval job store 구현
 - DB 함수 내부 `auth.uid()` 및 관리자 authorization 추가
@@ -734,6 +764,8 @@ DB 호출은 아직 기존 구현을 사용하더라도 domain/application 테�
 
 `word-catalog`, `docs`, `identity`, `notifications`, `programs` 이전은 첫 구현 결과를 검증한 뒤 각각 별도 계획으로 작성한다.
 
+첫 구현 계획에는 SQL migration 커밋 직후의 사용자 배포 체크포인트를 명시한다. 사용자의 적용 완료 응답이 오기 전에는 `gen-type`, RPC adapter의 생성 타입 연동과 실제 프로덕션 RPC 호출 검증을 완료 처리하지 않는다.
+
 ## 수용 기준
 
 첫 구현 범위는 다음 조건을 모두 만족할 때 완료된다.
@@ -747,6 +779,8 @@ DB 호출은 아직 기존 구현을 사용하더라도 domain/application 테�
 - 같은 batch index의 payload hash가 다르면 변경 없이 conflict가 반환된다.
 - 새로고침 후 DB 완료 상태와 IndexedDB payload를 대조해 첫 미완료 배치부터 재개된다.
 - 대량 승인 흐름이 Vercel Function 실행시간 제한에 의존하지 않는다.
+- DB 변경은 별도 `supabase/migrations/*.sql` 파일로 제공되고 Codex가 프로덕션에 직접 적용하지 않는다.
+- 사용자의 프로덕션 적용 확인 전에는 `npm run gen-type`을 실행하거나 RPC 연동 완료를 주장하지 않는다.
 - Domain/Application 테스트는 Supabase mock 없이 실행된다.
 - Supabase 생성 타입은 Infrastructure 바깥으로 노출되지 않는다.
 - 오류가 `ApplicationError`로 변환되고 UI에는 안정적인 message/code만 전달된다.
@@ -790,6 +824,8 @@ RPC는 SQL 문자열 생성이나 화면용 가공을 담당하지 않고 원자
 - 대량 승인은 원자적이고 멱등한 배치로 처리하며 전체 operation은 재개 가능하게 한다.
 - 재개 payload는 IndexedDB, 완료 상태와 권한 판정은 DB를 진실의 원천으로 사용한다.
 - Vercel Function 실행시간을 대량 승인 처리의 정확성 또는 완료 조건으로 사용하지 않는다.
+- DB schema와 RPC는 별도 SQL migration 파일로 전달하며 프로덕션 적용은 사용자가 수행한다.
+- SQL 전달 후 사용자 적용 확인을 명시적 구현 체크포인트로 두고, 확인 후에만 원격 타입을 재생성한다.
 - Client 서버 상태의 기본 도구는 React Query로 한다.
 - 기존 `SCM`은 big-bang으로 제거하지 않고 context별로 점진 제거한다.
 - Full DDD, ORM 도입, 모든 기능의 동시 이전은 하지 않는다.
