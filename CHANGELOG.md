@@ -1,3 +1,38 @@
+# [v1.10.0](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.9.1...v1.10.0) - 2026-08-19
+
+## fix
+- ([8888939](https://github.com/SolidLoop-studio/kkuko-utils/commit/8888939)) - 오픈 DB 일단 봉쇄
+- ([9fbe67d](https://github.com/SolidLoop-studio/kkuko-utils/commit/9fbe67d)) - 대기 단어들 주제 목록 요청시 나오는 http400에러 수정
+- ([338bfab](https://github.com/SolidLoop-studio/kkuko-utils/commit/338bfab)) - keep typing exit modal above game stats
+- ([9996867](https://github.com/SolidLoop-studio/kkuko-utils/commit/9996867)) - measure active typing target character
+- ([9b8443d](https://github.com/SolidLoop-studio/kkuko-utils/commit/9b8443d)) - 도움말, 설정 패널 문구 수정
+- ([504e0f9](https://github.com/SolidLoop-studio/kkuko-utils/commit/504e0f9)) - refine typing practice experience
+- ([a9dd814](https://github.com/SolidLoop-studio/kkuko-utils/commit/a9dd814)) - polish typing practice experience
+- ([fadfc16](https://github.com/SolidLoop-studio/kkuko-utils/commit/fadfc16)) - gate typing practice hint commands
+- ([93342df](https://github.com/SolidLoop-studio/kkuko-utils/commit/93342df)) - polish typing practice review edge cases
+- ([bb7efea](https://github.com/SolidLoop-studio/kkuko-utils/commit/bb7efea)) - address typing practice final review
+- ([399e609](https://github.com/SolidLoop-studio/kkuko-utils/commit/399e609)) - address typing practice review findings
+- ([db03a03](https://github.com/SolidLoop-studio/kkuko-utils/commit/db03a03)) - block typing practice start errors
+- ([e6dd620](https://github.com/SolidLoop-studio/kkuko-utils/commit/e6dd620)) - delay typing practice timer until words load
+- ([2b506c7](https://github.com/SolidLoop-studio/kkuko-utils/commit/2b506c7)) - reset typing practice sessions
+- ([151fb2a](https://github.com/SolidLoop-studio/kkuko-utils/commit/151fb2a)) - fix: 프로필 등록 요청 문구 추가
+- ([497089c](https://github.com/SolidLoop-studio/kkuko-utils/commit/497089c)) - 서비스이용약관 업데이트
+- ([a1f7cea](https://github.com/SolidLoop-studio/kkuko-utils/commit/a1f7cea)) - 자퀴 단어 검색에서 주제 선택 모달의 검색 부분의 오류 수정
+- ([75cf457](https://github.com/SolidLoop-studio/kkuko-utils/commit/75cf457)) - 통일되지 않은 버튼 디자인 수정
+
+## feat
+- ([e376754](https://github.com/SolidLoop-studio/kkuko-utils/commit/e376754)) - integrate long-word typing feedback
+- ([95967e7](https://github.com/SolidLoop-studio/kkuko-utils/commit/95967e7)) - add scrolling typing target viewport
+- ([e444176](https://github.com/SolidLoop-studio/kkuko-utils/commit/e444176)) - calculate typing target viewport position
+- ([f21140e](https://github.com/SolidLoop-studio/kkuko-utils/commit/f21140e)) - guard incomplete typing submissions
+- ([e51ec6c](https://github.com/SolidLoop-studio/kkuko-utils/commit/e51ec6c)) - limit typing practice words to 100 characters
+- ([4abec95](https://github.com/SolidLoop-studio/kkuko-utils/commit/4abec95)) - add typing practice mode
+- ([2fc3030](https://github.com/SolidLoop-studio/kkuko-utils/commit/2fc3030)) - wire typing practice into mini game
+- ([ed05809](https://github.com/SolidLoop-studio/kkuko-utils/commit/ed05809)) - add typing practice play screen
+- ([5fd4773](https://github.com/SolidLoop-studio/kkuko-utils/commit/5fd4773)) - add typing practice session hook
+- ([69d86e6](https://github.com/SolidLoop-studio/kkuko-utils/commit/69d86e6)) - add typing practice setup
+- ([2bad01b](https://github.com/SolidLoop-studio/kkuko-utils/commit/2bad01b)) - add typing practice logic
+
 # [v1.9.1](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.9.0...v1.9.1) - 2026-07-21
 
 ## fix
