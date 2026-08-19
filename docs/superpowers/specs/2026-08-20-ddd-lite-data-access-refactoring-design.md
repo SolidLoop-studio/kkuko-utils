@@ -72,7 +72,7 @@
 
 - React 컴포넌트와 Domain/Application 코드에서 Supabase SDK 타입을 제거한다.
 - 기능별 모듈이 명확한 책임과 공개 인터페이스를 갖도록 한다.
-- 다단계 mutation을 서버에서 실행하고 명시적인 원자성 또는 재개 정책을 제공한다.
+- 다단계 mutation을 브라우저에서 단일 Database RPC로 요청하고, DB transaction과 멱등성 기록으로 배치별 원자성 및 전체 작업 재개를 보장한다.
 - 기술적 청크 분할, 재시도, DB Row 매핑을 Infrastructure에 둔다.
 - UI는 입력, 진행률, 성공/실패 표시만 담당하게 한다.
 - 읽기와 쓰기의 모델을 분리하여 조회 화면을 과도한 도메인 모델링 없이 구현한다.
@@ -88,7 +88,7 @@
 - 이번 첫 구현 범위에서 모든 SWR 사용처를 React Query로 일괄 변환하지 않는다.
 - `database.types.ts`를 수동 수정하지 않는다.
 - 첫 구현에서 `SCM`의 모든 사용처를 제거하지 않는다.
-- Kkutu Korea 비공식 API, 미니게임의 IndexedDB 데이터 흐름은 이번 리팩터링 대상에 포함하지 않는다.
+- Kkutu Korea 비공식 API와 미니게임의 기존 IndexedDB 데이터 흐름은 이번 리팩터링 대상에 포함하지 않는다. 단, 대량 승인 작업 재개를 위한 별도 IndexedDB store는 추가한다.
 
 ## 설계 원칙
 
@@ -108,9 +108,11 @@ Domain과 Application은 Supabase, React, Next.js를 import하지 않는다. App
 
 새 모듈은 기존 `SCM`을 내부에서 감싸지 않고 독립된 port와 Supabase adapter를 제공한다. 아직 이전하지 않은 기능은 기존 `SCM`을 유지한다. 기능이 이전될 때마다 해당 `SCM` 메서드와 인터페이스를 제거한다.
 
-### 서버 우선 mutation
+### 브라우저 직접 요청, DB 권한 보장
 
-DB를 변경하는 업무 작업은 Route Handler 또는 Server Action 뒤에서 실행한다. 서버는 세션에서 actor를 확인하며, 브라우저가 전달한 사용자 ID를 권한 판단 근거로 사용하지 않는다.
+RLS로 보호할 수 있는 조회와 mutation은 기능별 브라우저 Supabase adapter가 Data API와 Database RPC를 직접 호출한다. 내부 DB 요청을 전달하기 위한 Next.js Route Handler를 만들지 않는다. 브라우저는 인증 세션을 전달하지만 권한 판단의 주체가 아니다. Database Function은 `auth.uid()`와 DB의 사용자 role을 다시 확인하며, 요청 payload의 사용자 ID를 권한 근거로 사용하지 않는다.
+
+여러 테이블을 변경하는 업무 작업은 브라우저의 여러 Supabase 호출로 조합하지 않는다. 하나의 RPC 호출이 하나의 PostgreSQL transaction이 되도록 하며, 작업이 큰 경우에는 독립적으로 원자적인 배치 여러 개로 나눈다.
 
 ## 논리적 Bounded Context
 
@@ -175,7 +177,7 @@ Auth SDK 상태 구독은 브라우저 Infrastructure에 남을 수 있지만, D
 
 ```text
 Presentation
-  Client Component / Server Component / Route Handler / React Query Hook
+  Client Component / Server Component / React Query Hook
       |
       v
 Application
@@ -186,13 +188,13 @@ Domain
   Entity / Value Object / Policy / Domain Error
 
 Infrastructure
-  Supabase Adapter / GitHub Gateway / Row Mapper / Chunk Executor
+  Browser/Server Supabase Adapter / IndexedDB Job Store / GitHub Gateway / Row Mapper
       |
       v
 Supabase DB, Auth, Storage, External API
 ```
 
-Infrastructure는 Application이 정의한 port를 구현한다. Route Handler와 Server Component는 composition root를 통해 구체 adapter가 주입된 use case를 받는다.
+Infrastructure는 Application이 정의한 port를 구현한다. Client Component는 browser composition root, Server Component는 server composition root를 통해 구체 adapter가 주입된 use case를 받는다. Route Handler는 OAuth callback이나 외부 secret이 필요한 통합처럼 브라우저에서 직접 수행할 수 없는 경계에만 사용한다.
 
 ### 의존성 규칙
 
@@ -200,7 +202,7 @@ Infrastructure는 Application이 정의한 port를 구현한다. Route Handler�
 - `application/**`은 같은 모듈의 domain과 application 공통 타입만 import한다.
 - `infrastructure/**`은 domain/application과 생성된 DB 타입을 import할 수 있다.
 - `app/**`은 application의 command/query와 presentation adapter를 사용한다.
-- `app/**`에서 `@supabase/supabase-js`, `@supabase/ssr`, `database.types.ts`를 직접 import하지 않는다. Supabase composition root와 인증 callback 같은 명시된 경계 파일만 예외로 한다.
+- `app/**`에서 `@supabase/supabase-js`, `@supabase/ssr`, `database.types.ts`를 직접 import하지 않는다. Browser/server Supabase composition root와 인증 callback 같은 명시된 경계 파일만 예외로 한다.
 - 다른 bounded context의 Infrastructure를 직접 import하지 않는다. context 간 협력은 Application port를 사용한다.
 
 ## 권장 디렉터리 구조
@@ -233,8 +235,9 @@ src/
         get-approval-context.ts
         ports.ts
       infrastructure/
-        supabase-word-moderation-repository.ts
-        supabase-approval-transaction.ts
+        browser/
+          supabase-word-moderation-gateway.ts
+          word-approval-job-db.ts
         moderation-row-mapper.ts
       index.ts
 
@@ -293,6 +296,9 @@ Command는 사용자의 의도를 표현하며 DB insert 타입을 그대로 사
 ```ts
 export interface ApproveWordBatchCommand {
     operationId: string;
+    batchIndex: number;
+    totalBatches: number;
+    payloadHash: string;
     entries: Array<{
         word: string;
         themeCodes: string[];
@@ -308,43 +314,81 @@ export interface ApproveWordBatchResult {
 }
 ```
 
-`actorId`와 관리자 여부는 요청 payload가 아니라 서버 세션에서 가져와 use case 실행 context로 전달한다. 조회 DTO는 화면 요구에 맞게 별도로 정의하며, 생성된 `Database` Row 타입은 Infrastructure mapper 안에서만 사용한다.
+`actorId`와 관리자 여부는 command에 넣지 않는다. Database Function이 Supabase Auth JWT의 `auth.uid()`와 `public.users.role`을 조회해 최종 권한을 판정한다. 브라우저 application은 로그인 여부를 미리 확인해 빠른 UX 피드백만 제공한다. 조회 DTO는 화면 요구에 맞게 별도로 정의하며, 생성된 `Database` Row 타입은 Infrastructure mapper 안에서만 사용한다.
+
+### 작업 생명주기 port
+
+Application은 operation 생성, 상태 조회, 배치 실행과 취소만 알며 RPC 이름과 IndexedDB schema를 알지 않는다.
+
+```ts
+export interface WordApprovalOperationGateway {
+    startOperation(input: {
+        operationId: string;
+        inputHash: string;
+        totalEntries: number;
+        totalBatches: number;
+    }): Promise<Result<WordApprovalOperation>>;
+    getOperation(operationId: string): Promise<Result<WordApprovalOperation>>;
+    approveBatch(command: ApproveWordBatchCommand): Promise<Result<ApproveWordBatchResult>>;
+    cancelOperation(operationId: string): Promise<Result<void>>;
+}
+
+export interface WordApprovalJobStore {
+    save(job: StoredWordApprovalJob): Promise<void>;
+    get(operationId: string): Promise<StoredWordApprovalJob | null>;
+    listPending(): Promise<StoredWordApprovalJob[]>;
+    remove(operationId: string): Promise<void>;
+}
+```
+
+새 작업은 다음 순서로 시작한다.
+
+1. Domain/Application이 입력을 검증하고 결정적인 순서로 정규화한다.
+2. Browser Infrastructure가 전체 input hash와 각 batch payload hash를 계산한다.
+3. `crypto.randomUUID()`로 `operationId`를 만들고 IndexedDB에 payload를 저장한다.
+4. `startOperation` RPC로 DB operation을 생성한다.
+5. DB 생성이 성공하면 첫 batch부터 순차 실행한다.
+
+같은 `operationId`의 시작 요청이 재전송되면 소유자, input hash, 전체 항목 수와 배치 수가 모두 같을 때 기존 operation을 반환한다. 하나라도 다르면 conflict를 반환한다.
 
 ## Supabase 클라이언트 경계
 
 ### Browser client
 
-- OAuth 시작과 인증 상태 구독에만 사용한다.
-- 향후 명시적으로 필요한 realtime 기능은 전용 gateway를 통해 사용한다.
-- 업무 테이블의 관리자 mutation에는 사용하지 않는다.
+- OAuth 시작과 인증 상태 구독에 사용한다.
+- RLS로 보호되는 일반 조회는 기능별 browser query adapter를 통해 직접 실행한다.
+- 여러 테이블을 변경하는 관리자 작업은 기능별 gateway가 단일 Database RPC로 호출한다.
+- 각 RPC에는 현재 로그인 세션의 JWT가 전달되며 DB가 `auth.uid()`를 기준으로 권한을 다시 판정한다.
+- 테이블별 mutation을 브라우저에서 순차 조합하지 않는다.
 - 모듈 전역 `SCM`을 제공하지 않는다.
 
 ### Session-aware server client
 
-- Server Component, Route Handler, Server Action에서 요청별 cookie와 세션을 사용한다.
-- 일반 사용자 권한과 RLS를 유지하는 조회 및 mutation에 사용한다.
+- Server Component와 필요한 Route Handler에서 요청별 cookie와 세션을 사용한다.
+- SSR/metadata 조회와 브라우저에서 수행할 수 없는 서버 전용 작업에 사용한다.
 - 요청마다 생성하며 사용자별 상태를 module singleton에 저장하지 않는다.
 
 ### Service-role server client
 
 - `server-only` 경계에서만 생성한다.
-- 관리자 권한이 서버에서 검증된 후 필요한 작업에만 주입한다.
+- 관리자 대량 승인 흐름에는 사용하지 않는다.
+- 외부 secret 통합이나 운영 작업처럼 RLS를 의도적으로 우회해야 하는 예외에만 사용한다.
 - 브라우저 bundle로 import될 수 있는 파일에서 export하지 않는다.
 - Route Handler마다 직접 생성하지 않고 하나의 factory를 사용한다.
 
 ## Composition Root
 
-구체 구현 생성은 Route Handler나 페이지에 흩어 놓지 않는다. 기능별 서버 composition root가 request context를 받아 use case를 조립한다.
+구체 구현 생성을 컴포넌트나 페이지에 흩어 놓지 않는다. 기능별 browser/server composition root가 실행 환경에 맞는 use case를 조립한다.
 
 ```text
-createWordModerationServices(requestContext)
-  -> create session-aware Supabase client
-  -> verify current actor
-  -> create SupabaseApprovalTransaction
+createBrowserWordModerationServices()
+  -> use singleton browser Supabase client
+  -> create IndexedDB WordApprovalJobStore
+  -> create SupabaseWordModerationGateway
   -> create ApproveWordBatch use case
 ```
 
-Service-role이 필요한 경우 먼저 session-aware client로 사용자를 확인하고, 서버의 authorization policy가 관리자임을 검증한 뒤 service-role adapter를 생성한다.
+브라우저 composition root의 Supabase client singleton은 연결과 인증 세션만 공유한다. 사용자별 업무 cache와 진행 상태는 React Query 및 IndexedDB에 저장한다. Server Component 조회는 별도의 request-scoped server composition root를 사용한다.
 
 ## 조회 흐름
 
@@ -366,12 +410,12 @@ Server Component는 Supabase query builder를 직접 작성하지 않는다. `ge
 ```text
 Client Component
   -> feature React Query hook
-  -> Route Handler
   -> application query
-  -> Supabase query adapter
+  -> browser Supabase query adapter
+  -> Supabase Data API / RPC
 ```
 
-React Query hook은 query key, stale time, retry, API response parsing을 소유한다. 컴포넌트는 fetcher와 DB 오류 형태를 알지 않는다.
+React Query hook은 query key, stale time, retry와 application result 처리를 소유한다. 브라우저 query adapter가 Supabase 응답과 DB 오류를 DTO 및 `ApplicationError`로 변환하므로 컴포넌트는 query builder와 DB 오류 형태를 알지 않는다.
 
 기존 SWR 사용처는 해당 기능을 이전할 때 React Query로 전환한다. Kkutu 외부 API처럼 이미 독립된 흐름은 별도 리팩터링 요청이 없는 한 유지한다.
 
@@ -380,15 +424,14 @@ React Query hook은 query key, stale time, retry, API response parsing을 소유
 ```text
 Client Component
   -> feature mutation hook
-  -> protected Route Handler or Server Action
-  -> authenticate and authorize actor
   -> application command handler
-  -> transaction port
-  -> Supabase RPC / repository adapters
+  -> browser Supabase gateway
+  -> authenticated Database RPC
+  -> DB authorization and transaction
   -> invalidate affected query keys
 ```
 
-Presentation은 파일 선택과 기본 형식 검사, 진행 단계 표시, command 전송, 성공 요약 또는 프로젝트 Modal을 통한 오류 표시, 완료 후 cache 무효화만 담당한다. 단어, 주제, 로그, 기여도, 대기 요청 삭제 순서를 직접 제어하지 않는다.
+Presentation은 파일 선택과 기본 형식 검사, 진행 단계 표시, command 전송, 성공 요약 또는 프로젝트 Modal을 통한 오류 표시, 완료 후 cache 무효화만 담당한다. 단어, 주제, 로그, 기여도, 대기 요청 삭제 순서를 직접 제어하지 않는다. 브라우저 application은 배치 실행과 재개를 조정하지만 실제 권한과 원자성은 DB가 보장한다.
 
 ## 대량 승인과 트랜잭션 설계
 
@@ -407,18 +450,78 @@ Supabase adapter는 이 작업을 PostgreSQL transaction 안에서 수행하는 
 
 ### 큰 입력의 배치 의미
 
-모든 입력을 하나의 거대한 DB transaction으로 처리하지 않는다. Application은 사용자 관점의 전체 작업을 `operationId`로 식별하고, Infrastructure는 서버가 정한 최대 크기의 원자적 배치로 나눈다.
+모든 입력을 하나의 거대한 DB transaction으로 처리하지 않는다. Application은 사용자 관점의 전체 작업을 `operationId`로 식별하고, browser Infrastructure는 정규화된 입력을 결정적인 순서로 정렬한 뒤 설정된 최대 크기의 원자적 배치로 나눈다. Database Function은 배치 항목 수의 상한을 다시 검사하므로 변조된 클라이언트가 과도한 payload를 실행할 수 없다.
 
-- 청크 크기와 동시성은 서버 Infrastructure 설정이다.
+- 청크 크기는 browser Infrastructure 설정이며 DB가 최대값을 강제한다.
+- mutation 배치는 lock 경쟁과 처리 순서 혼란을 줄이기 위해 기본적으로 순차 실행한다.
 - 각 배치는 `operationId`와 `batchIndex`로 멱등하게 처리한다.
+- 각 배치는 정규화 payload의 SHA-256 `payloadHash`를 전달한다.
 - 이미 성공한 배치를 재전송하면 중복 로그나 기여도가 생성되지 않는다.
 - 배치 하나는 원자적으로 성공하거나 실패한다.
-- 전체 작업이 일부 배치까지 완료된 경우 결과에 완료/실패 배치를 명시한다.
+- 전체 작업이 일부 배치까지 완료된 경우 DB의 operation 조회 결과가 완료된 batch index를 반환한다.
 - 사용자는 같은 `operationId`로 실패 지점부터 재개할 수 있다.
 
-초기 구현은 별도 background worker를 도입하지 않는다. Client의 feature gateway가 보호된 Route Handler를 통해 다음 배치를 요청하고 진행률을 갱신한다. 브라우저는 DB query나 Supabase 청크 제한을 알지 않고 `operationId`, 전체 진행률, 재개 토큰만 다룬다.
+초기 구현은 Route Handler, Server Action, background worker를 사용하지 않는다. Browser feature gateway가 Supabase Database RPC를 직접 호출하고 진행률을 갱신한다. Vercel Function은 대량 승인 요청 경로에 포함되지 않는다.
 
-향후 요청 크기나 Vercel 실행 시간 제한이 실제 문제가 되면 동일 command 계약을 유지한 채 queue/worker adapter로 교체할 수 있다.
+브라우저가 닫히거나 새로고침되어도 같은 브라우저에서 재개할 수 있도록 정규화 입력, `operationId`, 배치 크기와 전체 input hash를 IndexedDB에 저장한다. IndexedDB 데이터가 없으면 사용자가 원본 파일을 다시 선택해야 하며, 전체 input hash가 일치할 때만 기존 operation을 재개한다.
+
+### Operation과 배치 상태
+
+DB는 전체 작업과 완료된 배치를 별도 테이블로 기록한다.
+
+```text
+word_approval_operations
+  id uuid primary key
+  requested_by uuid not null
+  input_hash text not null
+  total_entries integer not null
+  total_batches integer not null
+  completed_batches integer not null
+  status running | completed | cancelled
+  created_at timestamptz not null
+  updated_at timestamptz not null
+  completed_at timestamptz null
+
+word_approval_batches
+  operation_id uuid not null
+  batch_index integer not null
+  payload_hash text not null
+  entry_count integer not null
+  result jsonb not null
+  committed_at timestamptz not null
+  primary key (operation_id, batch_index)
+```
+
+배치 RPC는 다음 순서로 실행한다.
+
+1. `auth.uid()`로 호출자를 확인한다.
+2. `public.users.role = 'admin'`인지 DB에서 검사한다.
+3. operation이 호출자 소유이고 `running` 상태인지 확인한다.
+4. operation row를 잠가 같은 operation의 동시 처리를 직렬화한다.
+5. 같은 `batchIndex`의 완료 기록을 조회한다.
+6. 완료 기록과 `payloadHash`가 같으면 기존 결과를 반환한다.
+7. 완료 기록과 `payloadHash`가 다르면 conflict로 중단한다.
+8. 영향받는 요청과 단어 row를 잠그고 업무 변경을 set-based SQL로 처리한다.
+9. 배치 결과를 `word_approval_batches`에 기록한다.
+10. 마지막 배치까지 완료되면 operation을 `completed`로 변경한다.
+
+함수 호출 하나가 하나의 PostgreSQL transaction이므로 8~10번 중 오류가 발생하면 해당 배치의 업무 변경과 완료 기록이 함께 rollback된다. 실패 기록을 같은 transaction에 남기지 않으며, 완료 레코드가 없는 batch를 재시도 대상으로 본다.
+
+### IndexedDB 작업 저장소
+
+`word-approval-job-db.ts`는 같은 브라우저에서 작업을 재개하기 위한 payload를 보관한다.
+
+```ts
+export interface StoredWordApprovalJob {
+    operationId: string;
+    inputHash: string;
+    entries: NormalizedWordApprovalEntry[];
+    batchSize: number;
+    createdAt: string;
+}
+```
+
+IndexedDB의 완료 상태는 권위 있는 데이터가 아니다. 재개 시 application은 먼저 DB operation을 조회하고, DB가 반환한 완료 batch index와 로컬 payload hash를 대조한 후 미완료 배치만 실행한다. 완료된 operation의 로컬 payload는 결과 확인 후 삭제한다.
 
 ### 진행률
 
@@ -436,17 +539,17 @@ UI 문구는 Presentation에서 결정하며 Infrastructure가 React state callb
 
 ## 청크 실행기
 
-`shared/infrastructure/supabase/chunk-executor.ts`는 기술적인 배열 분할과 제한된 동시 실행을 제공한다.
+`shared/infrastructure/supabase/chunk-executor.ts`는 조회용 기술 청크를 제공한다. `word-moderation` mutation 배치는 operation과 payload hash 의미가 있으므로 전용 batch executor가 담당한다.
 
 - 빈 입력은 즉시 빈 결과를 반환한다.
-- 기본 청크 크기와 최대 동시성은 서버 설정으로 제한한다.
+- 기본 청크 크기와 최대 동시성은 Infrastructure 설정으로 제한한다.
 - 실패 시 성공 결과를 전체 성공처럼 반환하지 않는다.
 - `continueOnError` 같은 boolean 대신 `fail-fast` 또는 `collect-errors` 정책을 명시한다.
 - 배치 index와 원본 입력 위치를 보존한다.
-- 재시도는 transient 오류에만 제한하고 지수 backoff와 최대 횟수를 둔다.
+- 조회 재시도는 transient 오류에만 제한하고 지수 backoff와 최대 횟수를 둔다.
 - 업무 mutation에는 멱등성 키가 없는 자동 재시도를 하지 않는다.
 
-Query adapter의 `.in()` 분할처럼 단순 조회 청크에도 사용할 수 있지만, 업무 transaction 배치는 전용 approval adapter가 의미를 소유한다.
+Mutation batch executor는 `operationId`, `batchIndex`, `payloadHash`가 있는 요청만 재시도한다. 재개 전에는 DB 완료 상태를 다시 조회한다.
 
 ## 도메인 규칙의 위치
 
@@ -473,27 +576,22 @@ Query adapter의 `.in()` 분할처럼 단순 조회 청크에도 사용할 수 �
 
 ## 인증과 권한
 
-- Route Handler는 서버에서 검증된 user를 얻는다.
-- 관리자 command는 서버의 관리자 판정 정책을 통과해야 한다.
-- `processed_by`, `added_by`, 기여도 대상은 서버가 현재 actor와 대기 요청 데이터로 계산한다.
+- 브라우저의 Redux role은 UI 접근 제어와 빠른 피드백에만 사용하며 보안 근거로 신뢰하지 않는다.
+- Database Function은 `auth.uid()`로 호출자를 식별하고 `public.users.role = 'admin'`을 직접 확인한다.
+- `processed_by`, `added_by`, 기여도 대상은 DB가 현재 actor와 대기 요청 데이터로 계산한다.
 - 사용자가 제출한 UUID를 권한 또는 감사 로그의 actor로 그대로 사용하지 않는다.
-- service-role key는 server-only factory 밖에서 참조하지 않는다.
-- RLS는 방어 계층으로 유지하며 service-role 사용은 최소화한다.
+- `public`과 `anon`에는 승인 RPC 실행 권한을 부여하지 않고 `authenticated`에만 명시적으로 `EXECUTE`를 부여한다.
+- 관련 테이블의 브라우저 직접 mutation 권한은 가능한 한 제거하고 승인 RPC만 노출한다.
+- 노출된 `public` RPC는 입력 크기와 형식을 검사하는 `SECURITY INVOKER` wrapper로 둔다. 실제 다중 테이블 변경은 Data API에 노출되지 않은 schema의 `SECURITY DEFINER` 함수가 수행한다.
+- Private definer 함수는 `search_path = ''`, schema-qualified relation, 함수 내부 관리자 재검증과 최소 실행 권한을 적용한다. `public`, `anon`에는 wrapper와 private 함수 실행 권한을 부여하지 않는다.
+- service-role key는 브라우저에서 절대 사용하지 않으며 관리자 승인 흐름에도 사용하지 않는다.
+- RLS와 RPC 내부 권한 검사를 함께 사용한다.
 
 ## 오류 처리와 관측성
 
-Route Handler는 `ApplicationError.kind`를 일관된 HTTP 상태로 매핑한다.
+Browser Supabase adapter는 PostgREST 및 Database Function 오류 code를 `ApplicationError.kind`로 변환한다. 권한 오류는 `unauthorized` 또는 `forbidden`, payload hash 충돌은 `conflict`, DB/network 장애는 `infrastructure`로 매핑한다.
 
-| 오류 | HTTP 상태 |
-| --- | --- |
-| `validation` | 400 |
-| `unauthorized` | 401 |
-| `forbidden` | 403 |
-| `not-found` | 404 |
-| `conflict` | 409 |
-| `infrastructure` | 500 또는 일시 장애 시 503 |
-
-Client에는 안정적인 오류 code와 사용자용 message만 반환한다. DB query, key, service-role 관련 정보와 원본 stack은 서버 로그에만 남긴다.
+Client Component에는 안정적인 오류 kind, code와 사용자용 message만 전달한다. DB query와 내부 함수 stack은 console 또는 Modal에 그대로 노출하지 않는다. DB 함수는 안전한 공개 오류 code만 반환하고 상세 오류는 Supabase DB 로그에서 확인한다.
 
 대량 작업 로그에는 `operationId`, `batchIndex`, `actorId`, `entryCount`, `durationMs`, 결과와 내부 오류 code를 포함한다. Application 결과가 성공인데 일부 필수 side effect가 실패하는 상태는 허용하지 않는다.
 
@@ -504,9 +602,13 @@ Client에는 안정적인 오류 code와 사용자용 message만 반환한다. D
 대량 승인에는 최소한 다음 DB 계약이 필요하다.
 
 - 승인 transaction RPC
-- `operation_id + batch_index` 중복 실행을 막는 unique constraint 또는 처리 기록
+- `word_approval_operations`와 `word_approval_batches` 테이블
+- `operation_id + batch_index` 중복 실행을 막는 primary key
+- operation input hash와 batch payload hash 검증
 - 로그 중복 방지를 위한 명시적 idempotency 정책
-- RPC 실행 권한과 관리자 검증 정책
+- `auth.uid()`와 `users.role`을 사용하는 관리자 검증
+- `public`/`anon` revoke와 `authenticated` grant를 포함한 RPC 실행 권한
+- operation 및 영향받은 요청 row의 동시성 제어
 - 실패 시 전체 배치 rollback
 
 Migration 적용 후 `npm run gen-type`으로 `src/app/types/database.types.ts`를 재생성한다. 생성 파일은 직접 수정하지 않는다.
@@ -531,6 +633,8 @@ Supabase mock 대신 port의 작은 fake를 사용한다.
 - 승인 transaction 성공 결과 집계
 - 특정 배치 실패 시 이후 처리 중단 및 재개 정보 반환
 - 같은 `operationId` 재실행 시 중복 side effect 방지
+- 완료된 batch index를 건너뛰고 첫 미완료 배치부터 재개
+- DB 완료 상태와 로컬 payload hash 불일치 시 conflict 반환
 - Infrastructure 오류가 애플리케이션 오류로 보존됨
 
 ### Infrastructure integration test
@@ -541,16 +645,21 @@ Supabase mock 대신 port의 작은 fake를 사용한다.
 - RPC 성공 시 관련 테이블이 함께 변경됨
 - RPC 중간 오류 시 전체 배치 rollback
 - 같은 idempotency key 재호출 시 로그와 기여도 중복 없음
+- 같은 batch index에 다른 payload hash를 보내면 conflict
+- RPC 내부에서 `auth.uid()`와 DB role이 검증됨
 - RLS 및 RPC 권한이 일반 사용자와 관리자에게 올바르게 적용됨
+- 동시 호출이 operation 및 영향 row lock 정책을 준수함
 - 청크 조회가 입력 순서와 전체 결과를 보존
 
-### Route/Component test
+### Browser adapter/Component test
 
-- 인증되지 않은 요청은 401
-- 일반 사용자의 관리자 작업은 403
+- 인증되지 않은 사용자의 RPC 오류가 `unauthorized`로 매핑됨
+- 일반 사용자의 관리자 RPC 오류가 `forbidden`으로 매핑됨
 - validation 오류가 안정적인 응답 형식으로 반환됨
-- 승인 화면이 command만 전송하고 Supabase를 직접 호출하지 않음
+- 승인 화면이 command만 전송하고 Supabase SDK를 직접 호출하지 않음
 - 진행률과 재시도/재개 UI가 올바르게 표시됨
+- 새로고침 후 IndexedDB 작업과 DB 완료 배치를 대조해 재개함
+- IndexedDB가 없을 때 같은 input hash의 파일만 재개를 허용함
 - 오류는 프로젝트 Modal을 통해 표시됨
 
 ### 회귀 검증
@@ -582,16 +691,17 @@ Supabase mock 대신 port의 작은 fake를 사용한다.
 
 DB 호출은 아직 기존 구현을 사용하더라도 domain/application 테스트는 Supabase 없이 실행 가능해야 한다.
 
-### 3단계: 서버 mutation과 원자적 RPC
+### 3단계: 브라우저 직접 RPC와 원자적 배치
 
-- 승인 transaction migration과 idempotency 계약 추가
-- Supabase approval adapter 구현
-- protected Route Handler 또는 Server Action 추가
-- actor 인증과 관리자 authorization을 서버로 이동
+- operation/batch 상태, 승인 transaction과 idempotency migration 추가
+- 브라우저 Supabase approval gateway 구현
+- IndexedDB approval job store 구현
+- DB 함수 내부 `auth.uid()` 및 관리자 authorization 추가
+- RPC revoke/grant와 관련 RLS 정책 추가
 - UI의 직접 `SCM.add/delete/update` 호출 제거
-- 실패 배치 재개 흐름 추가
+- DB 완료 상태와 IndexedDB payload를 이용한 실패 배치 재개 흐름 추가
 
-이 단계가 완료되면 대량 승인 컴포넌트는 DB query 순서와 청크 크기를 알지 않는다.
+이 단계가 완료되면 대량 승인 컴포넌트는 DB query 순서, table 구조와 RPC 이름을 알지 않는다. 대량 승인 경로에는 Next.js Route Handler, Server Action과 Vercel Function이 존재하지 않는다.
 
 ### 4단계: `word-catalog` query 분리
 
@@ -620,7 +730,7 @@ DB 호출은 아직 기존 구현을 사용하더라도 domain/application 테�
 
 - 1단계 공통 경계와 테스트 안전망
 - 2단계 `word-moderation` 규칙 및 use case 추출
-- 3단계 대량 승인 서버 mutation과 원자적 배치 처리
+- 3단계 브라우저 직접 RPC와 재개 가능한 원자적 배치 처리
 
 `word-catalog`, `docs`, `identity`, `notifications`, `programs` 이전은 첫 구현 결과를 검증한 뒤 각각 별도 계획으로 작성한다.
 
@@ -630,9 +740,13 @@ DB 호출은 아직 기존 구현을 사용하더라도 domain/application 테�
 
 - `AddWordsHome`에서 Supabase SDK, `SCM`, `supabaseInQueryChunk`를 import하지 않는다.
 - 컴포넌트는 승인 command와 진행률만 다룬다.
-- 승인 actor는 서버에서 인증·인가된다.
+- 브라우저 gateway가 Next.js `/api`를 거치지 않고 Supabase Database RPC를 직접 호출한다.
+- 승인 actor는 RPC 내부에서 `auth.uid()`와 DB의 `users.role`로 인증·인가된다.
 - 하나의 원자적 배치 안에서 단어, 주제, 로그, 기여도, 대기 요청 변경이 함께 commit 또는 rollback된다.
 - 같은 operation/batch를 재실행해도 로그와 기여도가 중복되지 않는다.
+- 같은 batch index의 payload hash가 다르면 변경 없이 conflict가 반환된다.
+- 새로고침 후 DB 완료 상태와 IndexedDB payload를 대조해 첫 미완료 배치부터 재개된다.
+- 대량 승인 흐름이 Vercel Function 실행시간 제한에 의존하지 않는다.
 - Domain/Application 테스트는 Supabase mock 없이 실행된다.
 - Supabase 생성 타입은 Infrastructure 바깥으로 노출되지 않는다.
 - 오류가 `ApplicationError`로 변환되고 UI에는 안정적인 message/code만 전달된다.
@@ -659,7 +773,11 @@ RPC는 SQL 문자열 생성이나 화면용 가공을 담당하지 않고 원자
 
 ### 대량 작업의 실행 시간 위험
 
-원자적 배치 크기를 서버에서 제한하고 operation 단위 재개를 지원한다. 실제 운영 지표가 필요성을 보여 줄 때만 queue/worker를 도입한다.
+원자적 배치 크기를 browser Infrastructure에서 보수적으로 설정하고 Database Function이 최대 항목 수를 검증한다. RPC 실행시간을 측정해 다음 작업의 기본 배치 크기를 조정할 수 있지만, 한 operation 안에서는 배치 크기를 바꾸지 않는다. Supabase/PostgREST 및 PostgreSQL timeout이 발생해도 operation 단위로 재개한다.
+
+### 브라우저 종료와 로컬 데이터 손실 위험
+
+정규화 payload와 operation metadata를 IndexedDB에 저장한다. IndexedDB가 삭제되면 동일한 input hash를 가진 원본 파일을 다시 선택해야 재개할 수 있다. DB는 완료된 배치와 결과만 권위 있게 관리하며 미완료 payload 전체를 보관하지 않는다.
 
 ## 결정 사항
 
@@ -667,8 +785,11 @@ RPC는 SQL 문자열 생성이나 화면용 가공을 담당하지 않고 원자
 - 첫 migration 대상은 `word-moderation`의 관리자 대량 승인 흐름이다.
 - Supabase는 Infrastructure adapter로 유지한다.
 - 생성된 DB 타입과 Supabase 오류 타입은 Infrastructure 밖으로 노출하지 않는다.
-- DB mutation은 서버 경계를 통해 실행한다.
+- RLS로 보호되는 클라이언트 조회는 browser Supabase adapter가 직접 실행한다.
+- 관리자 대량 승인 mutation은 browser Supabase gateway가 단일 Database RPC로 직접 실행하며 Next.js `/api`를 거치지 않는다.
 - 대량 승인은 원자적이고 멱등한 배치로 처리하며 전체 operation은 재개 가능하게 한다.
+- 재개 payload는 IndexedDB, 완료 상태와 권한 판정은 DB를 진실의 원천으로 사용한다.
+- Vercel Function 실행시간을 대량 승인 처리의 정확성 또는 완료 조건으로 사용하지 않는다.
 - Client 서버 상태의 기본 도구는 React Query로 한다.
 - 기존 `SCM`은 big-bang으로 제거하지 않고 context별로 점진 제거한다.
 - Full DDD, ORM 도입, 모든 기능의 동시 이전은 하지 않는다.
