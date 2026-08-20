@@ -122,14 +122,13 @@ describe('WordDeletionPanel', () => {
         expect(screen.getByText('처리된 요청: 2개')).toBeInTheDocument();
     });
 
-    it('application 오류를 내부 정보 없는 접근 가능한 Modal로 표시하고 focus를 복원한다', async () => {
+    it('application 오류를 내부 정보 없는 접근 가능한 Modal로 표시하고 focus를 가둔다', async () => {
         const clearError = jest.fn();
         const user = userEvent.setup();
         const { rerender } = render(
             <WordDeletionPanel deletion={{ ...idleDeletion, clearError }} />,
         );
         const fileInput = screen.getByLabelText(/클릭하여 파일 업로드/) as HTMLInputElement;
-        fileInput.focus();
 
         rerender(
             <WordDeletionPanel
@@ -159,7 +158,6 @@ describe('WordDeletionPanel', () => {
 
         await user.click(screen.getByRole('button', { name: '확인' }));
         await waitFor(() => expect(clearError).toHaveBeenCalledTimes(1));
-        await waitFor(() => expect(fileInput).toHaveFocus());
     });
 
     it('저장된 작업의 ID와 생성 시간을 표시하고 재개와 취소를 각각 한번만 요청한다', async () => {
@@ -265,6 +263,78 @@ describe('WordDeletionPanel', () => {
 
         resolveStart?.();
         await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+    });
+
+    it('지연된 시작 실패 오류를 닫으면 처리 시작 control로 focus를 복원한다', async () => {
+        const user = userEvent.setup();
+        let rejectStart: ((reason?: unknown) => void) | undefined;
+        const start = jest.fn(() => new Promise<void>((_resolve, reject) => {
+            rejectStart = reject;
+        }).catch(() => undefined));
+        const clearError = jest.fn();
+        const { rerender } = render(
+            <WordDeletionPanel deletion={{ ...idleDeletion, start, clearError }} />,
+        );
+
+        await uploadText('가방');
+        const processButton = screen.getByRole('button', { name: '파일 처리' });
+        await user.click(processButton);
+        const progressDialog = screen.getByRole('alertdialog', { name: '처리 진행 중' });
+        progressDialog.focus();
+        expect(progressDialog).toHaveFocus();
+
+        rejectStart?.(new Error('delayed start failure'));
+        rerender(
+            <WordDeletionPanel
+                deletion={{
+                    ...idleDeletion,
+                    start,
+                    clearError,
+                    error: { kind: 'infrastructure', message: 'delayed start failure' },
+                }}
+            />,
+        );
+
+        await screen.findByRole('dialog', { name: '삭제 작업 오류' });
+        await user.click(screen.getByRole('button', { name: '확인' }));
+        await waitFor(() => expect(processButton).toHaveFocus());
+    });
+
+    it('파일 읽기 오류를 닫으면 keyboard-focusable 업로드 control로 focus를 복원한다', async () => {
+        const user = userEvent.setup();
+        const readAsText = jest.spyOn(FileReader.prototype, 'readAsText').mockImplementation(
+            function readAsTextWithFailure(this: FileReader) {
+                this.onerror?.(new ProgressEvent('error') as ProgressEvent<FileReader>);
+            },
+        );
+
+        try {
+            render(<WordDeletionPanel deletion={idleDeletion} />);
+            const uploadControl = screen.getByRole('button', { name: '파일 업로드 영역' });
+            uploadControl.focus();
+            expect(uploadControl).toHaveFocus();
+
+            fireEvent.drop(uploadControl, {
+                dataTransfer: { files: [new File(['가방'], 'broken.txt', { type: 'text/plain' })] },
+            });
+            await screen.findByRole('dialog', { name: '파일 읽기 오류' });
+
+            await user.click(screen.getByRole('button', { name: '확인' }));
+            await waitFor(() => expect(uploadControl).toHaveFocus());
+        } finally {
+            readAsText.mockRestore();
+        }
+    });
+
+    it('숨겨진 file input click 버블링이 업로드 picker를 다시 열지 않는다', () => {
+        render(<WordDeletionPanel deletion={idleDeletion} />);
+        const fileInput = screen.getByLabelText(/클릭하여 파일 업로드/) as HTMLInputElement;
+        const click = jest.spyOn(fileInput, 'click').mockImplementation();
+
+        fireEvent.click(fileInput);
+
+        expect(click).not.toHaveBeenCalled();
+        click.mockRestore();
     });
 
     it('source boundary does not reference SCM or Supabase query APIs', () => {

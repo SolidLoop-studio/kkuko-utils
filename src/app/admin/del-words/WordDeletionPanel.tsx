@@ -76,6 +76,13 @@ const progressPercent = (progress: DeletionProgress | null): number => {
     return Math.round((progress.completedEntries / progress.totalEntries) * 100);
 };
 
+const isRestorableFocusTarget = (element: Element | null): element is HTMLElement => (
+    element instanceof HTMLElement
+    && element !== document.body
+    && element.isConnected
+    && !element.matches(':disabled')
+);
+
 export default function WordDeletionPanel({ deletion }: WordDeletionPanelProps) {
     const [file, setFile] = useState<File | null>(null);
     const [fileName, setFileName] = useState('');
@@ -89,13 +96,24 @@ export default function WordDeletionPanel({ deletion }: WordDeletionPanelProps) 
     const activeReaderRef = useRef<FileReader | null>(null);
     const readGenerationRef = useRef(0);
     const focusBeforeErrorRef = useRef<HTMLElement | null>(null);
+    const fileUploadControlRef = useRef<HTMLDivElement | null>(null);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
     const isBusy = deletion.isPending || isActionPending;
+
+    const captureErrorFocusOrigin = (fallback?: Element | null) => {
+        if (visibleError !== null || deletion.error !== null) return;
+
+        const activeElement = document.activeElement;
+        const fallbackElement = fallback ?? null;
+        if (isRestorableFocusTarget(activeElement)) {
+            focusBeforeErrorRef.current = activeElement;
+        } else if (isRestorableFocusTarget(fallbackElement)) {
+            focusBeforeErrorRef.current = fallbackElement;
+        }
+    };
 
     useEffect(() => {
         if (deletion.error !== null) {
-            focusBeforeErrorRef.current = document.activeElement instanceof HTMLElement
-                ? document.activeElement
-                : null;
             setVisibleError(errorMessage('삭제 작업 오류', applicationErrorMessage(deletion.error)));
         }
     }, [deletion.error]);
@@ -113,8 +131,10 @@ export default function WordDeletionPanel({ deletion }: WordDeletionPanelProps) 
         if (activeReader?.readyState === FileReader.LOADING) activeReader.abort();
     }, []);
 
-    const readFile = (nextFile: File) => {
+    const readFile = (nextFile: File, focusOrigin?: Element | null) => {
         if (isBusy) return;
+
+        captureErrorFocusOrigin(focusOrigin);
 
         readGenerationRef.current += 1;
         const generation = readGenerationRef.current;
@@ -171,7 +191,7 @@ export default function WordDeletionPanel({ deletion }: WordDeletionPanelProps) 
 
         const selectedFile = event.target.files?.[0];
         event.currentTarget.value = '';
-        if (selectedFile) readFile(selectedFile);
+        if (selectedFile) readFile(selectedFile, fileUploadControlRef.current);
     };
 
     const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
@@ -179,10 +199,11 @@ export default function WordDeletionPanel({ deletion }: WordDeletionPanelProps) 
         if (isBusy) return;
 
         const droppedFile = event.dataTransfer.files?.[0];
-        if (droppedFile) readFile(droppedFile);
+        if (droppedFile) readFile(droppedFile, event.currentTarget);
     };
 
     const runAction = async (action: () => void | Promise<unknown>, showsProgress: boolean) => {
+        captureErrorFocusOrigin();
         setVisibleError(null);
         setIsActionPending(true);
         if (showsProgress) {
@@ -206,6 +227,7 @@ export default function WordDeletionPanel({ deletion }: WordDeletionPanelProps) 
         && (isRunRequested || deletion.isPending || progress !== null);
 
     const handleProcess = async () => {
+        captureErrorFocusOrigin();
         if (file === null) {
             setVisibleError(errorMessage('파일 업로드 오류', '처리할 파일을 먼저 업로드해주세요.'));
             return;
@@ -237,15 +259,32 @@ export default function WordDeletionPanel({ deletion }: WordDeletionPanelProps) 
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-8 border border-transparent dark:border-gray-700">
                 <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">파일 업로드</h2>
                 <div
+                    ref={fileUploadControlRef}
+                    role="button"
+                    tabIndex={isBusy ? -1 : 0}
+                    aria-disabled={isBusy}
                     aria-label="파일 업로드 영역"
                     className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 dark:hover:border-blue-400 transition-colors bg-white dark:bg-gray-900"
-                    onClick={() => {
-                        if (!isBusy) document.getElementById('word-deletion-file-upload')?.click();
+                    onClick={(event) => {
+                        if (event.target === fileInputRef.current) return;
+                        if (!isBusy) {
+                            captureErrorFocusOrigin(fileUploadControlRef.current);
+                            fileInputRef.current?.click();
+                        }
+                    }}
+                    onKeyDown={(event) => {
+                        if (event.key !== 'Enter' && event.key !== ' ') return;
+                        event.preventDefault();
+                        if (!isBusy) {
+                            captureErrorFocusOrigin(fileUploadControlRef.current);
+                            fileInputRef.current?.click();
+                        }
                     }}
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={handleDrop}
                 >
                     <input
+                        ref={fileInputRef}
                         id="word-deletion-file-upload"
                         type="file"
                         aria-label="클릭하여 파일 업로드"
@@ -349,9 +388,12 @@ export default function WordDeletionPanel({ deletion }: WordDeletionPanelProps) 
                 <DialogContent
                     className="max-w-sm bg-white text-center dark:bg-gray-800"
                     onCloseAutoFocus={(event) => {
-                        event.preventDefault();
-                        focusBeforeErrorRef.current?.focus();
+                        const focusTarget = focusBeforeErrorRef.current;
                         focusBeforeErrorRef.current = null;
+                        if (isRestorableFocusTarget(focusTarget)) {
+                            event.preventDefault();
+                            focusTarget.focus();
+                        }
                     }}
                 >
                     <DialogHeader>
