@@ -32,17 +32,48 @@ bootstrap below. It restores the checked-in base dump, applies the approval
 search-path migration, and repairs *local* migration history before applying
 the pending deletion migration.
 
+### Docker Desktop bootstrap
+
+The following uses `docker cp` and `psql -f` instead of a PowerShell text pipe,
+so the SQL files are copied byte-for-byte rather than being re-encoded by
+Windows PowerShell 5.1.
+
 ```powershell
 npx supabase start
 
-Get-Content -Raw supabase/migrations/20260820143308_remote_schema.sql |
-  docker exec -i supabase_db_kkuko-utils psql -U postgres -d postgres --set ON_ERROR_STOP=1
+docker cp supabase/migrations/20260820143308_remote_schema.sql supabase_db_kkuko-utils:/tmp/20260820143308_remote_schema.sql
+docker exec supabase_db_kkuko-utils psql -U postgres -d postgres --set ON_ERROR_STOP=1 -f /tmp/20260820143308_remote_schema.sql
 
-Get-Content -Raw supabase/migrations/20260821000000_set_word_approval_batch_search_path.sql |
-  docker exec -i supabase_db_kkuko-utils psql -U postgres -d postgres --set ON_ERROR_STOP=1
+docker cp supabase/migrations/20260821000000_set_word_approval_batch_search_path.sql supabase_db_kkuko-utils:/tmp/20260821000000_set_word_approval_batch_search_path.sql
+docker exec supabase_db_kkuko-utils psql -U postgres -d postgres --set ON_ERROR_STOP=1 -f /tmp/20260821000000_set_word_approval_batch_search_path.sql
 
 npx supabase migration repair --local --status applied 20260820000000 20260820143308 20260821000000
 npx supabase migration up --local
+
+# Optional, only after both psql commands and migration up succeed.
+docker exec supabase_db_kkuko-utils rm -f /tmp/20260820143308_remote_schema.sql /tmp/20260821000000_set_word_approval_batch_search_path.sql
+```
+
+### Podman bootstrap
+
+Podman uses the same local container name and command arguments. Replace each
+`docker` command above with the explicit equivalents below; do not mix the two
+runtimes in one bootstrap.
+
+```powershell
+npx supabase start
+
+podman cp supabase/migrations/20260820143308_remote_schema.sql supabase_db_kkuko-utils:/tmp/20260820143308_remote_schema.sql
+podman exec supabase_db_kkuko-utils psql -U postgres -d postgres --set ON_ERROR_STOP=1 -f /tmp/20260820143308_remote_schema.sql
+
+podman cp supabase/migrations/20260821000000_set_word_approval_batch_search_path.sql supabase_db_kkuko-utils:/tmp/20260821000000_set_word_approval_batch_search_path.sql
+podman exec supabase_db_kkuko-utils psql -U postgres -d postgres --set ON_ERROR_STOP=1 -f /tmp/20260821000000_set_word_approval_batch_search_path.sql
+
+npx supabase migration repair --local --status applied 20260820000000 20260820143308 20260821000000
+npx supabase migration up --local
+
+# Optional, only after both psql commands and migration up succeed.
+podman exec supabase_db_kkuko-utils rm -f /tmp/20260820143308_remote_schema.sql /tmp/20260821000000_set_word_approval_batch_search_path.sql
 ```
 
 This changes only the disposable local database and its local migration table;

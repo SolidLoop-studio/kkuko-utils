@@ -95,22 +95,35 @@ run the following inspection query. It contains no credentials and is safe to
 store; the connection configuration itself must remain outside source control.
 
 ```sql
+with expected_functions (expected_signature, function_oid) as (
+    values
+        (
+            'public.start_word_deletion_operation(uuid,text,integer,integer)',
+            to_regprocedure('public.start_word_deletion_operation(uuid,text,integer,integer)')
+        ),
+        (
+            'public.get_word_deletion_operation(uuid)',
+            to_regprocedure('public.get_word_deletion_operation(uuid)')
+        ),
+        (
+            'public.apply_word_deletion_batch(uuid,integer,integer,text,jsonb)',
+            to_regprocedure('public.apply_word_deletion_batch(uuid,integer,integer,text,jsonb)')
+        ),
+        (
+            'public.cancel_word_deletion_operation(uuid)',
+            to_regprocedure('public.cancel_word_deletion_operation(uuid)')
+        )
+)
 select
-    p.oid::regprocedure as signature,
+    expected.expected_signature,
+    p.oid::regprocedure as actual_signature,
     p.prosecdef,
     p.proconfig,
     has_function_privilege('anon', p.oid, 'EXECUTE') as anon_can_execute,
     has_function_privilege('authenticated', p.oid, 'EXECUTE') as authenticated_can_execute
-from pg_proc as p
-join pg_namespace as n on n.oid = p.pronamespace
-where n.nspname = 'public'
-  and p.oid::regprocedure::text in (
-    'start_word_deletion_operation(uuid,text,integer,integer)',
-    'get_word_deletion_operation(uuid)',
-    'apply_word_deletion_batch(uuid,integer,integer,text,jsonb)',
-    'cancel_word_deletion_operation(uuid)'
-  )
-order by p.oid::regprocedure::text;
+from expected_functions as expected
+left join pg_proc as p on p.oid = expected.function_oid
+order by expected.expected_signature;
 
 select
     c.relname,
@@ -155,9 +168,12 @@ before taking corrective action. Do not expose SQL exception text to end users.
 ## 9. Roll back only by moving forward
 
 If rollback is required, create a new reviewed forward migration. In dependency
-order, it must revoke and drop the four deletion RPCs, drop
-`word_deletion_batches`, then drop `word_deletion_operations` (and its remaining
-indexes). Apply it through the same approved migration workflow.
+order, it must revoke and drop the four public deletion RPCs, then drop the
+private helpers `private.word_deletion_operation_result(uuid)` and
+`private.assert_word_deletion_admin()`, then drop `word_deletion_batches`, and
+finally drop `word_deletion_operations` (and its remaining indexes). Do not drop
+the shared `private` schema. Apply the forward migration through the same
+approved migration workflow.
 
 Never edit, delete, rename, or reverse an already applied migration, and never
 use cloud migration repair to undo this rollout.
