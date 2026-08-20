@@ -75,8 +75,12 @@ describe('IndexedDbWordApprovalJobStore', () => {
         expect(database.delete).toHaveBeenCalledWith('word-approval-jobs', storedJob.operationId);
     });
 
-    it('생성 시 object store와 생성 시각 index를 만든다', () => {
-        new IndexedDbWordApprovalJobStore();
+    it('첫 store operation 시 object store와 생성 시각 index를 만든다', async () => {
+        const store = new IndexedDbWordApprovalJobStore();
+
+        expect(openDB).not.toHaveBeenCalled();
+
+        await store.listPending();
 
         const upgrade = (openDB as jest.Mock).mock.calls[0][2].upgrade;
         upgrade(database);
@@ -86,5 +90,15 @@ describe('IndexedDbWordApprovalJobStore', () => {
             keyPath: 'operationId',
         });
         expect(objectStore.createIndex).toHaveBeenCalledWith('by-created-at', 'createdAt');
+    });
+
+    it('동기 IndexedDB open 실패를 store operation의 rejected promise로 반환한다', async () => {
+        (openDB as jest.Mock).mockImplementation(() => {
+            throw new Error('IndexedDB open failed');
+        });
+        const store = new IndexedDbWordApprovalJobStore();
+
+        expect(openDB).not.toHaveBeenCalled();
+        await expect(store.listPending()).rejects.toThrow('IndexedDB open failed');
     });
 });

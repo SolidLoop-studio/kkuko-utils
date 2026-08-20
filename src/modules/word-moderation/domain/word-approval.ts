@@ -24,6 +24,21 @@ const validationError = (field: string, message: string) => ({
     message,
 });
 
+/** ICU locale data와 무관하게 Unicode scalar value 순서로 문자열을 비교합니다. */
+const compareUnicodeScalars = (left: string, right: string): number => {
+    const leftScalars = Array.from(left, (character) => character.codePointAt(0) ?? 0);
+    const rightScalars = Array.from(right, (character) => character.codePointAt(0) ?? 0);
+    const sharedLength = Math.min(leftScalars.length, rightScalars.length);
+
+    for (let index = 0; index < sharedLength; index += 1) {
+        if (leftScalars[index] !== rightScalars[index]) {
+            return leftScalars[index] - rightScalars[index];
+        }
+    }
+
+    return leftScalars.length - rightScalars.length;
+};
+
 export function isNoInjungTheme(themeCodes: readonly string[]): boolean {
     return themeCodes.some((themeCode) => NO_INJUNG_THEME_CODES.has(themeCode));
 }
@@ -54,13 +69,13 @@ export function normalizeWordApprovalEntries(
     }
 
     const value = Array.from(normalizedEntries, ([word, themeCodes]) => {
-        const sortedThemeCodes = Array.from(themeCodes).sort();
+        const sortedThemeCodes = Array.from(themeCodes).sort(compareUnicodeScalars);
         return {
             word,
             themeCodes: sortedThemeCodes,
             noinCanUse: isNoInjungTheme(sortedThemeCodes),
         };
-    }).sort((left, right) => left.word.localeCompare(right.word, 'ko'));
+    }).sort((left, right) => compareUnicodeScalars(left.word, right.word));
 
     return ok(value);
 }

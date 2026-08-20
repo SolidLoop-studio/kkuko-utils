@@ -105,11 +105,6 @@ export class RunWordApprovalService {
         operationId: string,
         onProgress?: (progress: ApprovalProgress) => void,
     ): Promise<Result<WordApprovalRunResult>> {
-        const operationResult = await this.operationGateway.getOperation(operationId);
-        if (!operationResult.ok) {
-            return operationResult;
-        }
-
         const job = await this.jobStore.get(operationId);
         if (job === null) {
             return err({ kind: 'not-found', message: '저장된 단어 승인 작업을 찾을 수 없습니다.' });
@@ -118,12 +113,48 @@ export class RunWordApprovalService {
         const payload = await buildApprovalPayload(job.entries, job.batchSize);
         this.reportProgress(onProgress, 'validating', 0, payload, job.entries.length);
 
-        const validationResult = this.validateOperation(operationResult.value, job, payload, true);
+        if (job.operationId !== operationId || job.inputHash !== payload.inputHash) {
+            return conflict('로컬 승인 작업과 payload가 일치하지 않습니다.');
+        }
+
+        let operationResult = await this.operationGateway.getOperation(operationId);
+        let canReplaceOperationId = false;
+        if (!operationResult.ok && operationResult.error.kind === 'not-found') {
+            canReplaceOperationId = true;
+            operationResult = await this.operationGateway.startOperation({
+                operationId: job.operationId,
+                inputHash: payload.inputHash,
+                totalEntries: job.entries.length,
+                totalBatches: payload.batches.length,
+            });
+        }
+        if (!operationResult.ok) {
+            return operationResult;
+        }
+
+        const validationResult = this.validateOperation(
+            operationResult.value,
+            job,
+            payload,
+            !canReplaceOperationId,
+        );
         if (!validationResult.ok) {
             return validationResult;
         }
 
-        return this.runValidatedOperation(operationResult.value, job, payload, onProgress);
+        let operationJob = job;
+        if (operationResult.value.operationId !== job.operationId) {
+            operationJob = { ...job, operationId: operationResult.value.operationId };
+            await this.jobStore.save(operationJob);
+            await this.jobStore.remove(job.operationId);
+        }
+
+        return this.runValidatedOperation(
+            operationResult.value,
+            operationJob,
+            payload,
+            onProgress,
+        );
     }
 
     async listPending(): Promise<StoredWordApprovalJob[]> {
@@ -132,7 +163,7 @@ export class RunWordApprovalService {
 
     async cancel(operationId: string): Promise<Result<void>> {
         const cancelResult = await this.operationGateway.cancelOperation(operationId);
-        if (!cancelResult.ok) {
+        if (!cancelResult.ok && cancelResult.error.kind !== 'not-found') {
             return cancelResult;
         }
 

@@ -5,6 +5,7 @@ import {
     serializeApprovalEntries,
     sha256,
 } from '@/src/modules/word-moderation/application/word-approval-payload';
+import { normalizeWordApprovalEntries } from '@/src/modules/word-moderation/domain/word-approval';
 
 if (!globalThis.crypto?.subtle) {
     Object.defineProperty(globalThis, 'crypto', {
@@ -44,5 +45,30 @@ describe('word approval payload', () => {
         expect(payload.batches).toHaveLength(2);
         expect(payload.inputHash).not.toBe(payload.batches[0].payloadHash);
         expect(payload.batches[0].batchIndex).toBe(0);
+    });
+
+    it('한글과 비한글 혼합 입력의 정규화 hash를 golden 값으로 고정한다', async () => {
+        const normalized = normalizeWordApprovalEntries([
+            { word: '😀', themeCodes: ['11'] },
+            { word: '나비', themeCodes: ['20', '10'] },
+            { word: 'apple', themeCodes: ['30'] },
+            { word: '가방', themeCodes: ['12'] },
+            { word: '42', themeCodes: ['2', '10'] },
+            { word: '각', themeCodes: ['13'] },
+        ]);
+        if (!normalized.ok) {
+            throw new Error('expected normalized mixed-character entries');
+        }
+
+        const payload = await buildApprovalPayload(normalized.value, 2);
+
+        expect(payload.inputHash).toBe(
+            '4ea8dca322962511f63f93d99090dfcff44026aaad9206d046cb23b1e1aa853d',
+        );
+        expect(payload.batches.map((batch) => batch.payloadHash)).toEqual([
+            'ae064e3d5a9ce71608f46a8a11753f5f2f16fd987eaca7c3fb132cf709d1032a',
+            '24372bb503b9f46cda1b61336a40d322cb14b624db4be8bdd76e7b07611293c7',
+            'f808c47ad767554f91ccaa8261f31bf9292f0ce7d7286e9e6fedf64aefbc0241',
+        ]);
     });
 });

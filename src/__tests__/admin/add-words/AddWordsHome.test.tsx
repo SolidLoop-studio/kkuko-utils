@@ -56,6 +56,7 @@ function useMockApprovalWorkflow() {
         resume: mockResume,
         cancel: mockCancel,
         pendingJobs: [],
+        isPendingJobsLoading: false,
         progress,
         isProcessing,
         error: null,

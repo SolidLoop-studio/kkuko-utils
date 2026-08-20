@@ -161,6 +161,22 @@ describe('useWordApproval', () => {
         });
     });
 
+    it('pending 작업 조회가 끝날 때까지 loading 상태를 노출한다', async () => {
+        const service = new FakeWordApprovalService();
+        let finishPendingQuery: (() => void) | undefined;
+        jest.spyOn(service, 'listPending').mockImplementation(() => new Promise((resolve) => {
+            finishPendingQuery = () => resolve([]);
+        }));
+
+        const { result } = renderHook(() => useWordApproval(service), {
+            wrapper: createWrapper(),
+        });
+
+        expect(result.current.isPendingJobsLoading).toBe(true);
+        await act(async () => finishPendingQuery?.());
+        await waitFor(() => expect(result.current.isPendingJobsLoading).toBe(false));
+    });
+
     it('승인 중 progress를 갱신하고 성공 후 pending 목록을 비운다', async () => {
         const service = new FakeWordApprovalService();
         const { result } = renderHook(() => useWordApproval(service), {

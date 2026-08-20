@@ -21,6 +21,29 @@ describe('word approval domain', () => {
         });
     });
 
+    it('한글과 비한글 단어를 Unicode scalar 순서로 정렬한다', () => {
+        const result = normalizeWordApprovalEntries([
+            { word: '😀', themeCodes: ['11'] },
+            { word: '나비', themeCodes: ['20', '10'] },
+            { word: 'apple', themeCodes: ['30'] },
+            { word: '가방', themeCodes: ['12'] },
+            { word: '42', themeCodes: ['2', '10'] },
+            { word: '각', themeCodes: ['13'] },
+        ]);
+
+        expect(result).toMatchObject({
+            ok: true,
+            value: [
+                { word: '42', themeCodes: ['10', '2'] },
+                { word: 'apple', themeCodes: ['30'] },
+                { word: '가방', themeCodes: ['12'] },
+                { word: '각', themeCodes: ['13'] },
+                { word: '나비', themeCodes: ['10', '20'] },
+                { word: '😀', themeCodes: ['11'] },
+            ],
+        });
+    });
+
     it('빈 단어와 빈 주제 코드를 거부한다', () => {
         expect(normalizeWordApprovalEntries([{ word: ' ', themeCodes: ['10'] }])).toMatchObject({
             ok: false,

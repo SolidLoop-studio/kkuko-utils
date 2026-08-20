@@ -129,6 +129,7 @@ class FakeWordApprovalOperationGateway implements WordApprovalOperationGateway {
     readonly getOperationResults: Result<WordApprovalOperation>[] = [];
     readonly approvedIndexes: number[] = [];
     readonly approvedCommands: ApproveWordBatchCommand[] = [];
+    readonly startedInputs: StartWordApprovalOperationInput[] = [];
     readonly results = new Map<number, ApproveWordBatchResult>();
     readonly authoritativeResults = new Map<number, ApproveWordBatchResult>();
 
@@ -138,6 +139,7 @@ class FakeWordApprovalOperationGateway implements WordApprovalOperationGateway {
         input: StartWordApprovalOperationInput,
     ): Promise<Result<WordApprovalOperation>> {
         this.events.push('gateway:start');
+        this.startedInputs.push(input);
         this.operation ??= {
             ...input,
             completedBatches: [],
@@ -306,6 +308,59 @@ describe('RunWordApprovalService', () => {
         expect(gateway.approvedIndexes).toEqual([]);
     });
 
+    it('로컬 job은 있지만 DB operation이 없으면 저장된 ID와 totals로 시작을 재시도한다', async () => {
+        const { events, gateway, service, store } = setup();
+        await store.save(storedJob());
+        gateway.getOperationResults.push(
+            err({ kind: 'not-found', message: 'operation not found' }),
+        );
+        events.length = 0;
+
+        const result = await service.resume('operation-1');
+
+        expect(result).toMatchObject({ ok: true, value: { operationId: 'operation-1' } });
+        expect(events.slice(0, 3)).toEqual(['store:get', 'gateway:get', 'gateway:start']);
+        expect(gateway.startedInputs).toEqual([{
+            operationId: 'operation-1',
+            inputHash: INPUT_HASH,
+            totalEntries: 3,
+            totalBatches: 3,
+        }]);
+        expect(gateway.approvedIndexes).toEqual([0, 1, 2]);
+    });
+
+    it('DB operation 재생성이 기존 operation ID를 반환하면 로컬 job을 안전하게 교체한다', async () => {
+        const { events, gateway, service, store } = setup();
+        await store.save(storedJob());
+        gateway.getOperationResults.push(
+            err({ kind: 'not-found', message: 'operation not found' }),
+        );
+        gateway.operation = {
+            ...runningOperation(),
+            operationId: 'operation-existing',
+        };
+        events.length = 0;
+
+        const result = await service.resume('operation-1');
+
+        expect(result).toMatchObject({
+            ok: true,
+            value: { operationId: 'operation-existing' },
+        });
+        expect(store.savedOperationIds).toEqual(['operation-1', 'operation-existing']);
+        expect(store.removedOperationIds).toEqual(['operation-1', 'operation-existing']);
+        expect(events.slice(0, 5)).toEqual([
+            'store:get',
+            'gateway:get',
+            'gateway:start',
+            'store:save',
+            'store:remove',
+        ]);
+        expect(gateway.approvedCommands.every(
+            (command) => command.operationId === 'operation-existing',
+        )).toBe(true);
+    });
+
     it.each([
         ['operation ID', { operationId: 'different' }],
         ['total entries', { totalEntries: 4 }],
@@ -457,5 +512,18 @@ describe('RunWordApprovalService', () => {
         expect(result).toEqual(gateway.cancelResult);
         expect(events).toEqual(['gateway:cancel:operation-1']);
         await expect(store.get('operation-1')).resolves.not.toBeNull();
+    });
+
+    it('cancel gateway가 not-found를 반환하면 취소 완료로 보고 로컬 job을 제거한다', async () => {
+        const { events, gateway, service, store } = setup();
+        await store.save(storedJob());
+        gateway.cancelResult = err({ kind: 'not-found', message: 'operation not found' });
+        events.length = 0;
+
+        const result = await service.cancel('operation-1');
+
+        expect(result).toEqual(ok(undefined));
+        expect(events).toEqual(['gateway:cancel:operation-1', 'store:remove']);
+        await expect(store.get('operation-1')).resolves.toBeNull();
     });
 });

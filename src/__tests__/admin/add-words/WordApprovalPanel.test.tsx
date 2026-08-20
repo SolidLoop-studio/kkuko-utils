@@ -7,6 +7,7 @@ import WordApprovalPanel, {
 
 const idleState: WordApprovalPanelProps['approvalState'] = {
     pendingJobs: [],
+    isPendingJobsLoading: false,
     progress: null,
     isProcessing: false,
     error: null,
@@ -44,7 +45,7 @@ describe('WordApprovalPanel', () => {
         ]);
     });
 
-    it('중단된 작업을 표시하고 정확한 operation ID로 재개하거나 취소한다', async () => {
+    it('중단된 작업별 접근 가능한 이름으로 정확한 operation ID를 재개하거나 취소한다', async () => {
         const user = userEvent.setup();
         const onResume = jest.fn().mockResolvedValue(undefined);
         const onCancel = jest.fn().mockResolvedValue(undefined);
@@ -55,28 +56,55 @@ describe('WordApprovalPanel', () => {
                 onCancel={onCancel}
                 approvalState={{
                     ...idleState,
-                    pendingJobs: [{
-                        operationId: 'operation-1',
-                        inputHash: 'input-hash',
-                        entries: [{
-                            word: '나비',
-                            themeCodes: ['10'],
-                            noinCanUse: true,
-                        }],
-                        batchSize: 50,
-                        createdAt: '2026-08-20T00:00:00.000Z',
-                    }],
+                    pendingJobs: [
+                        {
+                            operationId: 'operation-1',
+                            inputHash: 'input-hash-1',
+                            entries: [{
+                                word: '나비',
+                                themeCodes: ['10'],
+                                noinCanUse: true,
+                            }],
+                            batchSize: 50,
+                            createdAt: '2026-08-20T00:00:00.000Z',
+                        },
+                        {
+                            operationId: 'operation-2',
+                            inputHash: 'input-hash-2',
+                            entries: [{
+                                word: '가방',
+                                themeCodes: ['20'],
+                                noinCanUse: true,
+                            }],
+                            batchSize: 50,
+                            createdAt: '2026-08-20T01:00:00.000Z',
+                        },
+                    ],
                 }}
             />,
         );
 
         expect(screen.getByText('중단된 작업')).toBeInTheDocument();
         expect(screen.getByText(/operation-1/)).toBeInTheDocument();
-        await user.click(screen.getByRole('button', { name: '작업 재개' }));
+        await user.click(screen.getByRole('button', { name: 'operation-1 작업 재개' }));
         expect(onResume).toHaveBeenCalledWith('operation-1');
 
-        await user.click(screen.getByRole('button', { name: '작업 취소' }));
-        expect(onCancel).toHaveBeenCalledWith('operation-1');
+        await user.click(screen.getByRole('button', { name: 'operation-2 작업 취소' }));
+        expect(onCancel).toHaveBeenCalledWith('operation-2');
+    });
+
+    it('pending 작업을 조회하는 동안 새 작업 시작을 막는다', async () => {
+        render(
+            <WordApprovalPanel
+                onStart={jest.fn()}
+                approvalState={{ ...idleState, isPendingJobsLoading: true }}
+            />,
+        );
+
+        await uploadJson({ 나비: ['10'] });
+        expect(await screen.findByText(/나비/)).toBeInTheDocument();
+
+        expect(screen.getByRole('button', { name: '처리 시작' })).toBeDisabled();
     });
 
     it('진행 단계와 단어 및 배치 처리 수를 표시한다', () => {

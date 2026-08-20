@@ -18,6 +18,7 @@ export default function AddWordsHome() {
             onCancel={approval.cancel}
             approvalState={{
                 pendingJobs: approval.pendingJobs,
+                isPendingJobsLoading: approval.isPendingJobsLoading,
                 progress: approval.progress,
                 isProcessing: approval.isProcessing,
                 error: approval.error,

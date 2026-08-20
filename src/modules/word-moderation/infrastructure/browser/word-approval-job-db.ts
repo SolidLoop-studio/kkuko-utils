@@ -19,10 +19,10 @@ const STORE_NAME = 'word-approval-jobs';
 const CREATED_AT_INDEX = 'by-created-at';
 
 export class IndexedDbWordApprovalJobStore implements WordApprovalJobStore {
-    private readonly database: Promise<IDBPDatabase<WordApprovalDatabaseSchema>>;
+    private database?: Promise<IDBPDatabase<WordApprovalDatabaseSchema>>;
 
-    constructor() {
-        this.database = openDB<WordApprovalDatabaseSchema>(DATABASE_NAME, DATABASE_VERSION, {
+    private async getDatabase(): Promise<IDBPDatabase<WordApprovalDatabaseSchema>> {
+        this.database ??= openDB<WordApprovalDatabaseSchema>(DATABASE_NAME, DATABASE_VERSION, {
             upgrade(database) {
                 if (!database.objectStoreNames.contains(STORE_NAME)) {
                     const objectStore = database.createObjectStore(STORE_NAME, {
@@ -32,29 +32,31 @@ export class IndexedDbWordApprovalJobStore implements WordApprovalJobStore {
                 }
             },
         });
+
+        return this.database;
     }
 
     async save(job: StoredWordApprovalJob): Promise<void> {
-        const database = await this.database;
+        const database = await this.getDatabase();
         const transaction = database.transaction(STORE_NAME, 'readwrite');
         await transaction.objectStore(STORE_NAME).put(job);
         await transaction.done;
     }
 
     async get(operationId: string): Promise<StoredWordApprovalJob | null> {
-        const database = await this.database;
+        const database = await this.getDatabase();
         const job = await database.get(STORE_NAME, operationId);
         return job ?? null;
     }
 
     async listPending(): Promise<StoredWordApprovalJob[]> {
-        const database = await this.database;
+        const database = await this.getDatabase();
         const jobs = await database.getAll(STORE_NAME);
         return jobs.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
     }
 
     async remove(operationId: string): Promise<void> {
-        const database = await this.database;
+        const database = await this.getDatabase();
         await database.delete(STORE_NAME, operationId);
     }
 }

@@ -29,6 +29,7 @@ export interface WordApprovalPanelProps {
     onCancel?: (operationId: string) => void | Promise<unknown>;
     approvalState: {
         pendingJobs: StoredWordApprovalJob[];
+        isPendingJobsLoading: boolean;
         progress: ApprovalProgress | null;
         isProcessing: boolean;
         error: ApplicationError | null;
@@ -255,7 +256,12 @@ export default function WordApprovalPanel({
     };
 
     const handleStart = async () => {
-        if (isReading || entries === null || onStart === undefined) {
+        if (
+            approvalState.isPendingJobsLoading
+            || isReading
+            || entries === null
+            || onStart === undefined
+        ) {
             return;
         }
         await runAction(() => onStart(entries), true);
@@ -307,6 +313,7 @@ export default function WordApprovalPanel({
                                     </div>
                                     <div className="flex gap-2">
                                         <Button
+                                            aria-label={`${job.operationId} 작업 재개`}
                                             onClick={() => onResume
                                                 && runAction(() => onResume(job.operationId), true)}
                                             disabled={!canManage || isBusy || onResume === undefined}
@@ -314,6 +321,7 @@ export default function WordApprovalPanel({
                                             작업 재개
                                         </Button>
                                         <Button
+                                            aria-label={`${job.operationId} 작업 취소`}
                                             variant="outline"
                                             onClick={() => onCancel
                                                 && runAction(() => onCancel(job.operationId), false)}
@@ -386,6 +394,7 @@ export default function WordApprovalPanel({
                     <Button
                         onClick={handleStart}
                         disabled={!canManage
+                            || approvalState.isPendingJobsLoading
                             || isReading
                             || entries === null
                             || isBusy

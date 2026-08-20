@@ -99,6 +99,7 @@ export function useWordApproval(service?: WordApprovalService) {
         resume: (operationId: string) => mutation.mutateAsync({ type: 'resume', operationId }),
         cancel: (operationId: string) => mutation.mutateAsync({ type: 'cancel', operationId }),
         pendingJobs: pendingJobsQuery.data ?? [],
+        isPendingJobsLoading: pendingJobsQuery.isLoading,
         progress,
         isProcessing: mutation.isPending,
         error: error ?? pendingJobsError,
