@@ -127,6 +127,37 @@ describe('useWordDeletion', () => {
         expect(service.listPending).toHaveBeenCalledTimes(1);
     });
 
+    it('clearError dismisses a pending-jobs query failure', async () => {
+        const service = createService();
+        service.listPending.mockRejectedValue(new Error('IndexedDB failure'));
+        const { result } = renderHook(() => useWordDeletion(service), { wrapper: createWrapper() });
+
+        await waitFor(() => expect(result.current.error).toEqual({
+            kind: 'infrastructure',
+            message: '단어 삭제 작업 처리 중 오류가 발생했습니다.',
+        }));
+        act(() => result.current.clearError());
+
+        expect(result.current.error).toBeNull();
+    });
+
+    it('refreshes pending jobs after a failed start leaves a resumable job', async () => {
+        const service = createService();
+        const applicationError: ApplicationError = { kind: 'infrastructure', message: 'batch failed' };
+        service.listPending.mockResolvedValue([]);
+        service.start.mockImplementation(async () => {
+            service.listPending.mockResolvedValue([pendingJob]);
+            return err(applicationError);
+        });
+        const { result } = renderHook(() => useWordDeletion(service), { wrapper: createWrapper() });
+
+        await waitFor(() => expect(service.listPending).toHaveBeenCalledTimes(1));
+        await act(async () => result.current.start(entries));
+
+        await waitFor(() => expect(result.current.pendingJobs).toEqual([pendingJob]));
+        expect(result.current.error).toEqual(applicationError);
+    });
+
     it('forwards resume and cancel commands once', async () => {
         const service = createService();
         const { result } = renderHook(() => useWordDeletion(service), { wrapper: createWrapper() });
@@ -181,6 +212,34 @@ describe('useWordDeletion', () => {
 
         expect(result.current.error).toBeNull();
         expect(result.current).toMatchObject(stateBeforeClear);
+    });
+
+    it('clears the previous result when the next action begins', async () => {
+        const service = createService();
+        service.resume.mockResolvedValue(err({ kind: 'conflict', message: 'resume failed' }));
+        const { result } = renderHook(() => useWordDeletion(service), { wrapper: createWrapper() });
+
+        await act(async () => result.current.start(entries));
+        expect(result.current.result).toEqual(runResult);
+        await act(async () => result.current.resume('operation-1'));
+
+        expect(result.current.result).toBeNull();
+    });
+
+    it('exposes isPending while a deletion action is running', async () => {
+        const service = createService();
+        let resolveStart: ((value: Awaited<ReturnType<WordDeletionService['start']>>) => void) | undefined;
+        service.start.mockImplementation(() => new Promise((resolve) => {
+            resolveStart = resolve;
+        }));
+        const { result } = renderHook(() => useWordDeletion(service), { wrapper: createWrapper() });
+
+        act(() => {
+            void result.current.start(entries);
+        });
+        await waitFor(() => expect(result.current.isPending).toBe(true));
+        await act(async () => resolveStart?.(ok(runResult)));
+        await waitFor(() => expect(result.current.isPending).toBe(false));
     });
 
     it('does not resolve the default browser service when IndexedDB is unavailable', () => {

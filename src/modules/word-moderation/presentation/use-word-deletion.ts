@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import type { ApplicationError } from '../../../shared/application/application-error';
 import { err, type Result } from '../../../shared/application/result';
@@ -45,6 +45,7 @@ export function useWordDeletion(service?: WordDeletionService) {
     const queryClient = useQueryClient();
     const [progress, setProgress] = useState<DeletionProgress | null>(null);
     const [error, setError] = useState<ApplicationError | null>(null);
+    const [pendingJobsError, setPendingJobsError] = useState<ApplicationError | null>(null);
     const [result, setResult] = useState<WordDeletionRunResult | null>(null);
     const resolvedService = service ?? (typeof indexedDB === 'undefined'
         ? undefined
@@ -55,7 +56,15 @@ export function useWordDeletion(service?: WordDeletionService) {
         queryFn: async () => resolvedService?.listPending() ?? [],
         enabled: resolvedService !== undefined,
     });
-    const pendingJobsError = pendingJobsQuery.isError ? infrastructureError() : null;
+
+    useEffect(() => {
+        if (pendingJobsQuery.isError) {
+            setPendingJobsError(infrastructureError());
+            return;
+        }
+
+        setPendingJobsError(null);
+    }, [pendingJobsQuery.errorUpdatedAt, pendingJobsQuery.isError]);
 
     const mutation = useMutation<WordDeletionActionResult, never, WordDeletionAction>({
         mutationFn: async (action) => {
@@ -81,7 +90,7 @@ export function useWordDeletion(service?: WordDeletionService) {
             setError(null);
             setResult(null);
         },
-        onSuccess: async (actionResult) => {
+        onSuccess: (actionResult) => {
             if (!actionResult.ok) {
                 setProgress(null);
                 setError(actionResult.error);
@@ -89,6 +98,8 @@ export function useWordDeletion(service?: WordDeletionService) {
             }
 
             if (actionResult.value !== undefined) setResult(actionResult.value);
+        },
+        onSettled: async () => {
             await queryClient.invalidateQueries({ queryKey: pendingJobsQueryKey });
         },
     });
@@ -99,7 +110,10 @@ export function useWordDeletion(service?: WordDeletionService) {
         cancel: (operationId: string) => mutation.mutateAsync({ type: 'cancel', operationId }),
         progress,
         error: error ?? pendingJobsError,
-        clearError: () => setError(null),
+        clearError: () => {
+            setError(null);
+            setPendingJobsError(null);
+        },
         result,
         pendingJobs: pendingJobsQuery.data ?? [],
         isPending: mutation.isPending,
