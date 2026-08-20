@@ -50,7 +50,7 @@ const eslintConfig = [
     },
   },
   {
-    files: ["src/modules/*/domain/**/*.ts", "src/modules/*/application/**/*.ts"],
+    files: ["src/modules/*/domain/**/*.{ts,tsx}", "src/modules/*/application/**/*.{ts,tsx}"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -59,6 +59,14 @@ const eslintConfig = [
             {
               group: ["@supabase/*"],
               message: "Domain and application layers must not import the Supabase SDK.",
+            },
+            {
+              group: ["react", "react/*"],
+              message: "Domain and application layers must not import React.",
+            },
+            {
+              group: ["next", "next/*"],
+              message: "Domain and application layers must not import Next.js.",
             },
             {
               group: ["@/src/app/types/database.types"],
