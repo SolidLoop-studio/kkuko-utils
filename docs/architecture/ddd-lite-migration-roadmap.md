@@ -1,0 +1,1002 @@
+# DDD-lite 데이터 접근 아키텍처 및 전환 로드맵
+
+> 상태: 전환 진행 중
+>
+> 기준일: 2026-08-21
+>
+> 적용 범위: Kkuko Utils의 Supabase 데이터 접근, 인증, DB mutation, 조회 상태 관리
+
+## 1. 문서 목적
+
+이 문서는 Kkuko Utils의 데이터 접근 코드를 전역 `SCM` 중심 구조에서 기능별 DDD-lite 구조로 점진적으로 전환하기 위한 기준 문서다. 다음 질문에 답하는 것을 목적으로 한다.
+
+- 현재 구조의 가장 큰 문제는 무엇인가?
+- 이미 개선된 범위와 아직 이전하지 않은 범위는 어디인가?
+- 최종적으로 어떤 계층과 의존성 방향을 지향하는가?
+- 브라우저, Next.js 서버, Supabase Data API, Database RPC 중 무엇을 언제 사용하는가?
+- 원자성, 긴 실행 시간, 재시도, 권한 검증은 어느 계층이 책임지는가?
+- 어떤 기능부터 어떤 단위로 이전해야 하는가?
+- 언제 한 기능의 이전이 끝났다고 판단하는가?
+
+이 문서는 장기적인 방향과 작업 우선순위를 다루는 살아 있는 문서다. 첫 번째 전환 대상이었던 관리자 단어 대량 승인 흐름의 상세 설계와 구현 순서는 다음 문서를 참고한다.
+
+- [DDD-lite 데이터 접근 리팩터링 상세 설계](../superpowers/specs/2026-08-20-ddd-lite-data-access-refactoring-design.md)
+- [재개 가능한 단어 승인 배치 구현 계획](../superpowers/plans/2026-08-20-resumable-word-approval-batch.md)
+- [단어 승인 RPC 통합 테스트](../testing/word-approval-rpc-integration.md)
+
+## 2. 요약
+
+현재 구조의 핵심 문제는 Supabase 자체가 아니라, UI와 업무 규칙이 Supabase의 테이블·응답 타입·호출 순서에 직접 결합되어 있다는 점이다. 전역 `SCM`은 이 결합을 감추는 facade 역할은 하지만, 기능 경계를 만들지는 못한다. 그 결과 복합 변경의 원자성, 청크 크기, 오류 처리, 캐시, 실행 환경이 컴포넌트와 거대한 매니저에 분산되어 있다.
+
+지향하는 구조는 다음과 같다.
+
+- 코드는 CRUD 종류가 아니라 업무 기능별 세로 슬라이스로 나눈다.
+- Domain과 Application은 Supabase, React, Next.js, 생성된 DB 타입을 모른다.
+- UI는 use case 또는 feature hook만 호출한다.
+- Infrastructure adapter만 Supabase SDK, DB Row, RPC 이름을 안다.
+- 단순 조회는 RLS로 보호된 Supabase Data API를 브라우저 또는 서버 adapter가 직접 사용할 수 있다.
+- 여러 테이블을 함께 바꾸는 mutation은 하나의 Database RPC transaction으로 처리한다.
+- 큰 작업은 작은 원자적 배치로 나누고, 전체 operation은 멱등적으로 재개할 수 있게 한다.
+- Next.js Route Handler는 모든 DB 요청의 의무적인 중간 계층이 아니다. 서버 secret 또는 서버 전용 통합이 필요한 경우에만 사용한다.
+- 기존 `SCM`은 한 번에 제거하지 않고, 위험도가 높은 기능부터 strangler 방식으로 축소한다.
+
+첫 세로 슬라이스인 관리자 단어 대량 승인은 위 원칙으로 이전되었다. 다음 기능 전환 우선순위는 관리자 단어 삭제·개별 승인 흐름과 사용자 단어 요청 흐름이다. 로컬 DB bootstrap은 병행해서 재현 가능하게 만들되, 프로덕션에서 동작 중인 하드코딩 trigger는 당장 변경하지 않고 실제 의미를 기록한 뒤 `docs` context 또는 DB backend를 이전하기 전에 제거한다.
+
+## 3. 현재 상태
+
+### 3.1 정량적 스냅샷
+
+2026-08-21 저장소 기준으로 확인한 수치는 다음과 같다.
+
+| 항목 | 현재 값 | 의미 |
+| --- | ---: | --- |
+| `SCM`을 직접 import하는 소스 파일 | 42개 | UI, hook, Route Handler가 여전히 전역 manager를 사용함 |
+| `SCM.*` 호출 라인 | 189개 | 조회와 mutation orchestration이 넓게 분산됨 |
+| `SupabaseClientManager.ts` | 933줄 | 조회, 변경, Auth, Storage, 캐시가 한 구현에 집중됨 |
+| `ISupabaseClientManager.ts` | 136줄 | Supabase 응답 타입을 노출하는 넓은 인터페이스 |
+| DDD-lite로 이전된 기능 모듈 | 1개 | `src/modules/word-moderation`의 대량 승인 흐름 |
+
+이 수치는 작업 진행도를 관찰하기 위한 기준선이지 목표 자체는 아니다. 호출 수를 줄이기 위해 무의미한 wrapper를 추가해서는 안 된다. 기능이 이전될 때 해당 컴포넌트의 DB 지식과 대체된 manager 메서드가 함께 제거되어야 한다.
+
+다음 명령으로 현황을 다시 확인할 수 있다.
+
+```bash
+git grep -l -E "import .*SCM" -- "src/**/*.ts" "src/**/*.tsx"
+git grep -n -E "\bSCM\." -- "src/**/*.ts" "src/**/*.tsx"
+```
+
+### 3.2 완료된 기반 작업
+
+다음 기반은 이미 구현되어 있다.
+
+- `src/shared/application`
+  - `Result<T>`
+  - 안정적인 `ApplicationError`
+- `src/shared/infrastructure/supabase`
+  - browser Supabase client
+  - session-aware server client
+  - service-role server client
+  - Supabase 오류 mapper
+- `src/modules/word-moderation`
+  - 입력 정규화와 배치 규칙을 가진 Domain
+  - 승인 operation을 조정하는 Application service와 port
+  - Supabase RPC gateway
+  - IndexedDB 작업 저장소
+  - React Query 기반 presentation hook
+- 단어 대량 승인 Database RPC
+  - 한 배치의 transaction 원자성
+  - operation/batch 상태 저장
+  - payload hash 기반 멱등성
+  - 중단 후 재개
+  - DB 내부 관리자 권한 재검증
+  - 동시 실행 시 exact-once side effect 검증
+- `AddWordsHome`과 `WordApprovalPanel`
+  - 승인 흐름에서 직접 `SCM` 호출 제거
+  - 파일 읽기, 진행률, 재개, 취소 UI 분리
+
+즉, 전체 프로젝트에서 SCM이 제거된 것은 아니다. 안전한 전환 방법을 검증할 첫 세로 슬라이스가 완성된 상태다.
+
+### 3.3 아직 남은 주요 직접 의존성
+
+남은 사용처는 대략 다음 기능군으로 나뉜다.
+
+| 기능군 | 대표 파일 | 현재 위험 |
+| --- | --- | --- |
+| 관리자 단어 변경 | `admin/del-words/DelWordsHome.tsx`, `admin/request-words/AdminRequestHome.tsx` | 여러 테이블 변경과 로그·기여도 갱신이 UI 순서에 의존 |
+| docs 내부 단어 관리 | `words-docs/[id]/TableWorkFunc.tsx` | 승인·삭제·로그·docs 갱신을 한 파일에서 조정 |
+| 사용자 단어 요청 | `word/add/WordAddHome.tsx`, `word/adds/WordsAddHome.tsx` | 중복 확인, 요청, 주제 관계 생성이 여러 호출로 분리 |
+| 단어 조회 | `word/search/**`, `word/words-download/**`, `word/stats/**` | DB Row와 검색 query shape가 presentation에 노출 |
+| docs 조회·즐겨찾기 | `words-docs/**` | 조회, 조회 수 mutation, 즐겨찾기가 같은 화면에 혼재 |
+| 인증·프로필 | `AutoLogin.tsx`, `auth/auth.tsx`, `profile/**` | Auth SDK 상태와 사용자 DB profile 조회가 SCM에 결합 |
+| 공지 | `notification/**`, `hooks/useNotice.ts` | 조회·작성·Storage 업로드가 하나의 manager에 결합 |
+| API Route | `api/words/search/route.ts` | 서버 코드가 browser용 전역 SCM 경계를 사용 |
+
+## 4. 현재 문제점과 해결 방향
+
+### 4.1 전역 CRUD facade가 업무 경계를 숨긴다
+
+`SCM.get()`, `SCM.add()`, `SCM.delete()`, `SCM.update()`는 테이블 접근을 한 장소에 모았지만 호출자가 어떤 업무를 수행하는지는 표현하지 못한다. `단어 승인`, `단어 삭제 요청`, `docs 즐겨찾기` 같은 서로 다른 업무가 CRUD 동사 아래 섞여 있다.
+
+영향:
+
+- 하나의 업무를 이해하려면 컴포넌트와 manager의 여러 메서드를 왕복해서 읽어야 한다.
+- 호출 순서가 사실상 업무 규칙이 된다.
+- 한 테이블 변경이 여러 화면에 예상치 못한 영향을 준다.
+- 테스트가 Supabase response mock의 형태에 의존한다.
+
+해결:
+
+- 업무 의도를 나타내는 use case를 만든다.
+- 예: `approveWordBatch`, `rejectWordRequests`, `requestWordAddition`, `getWordDetail`.
+- use case가 필요한 최소 port를 정의하고 Supabase adapter가 구현한다.
+- 테이블별 범용 repository는 만들지 않는다. 실제 use case가 요구하는 계약만 만든다.
+
+### 4.2 컴포넌트가 transaction orchestration을 수행한다
+
+관리자 변경 화면에서는 단어, 주제 관계, 대기 요청, 로그, docs 최근 수정일, 사용자 기여도를 순서대로 변경한다. 중간 호출이 실패하면 앞선 변경만 반영될 수 있다.
+
+영향:
+
+- 부분 성공 상태가 발생한다.
+- 재시도 시 중복 로그나 중복 기여도가 생길 수 있다.
+- 로딩 상태와 업무 상태가 섞인다.
+- 새로고침 후 어느 단계까지 처리됐는지 알 수 없다.
+
+해결:
+
+- 하나의 업무적으로 원자적인 변경은 PostgreSQL transaction 안의 단일 RPC로 이동한다.
+- Application은 작업 시작, 배치 선택, 재시도와 결과 집계를 담당한다.
+- DB는 권한, 현재 상태, unique constraint, row lock, side effect의 원자성을 담당한다.
+- UI는 command 제출과 진행률 표시만 담당한다.
+
+### 4.3 Supabase와 생성 DB 타입이 상위 계층에 노출된다
+
+현재 manager 인터페이스는 `PostgrestSingleResponse`, `Session`, 생성된 `Database` Row 구조와 같은 Supabase 타입을 반환한다.
+
+영향:
+
+- column, join, nullable 관계의 변경이 컴포넌트까지 전파된다.
+- Supabase를 교체하려면 UI와 테스트까지 함께 바꿔야 한다.
+- 업무 오류와 infrastructure 오류를 구분하기 어렵다.
+
+해결:
+
+- 생성된 `database.types.ts`는 Infrastructure에서만 사용한다.
+- adapter가 Row를 Application DTO 또는 Domain 값으로 변환한다.
+- Application은 `Result<T>`와 `ApplicationError`를 반환한다.
+- UI는 Supabase 오류 code나 PostgREST 응답 구조를 분기하지 않는다.
+
+### 4.4 청크와 페이지 처리 정책이 호출자마다 다르다
+
+`in` query 제한을 피하기 위한 청크 분할과 대량 입력 분할이 manager, utility, 컴포넌트에 각각 존재한다.
+
+영향:
+
+- 배치 크기와 병렬도가 화면별로 달라진다.
+- 결과 순서, 중복 제거, 부분 실패 동작이 일관되지 않다.
+- 기술적 query chunk와 업무적 transaction batch가 구분되지 않는다.
+
+해결:
+
+- 읽기 제한을 피하는 기술 청크는 Infrastructure 공통 도구가 소유한다.
+- 원자성·멱등성·재개 의미가 있는 업무 배치는 해당 Application/Domain이 소유한다.
+- DB RPC가 최대 batch 크기와 순서를 다시 검증한다.
+
+### 4.5 실행 환경 경계가 불명확하다
+
+browser singleton SCM을 Route Handler에서 import하거나 Server Component가 서로 다른 방식으로 Supabase client를 만드는 코드가 존재한다.
+
+영향:
+
+- cookie/session 처리 방식이 경로마다 달라질 수 있다.
+- service-role key가 잘못된 bundle 경계로 유출될 위험이 있다.
+- 브라우저와 서버 중 어디에서 실행되는지 코드만 보고 판단하기 어렵다.
+
+해결:
+
+- browser, session-aware server, service-role server client factory를 분리한다.
+- 각 feature에 browser/server composition root를 둔다.
+- service-role client는 `server-only` 경계에서만 생성한다.
+- Route Handler에서도 browser용 전역 SCM을 사용하지 않는다.
+
+### 4.6 조회 캐시와 업무 로직이 manager에 섞여 있다
+
+현재 manager에는 DB query 외에도 메모리 캐시, 인위적 지연, Auth listener, Storage, 외부 API 기능이 함께 있다.
+
+영향:
+
+- 캐시 무효화 시점이 불명확하다.
+- 같은 서버 상태를 SWR, React Query, manager cache가 중복 관리할 수 있다.
+- infrastructure 교체와 UX 변경이 서로 영향을 준다.
+
+해결:
+
+- 서버 상태 cache는 React Query 또는 Next.js cache가 소유한다.
+- IndexedDB는 명시적으로 오프라인/재개가 필요한 payload에만 사용한다.
+- Auth, Storage, GitHub 같은 외부 능력은 별도 gateway로 분리한다.
+- 화면 체감을 위한 임의 delay는 data adapter에 넣지 않는다.
+
+### 4.7 DB 오류가 안전한 메시지 하나로만 가려진다
+
+`WORD_APPROVAL_INTERNAL_ERROR`처럼 사용자에게 내부 정보를 숨기는 것은 올바르지만, 운영자도 동일한 메시지만 확인하면 원인 분석이 어렵다. 실제 로컬 오류는 trigger가 존재하지 않는 `docs.id`로 `docs_logs`를 생성하면서 발생한 FK 위반이었다.
+
+해결:
+
+- 클라이언트에는 안정적인 공개 오류 code와 사용자용 메시지만 전달한다.
+- DB 또는 서버 로그에는 `operationId`, 함수, 단계, SQLSTATE 등 진단 정보를 남긴다.
+- adapter는 공개 code를 `ApplicationError.kind`로 변환한다.
+- 예상 가능한 업무 오류와 예상하지 못한 infrastructure 오류를 구분한다.
+
+### 4.8 숫자 PK가 업무 규칙으로 하드코딩되어 있다
+
+현재 word trigger는 특정 docs를 의미하기 위해 `201`, `202`, `209 + i`, `224 + i`, `239 + i` 형태의 숫자 ID를 사용한다. 프로덕션 데이터를 복제하면 동작하지만 빈 로컬 DB나 다른 환경에서는 같은 ID가 존재한다는 보장이 없다.
+
+영향:
+
+- 환경별 seed 상태가 다르면 FK 오류가 발생한다.
+- ID가 무엇을 의미하는지 SQL만 보고 알기 어렵다.
+- docs 생성 순서가 업무 동작의 전제 조건이 된다.
+- Supabase를 교체하지 않더라도 테스트와 로컬 개발이 불안정하다.
+
+해결:
+
+- `docs.id`는 참조용 surrogate key로만 사용한다.
+- 업무 규칙은 `code`, `slug`, `kind + key` 같은 불변의 의미 키를 사용한다.
+- trigger 또는 RPC가 의미 키로 실제 ID를 resolve한다.
+- 필수 reference docs가 없으면 명시적인 오류 code로 실패한다.
+- 필수 reference data는 versioned seed 또는 migration으로 재현한다.
+- 정확한 의미 키 설계는 실제 프로덕션 docs의 의미를 확인한 뒤 확정한다. 현재 숫자 범위만 보고 이름을 추측하지 않는다.
+
+현재 결정:
+
+- 프로덕션에 필요한 reference docs가 존재하고 현재 동작이 안정적이므로 trigger를 즉시 변경하지 않는다.
+- 로컬 개발은 당분간 프로덕션과 동일한 reference docs fixture를 사용한다.
+- 다만 이 방식은 임시 호환책이며, `docs` context 이전 또는 Supabase 교체를 시작하기 전에는 의미 키 기반으로 전환한다.
+- 향후 변경 전에 현재 trigger 동작과 실제 ID 의미를 integration test 및 매핑 문서로 먼저 고정한다.
+
+### 4.9 migration 체인의 fresh bootstrap이 아직 불명확하다
+
+현재 저장소에는 원격 schema dump와 단어 승인 migration이 모두 존재한다. 원격 dump 파일의 timestamp가 기능 migration 뒤에 있고 dump 안에도 동일한 승인 object가 포함되어 있어, 새 DB에서 migration을 시간순으로 실행할 때 선행 schema 누락 또는 중복 정의가 발생할 가능성이 있다. 기존 RPC 테스트 문서에는 base schema가 저장소에 없다고 적혀 있어 현재 상태와도 어긋난다.
+
+해결:
+
+- 프로덕션에 이미 적용된 migration history를 먼저 확인한다.
+- 적용된 migration ID를 임의로 rename하거나 삭제하지 않는다.
+- fresh local bootstrap과 기존 remote upgrade 경로를 각각 검증한다.
+- 기준 schema, 후속 migration, reference seed의 순서를 하나로 정한다.
+- `supabase db reset` 후 DB integration test가 통과하는 경로를 CI 또는 개발 문서에 고정한다.
+- 정리 후 `docs/testing/word-approval-rpc-integration.md`의 전제 조건을 갱신한다.
+
+## 5. 목표 아키텍처
+
+### 5.1 전체 의존성 방향
+
+```mermaid
+flowchart TB
+    UI[Presentation<br/>Component / Hook / Server Component]
+    APP[Application<br/>Use Case / Query Service / Port]
+    DOMAIN[Domain<br/>Policy / Value / State Transition]
+    INFRA[Infrastructure<br/>Supabase Adapter / Mapper / IndexedDB / External Gateway]
+    DB[(Supabase DB / Auth / Storage)]
+    EXT[(External API)]
+
+    UI --> APP
+    APP --> DOMAIN
+    INFRA -. implements ports .-> APP
+    INFRA --> DB
+    INFRA --> EXT
+    UI -. composition root에서 주입 .-> INFRA
+```
+
+핵심은 호출 방향과 소스 코드 의존성 방향을 구분하는 것이다. 런타임에는 Application이 port를 호출하지만, 소스 코드에서 port는 Application이 정의하고 Infrastructure가 이를 구현한다. Domain과 Application은 Supabase를 향해 import하지 않는다.
+
+### 5.2 계층별 책임
+
+| 계층 | 책임 | 허용 의존성 | 금지 사항 |
+| --- | --- | --- | --- |
+| Domain | 정규화, 정책, 상태 전이, 불변 조건 | 같은 module의 순수 코드 | React, Next.js, Supabase, DB Row, 네트워크 |
+| Application | use case 조정, port, command/query DTO, 결과 집계 | Domain, shared application | Supabase SDK, RPC 이름, table/column, UI 상태 |
+| Infrastructure | Supabase query/RPC, Row mapper, IndexedDB, 외부 API | Application port, 생성 DB 타입 | JSX, Modal, 화면 상태, 업무 흐름 결정 |
+| Presentation | 입력 수집, query/mutation 상태, 진행률, 사용자 메시지 | module의 공개 Application/Presentation API | table 이름, query builder, RPC payload 조립, 복합 mutation 순서 |
+| Composition root | 실행 환경에 맞는 구현 조립 | Application과 Infrastructure | 업무 규칙 구현 |
+
+### 5.3 DDD-lite의 의미
+
+이 프로젝트에서 DDD-lite는 모든 테이블을 Entity와 Repository로 감싸는 것을 뜻하지 않는다.
+
+- 복잡한 규칙이 있는 곳에만 Domain model/policy를 둔다.
+- 단순 조회는 화면 목적의 Query Service와 DTO로 처리한다.
+- 단순 CRUD wrapper를 기계적으로 늘리지 않는다.
+- 하나의 use case가 실제로 필요로 하는 작은 port를 만든다.
+- table 구조가 아니라 사용자 행동과 업무 결과를 API 이름에 반영한다.
+
+### 5.4 CQRS-lite
+
+조회와 변경은 요구사항이 다르므로 분리한다.
+
+- Query
+  - 화면에 필요한 DTO를 효율적으로 반환한다.
+  - Domain aggregate를 불필요하게 복원하지 않는다.
+  - 캐시 key, pagination, stale time을 명시한다.
+- Command
+  - 업무 규칙과 권한, 상태 전이, 원자성을 우선한다.
+  - 여러 테이블 변경은 transaction RPC로 묶는다.
+  - 성공 결과는 실제 반영된 effect를 반환한다.
+
+## 6. 논리적 Bounded Context
+
+물리 DB schema를 즉시 분리하지 않더라도 코드 소유권은 다음 context로 나눈다.
+
+### 6.1 `word-moderation`
+
+책임:
+
+- 단어 추가·삭제 요청
+- 주제 변경 요청
+- 승인과 반려
+- moderation 로그
+- 요청자 기여도 반영
+- 대량 operation과 재개
+
+우선 이전 대상:
+
+- `admin/del-words`
+- `admin/request-words`
+- `words-docs/[id]/TableWorkFunc.tsx`의 moderation 동작
+- `word/add`, `word/adds`의 요청 생성
+
+### 6.2 `word-catalog`
+
+책임:
+
+- 승인된 단어와 주제 관계 조회
+- 단어 검색과 상세 projection
+- 시작·끝 글자 통계
+- 다운로드 read model
+
+대표 대상:
+
+- `word/search`
+- `word/words-download`
+- `word/stats`
+- `api/words/search`
+
+### 6.3 `docs`
+
+여기서 `docs`는 문서 파일이 아니라 단어 모음을 뜻한다.
+
+책임:
+
+- docs 목록·상세·단어 조회
+- 즐겨찾기
+- 조회 수와 최근 수정 시각
+- docs 변경 로그
+- 필수 reference docs의 의미 키 관리
+
+### 6.4 `identity`
+
+책임:
+
+- Supabase Auth session과 OAuth
+- Kkuko Utils 사용자 profile
+- nickname 등록과 중복 검사
+- 사용자 역할과 기여도 projection
+
+Auth session adapter와 사용자 profile repository/query는 분리한다. Supabase Auth의 `Session`을 모든 UI의 공통 Domain model로 사용하지 않는다.
+
+### 6.5 `notifications`
+
+책임:
+
+- 공지 목록·상세
+- 관리자 작성·수정·삭제
+- 공지 이미지 Storage 처리
+- 활성 modal 공지 조회
+
+Storage 업로드는 `NotificationImageStorage` 같은 별도 port로 분리해 공지 DB mutation과 실패 정책을 명확히 한다.
+
+### 6.6 `programs`와 외부 연동
+
+등록 프로그램, release note, GitHub release 조회를 소유한다. GitHub API 호출을 Supabase manager에서 분리하고 별도 gateway로 다룬다.
+
+## 7. 요청 처리 위치 결정 기준
+
+모든 요청을 Next.js `/api`로 보내거나 모든 요청을 브라우저에서 처리하는 식의 단일 규칙은 사용하지 않는다. 보안, transaction 범위, 실행 시간, secret 필요 여부에 따라 선택한다.
+
+| 요청 종류 | 권장 경로 | 이유 |
+| --- | --- | --- |
+| RLS로 충분히 보호되는 일반 조회 | Browser → Supabase Data API/RPC | 불필요한 Vercel hop 제거, 사용자 JWT로 권한 적용 |
+| 초기 SSR/metadata 조회 | Server Component → session-aware Supabase adapter | cookie session과 서버 렌더링 활용 |
+| 한 row 또는 DB가 원자성을 보장하는 단순 mutation | Browser → feature Supabase adapter | RLS/constraint가 권한과 불변 조건을 보장하는 경우 |
+| 여러 테이블을 함께 바꾸는 mutation | Browser → 단일 Database RPC | PostgreSQL transaction으로 전체 업무 원자성 보장 |
+| 큰 입력의 반복 처리 | Browser → 작은 원자적 RPC batch 반복 | Vercel 실행 제한과 무관하며 중단 후 operation 재개 가능 |
+| server secret이 필요한 외부 API | Browser → Route Handler/Server Action → external gateway | secret을 브라우저에 노출할 수 없음 |
+| service-role이 필요한 운영 작업 | Server-only use case → service adapter | 명시적인 RLS 우회와 감사 필요 |
+| 브라우저 종료 후에도 반드시 계속되어야 하는 장시간 작업 | Durable job/worker 검토 | 브라우저 orchestration만으로 완료를 보장할 수 없음 |
+
+Supabase Database RPC는 Supabase Edge Function이 아니다. PostgreSQL에서 실행되는 database function이다. 브라우저가 RPC를 직접 호출하는 경로에는 Next.js API 함수가 없으므로 Vercel Hobby의 함수 실행 시간 제한은 적용되지 않는다. 다만 PostgreSQL statement timeout, Supabase gateway timeout, 네트워크 중단은 여전히 존재하므로 큰 작업은 원자적 배치와 재개 구조를 사용한다.
+
+## 8. 표준 데이터 흐름
+
+### 8.1 Client 조회
+
+```text
+Component
+  -> React Query feature hook
+  -> Application query port
+  -> browser Supabase query adapter
+  -> Data API 또는 read-only RPC
+  -> Row mapper
+  -> 화면 DTO
+```
+
+컴포넌트는 query key와 화면 상태를 다룰 수 있지만 table 이름, join shape, Supabase error는 알지 않는다.
+
+### 8.2 Server 조회
+
+```text
+Server Component
+  -> server composition root
+  -> Application query service
+  -> session-aware Supabase adapter
+  -> 화면 DTO
+```
+
+server client는 요청마다 생성한다. 사용자 session이 섞일 수 있으므로 module singleton으로 두지 않는다.
+
+### 8.3 복합 mutation
+
+```text
+Component
+  -> feature mutation hook
+  -> Application command handler
+  -> feature gateway port
+  -> Supabase RPC adapter
+  -> PostgreSQL transaction RPC
+  -> Application result
+  -> cache invalidation / Modal
+```
+
+권한 검증은 UI의 관리자 표시만 믿지 않는다. RPC가 `auth.uid()`와 DB의 사용자 role을 다시 검증한다.
+
+### 8.4 대량·재개 가능 mutation
+
+```text
+입력 정규화 및 hash
+  -> IndexedDB에 재개 payload 저장
+  -> DB operation 시작 또는 기존 operation 복구
+  -> 미완료 batch 조회
+  -> 한 batch RPC 실행
+  -> DB transaction commit 및 batch 결과 기록
+  -> 다음 batch 반복
+  -> DB 완료 상태 확인
+  -> IndexedDB payload 제거
+```
+
+각 batch만 원자적이면 되고 전체 operation은 안전하게 재개 가능해야 한다. 재시도 시 같은 `(operationId, batchIndex, payloadHash)`는 기존 결과를 반환하고, 같은 index에 다른 hash가 들어오면 conflict로 거절한다.
+
+## 9. 권장 디렉터리 구조
+
+```text
+src/
+  modules/
+    word-moderation/
+      domain/
+      application/
+        ports.ts
+      infrastructure/
+        browser/
+        server/
+      presentation/
+      index.ts
+
+    word-catalog/
+      domain/
+      application/
+      infrastructure/
+      presentation/
+      index.ts
+
+    docs/
+    identity/
+    notifications/
+    programs/
+
+  shared/
+    application/
+      result.ts
+      application-error.ts
+    infrastructure/
+      supabase/
+        browser-client.ts
+        server-client.ts
+        service-client.ts
+        map-supabase-error.ts
+
+  app/
+    # route와 UI composition만 담당
+```
+
+각 module의 `index.ts`는 presentation이 사용해도 되는 공개 API만 export한다. DB Row, Supabase adapter class, 생성 DB 타입을 module 밖으로 공개하지 않는다. 같은 module 내부에서도 Application은 Infrastructure를 import하지 않는다.
+
+## 10. 계약 설계 규칙
+
+### 10.1 Command는 사용자 의도를 표현한다
+
+나쁜 예:
+
+```ts
+insertWords(rows);
+deleteWaitWords(ids);
+updateContribution(userId);
+```
+
+권장 예:
+
+```ts
+approveRequestedWords(command);
+rejectWordDeletionRequests(command);
+requestWordAddition(command);
+```
+
+### 10.2 DTO는 화면 또는 use case에 맞춘다
+
+- DB Row를 그대로 반환하지 않는다.
+- nullable join을 adapter mapper에서 해석한다.
+- DB column 이름과 화면 prop 이름을 억지로 같게 유지하지 않는다.
+- 날짜, enum, ID의 유효성을 infrastructure 경계에서 확인한다.
+- 외부 입력은 `unknown`으로 받고 검증 후 변환한다.
+
+### 10.3 오류 계약은 안정적으로 유지한다
+
+권장 분류:
+
+- `validation`
+- `unauthorized`
+- `forbidden`
+- `not-found`
+- `conflict`
+- `infrastructure`
+
+UI는 이 분류에 따라 사용자 메시지와 재시도 가능 여부를 결정한다. PostgreSQL 원문, relation 이름, stack trace는 Modal에 직접 노출하지 않는다.
+
+## 11. DB transaction과 멱등성 규칙
+
+복합 mutation RPC는 다음 순서를 기본으로 한다.
+
+1. 인증 및 역할 검증
+2. payload 형식과 최대 크기 검증
+3. 대상 operation 또는 업무 row lock
+4. 현재 상태와 허용되는 state transition 검증
+5. idempotency key/hash 검사
+6. 주 데이터 변경
+7. 관계, 로그, 기여도, docs 갱신
+8. 실제 반영 결과 기록
+9. 결과 반환
+
+추가 원칙:
+
+- 모든 관련 side effect는 같은 transaction에서 commit 또는 rollback한다.
+- 로그와 기여도는 실제 반영된 row를 기준으로 계산한다.
+- 브라우저가 보낸 actor ID를 권한 근거로 신뢰하지 않는다.
+- `SECURITY DEFINER` 함수는 고정된 `search_path`, schema-qualified object, 최소 EXECUTE grant를 사용한다.
+- `PUBLIC`과 `anon`의 불필요한 실행 권한을 제거한다.
+- 예상하지 못한 오류를 안전한 공개 code로 변환하되 진단 정보는 서버 로그에 남긴다.
+
+## 12. 상태와 캐시
+
+| 상태 종류 | 소유 위치 |
+| --- | --- |
+| input, modal open, 선택 항목 | React local state |
+| 인증된 사용자 UI projection | identity hook 또는 필요한 전역 store |
+| 서버 조회 결과 | React Query 또는 Next.js cache |
+| mutation pending/error/progress | feature mutation hook |
+| 재개용 대량 payload | IndexedDB |
+| operation의 authoritative 상태 | DB operation/batch table |
+| mini-game 진행 로직 | 기존 mini-game manager/Redux 규칙 유지 |
+
+Redux에 DB 업무 orchestration을 넣지 않는다. React Query cache와 별도 manager cache가 같은 데이터를 동시에 소유하지 않도록 한다.
+
+## 13. 보안 원칙
+
+- UI의 role check는 UX 최적화이며 최종 권한 검증이 아니다.
+- 일반 Data API 접근은 RLS policy를 통과해야 한다.
+- 복합 관리자 RPC는 함수 내부에서 `auth.uid()`와 `users.role`을 검증한다.
+- service-role key는 브라우저 bundle에 포함하지 않는다.
+- service-role 사용은 이름이 드러나는 server-only use case로 제한한다.
+- storage bucket도 DB와 동일하게 policy와 파일 소유권을 검토한다.
+- 사용자가 보낸 `userId`, `addedBy`, `requestedBy`를 감사 actor로 그대로 신뢰하지 않는다.
+- 생성 DB 타입은 보안 장치가 아니다. 모든 권한과 입력 검증은 런타임에도 수행한다.
+
+## 14. 테스트 전략
+
+### 14.1 Characterization test
+
+기존 기능을 이전하기 전에 현재 관찰 가능한 동작을 고정한다.
+
+- 입력과 결과
+- 호출 성공·실패 시 UI
+- 로그와 기여도 규칙
+- cache invalidation
+- 중복 요청 동작
+
+기존 구현의 버그까지 무조건 영구 보존하지는 않는다. 의도된 동작인지 불분명하면 별도 의사결정 후 변경한다.
+
+### 14.2 Domain unit test
+
+- 정규화
+- 정책과 상태 전이
+- 중복 제거
+- batch 분할 규칙
+- 결정적 hash 입력
+- DB나 Supabase 없이 실행
+
+### 14.3 Application unit test
+
+- port의 작은 fake 사용
+- 성공 결과 집계
+- 특정 단계 실패 시 중단
+- 재시도와 conflict
+- 완료된 batch 건너뛰기
+- infrastructure 오류 변환
+
+Supabase SDK 전체를 mock해 use case를 테스트하지 않는다.
+
+### 14.4 Infrastructure integration test
+
+- 실제 local Supabase 사용
+- RLS와 RPC 권한
+- transaction rollback
+- idempotency와 concurrency
+- trigger side effect
+- Row mapper의 실제 응답 shape
+- migration 및 reference seed 전제 조건
+
+### 14.5 Presentation test
+
+- 사용자의 클릭과 입력
+- 중복 제출 방지
+- loading/progress/error Modal
+- 취소와 재개
+- query invalidation
+- 컴포넌트가 Supabase SDK를 직접 호출하지 않는 boundary
+
+### 14.6 기본 검증
+
+기능 이전 PR은 최소한 다음을 수행한다.
+
+```bash
+npm run lint
+npx tsc --noEmit
+npx jest <관련 테스트> --runInBand
+```
+
+DB schema/RPC를 변경했다면 local Supabase integration test를 추가한다. build 경계나 Next.js 설정을 바꿨다면 `npm run build`도 실행한다.
+
+## 15. 전환 전략
+
+### 15.1 Strangler 방식
+
+기존 SCM을 유지한 상태에서 기능 하나를 새 module로 완전히 우회시킨다.
+
+```text
+기존 화면 -> SCM
+
+기능 이전 중:
+이전된 화면 -> feature module -> Supabase adapter/RPC
+나머지 화면 -> SCM
+
+최종:
+모든 화면 -> feature modules
+SCM 삭제
+```
+
+새 구조를 만들기만 하고 기존 경로를 남겨 두면 이중 구조가 영구화된다. 각 기능 이전의 완료 조건에 대체된 SCM import와 메서드 삭제를 반드시 포함한다.
+
+### 15.2 한 번의 작업 단위
+
+한 PR 또는 작업 묶음은 하나의 사용자 행동을 끝까지 이전하는 세로 슬라이스로 제한한다.
+
+권장 크기:
+
+- 좋은 단위: “관리자가 삭제 요청 한 묶음을 승인한다.”
+- 너무 작음: “`words` repository interface를 만든다.”
+- 너무 큼: “모든 관리자 페이지에서 SCM을 제거한다.”
+
+## 16. 우선순위별 로드맵
+
+### Phase 0A. DB bootstrap 재현성 확보
+
+우선순위: 병행 기반 작업
+
+이유:
+
+- 현재 로컬 성공 여부가 프로덕션 reference data 복제에 의존한다.
+- fresh DB가 재현되지 않으면 이후 DB integration test의 신뢰도가 낮다.
+- 프로덕션 trigger의 업무 동작은 바꾸지 않으면서 개발 환경만 재현 가능하게 만들 필요가 있다.
+
+작업:
+
+1. Supabase remote migration history와 저장소 migration timestamp를 대조한다.
+2. 기존 remote upgrade를 깨지 않는 fresh bootstrap 전략을 결정한다.
+3. 기준 schema와 feature migration의 중복 및 실행 순서를 정리한다.
+4. 현재 trigger가 요구하는 reference docs fixture를 versioned seed로 제공한다.
+5. `supabase db reset`부터 RPC integration test까지 자동 검증한다.
+6. 기존 RPC 테스트 문서를 현재 bootstrap 절차에 맞게 갱신한다.
+
+완료 기준:
+
+- 프로덕션 dump를 수동 복사하지 않아도 disposable local DB가 생성된다.
+- 현재 프로덕션과 동일한 reference ID 전제에서 word insert/delete trigger integration test가 통과한다.
+- bootstrap과 remote upgrade의 migration 경로가 서로 문서화되어 있다.
+
+이 단계에서는 프로덕션의 숫자 ID trigger를 변경하지 않는다.
+
+### Phase 0B. `docs` 의미 키 전환
+
+우선순위: 지연된 필수 작업
+
+실행 시점:
+
+- `docs` context의 mutation 구조를 이전하기 전
+- 또는 Supabase/PostgreSQL backend 교체를 시작하기 전
+
+작업:
+
+1. `201`, `202`, `209 + i`, `224 + i`, `239 + i`가 나타내는 실제 docs 의미를 확인하고 기록한다.
+2. 기존 trigger 동작을 integration test로 고정한다.
+3. `docs`에 `code`, `slug`, `kind + key` 중 실제 모델에 맞는 불변 의미 키를 설계한다.
+4. 의미 키에 unique constraint를 추가하고 reference seed를 변경한다.
+5. 숫자 ID trigger를 의미 키 resolver 또는 명시적인 관계 table로 교체한다.
+6. 필수 reference가 없을 때의 공개 오류 code와 운영 로그를 추가한다.
+7. docs PK 값이 달라도 같은 업무 결과가 나오는지 검증한다.
+
+### Phase 1. 남은 관리자 moderation mutation 이전
+
+우선순위: 최상
+
+대상 순서:
+
+1. `admin/del-words/DelWordsHome.tsx`
+2. `admin/request-words/AdminRequestHome.tsx`
+3. `words-docs/[id]/TableWorkFunc.tsx`의 승인·삭제 기능
+4. `admin/request-docs/RequestDocsHome.tsx`
+
+이유:
+
+- 여러 테이블을 변경한다.
+- 로그, 기여도, docs 갱신이 수동 순서에 의존한다.
+- 부분 성공의 데이터 손상 비용이 크다.
+
+목표:
+
+- `word-moderation`과 `docs` Application use case로 분리
+- 업무별 transaction RPC 추가
+- batch가 필요하면 operation 모델 재사용 여부를 검토
+- 컴포넌트에서 query 조립, chunk loop, DB 호출 순서 제거
+- 대체된 SCM mutation 메서드 삭제
+
+### Phase 2. 사용자 단어 요청 mutation 이전
+
+우선순위: 높음
+
+대상:
+
+- `word/add/WordAddHome.tsx`
+- `word/adds/WordsAddHome.tsx`
+- `word/search/[query]/WordInfo.tsx`의 요청·취소 기능
+
+목표:
+
+- `requestWordAddition`, `requestWordDeletion`, `requestThemeChanges`, `cancelWordRequest` use case 정의
+- 중복 요청과 기존 단어 검사를 DB constraint/RPC에서 최종 보장
+- 사용자 ID는 `auth.uid()`에서 결정
+- 여러 request row 생성은 한 transaction으로 처리
+- 대량 요청은 원자적 batch와 재개 필요성을 별도 평가
+
+### Phase 3. `word-catalog` 조회 분리
+
+우선순위: 중상
+
+대상 순서:
+
+1. 검색과 자동완성
+2. 단어 상세
+3. 고급 검색 Route Handler
+4. 다운로드
+5. 통계와 랜덤 단어
+
+목표:
+
+- 화면별 Query Service와 DTO
+- pagination/chunk 정책을 Infrastructure로 이동
+- 검색 조건을 Application input으로 검증
+- React Query query key 표준화
+- `api/words/search/route.ts`에서 browser SCM 제거
+- 같은 query가 client와 server에서 필요하면 adapter 구현을 분리하고 Application 계약은 공유
+
+조회 기능은 원자성 위험이 낮지만 사용처가 많으므로, 먼저 계약과 mapper 패턴을 한 화면에서 검증한 뒤 확장한다.
+
+### Phase 4. `docs` context 이전
+
+우선순위: 중간
+
+대상:
+
+- docs 목록·상세·정보·로그
+- 즐겨찾기
+- 조회 수
+- docs 생성 요청과 관리자 승인
+
+목표:
+
+- `DocsSummary`, `DocsDetail`, `DocsLogEntry` DTO 분리
+- 조회 수 증가는 본문 조회 실패와 독립적인 best-effort인지 명시
+- 즐겨찾기는 idempotent command로 설계
+- docs reference 의미 키를 Domain/Application 계약에 반영
+- word-moderation과의 결합은 UI의 다중 호출이 아니라 명시적인 port/RPC로 처리
+
+### Phase 5. Identity, Profile, Notifications 이전
+
+우선순위: 중간
+
+Identity/Profile:
+
+- Auth session gateway와 public user profile query 분리
+- nickname 등록을 명시적인 use case로 이동
+- header/logout이 SCM 전체를 의존하지 않도록 Auth port 축소
+- profile 화면용 projection DTO 정의
+
+Notifications:
+
+- 공지 query와 관리자 command 분리
+- 이미지 Storage gateway 분리
+- DB 저장 실패 시 업로드 파일 정리 정책 정의
+- modal 공지 cache 정책 명시
+
+### Phase 6. 기타 외부 연동 분리
+
+우선순위: 중하
+
+- release note와 GitHub API를 전용 gateway로 이동
+- word combiner가 필요한 DB 조회만 `word-catalog` query로 이동
+- admin dashboard count를 작은 admin projection query로 이동
+- SCM의 인위적 delay와 범용 cache 제거
+
+### Phase 7. SCM 제거
+
+선행 조건:
+
+- 모든 `SCM` import가 제거됨
+- browser/server/service Supabase 경계가 기능별 adapter에서만 사용됨
+- Auth와 Storage도 별도 port로 이전됨
+
+작업:
+
+- `src/app/lib/supabase/SupabaseClientManager.ts` 삭제
+- `src/app/lib/supabase/ISupabaseClientManager.ts` 삭제
+- legacy `SCM` export 삭제
+- 사용하지 않는 `supabase.types.ts` 정리
+- 금지 import 규칙을 전체 presentation 경계로 확대
+- CI에서 architecture rule 검증
+
+## 17. 기능 하나를 이전하는 표준 절차
+
+1. 범위 지정
+   - 하나의 사용자 행동과 성공 결과를 문장으로 정의한다.
+2. 현행 동작 고정
+   - characterization test로 현재 입력·결과·오류를 기록한다.
+3. transaction 경계 결정
+   - 함께 성공하거나 실패해야 하는 변경을 식별한다.
+4. Domain 규칙 추출
+   - 순수 계산과 상태 전이를 Supabase 없이 테스트한다.
+5. Application 계약 정의
+   - command/query DTO, result, 작은 port를 만든다.
+6. Infrastructure 구현
+   - query adapter, mapper 또는 transaction RPC를 만든다.
+7. 권한과 오류 처리
+   - RLS/RPC role 검증, 공개 오류 code, 내부 로그를 추가한다.
+8. Presentation 연결
+   - feature hook을 통해 use case를 호출하고 Modal로 오류를 표시한다.
+9. 실제 DB 검증
+   - rollback, idempotency, concurrency, trigger side effect를 확인한다.
+10. 기존 경로 제거
+    - 해당 SCM import와 대체된 manager 메서드를 삭제한다.
+11. 전체 회귀 검증
+    - lint, type check, 관련 Jest, 필요한 DB test와 build를 실행한다.
+12. 문서 갱신
+    - 이 로드맵의 진행 상태와 새 운영 전제 조건을 반영한다.
+
+## 18. 새 코드에 적용할 규칙
+
+### 반드시 지킬 규칙
+
+- 신규 기능을 위해 `SCM`에 메서드를 추가하지 않는다.
+- Client Component에서 Supabase query builder나 `rpc()`를 직접 호출하지 않는다.
+- Domain/Application에서 `@supabase/*`, Next.js, React, 생성 DB 타입을 import하지 않는다.
+- 여러 테이블 변경을 브라우저의 순차 호출로 구현하지 않는다.
+- service-role key를 브라우저에서 사용하지 않는다.
+- 생성된 `database.types.ts`를 수동 수정하지 않는다.
+- DB 변경은 forward migration으로 버전 관리한다.
+- 숫자 PK를 업무 의미로 하드코딩하지 않는다.
+- DB 오류 원문을 사용자 Modal에 그대로 노출하지 않는다.
+
+### 허용되는 예외
+
+- OAuth callback처럼 프레임워크가 요구하는 명시적인 경계 파일
+- RLS로 보호되는 단순 조회를 수행하는 feature Infrastructure adapter
+- 서버 secret을 사용하는 server-only gateway
+- 성능상 필요한 read-only RPC
+
+예외는 “SCM을 계속 사용해도 된다”는 의미가 아니다. 올바른 실행 환경의 작은 adapter를 둔다는 의미다.
+
+## 19. 진행 상황 관리 표
+
+| 영역 | 상태 | 다음 행동 |
+| --- | --- | --- |
+| 공통 Result/Error | 완료 | 새 module에서 재사용 |
+| Supabase client 경계 | 완료 | legacy SCM 소비자만 점진 제거 |
+| 관리자 단어 대량 승인 | 완료 | 운영 지표 관찰, 하드코딩 docs 문제는 Phase 0B에서 제거 |
+| 실제 DB RPC 테스트 | 완료 | fresh reset 경로와 CI 연결 보강 |
+| local base schema | 부분 완료 | migration 순서·중복·seed 정리 |
+| 관리자 삭제/개별 승인 | 미착수 | Phase 1 세로 슬라이스 설계 |
+| 사용자 단어 요청 | 미착수 | Phase 2 세로 슬라이스 설계 |
+| word-catalog 조회 | 미착수 | 검색부터 mapper/query 패턴 확립 |
+| docs context | 미착수 | reference key 안정화 후 이전 |
+| identity/profile | 미착수 | Auth와 profile DB 계약 분리 |
+| notifications/storage | 미착수 | query/command/storage port 분리 |
+| SCM 최종 제거 | 대기 | 모든 context 이전 후 실행 |
+
+상태 값은 `미착수`, `설계 중`, `구현 중`, `부분 완료`, `완료`로 관리한다. 기능 일부만 새 구조를 사용하면 완료로 표시하지 않는다.
+
+## 20. 완료 판단 지표
+
+프로젝트 전체 전환은 다음 조건을 모두 만족할 때 완료된다.
+
+- `SCM` import가 0개다.
+- `SupabaseClientManager`와 넓은 CRUD interface가 삭제되었다.
+- Domain/Application에서 Supabase 및 생성 DB 타입 import가 0개다.
+- 컴포넌트가 table, column, RPC 이름을 알지 않는다.
+- 복합 mutation은 DB transaction 또는 명시된 durable workflow로 처리된다.
+- 대량 작업은 원자적 batch와 안전한 재개를 지원한다.
+- fresh local DB를 저장소만으로 재현할 수 있다.
+- reference data가 숫자 PK에 의존하지 않는다.
+- 권한, rollback, idempotency, concurrency가 실제 DB 테스트로 검증된다.
+- 서버 상태 cache 소유자가 기능마다 명확하다.
+- 사용자 오류와 운영 진단 정보가 분리된다.
+- 신규 기능이 legacy SCM을 다시 확장하지 못하도록 CI 규칙이 적용된다.
+
+## 21. 당장 처리할 작업
+
+기능 전환은 다음 순서로 진행한다.
+
+1. `admin/del-words`의 현재 동작을 characterization test로 고정한다.
+2. 삭제 승인을 `word-moderation` use case와 transaction RPC로 이전한다.
+3. `admin/request-words`와 `TableWorkFunc`의 승인·반려 흐름을 같은 방식으로 이전한다.
+4. 사용자 단어 요청 mutation을 이전한다.
+5. `word-catalog` 검색 query를 시작으로 읽기 경계를 분리한다.
+6. 각 단계에서 대체된 SCM 메서드와 import를 즉시 제거한다.
+
+다음 기반 작업은 기능 전환과 병행한다.
+
+1. Supabase migration history와 fresh bootstrap 경로를 정리한다.
+2. 현재 프로덕션 ID를 포함한 reference docs fixture를 versioned seed로 만든다.
+3. 로컬 reset과 DB integration test 절차를 자동화하고 문서를 갱신한다.
+
+하드코딩된 docs ID 제거는 현재 프로덕션 trigger를 그대로 유지한다는 결정에 따라 당장 수행하지 않는다. 대신 실제 ID 의미와 현재 동작을 기록해 두고, `docs` context 또는 DB backend 이전 전에 Phase 0B를 반드시 완료한다. 그때 재현 가능한 테스트를 먼저 만든 뒤 forward migration으로 변경한다.
+
+## 22. 의사결정 기록
+
+- DDD-lite와 CQRS-lite를 함께 사용한다.
+- Supabase는 당분간 Infrastructure 구현으로 유지한다.
+- Supabase 교체 가능성은 Domain/Application 경계로 흡수한다.
+- 모든 DB 요청을 Next.js API로 우회하지 않는다.
+- RLS로 보호되는 요청은 browser adapter가 Supabase를 직접 호출할 수 있다.
+- 복합 mutation은 Database RPC transaction을 사용한다.
+- 긴 작업은 작은 원자적 batch와 재개 가능한 operation으로 처리한다.
+- Vercel 함수 제한 회피만을 위해 Edge Function을 추가하지 않는다.
+- 브라우저 종료 후에도 자동 완료가 필수인 작업이 생길 때만 durable worker를 검토한다.
+- 기존 SCM은 big-bang이 아니라 위험도 순으로 점진 제거한다.
+- Full DDD, 전면 ORM 도입, 모든 기능의 동시 이전은 하지 않는다.
+- 숫자 PK를 업무 규칙으로 사용하지 않는다.
+- 로컬 DB 재현성과 실제 DB integration test를 아키텍처의 일부로 취급한다.
