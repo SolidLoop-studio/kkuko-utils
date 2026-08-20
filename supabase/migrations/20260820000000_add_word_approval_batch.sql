@@ -453,7 +453,8 @@ begin
         select 1
         from pg_catalog.jsonb_array_elements(p_entries) as entry(value)
         where pg_catalog.length(entry.value ->> 'word') = 0
-           or entry.value ->> 'word' <> pg_catalog.btrim(entry.value ->> 'word')
+           or entry.value ->> 'word' ~ '^[[:space:]]'
+           or entry.value ->> 'word' ~ '[[:space:]]$'
            or pg_catalog.jsonb_array_length(entry.value -> 'themeCodes') = 0
     ) then
         raise exception using
@@ -477,7 +478,8 @@ begin
         from pg_catalog.jsonb_array_elements(p_entries) as entry(value)
         cross join lateral pg_catalog.jsonb_array_elements_text(entry.value -> 'themeCodes') as theme_code(value)
         where pg_catalog.length(theme_code.value) = 0
-           or theme_code.value <> pg_catalog.btrim(theme_code.value)
+           or theme_code.value ~ '^[[:space:]]'
+           or theme_code.value ~ '[[:space:]]$'
     ) then
         raise exception using
             errcode = 'P0001',
@@ -605,6 +607,7 @@ begin
                 limit 1
             ), actor)
         from entry_data as entry
+        order by entry.word
         on conflict (word) do nothing
         returning word, added_by
     )
@@ -868,7 +871,7 @@ begin
         coalesce(pg_catalog.jsonb_agg(inserted_logs.docs_id), '[]'::jsonb),
         coalesce(
             pg_catalog.jsonb_agg(
-                pg_catalog.jsonb_build_object('add_by', inserted_logs.add_by)
+                pg_catalog.jsonb_build_object('added_by', inserted_logs.add_by)
             ),
             '[]'::jsonb
         )
