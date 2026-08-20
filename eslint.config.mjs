@@ -49,6 +49,30 @@ const eslintConfig = [
       ],
     },
   },
+  {
+    files: ["src/modules/*/domain/**/*.ts", "src/modules/*/application/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@supabase/*"],
+              message: "Domain and application layers must not import the Supabase SDK.",
+            },
+            {
+              group: ["@/src/app/types/database.types"],
+              message: "Domain and application layers must not import generated database types.",
+            },
+            {
+              group: ["@/src/shared/infrastructure/*"],
+              message: "Domain and application layers must not import shared infrastructure.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];
 
 export default eslintConfig;

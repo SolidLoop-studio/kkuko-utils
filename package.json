@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "gen-type": "npx supabase gen types typescript --project-id \"sjqbafovqiydkndodbsb\" --schema public > app/types/database.types.ts",
+    "gen-type": "npx supabase gen types typescript --project-id \"sjqbafovqiydkndodbsb\" --schema public > src/app/types/database.types.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",

@@ -1,10 +1,9 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from '../../types/database.types';
 import { GitHubRelease } from "@/src/app/types/program";
+import { createServiceSupabaseClient } from '@/src/shared/infrastructure/supabase/service-client';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY!;
-const supabase = createClient<Database>(supabaseUrl, supabaseKey);
+const supabase = createServiceSupabaseClient();
 
 class SupabaseServerManager {
     constructor(private readonly supabase: SupabaseClient<Database>) { }

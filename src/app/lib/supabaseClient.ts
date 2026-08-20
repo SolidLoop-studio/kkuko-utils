@@ -1,13 +1,10 @@
-import { createBrowserClient } from '@supabase/ssr';
-import type { Database } from '@/src/app/types/database.types';
 import { SupabaseClientManager } from './supabase/SupabaseClientManager';
 import { chunk as chunkArray } from 'es-toolkit';
 import type { ProgressCallback, SupabaseResult, SupabaseArrayResult } from '@/src/app/types/supabase.types';
+import { browserSupabaseClient } from '@/src/shared/infrastructure/supabase/browser-client';
 
-export const supabase = createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-);
+export { browserSupabaseClient as supabase };
+const supabase = browserSupabaseClient;
 
 export const SCM = new SupabaseClientManager(supabase);
 
