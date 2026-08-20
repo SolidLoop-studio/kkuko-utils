@@ -31,3 +31,15 @@ export {
     useWordApproval,
     type WordApprovalService,
 } from './presentation/use-word-approval';
+export {
+    useWordDeletion,
+    type WordDeletionService,
+} from './presentation/use-word-deletion';
+export type {
+    DeletionProgress,
+    StoredWordDeletionJob,
+    WordDeletionRunResult,
+} from './application/word-deletion-types';
+export type {
+    RawWordDeletionEntry,
+} from './domain/word-deletion';
