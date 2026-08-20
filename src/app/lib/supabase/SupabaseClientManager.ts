@@ -58,12 +58,6 @@ class AddManager implements IAddManager {
         const res = await axios.post('/api/auth/set_nickname', { nickname: nick.trim() });
         return res.data;
     }
-    public async words(q: addWordQueryType[]) {
-        return this.supabase.from('words').upsert(q, { ignoreDuplicates: true, onConflict: "word" }).select('*');
-    }
-    public async wordsThemes(q: addWordThemeQueryType[]) {
-        return await this.supabase.from('word_themes').upsert(q, { ignoreDuplicates: true, onConflict: "word_id,theme_id" }).select('words(word),themes(name)')
-    }
     public async wordThemesReq(q: { word_id: number; theme_id: number; typez: 'add' | 'delete'; req_by: string | null; }[]) {
         return await this.supabase.from('word_themes_wait').upsert(q, { onConflict: "word_id,theme_id", ignoreDuplicates: true }).select('themes(name), typez');
     }
@@ -834,9 +828,6 @@ class DeleteManager implements IDeleteManager {
     }
     public async waitWordByWord(word: string) {
         return await this.supabase.from('wait_words').delete().eq("word", word)
-    }
-    public async wordsWaitThemesByIds(ids: number[]) {
-        return await this.supabase.from('word_themes_wait').delete().in('word_id', ids);
     }
     public async logsByIds(ids: number[]) {
         return await this.supabase.from('logs').delete().in('id', ids);

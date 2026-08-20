@@ -34,8 +34,6 @@ export interface IAddManager {
     waitDocs({ docsName, userId }: { docsName: string; userId: string | undefined; }): Promise<PostgrestSingleResponse<null>>;
     docs(insertDocsData: { name: string; maker: string | null; duem: boolean; typez: "letter" | "theme"; }[]): Promise<PostgrestSingleResponse<null>>;
     nickname(nick: string): Promise<PostgrestSingleResponse<user>>;
-    words(q:addWordQueryType[]): Promise<PostgrestSingleResponse<word[]>>;
-    wordsThemes(q: addWordThemeQueryType[]): Promise<PostgrestSingleResponse<{words:{word: string}; themes: {name: string}}[]>>;
     wordThemesReq(q: {word_id: number, theme_id: number, typez: "add" | "delete", req_by: string | null}[]): Promise<PostgrestSingleResponse<{typez: "add" | "delete"; themes:{name: string}}[]>>
     waitWords(q: {word: string, requested_by: string | null, request_type: "add"}[]): Promise<PostgrestSingleResponse<(wait_word)[]>>;
     notification(data: { title: string; body: string; img?: string | null; end_at: string; is_important?: boolean; is_modal?: boolean }): Promise<PostgrestSingleResponse<notification>>;
@@ -112,7 +110,6 @@ export interface IDeleteManager{
     waitWordsByWords(words: string[]): Promise<PostgrestSingleResponse<null>>;
     waitWordsByIds(ids: number[]): Promise<PostgrestSingleResponse<null>>;
     waitWordByWord(word: string): Promise<PostgrestSingleResponse<null>>;
-    wordsWaitThemesByIds(ids: number[]): Promise<PostgrestSingleResponse<null>>;
     logsByIds(ids: number[]): Promise<PostgrestSingleResponse<null>>;
     docsLogsByIds(ids: number[]): Promise<PostgrestSingleResponse<null>>;
     notificationById(id: number): Promise<PostgrestSingleResponse<null>>;
