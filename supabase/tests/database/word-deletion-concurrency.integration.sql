@@ -1,7 +1,7 @@
 create schema if not exists extensions;
 create extension if not exists dblink with schema extensions;
 
-select plan(23);
+select plan(24);
 
 create function pg_temp.word_deletion_test_connection_string()
 returns text
@@ -300,6 +300,14 @@ select is(
      from word_deletion_concurrent_apply_results),
     1,
     'the shared deletion request is processed once'
+);
+select is(
+    (select pg_catalog.count(*)::integer
+     from public.wait_words as wait_word
+     where wait_word.word = 'word-deletion-concurrency-fixture-x'
+       and wait_word.request_type = 'delete'),
+    0,
+    'the shared deletion request row is absent before replay and cleanup'
 );
 select is(
     (select pg_catalog.count(*)::integer
