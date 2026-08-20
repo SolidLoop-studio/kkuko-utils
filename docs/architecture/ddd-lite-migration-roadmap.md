@@ -101,7 +101,7 @@ git grep -n -E "\bSCM\." -- "src/**/*.ts" "src/**/*.tsx"
 - `DelWordsHome`과 `WordDeletionPanel`
   - 삭제 흐름에서 직접 `SCM`과 Supabase SDK 호출 제거
   - 삭제 전용 operation/batch RPC, IndexedDB 재개 payload, React Query hook으로 이전
-  - local pgTAP 삭제 operation/RPC 검증 완료 (behavior 94 + concurrency 24 = 118 assertions)
+  - local pgTAP 삭제 operation/RPC 검증 완료 (behavior 97 + concurrency 24 = 121 assertions)
   - cloud Supabase migration은 사용자/운영자 실행 대기 상태
 
 즉, 전체 프로젝트에서 SCM이 제거된 것은 아니다. 안전한 전환 방법을 검증한 초기 세로 슬라이스들이 완성된 상태다.

@@ -351,11 +351,6 @@ begin
                 from public.word_themes as word_theme join public.themes as theme
                   on theme.id = word_theme.theme_id
                 where word_theme.word_id = actual.word_id and theme.name = document.name))
-        union select document.id from pg_catalog.jsonb_to_recordset(actual_words) as actual(
-            word_id bigint, word text, whole_requester uuid, contributor uuid,
-            k_canuse boolean, word_length integer
-        ) join public.docs as document on document.id in (201,202)
-        where actual.k_canuse and actual.word_length >= 9
     ) as affected;
 
     with actual as (

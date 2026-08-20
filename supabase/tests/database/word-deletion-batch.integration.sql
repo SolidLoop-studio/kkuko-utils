@@ -384,23 +384,43 @@ select is((select pg_catalog.count(*)::integer from public.logs where word in (
 )), 3, 'replay는 log를 중복 생성하지 않는다');
 select is((select contribution from public.users where id = '00000000-0000-4000-8000-0000000000c4'), 2, 'replay는 contribution을 중복 생성하지 않는다');
 
-insert into public.docs (id, name, typez)
-values (201, '삭제통합특수문서A', 'ect'), (202, '삭제통합특수문서B', 'ect');
+insert into public.docs (id, name, typez, last_update)
+values
+    (201, '삭제통합특수문서A', 'ect', '1999-01-01'),
+    (202, '삭제통합특수문서B', 'ect', '1999-01-01');
 select is((select pg_catalog.count(*)::integer from public.docs where id in (201, 202)), 2, 'special docs fixture가 있다');
 insert into public.words (word, added_by) values
     ('삭제통합특수문서동작확인¤', '00000000-0000-4000-8000-0000000000c5');
+create temporary table special_docs_baseline as
+select id, last_update from public.docs where id in (201, 202);
 set local role authenticated;
 select lives_ok($$select public.start_word_deletion_operation(
     '30000000-0000-4000-8000-000000000011', repeat('4', 64), 1, 1
 )$$, 'special docs operation을 시작한다');
-select is((public.apply_word_deletion_batch(
+create temporary table special_deletion_result (result jsonb not null);
+insert into special_deletion_result
+select public.apply_word_deletion_batch(
     '30000000-0000-4000-8000-000000000011', 0, 1, repeat('5', 64),
     '[{"word":"삭제통합특수문서동작확인¤"}]'::jsonb
-) ->> 'deletedWordCount')::integer, 1, '긴 word를 삭제한다');
+);
 reset role;
+select is((select (result ->> 'deletedWordCount')::integer from special_deletion_result),
+    1, '긴 word를 삭제한다');
+select is((select result -> 'affectedDocsIds' from special_deletion_result),
+    (select pg_catalog.to_jsonb(array[document.id]) from public.docs as document
+     where document.typez = 'letter' and document.name = '¤'),
+    'returned affectedDocsIds는 직접 생성한 letter/theme docs log만 포함한다');
+select is((select result -> 'affectedDocsIds' from public.word_deletion_batches
+    where operation_id = '30000000-0000-4000-8000-000000000011' and batch_index = 0),
+    (select pg_catalog.to_jsonb(array[document.id]) from public.docs as document
+     where document.typez = 'letter' and document.name = '¤'),
+    'persisted affectedDocsIds는 legacy 201/202를 제외한다');
 select is((select pg_catalog.count(*)::integer from public.docs_logs
     where word = '삭제통합특수문서동작확인¤' and docs_id in (201, 202) and type = 'delete'
 ), 2, '기존 special docs trigger를 유지한다');
+select ok((select pg_catalog.bool_and(document.last_update = baseline.last_update)
+    from public.docs as document join special_docs_baseline as baseline using (id)),
+    'RPC는 legacy 201/202 last_update를 직접 변경하지 않는다');
 
 insert into public.words (word, added_by) values
     ('삭제통합롤백¤', '00000000-0000-4000-8000-0000000000c5');

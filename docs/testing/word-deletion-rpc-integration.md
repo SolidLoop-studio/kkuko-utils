@@ -93,7 +93,7 @@ npx supabase stop
 
 `test:word-approval-db` covers the approval regression suite (59 assertions).
 `test:word-deletion-db` runs the deletion behavior and deterministic committed
-session concurrency suites (118 assertions: 94 behavior and 24 concurrency).
+session concurrency suites (121 assertions: 97 behavior and 24 concurrency).
 
 ## Fixture and assertion coverage
 
