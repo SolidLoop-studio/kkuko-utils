@@ -1,6 +1,6 @@
 begin;
 
-select plan(40);
+select plan(43);
 
 delete from public.word_approval_operations
 where operation_id in (
@@ -40,6 +40,21 @@ where id in (
     '00000000-0000-4000-8000-0000000000a3',
     '00000000-0000-4000-8000-0000000000a4'
 );
+
+delete from auth.users
+where id in (
+    '00000000-0000-4000-8000-0000000000a1',
+    '00000000-0000-4000-8000-0000000000a2',
+    '00000000-0000-4000-8000-0000000000a3',
+    '00000000-0000-4000-8000-0000000000a4'
+);
+
+insert into auth.users (id)
+values
+    ('00000000-0000-4000-8000-0000000000a1'),
+    ('00000000-0000-4000-8000-0000000000a2'),
+    ('00000000-0000-4000-8000-0000000000a3'),
+    ('00000000-0000-4000-8000-0000000000a4');
 
 insert into public.users (id, nickname, role)
 values
@@ -109,6 +124,22 @@ select ok(
     ),
     'authenticated에는 batch RPC 실행 권한이 있다'
 );
+select is(
+    (
+        select pg_catalog.array_to_string(routine.proconfig, ',')
+        from pg_catalog.pg_proc as routine
+        where routine.oid =
+            'public.apply_word_approval_batch(uuid,integer,integer,text,jsonb)'::pg_catalog.regprocedure
+    ),
+    'search_path=pg_catalog, public, pg_temp',
+    'batch RPC는 trusted legacy-trigger search path만 사용한다'
+);
+select ok(
+    not pg_catalog.has_schema_privilege('anon', 'public', 'CREATE')
+    and not pg_catalog.has_schema_privilege('authenticated', 'public', 'CREATE')
+    and not pg_catalog.has_schema_privilege('service_role', 'public', 'CREATE'),
+    'RPC 호출 역할은 public 스키마에 객체를 만들 수 없다'
+);
 
 insert into public.wait_words (word, requested_by, request_type)
 values ('승인통합성공¤', '00000000-0000-4000-8000-0000000000a4', 'add');
@@ -134,6 +165,13 @@ begin
 end;
 $$;
 set local role authenticated;
+create temporary table docs (
+    name text not null,
+    typez text not null,
+    last_update timestamp without time zone not null
+);
+insert into docs (name, typez, last_update)
+values ('¤', 'letter', '2000-01-01 00:00:00'::timestamp);
 select is(
     public.start_word_approval_operation(
         '10000000-0000-4000-8000-000000000001', repeat('a', 64), 1, 1
@@ -162,6 +200,16 @@ select is(
     '성공 batch는 신규 단어 수를 반환한다'
 );
 reset role;
+
+select is(
+    (
+        select shadow_docs.last_update
+        from pg_temp.docs as shadow_docs
+        where shadow_docs.name = '¤'
+    ),
+    '2000-01-01 00:00:00'::timestamp,
+    'authenticated 임시 relation은 definer trigger의 public relation을 가로채지 못한다'
+);
 
 select is(
     (select (batch.result ->> 'addedThemeCount')::integer
