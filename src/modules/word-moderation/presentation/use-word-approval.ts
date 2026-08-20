@@ -79,6 +79,7 @@ export function useWordApproval(
         },
         onSuccess: (result) => {
             if (!result.ok) {
+                setProgress(null);
                 setError(result.error);
             }
         },

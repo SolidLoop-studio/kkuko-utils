@@ -47,6 +47,8 @@ const completedResult = (): WordApprovalRunResult => ({
 class FakeWordApprovalService implements WordApprovalService {
     private jobs: StoredWordApprovalJob[] = [];
     startFailure: ApplicationError | null = null;
+    resumeThrowsAfterProgress = false;
+    cancelFailure: ApplicationError | null = null;
     listPendingFailure: Error | null = null;
 
     seedPending(): void {
@@ -59,6 +61,13 @@ class FakeWordApprovalService implements WordApprovalService {
     ) {
         this.seedPending();
         if (this.startFailure !== null) {
+            onProgress?.({
+                stage: 'applying',
+                completedEntries: 1,
+                totalEntries: entries.length,
+                completedBatches: 1,
+                totalBatches: 2,
+            });
             return err(this.startFailure);
         }
 
@@ -77,6 +86,16 @@ class FakeWordApprovalService implements WordApprovalService {
         operationId: string,
         onProgress?: (progress: ApprovalProgress) => void,
     ) {
+        if (this.resumeThrowsAfterProgress) {
+            onProgress?.({
+                stage: 'applying',
+                completedEntries: 1,
+                totalEntries: 2,
+                completedBatches: 1,
+                totalBatches: 2,
+            });
+            throw new Error('relation words SQL stack resume failed');
+        }
         onProgress?.({
             stage: 'completed',
             completedEntries: 2,
@@ -89,6 +108,9 @@ class FakeWordApprovalService implements WordApprovalService {
     }
 
     async cancel(operationId: string) {
+        if (this.cancelFailure !== null) {
+            return err(this.cancelFailure);
+        }
         this.jobs = this.jobs.filter((job) => job.operationId !== operationId);
         return ok(undefined);
     }
@@ -158,7 +180,7 @@ describe('useWordApproval', () => {
         });
     });
 
-    it('실패한 시작 작업을 pending으로 유지하고 ApplicationError를 노출한다', async () => {
+    it('부분 progress 뒤 실패한 시작 작업은 progress를 지우고 오류를 노출한다', async () => {
         const service = new FakeWordApprovalService();
         service.startFailure = { kind: 'infrastructure', message: 'batch failed' };
         const { result } = renderHook(() => useWordApproval(service), {
@@ -171,7 +193,52 @@ describe('useWordApproval', () => {
 
         await waitFor(() => {
             expect(result.current.error).toEqual(service.startFailure);
+            expect(result.current.progress).toBeNull();
             expect(result.current.pendingJobs).toHaveLength(1);
+        });
+    });
+
+    it('부분 progress 뒤 resume이 throw하면 progress를 지우고 안정된 오류를 노출한다', async () => {
+        const service = new FakeWordApprovalService();
+        service.seedPending();
+        service.resumeThrowsAfterProgress = true;
+        const { result } = renderHook(() => useWordApproval(service), {
+            wrapper: createWrapper(),
+        });
+
+        await waitFor(() => expect(result.current.pendingJobs).toHaveLength(1));
+        await act(async () => {
+            await result.current.resume('operation-1');
+        });
+
+        await waitFor(() => {
+            expect(result.current.progress).toBeNull();
+            expect(result.current.error).toEqual({
+                kind: 'infrastructure',
+                message: '단어 승인 작업 처리 중 오류가 발생했습니다.',
+            });
+        });
+    });
+
+    it('이전 progress가 있어도 cancel 실패 시 progress를 지우고 오류를 노출한다', async () => {
+        const service = new FakeWordApprovalService();
+        const { result } = renderHook(() => useWordApproval(service), {
+            wrapper: createWrapper(),
+        });
+
+        await act(async () => {
+            await result.current.start(rawEntries);
+        });
+        expect(result.current.progress?.stage).toBe('completed');
+
+        service.cancelFailure = { kind: 'conflict', message: 'cancel failed' };
+        await act(async () => {
+            await result.current.cancel('operation-1');
+        });
+
+        await waitFor(() => {
+            expect(result.current.progress).toBeNull();
+            expect(result.current.error).toEqual(service.cancelFailure);
         });
     });
 

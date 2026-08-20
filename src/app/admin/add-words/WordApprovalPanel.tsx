@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, ArrowLeft, CheckCircle, FileJson } from 'lucide-react';
 import Link from 'next/link';
 
@@ -102,9 +102,12 @@ export default function WordApprovalPanel({
     const [entries, setEntries] = useState<RawWordApprovalEntry[] | null>(null);
     const [fileName, setFileName] = useState('');
     const [visibleError, setVisibleError] = useState<ErrorMessage | null>(null);
+    const [isReading, setIsReading] = useState(false);
     const [isActionPending, setIsActionPending] = useState(false);
     const [isRunRequested, setIsRunRequested] = useState(false);
     const [isProgressDismissed, setIsProgressDismissed] = useState(false);
+    const activeReaderRef = useRef<FileReader | null>(null);
+    const readGenerationRef = useRef(0);
 
     useEffect(() => {
         if (approvalState.error !== null) {
@@ -115,13 +118,49 @@ export default function WordApprovalPanel({
         }
     }, [approvalState.error]);
 
-    const parseFile = (file: File) => {
-        setFileName(file.name);
-        const reader = new FileReader();
+    useEffect(() => () => {
+        readGenerationRef.current += 1;
+        const activeReader = activeReaderRef.current;
+        activeReaderRef.current = null;
+        if (activeReader?.readyState === FileReader.LOADING) {
+            activeReader.abort();
+        }
+    }, []);
 
-        reader.onload = (event) => {
+    const parseFile = (file: File) => {
+        readGenerationRef.current += 1;
+        const generation = readGenerationRef.current;
+        const previousReader = activeReaderRef.current;
+        activeReaderRef.current = null;
+        if (previousReader?.readyState === FileReader.LOADING) {
+            previousReader.abort();
+        }
+
+        setFileName(file.name);
+        setEntries(null);
+        setVisibleError(null);
+        setIsReading(true);
+        const reader = new FileReader();
+        activeReaderRef.current = reader;
+
+        const isCurrentRead = () => readGenerationRef.current === generation
+            && activeReaderRef.current === reader;
+
+        const finishRead = () => {
+            if (!isCurrentRead()) {
+                return false;
+            }
+            activeReaderRef.current = null;
+            setIsReading(false);
+            return true;
+        };
+
+        reader.onload = () => {
+            if (!isCurrentRead()) {
+                return;
+            }
             try {
-                const parsed: unknown = JSON.parse(String(event.target?.result ?? ''));
+                const parsed: unknown = JSON.parse(String(reader.result ?? ''));
                 if (!isWordEntries(parsed)) {
                     setEntries(null);
                     setVisibleError(errorMessage(
@@ -142,14 +181,49 @@ export default function WordApprovalPanel({
                     'JSON 파일 오류',
                     'JSON 파일 파싱 중 오류가 발생했거나 형식이 올바르지 않습니다.',
                 ));
+            } finally {
+                finishRead();
             }
         };
 
-        reader.readAsText(file);
+        reader.onerror = () => {
+            if (!finishRead()) {
+                return;
+            }
+            setEntries(null);
+            setVisibleError(errorMessage(
+                'JSON 파일 오류',
+                'JSON 파일을 읽는 중 오류가 발생했습니다.',
+            ));
+        };
+
+        reader.onabort = () => {
+            if (!finishRead()) {
+                return;
+            }
+            setEntries(null);
+            setVisibleError(errorMessage(
+                'JSON 파일 오류',
+                'JSON 파일 읽기가 취소되었습니다.',
+            ));
+        };
+
+        try {
+            reader.readAsText(file);
+        } catch {
+            if (finishRead()) {
+                setEntries(null);
+                setVisibleError(errorMessage(
+                    'JSON 파일 오류',
+                    'JSON 파일을 읽는 중 오류가 발생했습니다.',
+                ));
+            }
+        }
     };
 
     const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
+        event.currentTarget.value = '';
         if (file) {
             parseFile(file);
         }
@@ -165,6 +239,7 @@ export default function WordApprovalPanel({
     };
 
     const runAction = async (action: () => void | Promise<unknown>, showsProgress: boolean) => {
+        setVisibleError(null);
         setIsActionPending(true);
         if (showsProgress) {
             setIsRunRequested(true);
@@ -180,7 +255,7 @@ export default function WordApprovalPanel({
     };
 
     const handleStart = async () => {
-        if (entries === null || onStart === undefined) {
+        if (isReading || entries === null || onStart === undefined) {
             return;
         }
         await runAction(() => onStart(entries), true);
@@ -190,7 +265,9 @@ export default function WordApprovalPanel({
     const progress = approvalState.progress;
     const percent = progressPercent(progress);
     const isCompleted = progress?.stage === 'completed';
-    const isProgressOpen = !isProgressDismissed
+    const isProgressOpen = approvalState.error === null
+        && visibleError === null
+        && !isProgressDismissed
         && (isRunRequested || approvalState.isProcessing || progress !== null);
 
     return (
@@ -255,6 +332,7 @@ export default function WordApprovalPanel({
                     <div className="flex w-full items-center justify-center">
                         <label
                             htmlFor="file-upload"
+                            aria-busy={isReading}
                             className="flex h-64 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-900 dark:hover:bg-gray-800"
                             onDragOver={(event) => {
                                 event.preventDefault();
@@ -307,7 +385,11 @@ export default function WordApprovalPanel({
                 <div className="flex justify-center">
                     <Button
                         onClick={handleStart}
-                        disabled={!canManage || entries === null || isBusy || onStart === undefined}
+                        disabled={!canManage
+                            || isReading
+                            || entries === null
+                            || isBusy
+                            || onStart === undefined}
                         className="rounded-md bg-blue-600 px-6 py-2 font-medium text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
                     >
                         {isBusy ? '처리 중...' : '처리 시작'}
