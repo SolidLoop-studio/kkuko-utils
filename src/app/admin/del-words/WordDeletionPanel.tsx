@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { CheckCircle, FileText, Loader2, Upload } from 'lucide-react';
 
-import ErrorModal from '@/src/app/components/ErrModal';
 import {
     AlertDialog,
     AlertDialogContent,
@@ -12,6 +11,13 @@ import {
     AlertDialogTitle,
 } from '@/src/app/components/ui/alert-dialog';
 import { Button } from '@/src/app/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/src/app/components/ui/dialog';
 import { Progress } from '@/src/app/components/ui/progress';
 import { Textarea } from '@/src/app/components/ui/textarea';
 import type {
@@ -82,9 +88,14 @@ export default function WordDeletionPanel({ deletion }: WordDeletionPanelProps) 
     const [visibleError, setVisibleError] = useState<ErrorMessage | null>(null);
     const activeReaderRef = useRef<FileReader | null>(null);
     const readGenerationRef = useRef(0);
+    const focusBeforeErrorRef = useRef<HTMLElement | null>(null);
+    const isBusy = deletion.isPending || isActionPending;
 
     useEffect(() => {
         if (deletion.error !== null) {
+            focusBeforeErrorRef.current = document.activeElement instanceof HTMLElement
+                ? document.activeElement
+                : null;
             setVisibleError(errorMessage('삭제 작업 오류', applicationErrorMessage(deletion.error)));
         }
     }, [deletion.error]);
@@ -103,6 +114,8 @@ export default function WordDeletionPanel({ deletion }: WordDeletionPanelProps) 
     }, []);
 
     const readFile = (nextFile: File) => {
+        if (isBusy) return;
+
         readGenerationRef.current += 1;
         const generation = readGenerationRef.current;
         const previousReader = activeReaderRef.current;
@@ -154,6 +167,8 @@ export default function WordDeletionPanel({ deletion }: WordDeletionPanelProps) 
     };
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (isBusy) return;
+
         const selectedFile = event.target.files?.[0];
         event.currentTarget.value = '';
         if (selectedFile) readFile(selectedFile);
@@ -161,6 +176,8 @@ export default function WordDeletionPanel({ deletion }: WordDeletionPanelProps) 
 
     const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
         event.preventDefault();
+        if (isBusy) return;
+
         const droppedFile = event.dataTransfer.files?.[0];
         if (droppedFile) readFile(droppedFile);
     };
@@ -180,7 +197,6 @@ export default function WordDeletionPanel({ deletion }: WordDeletionPanelProps) 
         }
     };
 
-    const isBusy = deletion.isPending || isActionPending;
     const progress = deletion.progress;
     const percent = progressPercent(progress);
     const isCompleted = progress?.stage === 'completed';
@@ -223,7 +239,9 @@ export default function WordDeletionPanel({ deletion }: WordDeletionPanelProps) 
                 <div
                     aria-label="파일 업로드 영역"
                     className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 dark:hover:border-blue-400 transition-colors bg-white dark:bg-gray-900"
-                    onClick={() => document.getElementById('word-deletion-file-upload')?.click()}
+                    onClick={() => {
+                        if (!isBusy) document.getElementById('word-deletion-file-upload')?.click();
+                    }}
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={handleDrop}
                 >
@@ -232,6 +250,7 @@ export default function WordDeletionPanel({ deletion }: WordDeletionPanelProps) 
                         type="file"
                         aria-label="클릭하여 파일 업로드"
                         onChange={handleFileChange}
+                        disabled={isBusy}
                         className="hidden"
                         accept=".txt,.csv,.md,.json"
                     />
@@ -318,12 +337,41 @@ export default function WordDeletionPanel({ deletion }: WordDeletionPanelProps) 
                 </AlertDialogContent>
             </AlertDialog>
 
-            {visibleError !== null && (
-                <ErrorModal error={visibleError} onClose={() => {
-                    setVisibleError(null);
-                    deletion.clearError();
-                }} />
-            )}
+            <Dialog
+                open={visibleError !== null}
+                onOpenChange={(isOpen) => {
+                    if (!isOpen) {
+                        setVisibleError(null);
+                        deletion.clearError();
+                    }
+                }}
+            >
+                <DialogContent
+                    className="max-w-sm bg-white text-center dark:bg-gray-800"
+                    onCloseAutoFocus={(event) => {
+                        event.preventDefault();
+                        focusBeforeErrorRef.current?.focus();
+                        focusBeforeErrorRef.current = null;
+                    }}
+                >
+                    <DialogHeader>
+                        <DialogTitle className="text-gray-900 dark:text-gray-100">
+                            {visibleError?.ErrName ?? '삭제 작업 오류'}
+                        </DialogTitle>
+                        <DialogDescription className="text-gray-700 dark:text-gray-300">
+                            {visibleError?.ErrMessage}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex justify-end">
+                        <Button onClick={() => {
+                            setVisibleError(null);
+                            deletion.clearError();
+                        }}>
+                            확인
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }

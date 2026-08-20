@@ -122,10 +122,16 @@ describe('WordDeletionPanel', () => {
         expect(screen.getByText('처리된 요청: 2개')).toBeInTheDocument();
     });
 
-    it('application 오류를 내부 정보 없는 안정된 Modal 메시지로 표시하고 닫는다', async () => {
+    it('application 오류를 내부 정보 없는 접근 가능한 Modal로 표시하고 focus를 복원한다', async () => {
         const clearError = jest.fn();
         const user = userEvent.setup();
-        render(
+        const { rerender } = render(
+            <WordDeletionPanel deletion={{ ...idleDeletion, clearError }} />,
+        );
+        const fileInput = screen.getByLabelText(/클릭하여 파일 업로드/) as HTMLInputElement;
+        fileInput.focus();
+
+        rerender(
             <WordDeletionPanel
                 deletion={{
                     ...idleDeletion,
@@ -138,10 +144,22 @@ describe('WordDeletionPanel', () => {
             />,
         );
 
-        expect(screen.getByText('단어 삭제 작업 처리 중 오류가 발생했습니다.')).toBeInTheDocument();
+        const dialog = await screen.findByRole('dialog', { name: '삭제 작업 오류' });
+        expect(dialog).toHaveTextContent('단어 삭제 작업 처리 중 오류가 발생했습니다.');
         expect(screen.queryByText(/relation|SQL stack/i)).not.toBeInTheDocument();
-        await user.click(screen.getByRole('button', { name: 'Close' }));
+        await waitFor(() =>
+            expect(dialog).toContainElement(document.activeElement as HTMLElement),
+        );
+        await user.tab();
+        expect(dialog).toContainElement(document.activeElement as HTMLElement);
+        await user.tab();
+        expect(dialog).toContainElement(document.activeElement as HTMLElement);
+        expect(fileInput.closest('[aria-hidden="true"]')).not.toBeNull();
+        expect(screen.queryByRole('button', { name: '파일 처리' })).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: '확인' }));
         await waitFor(() => expect(clearError).toHaveBeenCalledTimes(1));
+        await waitFor(() => expect(fileInput).toHaveFocus());
     });
 
     it('저장된 작업의 ID와 생성 시간을 표시하고 재개와 취소를 각각 한번만 요청한다', async () => {
@@ -216,6 +234,37 @@ describe('WordDeletionPanel', () => {
         );
         await user.click(screen.getByRole('button', { name: '확인' }));
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('활성 작업은 Escape, 바깥 클릭, 파일 교체로 진행 Modal을 닫지 않는다', async () => {
+        const user = userEvent.setup();
+        let resolveStart: (() => void) | undefined;
+        const start = jest.fn(() => new Promise<void>((resolve) => {
+            resolveStart = resolve;
+        }));
+        render(<WordDeletionPanel deletion={{ ...idleDeletion, start }} />);
+
+        await uploadText('가방', 'original.txt');
+        await user.click(screen.getByRole('button', { name: '파일 처리' }));
+        expect(start).toHaveBeenCalledTimes(1);
+        expect(screen.getByRole('alertdialog', { name: '처리 진행 중' })).toBeInTheDocument();
+
+        fireEvent.keyDown(document, { key: 'Escape' });
+        fireEvent.pointerDown(document.querySelector('[data-state="open"][aria-hidden="true"]') as Element);
+        fireEvent.change(screen.getByLabelText(/클릭하여 파일 업로드/, { selector: 'input' }), {
+            target: { files: [new File(['새 단어'], 'replacement.txt', { type: 'text/plain' })] },
+        });
+        fireEvent.drop(screen.getByLabelText('파일 업로드 영역'), {
+            dataTransfer: { files: [new File(['또 다른 단어'], 'dropped.txt', { type: 'text/plain' })] },
+        });
+
+        expect(screen.getByRole('alertdialog', { name: '처리 진행 중' })).toBeInTheDocument();
+        expect(start).toHaveBeenCalledTimes(1);
+        expect(screen.queryByText('replacement.txt 선택됨')).not.toBeInTheDocument();
+        expect(screen.queryByText('dropped.txt 선택됨')).not.toBeInTheDocument();
+
+        resolveStart?.();
+        await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
     });
 
     it('source boundary does not reference SCM or Supabase query APIs', () => {
