@@ -24,6 +24,25 @@ describe('browser word moderation services', () => {
         jest.resetModules();
     });
 
+    it('returns one stable singleton with approval and deletion services', () => {
+        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
+        jest.resetModules();
+
+        jest.isolateModules(() => {
+            const { RunWordApprovalService } = require('../../../../../modules/word-moderation/application/run-word-approval');
+            const { RunWordDeletionService } = require('../../../../../modules/word-moderation/application/run-word-deletion');
+            const { createBrowserWordModerationServices } = require('../../../../../modules/word-moderation/infrastructure/browser/browser-word-moderation-services');
+
+            const first = createBrowserWordModerationServices();
+            const second = createBrowserWordModerationServices();
+
+            expect(first).toBe(second);
+            expect(first.wordApprovalService).toBeInstanceOf(RunWordApprovalService);
+            expect(first.wordDeletionService).toBeInstanceOf(RunWordDeletionService);
+        });
+    });
+
     it('SSR module import does not access IndexedDB', () => {
         process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
