@@ -12,6 +12,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:word-approval-db": "supabase test db --local supabase/tests/database/word-approval-batch.integration.sql supabase/tests/database/word-approval-concurrency.integration.sql",
+    "test:word-deletion-db": "supabase test db --local supabase/tests/database/word-deletion-batch.integration.sql supabase/tests/database/word-deletion-concurrency.integration.sql",
     "test:test": "jest 2>&1 | tee test.txt",
     "test:ci": "jest --ci --coverage --watchAll=false",
     "prepare": "husky"
