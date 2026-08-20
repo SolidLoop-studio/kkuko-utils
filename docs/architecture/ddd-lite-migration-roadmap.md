@@ -673,6 +673,35 @@ npx jest <관련 테스트> --runInBand
 
 DB schema/RPC를 변경했다면 local Supabase integration test를 추가한다. build 경계나 Next.js 설정을 바꿨다면 `npm run build`도 실행한다.
 
+### 14.7 Local Supabase 실행 수명주기
+
+로컬 Supabase 개발 DB는 평소에 종료되어 있는 것을 기본 전제로 한다. DB schema, migration, RPC, RLS, trigger 또는 실제 DB integration test가 필요한 작업에서만 로컬 stack을 실행한다.
+
+작업 시작:
+
+```bash
+supabase start
+```
+
+로컬 stack이 준비된 뒤 필요한 migration 검증과 DB test를 실행한다. 로컬 DB가 필요하지 않은 일반 Domain/Application unit test나 문서 작업을 위해 Supabase를 실행하지 않는다.
+
+작업 종료:
+
+```bash
+supabase stop
+```
+
+다음 운영 규칙을 적용한다.
+
+- DB 작업이나 테스트가 성공했는지와 관계없이 작업 종료 시 `supabase stop`을 실행한다.
+- 테스트 실패, 중간 오류 또는 검증 중단이 발생해도 로컬 stack을 실행한 상태로 방치하지 않는다.
+- 사용자가 해당 작업 이후에도 로컬 Supabase를 계속 실행해 달라고 명시한 경우에만 종료하지 않는다.
+- 테스트는 로컬 container와 disposable local DB만 대상으로 한다.
+- `supabase link --project-ref ...`로 연결된 원격 프로젝트가 있더라도 `--linked` 옵션을 사용하지 않는다. `--linked`는 로컬이 아니라 연결된 원격 Supabase project를 대상으로 명령을 실행할 수 있기 때문이다.
+- 로컬 DB 준비가 실패했다고 해서 production 또는 다른 remote project를 테스트 대상으로 대신 사용하지 않는다.
+
+따라서 DB 검증이 필요한 작업의 기본 흐름은 `supabase start` → migration/RPC test → 결과 확인 → `supabase stop`이다.
+
 ## 15. 전환 전략
 
 ### 15.1 Strangler 방식
