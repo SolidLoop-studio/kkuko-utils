@@ -23,6 +23,8 @@
 - [DDD-lite 데이터 접근 리팩터링 상세 설계](../superpowers/specs/2026-08-20-ddd-lite-data-access-refactoring-design.md)
 - [재개 가능한 단어 승인 배치 구현 계획](../superpowers/plans/2026-08-20-resumable-word-approval-batch.md)
 - [단어 승인 RPC 통합 테스트](../testing/word-approval-rpc-integration.md)
+- [단어 삭제 RPC 통합 테스트](../testing/word-deletion-rpc-integration.md)
+- [단어 삭제 RPC 클라우드 반영 절차](../deployment/word-deletion-rpc-cloud-rollout.md)
 
 ## 2. 요약
 
@@ -40,7 +42,7 @@
 - Next.js Route Handler는 모든 DB 요청의 의무적인 중간 계층이 아니다. 서버 secret 또는 서버 전용 통합이 필요한 경우에만 사용한다.
 - 기존 `SCM`은 한 번에 제거하지 않고, 위험도가 높은 기능부터 strangler 방식으로 축소한다.
 
-첫 세로 슬라이스인 관리자 단어 대량 승인은 위 원칙으로 이전되었다. 다음 기능 전환 우선순위는 관리자 단어 삭제·개별 승인 흐름과 사용자 단어 요청 흐름이다. 로컬 DB bootstrap은 병행해서 재현 가능하게 만들되, 프로덕션에서 동작 중인 하드코딩 trigger는 당장 변경하지 않고 실제 의미를 기록한 뒤 `docs` context 또는 DB backend를 이전하기 전에 제거한다.
+첫 두 세로 슬라이스인 관리자 단어 대량 승인과 `admin/del-words`의 재개 가능한 대량 삭제는 위 원칙으로 이전되었다. 다음 Phase 1 행동은 `admin/request-words`의 characterization과 설계다. 로컬 DB bootstrap은 병행해서 재현 가능하게 만들되, 프로덕션에서 동작 중인 하드코딩 trigger는 당장 변경하지 않고 실제 의미를 기록한 뒤 `docs` context 또는 DB backend를 이전하기 전에 제거한다.
 
 ## 3. 현재 상태
 
@@ -50,11 +52,11 @@
 
 | 항목 | 현재 값 | 의미 |
 | --- | ---: | --- |
-| `SCM`을 직접 import하는 소스 파일 | 42개 | UI, hook, Route Handler가 여전히 전역 manager를 사용함 |
-| `SCM.*` 호출 라인 | 189개 | 조회와 mutation orchestration이 넓게 분산됨 |
+| `SCM`을 직접 import하는 소스 파일 | 41개 | UI, hook, Route Handler가 여전히 전역 manager를 사용함 |
+| `SCM.*` 호출 라인 | 178개 | 조회와 mutation orchestration이 넓게 분산됨 |
 | `SupabaseClientManager.ts` | 933줄 | 조회, 변경, Auth, Storage, 캐시가 한 구현에 집중됨 |
 | `ISupabaseClientManager.ts` | 136줄 | Supabase 응답 타입을 노출하는 넓은 인터페이스 |
-| DDD-lite로 이전된 기능 모듈 | 1개 | `src/modules/word-moderation`의 대량 승인 흐름 |
+| DDD-lite로 이전된 기능 흐름 | 2개 | `src/modules/word-moderation`의 대량 승인·재개 가능한 대량 삭제 흐름 |
 
 이 수치는 작업 진행도를 관찰하기 위한 기준선이지 목표 자체는 아니다. 호출 수를 줄이기 위해 무의미한 wrapper를 추가해서는 안 된다. 기능이 이전될 때 해당 컴포넌트의 DB 지식과 대체된 manager 메서드가 함께 제거되어야 한다.
 
@@ -64,6 +66,9 @@
 git grep -l -E "import .*SCM" -- "src/**/*.ts" "src/**/*.tsx"
 git grep -n -E "\bSCM\." -- "src/**/*.ts" "src/**/*.tsx"
 ```
+
+위 수치는 2026-08-21에 `rg`로 다시 측정했다. `admin/del-words` 경로는
+`SCM`, `@supabase/supabase-js`, `.rpc(`, `.from(` import/call 검색 결과가 0건이다.
 
 ### 3.2 완료된 기반 작업
 
@@ -93,8 +98,13 @@ git grep -n -E "\bSCM\." -- "src/**/*.ts" "src/**/*.tsx"
 - `AddWordsHome`과 `WordApprovalPanel`
   - 승인 흐름에서 직접 `SCM` 호출 제거
   - 파일 읽기, 진행률, 재개, 취소 UI 분리
+- `DelWordsHome`과 `WordDeletionPanel`
+  - 삭제 흐름에서 직접 `SCM`과 Supabase SDK 호출 제거
+  - 삭제 전용 operation/batch RPC, IndexedDB 재개 payload, React Query hook으로 이전
+  - local pgTAP 삭제 operation/RPC 검증 완료 (behavior 94 + concurrency 24 = 118 assertions)
+  - cloud Supabase migration은 사용자/운영자 실행 대기 상태
 
-즉, 전체 프로젝트에서 SCM이 제거된 것은 아니다. 안전한 전환 방법을 검증할 첫 세로 슬라이스가 완성된 상태다.
+즉, 전체 프로젝트에서 SCM이 제거된 것은 아니다. 안전한 전환 방법을 검증한 초기 세로 슬라이스들이 완성된 상태다.
 
 ### 3.3 아직 남은 주요 직접 의존성
 
@@ -102,7 +112,7 @@ git grep -n -E "\bSCM\." -- "src/**/*.ts" "src/**/*.tsx"
 
 | 기능군 | 대표 파일 | 현재 위험 |
 | --- | --- | --- |
-| 관리자 단어 변경 | `admin/del-words/DelWordsHome.tsx`, `admin/request-words/AdminRequestHome.tsx` | 여러 테이블 변경과 로그·기여도 갱신이 UI 순서에 의존 |
+| 관리자 단어 변경 | `admin/request-words/AdminRequestHome.tsx` | 여러 테이블 변경과 로그·기여도 갱신이 UI 순서에 의존 |
 | docs 내부 단어 관리 | `words-docs/[id]/TableWorkFunc.tsx` | 승인·삭제·로그·docs 갱신을 한 파일에서 조정 |
 | 사용자 단어 요청 | `word/add/WordAddHome.tsx`, `word/adds/WordsAddHome.tsx` | 중복 확인, 요청, 주제 관계 생성이 여러 호출로 분리 |
 | 단어 조회 | `word/search/**`, `word/words-download/**`, `word/stats/**` | DB Row와 검색 query shape가 presentation에 노출 |
@@ -786,10 +796,12 @@ SCM 삭제
 
 대상 순서:
 
-1. `admin/del-words/DelWordsHome.tsx`
-2. `admin/request-words/AdminRequestHome.tsx`
-3. `words-docs/[id]/TableWorkFunc.tsx`의 승인·삭제 기능
-4. `admin/request-docs/RequestDocsHome.tsx`
+1. `admin/request-words/AdminRequestHome.tsx`
+2. `words-docs/[id]/TableWorkFunc.tsx`의 승인·삭제 기능
+3. `admin/request-docs/RequestDocsHome.tsx`
+
+`admin/del-words`는 완료되었다. 다음 행동은
+`admin/request-words`의 현행 동작 characterization과 transaction 경계 설계다.
 
 이유:
 
@@ -966,9 +978,10 @@ Notifications:
 | 공통 Result/Error | 완료 | 새 module에서 재사용 |
 | Supabase client 경계 | 완료 | legacy SCM 소비자만 점진 제거 |
 | 관리자 단어 대량 승인 | 완료 | 운영 지표 관찰, 하드코딩 docs 문제는 Phase 0B에서 제거 |
-| 실제 DB RPC 테스트 | 완료 | fresh reset 경로와 CI 연결 보강 |
-| local base schema | 부분 완료 | migration 순서·중복·seed 정리 |
-| 관리자 삭제/개별 승인 | 미착수 | Phase 1 세로 슬라이스 설계 |
+| 실제 DB RPC 테스트 | 완료 | 삭제 operation/RPC local tests 완료; fresh reset 경로와 CI 연결 보강 |
+| local base schema | 부분 완료 | plain `db reset --local`은 baseline ordering 때문에 차단됨; disposable dump restore/search-path migration/local repair 경로만 검증됨 |
+| 관리자 단어 삭제 (`admin/del-words`) | 완료 | cloud Supabase migration은 사용자/운영자 실행 대기, 운영 지표 관찰 |
+| 관리자 요청 단어/개별 승인 | 미착수 | `admin/request-words` characterization과 설계부터 시작 |
 | 사용자 단어 요청 | 미착수 | Phase 2 세로 슬라이스 설계 |
 | word-catalog 조회 | 미착수 | 검색부터 mapper/query 패턴 확립 |
 | docs context | 미착수 | reference key 안정화 후 이전 |
@@ -999,16 +1012,15 @@ Notifications:
 
 기능 전환은 다음 순서로 진행한다.
 
-1. `admin/del-words`의 현재 동작을 characterization test로 고정한다.
-2. 삭제 승인을 `word-moderation` use case와 transaction RPC로 이전한다.
-3. `admin/request-words`와 `TableWorkFunc`의 승인·반려 흐름을 같은 방식으로 이전한다.
-4. 사용자 단어 요청 mutation을 이전한다.
-5. `word-catalog` 검색 query를 시작으로 읽기 경계를 분리한다.
-6. 각 단계에서 대체된 SCM 메서드와 import를 즉시 제거한다.
+1. `admin/request-words`의 현재 동작을 characterization test로 고정하고 transaction 경계를 설계한다.
+2. `admin/request-words`와 `TableWorkFunc`의 승인·반려 흐름을 같은 방식으로 이전한다.
+3. 사용자 단어 요청 mutation을 이전한다.
+4. `word-catalog` 검색 query를 시작으로 읽기 경계를 분리한다.
+5. 각 단계에서 대체된 SCM 메서드와 import를 즉시 제거한다.
 
 다음 기반 작업은 기능 전환과 병행한다.
 
-1. Supabase migration history와 fresh bootstrap 경로를 정리한다.
+1. Supabase migration history와 fresh bootstrap 경로를 정리한다. 현재 plain fresh reset은 baseline ordering 때문에 부분 완료/차단 상태이며, local dump restore + search-path migration + local migration repair만 사용한다.
 2. 현재 프로덕션 ID를 포함한 reference docs fixture를 versioned seed로 만든다.
 3. 로컬 reset과 DB integration test 절차를 자동화하고 문서를 갱신한다.
 
