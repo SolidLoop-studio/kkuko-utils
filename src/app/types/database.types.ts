@@ -464,6 +464,85 @@ export type Database = {
           },
         ]
       }
+      word_approval_batches: {
+        Row: {
+          batch_index: number
+          committed_at: string
+          entry_count: number
+          operation_id: string
+          payload_hash: string
+          result: Json
+        }
+        Insert: {
+          batch_index: number
+          committed_at?: string
+          entry_count: number
+          operation_id: string
+          payload_hash: string
+          result: Json
+        }
+        Update: {
+          batch_index?: number
+          committed_at?: string
+          entry_count?: number
+          operation_id?: string
+          payload_hash?: string
+          result?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "word_approval_batches_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "word_approval_operations"
+            referencedColumns: ["operation_id"]
+          },
+        ]
+      }
+      word_approval_operations: {
+        Row: {
+          actor_id: string
+          completed_at: string | null
+          created_at: string
+          input_hash: string
+          operation_id: string
+          status: string
+          total_batches: number
+          total_entries: number
+          updated_at: string
+        }
+        Insert: {
+          actor_id: string
+          completed_at?: string | null
+          created_at?: string
+          input_hash: string
+          operation_id: string
+          status?: string
+          total_batches: number
+          total_entries: number
+          updated_at?: string
+        }
+        Update: {
+          actor_id?: string
+          completed_at?: string | null
+          created_at?: string
+          input_hash?: string
+          operation_id?: string
+          status?: string
+          total_batches?: number
+          total_entries?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "word_approval_operations_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       word_first_letter_counts: {
         Row: {
           count: number
@@ -688,6 +767,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_word_approval_batch: {
+        Args: {
+          p_batch_index: number
+          p_entries: Json
+          p_operation_id: string
+          p_payload_hash: string
+          p_total_batches: number
+        }
+        Returns: Json
+      }
+      cancel_word_approval_operation: {
+        Args: { p_operation_id: string }
+        Returns: Json
+      }
       combine_hangul: {
         Args: { cho: string; jong?: string; jung: string }
         Returns: string
@@ -855,6 +948,10 @@ export type Database = {
         }
       }
       get_user_monthly_rank: { Args: { uid: string }; Returns: number }
+      get_word_approval_operation: {
+        Args: { p_operation_id: string }
+        Returns: Json
+      }
       get_words_by_theme: {
         Args: { theme_name: string }
         Returns: {
@@ -930,6 +1027,15 @@ export type Database = {
       revers_duem: { Args: { letter: string }; Returns: string[] }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      start_word_approval_operation: {
+        Args: {
+          p_input_hash: string
+          p_operation_id: string
+          p_total_batches: number
+          p_total_entries: number
+        }
+        Returns: Json
+      }
       update_last_update: { Args: { docs_id: number }; Returns: undefined }
       update_last_updates: { Args: { docs_ids: number[] }; Returns: undefined }
     }
