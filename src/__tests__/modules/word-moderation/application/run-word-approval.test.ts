@@ -88,6 +88,7 @@ const runningOperation = (
 
 class FakeWordApprovalJobStore implements WordApprovalJobStore {
     private readonly jobs = new Map<string, StoredWordApprovalJob>();
+    failSaveOperationId: string | null = null;
     readonly savedOperationIds: string[] = [];
     readonly removedOperationIds: string[] = [];
     listPendingCalls = 0;
@@ -97,6 +98,9 @@ class FakeWordApprovalJobStore implements WordApprovalJobStore {
     async save(job: StoredWordApprovalJob): Promise<void> {
         this.events.push('store:save');
         this.savedOperationIds.push(job.operationId);
+        if (job.operationId === this.failSaveOperationId) {
+            throw new Error('save failed');
+        }
         this.jobs.set(job.operationId, job);
     }
 
@@ -120,10 +124,13 @@ class FakeWordApprovalJobStore implements WordApprovalJobStore {
 class FakeWordApprovalOperationGateway implements WordApprovalOperationGateway {
     operation: WordApprovalOperation | null = null;
     failBatchIndex: number | null = null;
+    doesCompleteAfterAllBatches = true;
     cancelResult: Result<void> = ok(undefined);
+    readonly getOperationResults: Result<WordApprovalOperation>[] = [];
     readonly approvedIndexes: number[] = [];
     readonly approvedCommands: ApproveWordBatchCommand[] = [];
     readonly results = new Map<number, ApproveWordBatchResult>();
+    readonly authoritativeResults = new Map<number, ApproveWordBatchResult>();
 
     constructor(private readonly events: string[]) {}
 
@@ -141,6 +148,10 @@ class FakeWordApprovalOperationGateway implements WordApprovalOperationGateway {
 
     async getOperation(operationId: string): Promise<Result<WordApprovalOperation>> {
         this.events.push('gateway:get');
+        const queuedResult = this.getOperationResults.shift();
+        if (queuedResult !== undefined) {
+            return queuedResult;
+        }
         if (this.operation === null) {
             return err({ kind: 'not-found', message: 'operation not found' });
         }
@@ -155,7 +166,30 @@ class FakeWordApprovalOperationGateway implements WordApprovalOperationGateway {
             return err({ kind: 'infrastructure', message: 'batch failed' });
         }
 
-        return ok(this.results.get(command.batchIndex) ?? emptyBatchResult());
+        const result = this.results.get(command.batchIndex) ?? emptyBatchResult();
+        if (this.operation !== null) {
+            const completedBatch = {
+                batchIndex: command.batchIndex,
+                payloadHash: command.payloadHash,
+                result: this.authoritativeResults.get(command.batchIndex) ?? result,
+            };
+            this.operation = {
+                ...this.operation,
+                completedBatches: [
+                    ...this.operation.completedBatches.filter(
+                        (batch) => batch.batchIndex !== command.batchIndex,
+                    ),
+                    completedBatch,
+                ],
+                status:
+                    this.doesCompleteAfterAllBatches
+                    && this.operation.completedBatches.length + 1 === command.totalBatches
+                        ? 'completed'
+                        : 'running',
+            };
+        }
+
+        return ok(result);
     }
 
     async cancelOperation(operationId: string): Promise<Result<void>> {
@@ -199,6 +233,7 @@ describe('RunWordApprovalService', () => {
             'gateway:start',
             'gateway:batch:0',
             'gateway:batch:1',
+            'gateway:get',
             'store:remove',
         ]);
         expect(progress).toEqual([
@@ -314,12 +349,70 @@ describe('RunWordApprovalService', () => {
         expect(events.slice(0, 4)).toEqual([
             'store:save',
             'gateway:start',
-            'store:remove',
             'store:save',
+            'store:remove',
         ]);
         expect(gateway.approvedCommands.every(
             (command) => command.operationId === 'operation-existing',
         )).toBe(true);
+    });
+
+    it('기존 operation ID job 저장이 실패하면 candidate job을 보존한다', async () => {
+        const { gateway, service, store } = setup();
+        gateway.operation = {
+            ...runningOperation(),
+            operationId: 'operation-existing',
+        };
+        store.failSaveOperationId = 'operation-existing';
+
+        await expect(service.start(rawEntries)).rejects.toThrow('save failed');
+
+        expect(store.removedOperationIds).toEqual([]);
+        await expect(store.get('operation-1')).resolves.not.toBeNull();
+        expect(gateway.approvedIndexes).toEqual([]);
+    });
+
+    it('최종 DB operation 결과를 authoritative aggregate로 반환한다', async () => {
+        const { gateway, service } = setup(2);
+        gateway.results.set(0, batchResult(100, [999]));
+        gateway.results.set(1, batchResult(100, [999]));
+        gateway.authoritativeResults.set(0, batchResult(2, [10, 20]));
+        gateway.authoritativeResults.set(1, batchResult(1, [20, 30]));
+
+        const result = await service.start(rawEntries);
+
+        expect(result).toEqual(ok({
+            operationId: 'operation-1',
+            approvedWordCount: 3,
+            addedThemeCount: 5,
+            removedThemeCount: 7,
+            processedRequestCount: 9,
+            affectedDocsIds: [10, 20, 30],
+        }));
+    });
+
+    it('최종 DB operation이 completed가 아니면 conflict를 반환하고 job을 보존한다', async () => {
+        const { gateway, service, store } = setup();
+        gateway.doesCompleteAfterAllBatches = false;
+        const progress: ApprovalProgress[] = [];
+
+        const result = await service.start(rawEntries, (value) => progress.push(value));
+
+        expect(result).toMatchObject({ ok: false, error: { kind: 'conflict' } });
+        await expect(store.get('operation-1')).resolves.not.toBeNull();
+        expect(progress.map(({ stage }) => stage)).not.toContain('finalizing');
+    });
+
+    it('최종 DB operation 조회가 실패하면 error를 반환하고 job을 보존한다', async () => {
+        const { gateway, service, store } = setup();
+        gateway.getOperationResults.push(
+            err({ kind: 'infrastructure', message: 'final read failed' }),
+        );
+
+        const result = await service.start(rawEntries);
+
+        expect(result).toEqual(err({ kind: 'infrastructure', message: 'final read failed' }));
+        await expect(store.get('operation-1')).resolves.not.toBeNull();
     });
 
     it('로컬 job이 없으면 totals progress를 만들지 않고 not-found를 반환한다', async () => {

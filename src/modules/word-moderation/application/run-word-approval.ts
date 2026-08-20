@@ -94,8 +94,8 @@ export class RunWordApprovalService {
         let operationJob = candidateJob;
         if (operation.operationId !== candidateOperationId) {
             operationJob = { ...candidateJob, operationId: operation.operationId };
-            await this.jobStore.remove(candidateOperationId);
             await this.jobStore.save(operationJob);
+            await this.jobStore.remove(candidateOperationId);
         }
 
         return this.runValidatedOperation(operation, operationJob, payload, onProgress);
@@ -194,7 +194,6 @@ export class RunWordApprovalService {
         const completedByIndex = new Map(
             operation.completedBatches.map((batch) => [batch.batchIndex, batch]),
         );
-        let aggregate = emptyResult();
         let completedEntries = 0;
         let completedBatches = 0;
 
@@ -203,7 +202,6 @@ export class RunWordApprovalService {
             if (completedBatch === undefined) {
                 continue;
             }
-            aggregate = addBatchResult(aggregate, completedBatch.result);
             completedEntries += batch.entries.length;
             completedBatches += 1;
         }
@@ -233,7 +231,6 @@ export class RunWordApprovalService {
                 return batchResult;
             }
 
-            aggregate = addBatchResult(aggregate, batchResult.value);
             completedEntries += batch.entries.length;
             completedBatches += 1;
             this.reportProgress(
@@ -244,6 +241,39 @@ export class RunWordApprovalService {
                 job.entries.length,
                 completedBatches,
             );
+        }
+
+        const finalOperationResult = await this.operationGateway.getOperation(
+            operation.operationId,
+        );
+        if (!finalOperationResult.ok) {
+            return finalOperationResult;
+        }
+
+        const finalValidationResult = this.validateOperation(
+            finalOperationResult.value,
+            job,
+            payload,
+            true,
+        );
+        if (!finalValidationResult.ok) {
+            return finalValidationResult;
+        }
+        if (finalOperationResult.value.status !== 'completed') {
+            return conflict('DB operation이 아직 완료되지 않았습니다.');
+        }
+
+        const authoritativeResults = new Map(
+            finalOperationResult.value.completedBatches.map(
+                (batch) => [batch.batchIndex, batch.result],
+            ),
+        );
+        let aggregate = emptyResult();
+        for (const batch of payload.batches) {
+            const authoritativeResult = authoritativeResults.get(batch.batchIndex);
+            if (authoritativeResult !== undefined) {
+                aggregate = addBatchResult(aggregate, authoritativeResult);
+            }
         }
 
         this.reportProgress(
