@@ -52,6 +52,7 @@ export function useWordApproval(
         queryKey: pendingJobsQueryKey,
         queryFn: () => service.listPending(),
     });
+    const pendingJobsError = pendingJobsQuery.isError ? infrastructureError() : null;
 
     const mutation = useMutation<WordApprovalActionResult, never, WordApprovalAction>({
         mutationFn: async (action) => {
@@ -93,6 +94,6 @@ export function useWordApproval(
         pendingJobs: pendingJobsQuery.data ?? [],
         progress,
         isProcessing: mutation.isPending,
-        error,
+        error: error ?? pendingJobsError,
     };
 }

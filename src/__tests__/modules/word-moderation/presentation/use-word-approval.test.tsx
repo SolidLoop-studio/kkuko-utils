@@ -11,16 +11,16 @@ jest.mock(
 
 import { err, ok } from '../../../../shared/application/result';
 import type { ApplicationError } from '../../../../shared/application/application-error';
-import type { RawWordApprovalEntry } from '../../../../modules/word-moderation/domain/word-approval';
-import type {
-    ApprovalProgress,
-    StoredWordApprovalJob,
-    WordApprovalRunResult,
-} from '../../../../modules/word-moderation/application/word-approval-types';
 import {
+    normalizeWordApprovalEntries,
+    RunWordApprovalService,
     useWordApproval,
+    type RawWordApprovalEntry,
+    type ApprovalProgress,
+    type StoredWordApprovalJob,
+    type WordApprovalRunResult,
     type WordApprovalService,
-} from '../../../../modules/word-moderation/presentation/use-word-approval';
+} from '../../../../modules/word-moderation';
 
 const rawEntries: RawWordApprovalEntry[] = [
     { word: '가방', themeCodes: ['11'] },
@@ -47,6 +47,7 @@ const completedResult = (): WordApprovalRunResult => ({
 class FakeWordApprovalService implements WordApprovalService {
     private jobs: StoredWordApprovalJob[] = [];
     startFailure: ApplicationError | null = null;
+    listPendingFailure: Error | null = null;
 
     seedPending(): void {
         this.jobs = [pendingJob()];
@@ -93,6 +94,9 @@ class FakeWordApprovalService implements WordApprovalService {
     }
 
     async listPending(): Promise<StoredWordApprovalJob[]> {
+        if (this.listPendingFailure !== null) {
+            throw this.listPendingFailure;
+        }
         return this.jobs;
     }
 }
@@ -111,6 +115,30 @@ const createWrapper = () => {
 };
 
 describe('useWordApproval', () => {
+    it('barrel을 통해 승인 서비스와 소비자용 도메인 API를 제공한다', () => {
+        const normalized = normalizeWordApprovalEntries(rawEntries);
+
+        expect(normalized).toMatchObject({ ok: true });
+        expect(RunWordApprovalService).toEqual(expect.any(Function));
+    });
+
+    it('pending 작업 조회 실패를 안전한 ApplicationError로 노출한다', async () => {
+        const service = new FakeWordApprovalService();
+        service.listPendingFailure = new Error('IndexedDB connection token: internal-detail');
+        const { result } = renderHook(() => useWordApproval(service), {
+            wrapper: createWrapper(),
+        });
+
+        await waitFor(() => {
+            expect(result.current.pendingJobs).toEqual([]);
+            expect(result.current.error).toEqual({
+                kind: 'infrastructure',
+                message: '단어 승인 작업 처리 중 오류가 발생했습니다.',
+            });
+            expect(result.current.error?.message).not.toContain('internal-detail');
+        });
+    });
+
     it('승인 중 progress를 갱신하고 성공 후 pending 목록을 비운다', async () => {
         const service = new FakeWordApprovalService();
         const { result } = renderHook(() => useWordApproval(service), {
