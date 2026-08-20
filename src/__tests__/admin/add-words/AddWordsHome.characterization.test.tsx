@@ -155,7 +155,7 @@ beforeEach(() => {
     mockAllThemes.mockResolvedValue(response([]));
     mockAllWaitWords.mockResolvedValue(response([]));
     mockAllWordWaitTheme.mockResolvedValue(response([]));
-    mockWaitWordsThemes.mockResolvedValue({ data: [], error: null });
+    mockWaitWordsThemes.mockResolvedValue(response([]));
     mockWordsByWords.mockResolvedValue(response([]));
     mockAddWords.mockResolvedValue(response([]));
     mockAddWordsThemes.mockResolvedValue(response([]));
@@ -273,11 +273,11 @@ describe('AddWordsHome current approval orchestration', () => {
                 { word_id: existingWordId, theme_id: theme30.id },
                 { word_id: existingWordId, theme_id: theme30.id },
             ]);
-            expect(mockAddDocsLog).toHaveBeenCalledWith(expect.arrayContaining([
+            expect(mockAddDocsLog).toHaveBeenCalledWith([
                 { docs_id: 20, word: '고양이', add_by: adminId, type: 'add' },
                 { docs_id: 30, word: '고양이', add_by: requesterId, type: 'delete' },
-            ]));
-            expect(mockUpdateDocsLastUpdate).toHaveBeenCalledWith(expect.arrayContaining([20, 30]));
+            ]);
+            expect(mockUpdateDocsLastUpdate).toHaveBeenCalledWith([20, 30]);
             expect(mockDeleteWordsWaitThemesByIds).toHaveBeenCalledWith([existingWordId]);
             expect(screen.getByText('처리가 완료되었습니다!')).toBeInTheDocument();
         });
