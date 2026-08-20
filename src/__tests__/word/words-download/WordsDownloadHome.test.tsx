@@ -57,7 +57,9 @@ describe('WordsDownloadHome access control', () => {
     it('shows the unavailable page to guests without loading word data', () => {
         renderWithRole('guest');
 
-        expect(screen.getByRole('heading', { name: '오픈 DB 다운로드를 사용할 수 없습니다' })).toBeInTheDocument();
+        expect(
+            screen.getByRole('heading', { name: '오픈 DB 다운로드를 현재 사용할 수 없습니다' }),
+        ).toBeInTheDocument();
         expect(screen.queryByRole('heading', { name: '한국어 오픈 DB 단어 통계' })).not.toBeInTheDocument();
         expect(mockAllWords).not.toHaveBeenCalled();
     });
@@ -65,7 +67,9 @@ describe('WordsDownloadHome access control', () => {
     it('shows the unavailable page to r1 users without loading word data', () => {
         renderWithRole('r1');
 
-        expect(screen.getByRole('heading', { name: '오픈 DB 다운로드를 사용할 수 없습니다' })).toBeInTheDocument();
+        expect(
+            screen.getByRole('heading', { name: '오픈 DB 다운로드를 현재 사용할 수 없습니다' }),
+        ).toBeInTheDocument();
         expect(screen.queryByRole('heading', { name: '한국어 오픈 DB 단어 통계' })).not.toBeInTheDocument();
         expect(mockAllWords).not.toHaveBeenCalled();
     });
@@ -73,7 +77,14 @@ describe('WordsDownloadHome access control', () => {
     it('explains the eligible roles and contribution requirements', () => {
         renderWithRole('guest');
 
-        expect(screen.getByText('일반 등급 이상인 회원만 이용할 수 있습니다.')).toBeInTheDocument();
+        const accessDescription = screen.getByText(
+            (_, element) =>
+                element?.tagName === 'P' &&
+                element.textContent?.includes('일반 등급 이상인 회원만 이용할 수 있습니다.') === true,
+        );
+        expect(accessDescription).toHaveTextContent(
+            '불편을 드려 죄송합니다. 최대한 빠르게 이용 가능하도록 하겠습니다.',
+        );
         expect(screen.getByText('새싹 → 일반')).toBeInTheDocument();
         expect(screen.getByText('누적 기여도 500점')).toBeInTheDocument();
         expect(screen.getByText('일반 → 활동가')).toBeInTheDocument();
@@ -87,7 +98,9 @@ describe('WordsDownloadHome access control', () => {
             renderWithRole(role);
 
             expect(screen.getByText('한국어 오픈 DB 단어 통계')).toBeInTheDocument();
-            expect(screen.queryByRole('heading', { name: '오픈 DB 다운로드를 사용할 수 없습니다' })).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole('heading', { name: '오픈 DB 다운로드를 현재 사용할 수 없습니다' }),
+            ).not.toBeInTheDocument();
             expect(mockAllWords).toHaveBeenCalled();
         },
     );
