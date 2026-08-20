@@ -358,13 +358,26 @@ begin
         where actual.k_canuse and actual.word_length >= 9
     ) as affected;
 
-    with removed as (delete from public.word_themes_wait as wait_theme
-        using public.words as word_row where wait_theme.word_id = word_row.id
-          and wait_theme.typez = 'delete' and word_row.word = any(entry_words) returning 1)
+    with actual as (
+        select target.word_id
+        from pg_catalog.jsonb_to_recordset(actual_words) as target(
+            word_id bigint, word text, whole_requester uuid, contributor uuid,
+            k_canuse boolean, word_length integer
+        )
+    ), removed as (delete from public.word_themes_wait as wait_theme
+        using actual where wait_theme.word_id = actual.word_id
+          and wait_theme.typez = 'delete' returning 1)
     select pg_catalog.count(*)::integer into statement_count from removed;
     processed_request_count := processed_request_count + statement_count;
-    with removed as (delete from public.wait_words as wait_word
-        where wait_word.request_type = 'delete' and wait_word.word = any(entry_words) returning 1)
+    with actual as (
+        select target.word
+        from pg_catalog.jsonb_to_recordset(actual_words) as target(
+            word_id bigint, word text, whole_requester uuid, contributor uuid,
+            k_canuse boolean, word_length integer
+        )
+    ), removed as (delete from public.wait_words as wait_word
+        using actual where wait_word.request_type = 'delete'
+          and wait_word.word = actual.word returning 1)
     select pg_catalog.count(*)::integer into statement_count from removed;
     processed_request_count := processed_request_count + statement_count;
 

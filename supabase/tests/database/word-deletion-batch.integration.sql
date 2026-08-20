@@ -212,6 +212,9 @@ select throws_ok($$select public.apply_word_deletion_batch(
     '["삭제통합검증¤"]'::jsonb
 )$$, 'P0001', 'WORD_DELETION_INVALID_INPUT', 'non-object entry를 거부한다');
 select throws_ok($$select public.apply_word_deletion_batch(
+    '30000000-0000-4000-8000-000000000001', 0, 1, repeat('e', 64), '[{}]'::jsonb
+)$$, 'P0001', 'WORD_DELETION_INVALID_INPUT', 'missing word key를 거부한다');
+select throws_ok($$select public.apply_word_deletion_batch(
     '30000000-0000-4000-8000-000000000001', 0, 1, repeat('e', 64),
     '[{"word":"삭제통합검증¤","extra":true}]'::jsonb
 )$$, 'P0001', 'WORD_DELETION_INVALID_INPUT', 'unknown key를 거부한다');
@@ -280,10 +283,19 @@ from (values
     ('삭제통합오래된¤'::text, '2019-01-01'::timestamptz, '00000000-0000-4000-8000-0000000000c4'::uuid)
 ) as fixture(word, requested_at, requested_by)
 join public.words as word_row on word_row.word = fixture.word;
+insert into public.wait_words (word, word_id, request_type, requested_by)
+select word_row.word, word_row.id, 'delete', '00000000-0000-4000-8000-0000000000c5'
+from public.words as word_row where word_row.word = '삭제통합보호¤';
+insert into public.wait_words (word, word_id, request_type, requested_by)
+values ('삭제통합없는¤', null, 'delete', '00000000-0000-4000-8000-0000000000c5');
 insert into public.word_themes_wait (word_id, theme_id, typez, req_by)
 select word_row.id, theme.id, 'delete', '00000000-0000-4000-8000-0000000000c5'
 from public.words as word_row cross join public.themes as theme
 where word_row.word in ('삭제통합정상¤', '삭제통합처리자¤') and theme.code = 'delete-9931';
+insert into public.word_themes_wait (word_id, theme_id, typez, req_by)
+select word_row.id, theme.id, 'delete', '00000000-0000-4000-8000-0000000000c5'
+from public.words as word_row cross join public.themes as theme
+where word_row.word = '삭제통합보호¤' and theme.code = '123';
 update public.docs set last_update = '2000-01-01'
 where name in ('삭제통합주제', '¤');
 
@@ -312,6 +324,14 @@ select is((select pg_catalog.count(*)::integer from public.words where word = '�
 select is((select pg_catalog.count(*)::integer from public.wait_words where word in (
     '삭제통합정상¤', '삭제통합처리자¤', '삭제통합오래된¤'
 )), 0, 'whole-word deletion request를 정리한다');
+select is((select pg_catalog.count(*)::integer from public.wait_words
+    where word = '삭제통합보호¤'), 1, 'protected word request를 보존한다');
+select is((select pg_catalog.count(*)::integer from public.word_themes_wait as wait_theme
+    join public.words as word_row on word_row.id = wait_theme.word_id
+    where word_row.word = '삭제통합보호¤' and wait_theme.typez = 'delete'),
+    1, 'protected word theme request를 보존한다');
+select is((select pg_catalog.count(*)::integer from public.wait_words
+    where word = '삭제통합없는¤'), 1, 'missing word request를 보존한다');
 select is((select pg_catalog.count(*)::integer from public.logs where word like '삭제통합%'
     and r_type = 'delete' and state = 'approved'
 ), 3, 'actual deletion moderation log만 만든다');
