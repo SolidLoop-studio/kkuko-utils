@@ -1,13 +1,16 @@
 import { RunWordApprovalService } from '../../application/run-word-approval';
 import { RunWordDeletionService } from '../../application/run-word-deletion';
+import { ModerateWordRequestsService } from '../../application/moderate-word-requests';
 import { IndexedDbWordApprovalJobStore } from './word-approval-job-db';
 import { IndexedDbWordDeletionJobStore } from './word-deletion-job-db';
 import { SupabaseWordDeletionGateway } from './supabase-word-deletion-gateway';
 import { SupabaseWordModerationGateway } from './supabase-word-moderation-gateway';
+import { SupabaseWordRequestModerationGateway } from './supabase-word-request-moderation-gateway';
 
 export interface BrowserWordModerationServices {
     wordApprovalService: RunWordApprovalService;
     wordDeletionService: RunWordDeletionService;
+    wordRequestModerationService: ModerateWordRequestsService;
 }
 
 let browserWordModerationServices: BrowserWordModerationServices | null = null;
@@ -23,6 +26,9 @@ export const createBrowserWordModerationServices = (): BrowserWordModerationServ
             wordDeletionService: new RunWordDeletionService(
                 new SupabaseWordDeletionGateway(),
                 new IndexedDbWordDeletionJobStore(),
+            ),
+            wordRequestModerationService: new ModerateWordRequestsService(
+                new SupabaseWordRequestModerationGateway(),
             ),
         };
     }
