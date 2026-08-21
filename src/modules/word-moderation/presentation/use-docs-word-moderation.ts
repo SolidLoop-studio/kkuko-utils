@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import type { ApplicationError } from '../../../shared/application/application-error';
 import { err, type Result } from '../../../shared/application/result';
@@ -60,6 +60,11 @@ const invalidDirectDeletionTargetError = (): ApplicationError => ({
     message: '등록된 단어만 직접 삭제할 수 있습니다.',
 });
 
+const concurrentActionError = (): ApplicationError => ({
+    kind: 'conflict',
+    message: '문서 단어 처리가 진행 중입니다.',
+});
+
 /** 문서 단어 승인, 거부, 직접 삭제 작업을 하나의 mutation 상태로 연결합니다. */
 export function useDocsWordModeration(
     services?: DocsWordModerationServices,
@@ -72,6 +77,7 @@ export function useDocsWordModeration(
     clearError(): void;
 } {
     const [error, setError] = useState<ApplicationError | null>(null);
+    const isInvokingRef = useRef(false);
     const resolvedServices = services ?? createBrowserWordModerationServices();
 
     const mutation = useMutation<
@@ -120,24 +126,39 @@ export function useDocsWordModeration(
         },
     });
 
+    const invoke = async <T,>(
+        operation: () => Promise<Result<T>>,
+    ): Promise<Result<T>> => {
+        if (isInvokingRef.current) {
+            return err(concurrentActionError());
+        }
+
+        isInvokingRef.current = true;
+        try {
+            return await operation();
+        } finally {
+            isInvokingRef.current = false;
+        }
+    };
+
     const moderate = async (
         action: 'approve' | 'reject',
         target: RequestModerationTarget,
-    ): Promise<Result<WordRequestModerationResult>> => {
+    ): Promise<Result<WordRequestModerationResult>> => invoke(async () => {
         const actionResult = await mutation.mutateAsync({ action, target });
         return actionResult.action === 'delete-directly'
             ? err(infrastructureError())
             : actionResult.result;
-    };
+    });
 
     const deleteDirectly = async (
         target: DirectDeletionTarget,
-    ): Promise<Result<DeleteWordDirectlyResult>> => {
+    ): Promise<Result<DeleteWordDirectlyResult>> => invoke(async () => {
         const actionResult = await mutation.mutateAsync({ action: 'delete-directly', target });
         return actionResult.action === 'delete-directly'
             ? actionResult.result
             : err(infrastructureError());
-    };
+    });
 
     return {
         approve: (target) => moderate('approve', target),

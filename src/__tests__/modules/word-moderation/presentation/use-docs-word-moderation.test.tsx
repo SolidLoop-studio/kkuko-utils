@@ -162,6 +162,29 @@ describe('useDocsWordModeration', () => {
         }]);
     });
 
+    it('maps a theme-add rejection target to the exact rejection command', async () => {
+        const services = createServices();
+        const requestService = services.wordRequestModerationService as FakeWordRequestModerationService;
+        const { result } = renderHook(() => useDocsWordModeration(services), {
+            wrapper: createWrapper(),
+        });
+
+        await act(async () => result.current.reject({
+            kind: 'theme-change',
+            wordId: 19,
+            themeId: 23,
+            type: 'add',
+        }));
+
+        expect(requestService.rejectedCommands).toEqual([{
+            selections: [{
+                kind: 'theme-change',
+                wordId: 19,
+                changes: [{ themeId: 23, type: 'add' }],
+            }],
+        }]);
+    });
+
     it('maps a registered-word target to a direct deletion command', async () => {
         const services = createServices();
         const deletionService = services.directWordDeletionService as FakeDirectWordDeletionService;
@@ -235,6 +258,47 @@ describe('useDocsWordModeration', () => {
         await waitFor(() => expect(result.current.isPending).toBe(true));
         await act(async () => deferred.resolve(ok(requestResult)));
         await waitFor(() => expect(result.current.isPending).toBe(false));
+    });
+
+    it('suppresses a competing same-tick action before it reaches another service', async () => {
+        const services = createServices();
+        const requestService = services.wordRequestModerationService as FakeWordRequestModerationService;
+        const deletionService = services.directWordDeletionService as FakeDirectWordDeletionService;
+        const deferred = createDeferred<Result<WordRequestModerationResult>>();
+        requestService.approveHandler = async () => deferred.promise;
+        const { result } = renderHook(() => useDocsWordModeration(services), {
+            wrapper: createWrapper(),
+        });
+
+        let approvalPromise!: Promise<Result<WordRequestModerationResult>>;
+        let competingPromise!: Promise<Result<DeleteWordDirectlyResult>>;
+        act(() => {
+            approvalPromise = result.current.approve({
+                kind: 'word-request',
+                requestId: 73,
+                requestType: 'add',
+                selectedThemeIds: [79],
+            });
+            competingPromise = result.current.deleteDirectly({
+                kind: 'registered-word',
+                wordId: 83,
+            });
+        });
+
+        let competingResult: Result<DeleteWordDirectlyResult> | undefined;
+        await act(async () => {
+            competingResult = await competingPromise;
+        });
+
+        expect(requestService.approvedCommands).toHaveLength(1);
+        expect(deletionService.commands).toEqual([]);
+        expect(competingResult).toEqual(err({
+            kind: 'conflict',
+            message: '문서 단어 처리가 진행 중입니다.',
+        }));
+
+        await act(async () => deferred.resolve(ok(requestResult)));
+        await expect(approvalPromise).resolves.toEqual(ok(requestResult));
     });
 
     it('exposes failed results and clears the error explicitly', async () => {
@@ -318,6 +382,62 @@ describe('useDocsWordModeration', () => {
         };
         expect(actionResult).toEqual(err(safeError));
         expect(result.current.error).toEqual(safeError);
+    });
+
+    it('sanitizes a non-Error rejection, releases the guard, and allows a later retry', async () => {
+        const services = createServices();
+        const requestService = services.wordRequestModerationService as FakeWordRequestModerationService;
+        requestService.approveHandler = async () => {
+            throw { privateDetail: 'database connection string' };
+        };
+        const { result } = renderHook(() => useDocsWordModeration(services), {
+            wrapper: createWrapper(),
+        });
+
+        let rejectedResult: Result<WordRequestModerationResult> | undefined;
+        await act(async () => {
+            rejectedResult = await result.current.approve({
+                kind: 'word-request',
+                requestId: 89,
+                requestType: 'add',
+                selectedThemeIds: [97],
+            });
+        });
+
+        expect(rejectedResult).toEqual(err({
+            kind: 'infrastructure',
+            message: '문서 단어 처리 중 오류가 발생했습니다.',
+        }));
+
+        requestService.approveHandler = async () => ok(requestResult);
+
+        let retryResult: Result<WordRequestModerationResult> | undefined;
+        await act(async () => {
+            retryResult = await result.current.approve({
+                kind: 'word-request',
+                requestId: 101,
+                requestType: 'add',
+                selectedThemeIds: [103],
+            });
+        });
+
+        expect(retryResult).toEqual(ok(requestResult));
+        expect(requestService.approvedCommands).toEqual([
+            {
+                selections: [{
+                    kind: 'word-request',
+                    requestId: 89,
+                    selectedThemeIds: [97],
+                }],
+            },
+            {
+                selections: [{
+                    kind: 'word-request',
+                    requestId: 101,
+                    selectedThemeIds: [103],
+                }],
+            },
+        ]);
     });
 
     it('uses the browser-composed services when none are injected', async () => {
