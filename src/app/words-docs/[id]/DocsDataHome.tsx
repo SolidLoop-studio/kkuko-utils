@@ -3,7 +3,6 @@ import React, { useRef, useState, useEffect, useMemo } from "react";
 import { useVirtualizer } from '@tanstack/react-virtual';
 import WordsTableBody from "./WordsTableBody";
 import Link from "next/link";
-import type { WordData } from "@/src/app/types/type";
 import { DefaultDict } from "@/src/app/lib/collections";
 import "react-loading-skeleton/dist/skeleton.css";
 import {
@@ -25,10 +24,17 @@ import LoginRequiredModal from "@/src/app/components/LoginRequiredModal";
 import type { PostgrestError } from "@supabase/supabase-js";
 import ErrorModal from "@/src/app/components/ErrModal";
 import ToC from "./TableOfContents";
+import { createBrowserWordModerationServices } from "@/src/modules/word-moderation/infrastructure/browser/browser-word-moderation-services";
+import type { DocsWordMutationTarget } from "@/src/modules/word-moderation";
+import {
+    DOCS_WORD_TARGET_REFRESH_ERROR_MESSAGE,
+    type DocsWordAdminAction,
+    type DocsWordData,
+} from "./docs-word-data";
 
 interface DocsPageProp {
     id: number;
-    data: WordData[];
+    data: DocsWordData[];
     metaData: {
         title: string;
         lastUpdate: string;
@@ -47,10 +53,41 @@ type TabType = "all" | "mission" | "long";
 
 const MISSION_CHARS = "가나다라마바사아자차카타파하";
 
+const isSameMutationTarget = (
+    left: DocsWordMutationTarget | null,
+    right: DocsWordMutationTarget | null,
+) => {
+    if (left === null || right === null) return left === right;
+    if (left.kind !== right.kind) return false;
+
+    if (left.kind === "word-request" && right.kind === "word-request") {
+        return left.requestId === right.requestId
+            && left.requestType === right.requestType
+            && left.selectedThemeIds.length === right.selectedThemeIds.length
+            && left.selectedThemeIds.every((themeId, index) => themeId === right.selectedThemeIds[index]);
+    }
+    if (left.kind === "theme-change" && right.kind === "theme-change") {
+        return left.wordId === right.wordId
+            && left.themeId === right.themeId
+            && left.type === right.type;
+    }
+    if (left.kind === "registered-word" && right.kind === "registered-word") {
+        return left.wordId === right.wordId;
+    }
+
+    return false;
+};
+
+const isSameDocsWordRow = (left: DocsWordData, right: DocsWordData) => (
+    left.word === right.word
+    && left.status === right.status
+    && isSameMutationTarget(left.mutationTarget, right.mutationTarget)
+);
+
 const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp) => {
     const parentRef = useRef<HTMLDivElement>(null);
     const [tocList, setTocList] = useState<string[]>([]);
-    const [wordsData] = useState<WordData[]>(data);
+    const [wordsData, setWordsData] = useState<DocsWordData[]>(data);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [isTabSwitching, setIsTabSwitching] = useState<boolean>(false);
     const [activeTab, setActiveTab] = useState<TabType>("all");
@@ -70,11 +107,11 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
 
     // 미션 단어 미리 구하기
     const mission = useMemo(() => {
-        const m2gr = new DefaultDict<string, WordData[]>(() => []);
-        const m1gr = new DefaultDict<string, WordData[]>(() => []);
+        const m2gr = new DefaultDict<string, DocsWordData[]>(() => []);
+        const m1gr = new DefaultDict<string, DocsWordData[]>(() => []);
 
         MISSION_CHARS.split('').forEach(char => {
-            data.forEach(item => {
+            wordsData.forEach(item => {
                 const count = (item.word.match(new RegExp(char, 'g')) || []).length;
                 if (count > 1) {
                     m2gr.get(char).push(item);
@@ -85,10 +122,10 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
             })
         });
         return { m2gr, m1gr }
-    }, [data])
+    }, [wordsData])
 
     // 탭별 데이터 필터링
-    const getFilteredData = (tabType: TabType): WordData[] => {
+    const getFilteredData = (tabType: TabType): DocsWordData[] => {
         switch (tabType) {
             case "all":
                 return wordsData;
@@ -96,9 +133,9 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
                 return wordsData.filter(item => item.word.length >= 9);
             case "mission":
                 const { m1gr, m2gr } = mission;
-                const m: WordData[] = [];
+                const m: DocsWordData[] = [];
                 MISSION_CHARS.split('').forEach(char => {
-                    const missionWords: WordData[] = m2gr.get(char).length > 8 ? m2gr.get(char) : [...m2gr.get(char), ...m1gr.get(char)];
+                    const missionWords: DocsWordData[] = m2gr.get(char).length > 8 ? m2gr.get(char) : [...m2gr.get(char), ...m1gr.get(char)];
                     m.push(...missionWords);
                 });
                 return [...new Set(m)];
@@ -109,13 +146,13 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
 
     const filteredData = useMemo(() => getFilteredData(activeTab), [activeTab, wordsData]);
 
-    const groupWordsBySyllable = (data: WordData[]) => {
-        const grouped = new DefaultDict<string, WordData[]>(() => []);
+    const groupWordsBySyllable = (data: DocsWordData[]) => {
+        const grouped = new DefaultDict<string, DocsWordData[]>(() => []);
 
         if (activeTab === "mission") {
             MISSION_CHARS.split('').forEach(char => {
                 const { m1gr, m2gr } = mission;
-                const missionWords: WordData[] = m2gr.get(char).length > 8 ? m2gr.get(char) : [...m2gr.get(char), ...m1gr.get(char)];
+                const missionWords: DocsWordData[] = m2gr.get(char).length > 8 ? m2gr.get(char) : [...m2gr.get(char), ...m1gr.get(char)];
                 if (missionWords.length > 0) {
                     grouped.get(`${char}`).push(...missionWords);
                 }
@@ -169,7 +206,7 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
         return () => { mounted = false; };
     }, [id]);
 
-    const updateToc = (data: WordData[]): string[] => {
+    const updateToc = (data: DocsWordData[]): string[] => {
         if (activeTab === "mission") {
             const { m1gr, m2gr } = mission;
             return MISSION_CHARS.split('').filter(char => {
@@ -279,6 +316,75 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
             ErrStackRace: error.stack,
             inputValue: null
         });
+    };
+
+    const showTargetRefreshError = () => {
+        setErrorModalView({
+            ErrName: "DocsWordTargetRefreshError",
+            ErrMessage: DOCS_WORD_TARGET_REFRESH_ERROR_MESSAGE,
+            ErrStackRace: null,
+            inputValue: null,
+        });
+    };
+
+    const transitionRowToOk = async (row: DocsWordData): Promise<boolean> => {
+        let registeredTarget: Extract<DocsWordMutationTarget, { kind: "registered-word" }> | null = null;
+
+        try {
+            const targetResult = await createBrowserWordModerationServices()
+                .docsWordMutationTargetService
+                .get({
+                    docsId: id,
+                    rows: [{ word: row.word, status: "ok" }],
+                });
+            const target = targetResult.ok && targetResult.value.targets.length === 1
+                ? targetResult.value.targets[0]
+                : null;
+            if (target?.kind === "registered-word") {
+                registeredTarget = target;
+            }
+        } catch {
+            registeredTarget = null;
+        }
+
+        setWordsData((currentRows) => currentRows.map((currentRow) => (
+            isSameDocsWordRow(currentRow, row)
+                ? {
+                    word: currentRow.word,
+                    status: "ok" as const,
+                    maker: undefined,
+                    mutationTarget: registeredTarget,
+                }
+                : currentRow
+        )));
+
+        if (registeredTarget === null) {
+            showTargetRefreshError();
+            return false;
+        }
+
+        return true;
+    };
+
+    const handleAdminActionComplete = async (
+        action: DocsWordAdminAction,
+        row: DocsWordData,
+    ): Promise<boolean> => {
+        const isTransitionToOk = (action === "approve" && row.status === "add")
+            || (action === "reject" && row.status === "delete");
+        if (isTransitionToOk) {
+            return transitionRowToOk(row);
+        }
+
+        const shouldRemove = (action === "reject" && row.status === "add")
+            || (action === "approve" && row.status === "delete")
+            || (action === "delete-directly" && row.status === "ok");
+        if (!shouldRemove) return false;
+
+        setWordsData((currentRows) => currentRows.filter(
+            (currentRow) => !isSameDocsWordRow(currentRow, row),
+        ));
+        return true;
     };
 
     const handleTocClick = (index: number) => {
@@ -541,6 +647,7 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
                                                         isMission={activeTab === "mission"}
                                                         isLong={activeTab === "long" || metaData.title.includes("긴단어")}
                                                         isSp={isSpecial ? { m: metaData.title[metaData.title.length - 1] } : undefined}
+                                                        onAdminActionComplete={handleAdminActionComplete}
                                                     />
                                                 </div>
                                             </div>

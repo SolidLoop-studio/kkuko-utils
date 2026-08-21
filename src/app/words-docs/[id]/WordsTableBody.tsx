@@ -1,12 +1,12 @@
 "use client";
 
 import Table from "./Table";
-import type { WordData } from "@/src/app/types/type";
 import { useState, lazy, Suspense, memo } from "react";
 import { motion } from "framer-motion";
 import { useSelector } from 'react-redux';
 import { RootState } from "@/src/app/store/store";
 import Spinner from "@/src/app/components/Spinner";
+import type { DocsWordAdminAction, DocsWordData } from "./docs-word-data";
 
 const WordAddModal = lazy(() => import("./WordAddModal"));
 
@@ -15,8 +15,16 @@ const WordsTableBody = ({
     initialData,
     isMission,
     isLong,
-    isSp
-}: { initialData: WordData[]; title: string, isMission: boolean, isLong: boolean, isSp?: {m: string} }) => {
+    isSp,
+    onAdminActionComplete,
+}: {
+    initialData: DocsWordData[];
+    title: string;
+    isMission: boolean;
+    isLong: boolean;
+    isSp?: {m: string};
+    onAdminActionComplete(action: DocsWordAdminAction, row: DocsWordData): Promise<boolean>;
+}) => {
     const [wordAddModalOpen, setWordAddModalOpen] = useState(false);
     const [isTableVisible, setIsTableVisible] = useState(true);
 
@@ -53,7 +61,12 @@ const WordsTableBody = ({
                 transition={{ duration: 0.3, ease: "easeInOut" }}
                 className="overflow-hidden"
             >
-                <Table initialData={initialData} isMission={isMission ? {m: true, t: title} : isSp ? {m: true, t: isSp.m} : {m: false, t: null}} isLong={isLong}/>
+                <Table
+                    initialData={initialData}
+                    isMission={isMission ? {m: true, t: title} : isSp ? {m: true, t: isSp.m} : {m: false, t: null}}
+                    isLong={isLong}
+                    onAdminActionComplete={onAdminActionComplete}
+                />
             </motion.div>
 
             {/* 단어 추가 모달 */}

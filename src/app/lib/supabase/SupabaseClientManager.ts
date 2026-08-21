@@ -185,7 +185,6 @@ class GetManager implements IGetManager {
             if (waitWordsError1) return { data: null, error: waitWordsError1 }
             if (waitAddWordsError2) return { data: null, error: waitAddWordsError2 }
             if (waitDelWordsError) return { data: null, error: waitDelWordsError }
-            const Data1Set = new Set(waitWordsData1.map(({ words }) => words.word))
             const waitWords: {
                 word: string;
                 requested_by: string | null;
@@ -193,9 +192,11 @@ class GetManager implements IGetManager {
             }[] = waitAddWordsData2
                 .filter(({ wait_words: { request_type } }) => request_type === "add")
                 .map(({ wait_words }) => wait_words);
+            const pendingWords = new Set(waitWords.map(({ word }) => word));
             waitWordsData1.forEach(({ words: { word }, typez, req_by }) => {
-                if (!Data1Set.has(word)) {
+                if (!pendingWords.has(word)) {
                     waitWords.push({ word, requested_by: req_by, request_type: typez })
+                    pendingWords.add(word);
                 }
             })
             waitWords.push(...waitDelWordsData)
