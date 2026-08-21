@@ -782,9 +782,6 @@ class DeleteManager implements IDeleteManager {
     public async waitWordById(wordId: number) {
         return await this.supabase.from('wait_words').delete().eq('id', wordId);
     }
-    public async wordByWord(word: string) {
-        return await this.supabase.from('words').delete().eq('word', word).select('*');
-    }
     public async wordById(wordId: number) {
         return await this.supabase.from('words').delete().eq('id', wordId).select('*');
     }
@@ -823,9 +820,6 @@ class DeleteManager implements IDeleteManager {
     }
     public async waitWordsByWords(words: string[]) {
         return await this.supabase.from('wait_words').delete().in('word', words);
-    }
-    public async waitWordsByIds(ids: number[]) {
-        return await this.supabase.from('wait_words').delete().in('id', ids);
     }
     public async waitWordByWord(word: string) {
         return await this.supabase.from('wait_words').delete().eq("word", word)

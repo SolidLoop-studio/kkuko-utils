@@ -6,7 +6,6 @@ import { useSelector } from 'react-redux';
 import { RootState } from "@/src/app/store/store";
 import ErrorModal from "@/src/app/components/ErrModal";
 import type { ErrorMessage } from "@/src/app/types/type";
-import type { PostgrestError } from "@supabase/supabase-js";
 import Spinner from "@/src/app/components/Spinner";
 import CompleteModal from "@/src/app/components/CompleteModal";
 import Link from "next/link";
@@ -20,6 +19,7 @@ import type { DocsWordAdminAction, DocsWordData } from "./docs-word-data";
 const WorkModal = lazy(() => import("./WorkModal"));
 
 type RequestModerationTarget = Exclude<DocsWordMutationTarget, { kind: "registered-word" }>;
+type UserWordRequestError = Parameters<Parameters<typeof useUserWordRequestActions>[0]["makeError"]>[0];
 
 const isRequestTargetForRow = (
     row: DocsWordData,
@@ -212,7 +212,7 @@ const Table = ({
         setIsCompleteModalOpen(true);
     };
 
-    const makeError = (error: PostgrestError) => {
+    const makeError = (error: UserWordRequestError) => {
         closeWork();
         seterrorModalView({
             ErrName: error.name,
