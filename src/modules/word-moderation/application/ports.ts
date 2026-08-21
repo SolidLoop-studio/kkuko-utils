@@ -6,6 +6,10 @@ import type {
     StoredWordApprovalJob,
     WordApprovalOperation,
 } from './word-approval-types';
+import type {
+    ModerateWordRequestsCommand,
+    WordRequestModerationResult,
+} from './word-request-moderation-types';
 
 export interface WordApprovalOperationGateway {
     startOperation(input: StartWordApprovalOperationInput): Promise<Result<WordApprovalOperation>>;
@@ -19,4 +23,9 @@ export interface WordApprovalJobStore {
     get(operationId: string): Promise<StoredWordApprovalJob | null>;
     listPending(): Promise<StoredWordApprovalJob[]>;
     remove(operationId: string): Promise<void>;
+}
+
+export interface WordRequestModerationGateway {
+    approve(command: ModerateWordRequestsCommand): Promise<Result<WordRequestModerationResult>>;
+    reject(command: ModerateWordRequestsCommand): Promise<Result<WordRequestModerationResult>>;
 }
