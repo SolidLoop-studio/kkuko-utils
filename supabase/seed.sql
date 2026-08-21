@@ -408,3 +408,8 @@ VALUES
 ON CONFLICT (name) DO NOTHING;
 
 SELECT setval('public.docs_id_seq', COALESCE((SELECT MAX(id) FROM public.docs), 0), true);
+
+INSERT INTO public.themes (id, total_words)
+VALUES
+(1,0)
+ON CONFLICT DO NOTHING;
