@@ -4,14 +4,15 @@ import ProgressBar from "@/src/app/components/ProgressBar";
 import { useDispatch, useSelector } from 'react-redux';
 import { updateLoadingState } from '@/src/app/store/slice';
 import type { RootState } from '@/src/app/store/store';
+import { useCallback } from 'react';
 
 export const useLoadingState = () => {
     const dispatch = useDispatch();
     const loadingState = useSelector((state: RootState) => state.loading);
 
-    const updateState = (progress: number, task: string) => {
+    const updateState = useCallback((progress: number, task: string) => {
         dispatch(updateLoadingState({ progress, task }));
-    };
+    }, [dispatch]);
 
     return {
         loadingState,

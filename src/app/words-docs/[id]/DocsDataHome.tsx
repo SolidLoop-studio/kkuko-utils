@@ -23,6 +23,7 @@ import { RootState } from "@/src/app/store/store";
 import LoginRequiredModal from "@/src/app/components/LoginRequiredModal";
 import type { PostgrestError } from "@supabase/supabase-js";
 import ErrorModal from "@/src/app/components/ErrModal";
+import CompleteModal from "@/src/app/components/CompleteModal";
 import ToC from "./TableOfContents";
 import { createBrowserWordModerationServices } from "@/src/modules/word-moderation/infrastructure/browser/browser-word-moderation-services";
 import type { DocsWordMutationTarget } from "@/src/modules/word-moderation";
@@ -96,6 +97,7 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
     const [isUserStarreda, setIsUserStarreda] = useState<boolean>(false);
     const [loginNeedModalOpen, setLoginNeedModalOpen] = useState<boolean>(false);
     const [errorModalView, setErrorModalView] = useState<ErrorMessage | null>(null);
+    const [isAdminCompleteModalOpen, setIsAdminCompleteModalOpen] = useState(false);
     const [charLastUpdates, setCharLastUpdates] = useState<Record<number, string | null>>({});
 
     // 유저 즐겨찾기 상태 업데이트
@@ -373,7 +375,9 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
         const isTransitionToOk = (action === "approve" && row.status === "add")
             || (action === "reject" && row.status === "delete");
         if (isTransitionToOk) {
-            return transitionRowToOk(row);
+            const didTransition = await transitionRowToOk(row);
+            if (didTransition) setIsAdminCompleteModalOpen(true);
+            return didTransition;
         }
 
         const shouldRemove = (action === "reject" && row.status === "add")
@@ -384,6 +388,7 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
         setWordsData((currentRows) => currentRows.filter(
             (currentRow) => !isSameDocsWordRow(currentRow, row),
         ));
+        setIsAdminCompleteModalOpen(true);
         return true;
     };
 
@@ -641,7 +646,7 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
                                             >
                                                 <div className="mb-8">
                                                     <WordsTableBody
-                                                        key={`${activeTab}-${item.title}-${item.data.length}`}
+                                                        key={`${activeTab}-${item.title}`}
                                                         title={item.title}
                                                         initialData={item.data || []}
                                                         isMission={activeTab === "mission"}
@@ -667,6 +672,12 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
                 <ErrorModal
                     onClose={() => setErrorModalView(null)}
                     error={errorModalView}
+                />
+            )}
+            {isAdminCompleteModalOpen && (
+                <CompleteModal
+                    open={isAdminCompleteModalOpen}
+                    onClose={() => setIsAdminCompleteModalOpen(false)}
                 />
             )}
         </div>

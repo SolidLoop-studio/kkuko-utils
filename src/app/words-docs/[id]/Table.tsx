@@ -260,9 +260,8 @@ const Table = ({
         action: DocsWordAdminAction,
         row: DocsWordData,
     ) => {
-        const didTransition = await onAdminActionComplete(action, row);
+        await onAdminActionComplete(action, row);
         closeWork();
-        if (didTransition) setIsCompleteModalOpen(true);
     };
 
     const runRequestModeration = async (
@@ -396,7 +395,10 @@ const Table = ({
                         word={modal.word}
                         status={modal.status}
                         isAdmin={user.role === "admin"}
-                        isRequester={user.uuid === modal.maker}
+                        isRequester={
+                            modal.mutationTarget?.kind === "word-request"
+                            && user.uuid === modal.maker
+                        }
                         onAddAccept={isRequestTargetForRow(modal) && modal.status === "add"
                             ? () => runRequestModeration("approve", modal)
                             : undefined}

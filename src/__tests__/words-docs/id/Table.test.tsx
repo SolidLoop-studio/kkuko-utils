@@ -156,6 +156,14 @@ const mockCancelDeleteRequest = jest.fn();
 const mockRequestDelete = jest.fn();
 const mockTargetGet = jest.fn();
 
+const createDeferred = <T,>() => {
+    let resolve!: (value: T) => void;
+    const promise = new Promise<T>((promiseResolve) => {
+        resolve = promiseResolve;
+    });
+    return { promise, resolve };
+};
+
 const createWrapper = (
     role: 'guest' | 'r1' | 'r4' | 'admin' = 'admin',
     uuid: string | undefined = 'admin-1',
@@ -236,7 +244,7 @@ describe('Table administrator and legacy user actions', () => {
         });
     });
 
-    it('admin은 추가 승인 target을 그대로 전달하고 성공 transition 뒤 완료 모달을 연다', async () => {
+    it('admin은 추가 승인 target을 parent에 전달하고 local 완료 모달을 소유하지 않는다', async () => {
         const { onAdminActionComplete } = renderTable();
         await openRow('가방');
 
@@ -244,7 +252,7 @@ describe('Table administrator and legacy user actions', () => {
 
         expect(mockApprove).toHaveBeenCalledWith(rows[0].mutationTarget);
         expect(onAdminActionComplete).toHaveBeenCalledWith('approve', rows[0]);
-        expect(await screen.findByText('작업이 완료되었습니다!')).toBeInTheDocument();
+        expect(screen.queryByText('작업이 완료되었습니다!')).not.toBeInTheDocument();
     });
 
     it('주제 삭제 변경 반려를 theme-change target으로 실행한다', async () => {
@@ -365,6 +373,17 @@ describe('Table administrator and legacy user actions', () => {
         expect(screen.queryByText('추가 요청을 수락합니다.')).not.toBeInTheDocument();
         expect(screen.queryByText('추가 요청을 거절합니다.')).not.toBeInTheDocument();
         expect(screen.getByText('추가 요청을 취소합니다.')).toBeInTheDocument();
+    });
+
+    it('theme-change requester에게 wait_words 취소 action을 표시하지 않는다', async () => {
+        renderTable({ role: 'r1', uuid: 'requester-2', data: [rows[1]] });
+        await openRow('나비');
+        await screen.findByText('현재 이 단어는 삭제 요청 상태입니다.');
+
+        expect(screen.queryByText('삭제 요청을 취소합니다.')).not.toBeInTheDocument();
+        expect(screen.queryByText('삭제 요청을 수락합니다.')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '닫기' })).toBeEnabled();
+        expect(mockCancelDeleteRequest).not.toHaveBeenCalled();
     });
 
     it('null target은 관리자 action을 표시하되 실행할 수 없게 한다', async () => {
@@ -531,6 +550,92 @@ describe('Docs word target enrichment', () => {
                 { word: '나비', status: 'delete' },
             ],
         });
+    });
+
+    it('id 전환 중 먼저 시작한 enrichment가 늦게 끝나도 새 문서 rows와 loading 완료를 덮어쓰지 않는다', async () => {
+        const firstTargets = createDeferred<ReturnType<typeof ok<{ targets: DocsWordMutationTarget[] }>>>();
+        const secondTargets = createDeferred<ReturnType<typeof ok<{ targets: DocsWordMutationTarget[] }>>>();
+        const docsInfoByDocsId = jest.fn((docsId: number) => Promise.resolve({
+            data: {
+                id: docsId,
+                name: docsId === 55 ? '첫 문서' : '둘 문서',
+                last_update: '2026-08-22T00:00:00.000Z',
+                typez: 'theme' as const,
+                duem: false,
+            },
+            error: null,
+        }));
+        const getManager = {
+            docsInfoByDocsId,
+            docsStar: jest.fn().mockResolvedValue({ data: [], error: null }),
+            themeInfoByThemeName: jest.fn().mockResolvedValue({ data: { id: 13 }, error: null }),
+            docsWords: jest.fn(({ name }: { name: string }) => Promise.resolve({
+                data: {
+                    words: [{ word: name === '첫 문서' ? '가방' : '나비' }],
+                    waitWords: [],
+                },
+                error: null,
+            })),
+        };
+        const docView = jest.fn().mockResolvedValue(undefined);
+        jest.mocked(SCM.get).mockReturnValue(getManager as never);
+        jest.mocked(SCM.update).mockReturnValue({ docView } as never);
+        mockTargetGet.mockImplementation(({ docsId }: { docsId: number }) => (
+            docsId === 55 ? firstTargets.promise : secondTargets.promise
+        ));
+        mockCreateBrowserServices.mockReturnValue({
+            docsWordMutationTargetService: { get: mockTargetGet },
+        } as never);
+
+        const store = configureStore({
+            reducer: { user: userReducer, loading: loadingReducer, theme: themeReducer },
+            preloadedState: {
+                user: { username: undefined, uuid: undefined, role: 'guest' as const },
+                loading: { isLoading: false, progress: 100, currentTask: '완료' },
+                theme: { theme: 'light' as const },
+            },
+        });
+        const dispatchSpy = jest.spyOn(store, 'dispatch');
+        const Wrapper = ({ children }: PropsWithChildren) => <Provider store={store}>{children}</Provider>;
+        const { rerender } = render(<DocsDataPage id={55} />, { wrapper: Wrapper });
+        await waitFor(() => expect(mockTargetGet).toHaveBeenCalledWith(expect.objectContaining({ docsId: 55 })));
+
+        rerender(<DocsDataPage id={56} />);
+        await waitFor(() => expect(mockTargetGet).toHaveBeenCalledWith(expect.objectContaining({ docsId: 56 })));
+        await act(async () => {
+            secondTargets.resolve(ok({ targets: [{ kind: 'registered-word', wordId: 56 }] }));
+            await secondTargets.promise;
+        });
+        expect(await screen.findByText('둘 문서')).toBeInTheDocument();
+        expect(await screen.findByTestId('docs-row-나비')).toBeInTheDocument();
+
+        const completedBeforeStaleResolution = dispatchSpy.mock.calls.filter(([action]) => (
+            typeof action === 'object'
+            && action !== null
+            && 'type' in action
+            && action.type === 'loading/updateLoadingState'
+            && 'payload' in action
+            && (action.payload as { progress?: number }).progress === 100
+        )).length;
+        await act(async () => {
+            firstTargets.resolve(ok({ targets: [{ kind: 'registered-word', wordId: 55 }] }));
+            await firstTargets.promise;
+            await Promise.resolve();
+            await Promise.resolve();
+        });
+
+        expect(screen.getByText('둘 문서')).toBeInTheDocument();
+        expect(screen.getByTestId('docs-row-나비')).toBeInTheDocument();
+        expect(screen.queryByTestId('docs-row-가방')).not.toBeInTheDocument();
+        expect(docView).toHaveBeenCalledTimes(1);
+        expect(dispatchSpy.mock.calls.filter(([action]) => (
+            typeof action === 'object'
+            && action !== null
+            && 'type' in action
+            && action.type === 'loading/updateLoadingState'
+            && 'payload' in action
+            && (action.payload as { progress?: number }).progress === 100
+        ))).toHaveLength(completedBeforeStaleResolution);
     });
 });
 
