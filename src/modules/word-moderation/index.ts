@@ -69,6 +69,11 @@ export {
     useWordRequestModeration,
     type WordRequestModerationService,
 } from './presentation/use-word-request-moderation';
+export {
+    useDocsWordModeration,
+    type DirectWordDeletionService,
+    type DocsWordModerationServices,
+} from './presentation/use-docs-word-moderation';
 export type {
     DeletionProgress,
     StoredWordDeletionJob,
