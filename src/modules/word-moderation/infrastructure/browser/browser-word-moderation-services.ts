@@ -2,6 +2,7 @@ import { RunWordApprovalService } from '../../application/run-word-approval';
 import { RunWordDeletionService } from '../../application/run-word-deletion';
 import { ModerateWordRequestsService } from '../../application/moderate-word-requests';
 import { GetDocsWordMutationTargetsService } from '../../application/get-docs-word-mutation-targets';
+import { DeleteWordDirectlyService } from '../../application/delete-word-directly';
 import { IndexedDbWordApprovalJobStore } from './word-approval-job-db';
 import { IndexedDbWordDeletionJobStore } from './word-deletion-job-db';
 import { SupabaseDocsWordModerationGateway } from './supabase-docs-word-moderation-gateway';
@@ -14,6 +15,7 @@ export interface BrowserWordModerationServices {
     wordDeletionService: RunWordDeletionService;
     wordRequestModerationService: ModerateWordRequestsService;
     docsWordMutationTargetService: GetDocsWordMutationTargetsService;
+    directWordDeletionService: DeleteWordDirectlyService;
 }
 
 let browserWordModerationServices: BrowserWordModerationServices | null = null;
@@ -35,6 +37,7 @@ export const createBrowserWordModerationServices = (): BrowserWordModerationServ
                 new SupabaseWordRequestModerationGateway(),
             ),
             docsWordMutationTargetService: new GetDocsWordMutationTargetsService(docsGateway),
+            directWordDeletionService: new DeleteWordDirectlyService(docsGateway),
         };
     }
 

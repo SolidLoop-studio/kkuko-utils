@@ -1,5 +1,10 @@
-import type { DocsWordMutationTargetGateway } from '../../application/docs-word-moderation-ports';
 import type {
+    DirectWordDeletionGateway,
+    DocsWordMutationTargetGateway,
+} from '../../application/docs-word-moderation-ports';
+import type {
+    DeleteWordDirectlyCommand,
+    DeleteWordDirectlyResult,
     DocsWordMutationTarget,
     GetDocsWordMutationTargetsQuery,
     GetDocsWordMutationTargetsResult,
@@ -24,6 +29,10 @@ interface SupabaseSelectBuilder {
 
 interface DocsWordModerationQueryClient {
     from(table: string): SupabaseSelectBuilder;
+}
+
+interface DocsWordModerationRpcClient {
+    rpc(functionName: string, args: Record<string, unknown>): Promise<QueryResponse>;
 }
 
 type DocsRow = {
@@ -56,6 +65,18 @@ const infrastructureError = () => ({
     kind: 'infrastructure' as const,
     message: '문서 단어 작업 정보를 불러오는 중 오류가 발생했습니다.',
 });
+
+const directWordDeletionErrors = {
+    DIRECT_WORD_DELETION_UNAUTHORIZED: { kind: 'unauthorized', message: '인증이 필요합니다.' },
+    DIRECT_WORD_DELETION_FORBIDDEN: { kind: 'forbidden', message: '관리자 권한이 필요합니다.' },
+    DIRECT_WORD_DELETION_INVALID_INPUT: { kind: 'validation', message: '삭제할 단어 정보가 올바르지 않습니다.' },
+    DIRECT_WORD_DELETION_CONFLICT: { kind: 'conflict', message: '단어가 이미 삭제되었거나 변경되었습니다.' },
+    DIRECT_WORD_DELETION_INTERNAL_ERROR: { kind: 'infrastructure', message: '단어 삭제 중 오류가 발생했습니다.' },
+} as const;
+
+const directWordDeletionInfrastructureError = () => (
+    directWordDeletionErrors.DIRECT_WORD_DELETION_INTERNAL_ERROR
+);
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
     typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -175,6 +196,34 @@ const parseThemeChangeRows = (value: unknown): ThemeChangeRow[] | null => {
     return rows;
 };
 
+const parseDirectWordDeletionResult = (value: unknown): DeleteWordDirectlyResult | null => {
+    if (!isRecord(value)
+        || value.deletedWordCount !== 1
+        || !Array.isArray(value.affectedDocsIds)) {
+        return null;
+    }
+
+    const affectedDocsIds: number[] = [];
+    const seenDocsIds = new Set<number>();
+    for (const docsId of value.affectedDocsIds) {
+        if (!isPositiveSafeInteger(docsId) || seenDocsIds.has(docsId)) {
+            return null;
+        }
+        seenDocsIds.add(docsId);
+        affectedDocsIds.push(docsId);
+    }
+
+    return { deletedWordCount: 1, affectedDocsIds: affectedDocsIds.sort((left, right) => left - right) };
+};
+
+const directWordDeletionError = (value: unknown) => {
+    const code = isRecord(value) && typeof value.code === 'string' ? value.code : null;
+    if (code !== null && code in directWordDeletionErrors) {
+        return directWordDeletionErrors[code as keyof typeof directWordDeletionErrors];
+    }
+    return directWordDeletionInfrastructureError();
+};
+
 const groupByWord = <T extends { word: string }>(rows: T[]): Map<string, T[]> => {
     const grouped = new Map<string, T[]>();
     for (const row of rows) {
@@ -189,10 +238,33 @@ const groupByWord = <T extends { word: string }>(rows: T[]): Map<string, T[]> =>
 };
 
 /** 문서 행을 현재 DB 식별자 기반의 관리자 작업 대상으로 조회합니다. */
-export class SupabaseDocsWordModerationGateway implements DocsWordMutationTargetGateway {
+export class SupabaseDocsWordModerationGateway implements DocsWordMutationTargetGateway, DirectWordDeletionGateway {
     constructor(
-        private readonly queryClient: DocsWordModerationQueryClient = browserSupabaseClient as unknown as DocsWordModerationQueryClient,
+        private readonly queryClient: DocsWordModerationQueryClient & DocsWordModerationRpcClient = browserSupabaseClient as unknown as DocsWordModerationQueryClient & DocsWordModerationRpcClient,
     ) {}
+
+    async deleteWord(
+        command: DeleteWordDirectlyCommand,
+    ): Promise<Result<DeleteWordDirectlyResult>> {
+        try {
+            const response = await this.queryClient.rpc('delete_word_directly', {
+                p_word_id: command.wordId,
+            });
+            if (!isRecord(response) || !('data' in response) || !('error' in response)) {
+                return err(directWordDeletionInfrastructureError());
+            }
+            if (response.error !== null) {
+                return err(directWordDeletionError(response.error));
+            }
+
+            const result = parseDirectWordDeletionResult(response.data);
+            return result === null
+                ? err(directWordDeletionInfrastructureError())
+                : ok(result);
+        } catch {
+            return err(directWordDeletionInfrastructureError());
+        }
+    }
 
     async getTargets(
         query: GetDocsWordMutationTargetsQuery,

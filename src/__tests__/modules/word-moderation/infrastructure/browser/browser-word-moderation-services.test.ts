@@ -24,7 +24,7 @@ describe('browser word moderation services', () => {
         jest.resetModules();
     });
 
-    it('returns one stable singleton with approval, deletion, and docs target services', () => {
+    it('returns one stable singleton with approval, deletion, docs target, and direct deletion services', () => {
         process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
         jest.resetModules();
@@ -33,6 +33,7 @@ describe('browser word moderation services', () => {
             const { RunWordApprovalService } = require('../../../../../modules/word-moderation/application/run-word-approval');
             const { RunWordDeletionService } = require('../../../../../modules/word-moderation/application/run-word-deletion');
             const { GetDocsWordMutationTargetsService } = require('../../../../../modules/word-moderation/application/get-docs-word-mutation-targets');
+            const { DeleteWordDirectlyService } = require('../../../../../modules/word-moderation/application/delete-word-directly');
             const { createBrowserWordModerationServices } = require('../../../../../modules/word-moderation/infrastructure/browser/browser-word-moderation-services');
 
             const first = createBrowserWordModerationServices();
@@ -44,9 +45,11 @@ describe('browser word moderation services', () => {
             expect(first.docsWordMutationTargetService).toBeInstanceOf(
                 GetDocsWordMutationTargetsService,
             );
+            expect(first.directWordDeletionService).toBeInstanceOf(DeleteWordDirectlyService);
             expect(first.docsWordMutationTargetService).toBe(
                 second.docsWordMutationTargetService,
             );
+            expect(first.directWordDeletionService).toBe(second.directWordDeletionService);
         });
     });
 

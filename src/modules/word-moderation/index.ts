@@ -7,15 +7,21 @@ export {
 export {
     GetDocsWordMutationTargetsService,
 } from './application/get-docs-word-mutation-targets';
+export {
+    DeleteWordDirectlyService,
+} from './application/delete-word-directly';
 export type {
     WordApprovalJobStore,
     WordApprovalOperationGateway,
     WordRequestModerationGateway,
 } from './application/ports';
 export type {
+    DirectWordDeletionGateway,
     DocsWordMutationTargetGateway,
 } from './application/docs-word-moderation-ports';
 export type {
+    DeleteWordDirectlyCommand,
+    DeleteWordDirectlyResult,
     DocsWordMutationTarget,
     DocsWordMutationTargetRow,
     GetDocsWordMutationTargetsQuery,
