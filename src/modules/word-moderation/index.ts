@@ -47,6 +47,10 @@ export {
     useWordDeletion,
     type WordDeletionService,
 } from './presentation/use-word-deletion';
+export {
+    useWordRequestModeration,
+    type WordRequestModerationService,
+} from './presentation/use-word-request-moderation';
 export type {
     DeletionProgress,
     StoredWordDeletionJob,
