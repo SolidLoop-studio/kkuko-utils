@@ -50,23 +50,35 @@ insert into public.themes (code, name) values
     ('540', 'moderation-outside-noin-theme');
 
 insert into public.docs (id, name, typez, last_update) values
-    (941001, 'moderation-noin-theme', 'theme', '2000-01-01'),
-    (941002, 'moderation-secondary-theme', 'theme', '2000-01-01'),
     (941003, 'moderation-unselected-theme', 'theme', '2000-01-01'),
     (941004, 'moderation-delete-old-theme', 'theme', '2000-01-01'),
     (941005, 'moderation-change-add-theme', 'theme', '2000-01-01'),
     (941006, 'moderation-change-delete-theme', 'theme', '2000-01-01'),
     (941007, 'moderation-change-unselected-theme', 'theme', '2000-01-01'),
     (941008, 'moderation-outside-noin-theme', 'theme', '2000-01-01'),
-    (941009, 'x', 'letter', '2000-01-01'),
     (941010, 'y', 'letter', '2000-01-01'),
     (941011, 'q', 'letter', '2000-01-01'),
-    (941012, 'r', 'letter', '2000-01-01');
+    (941012, 'r', 'letter', '2000-01-01'),
+    (941013, 'm', 'letter', '2000-01-01');
 insert into public.docs (id, name, typez)
 values
     (201, 'moderation-special-201', 'ect'),
-    (202, 'moderation-special-202', 'ect')
+    (202, 'moderation-special-202', 'ect'),
+    (209, 'moderation-special-209', 'ect'),
+    (252, 'moderation-special-252', 'ect')
 on conflict (id) do nothing;
+update public.docs
+set
+    name = case id
+        when 201 then 'x'
+        when 209 then 'moderation-secondary-theme'
+        when 252 then 'moderation-noin-theme'
+    end,
+    typez = (
+        case when id = 201 then 'letter' else 'theme' end
+    )::public.document_type,
+    last_update = '2000-01-01'
+where id in (201, 209, 252);
 
 insert into public.words (word, k_canuse, noin_canuse, added_by) values
     ('moderation-delete-fixture-y', true, false,
@@ -269,7 +281,7 @@ reset role;
 
 select is(
     (select result from moderation_approval_result),
-    '{"affectedDocsIds":[941001,941002,941004,941005,941006,941009,941010],"processedThemeChangeCount":2,"processedWordRequestCount":2}'::jsonb,
+    '{"affectedDocsIds":[941004,941005,941006,941010],"processedThemeChangeCount":2,"processedWordRequestCount":2}'::jsonb,
     'mixed approval returns literal processed counts and sorted docs IDs'
 );
 select is(
@@ -332,9 +344,16 @@ select is(
 select is(
     (select pg_catalog.count(*)::integer from public.docs_logs
      where word = 'moderation-add-fixture-x'
-       and docs_id in (941001, 941002, 941009) and type = 'add'),
-    3,
-    'add approval writes the intended final-letter and selected-theme docs logs'
+       and docs_id = 201 and type = 'add'),
+    1,
+    'add approval leaves special final-letter docs ID 201 to its trigger exactly once'
+);
+select is(
+    (select pg_catalog.count(*)::integer from public.docs_logs
+     where word = 'moderation-add-fixture-x'
+       and docs_id in (209, 252) and type = 'add'),
+    0,
+    'add approval does not manually log trigger-managed theme-range docs IDs'
 );
 select is(
     (select pg_catalog.count(*)::integer from public.docs_logs
@@ -361,7 +380,7 @@ select ok(
     (select pg_catalog.bool_and(document.last_update > '2000-01-01')
      from public.docs as document
      where document.id in (
-         941001, 941002, 941004, 941005, 941006, 941009, 941010
+         941004, 941005, 941006, 941010
      )),
     'approval updates every directly affected docs timestamp'
 );
@@ -613,6 +632,91 @@ select ok(
     and not exists (select 1 from public.logs
                     where word = 'moderation-mismatch-fixture-x'),
     'mismatched preflight conflict has no side effects'
+);
+
+insert into public.wait_words (word, requested_by, request_type)
+values ('moderation-null-requester-m', null, 'add');
+insert into public.wait_word_themes (wait_word_id, theme_id)
+select wait_word.id, theme.id
+from public.wait_words as wait_word
+cross join public.themes as theme
+where wait_word.word = 'moderation-null-requester-m'
+  and theme.code = 'moderation-secondary';
+insert into public.word_themes_wait (word_id, theme_id, req_by, typez)
+select word_row.id, theme.id, null, 'add'
+from public.words as word_row
+cross join public.themes as theme
+where word_row.word = 'moderation-theme-fixture-z'
+  and theme.code = 'moderation-change-delete';
+create temporary table moderation_null_requester_baseline as
+select contribution
+from public.users
+where id = '41000000-0000-4000-8000-000000000001';
+
+set local role authenticated;
+select lives_ok(
+    pg_catalog.format(
+        'select public.approve_word_requests(%L::jsonb)',
+        pg_catalog.jsonb_build_array(
+            pg_catalog.jsonb_build_object(
+                'kind', 'word-request',
+                'requestId', (select id from public.wait_words
+                              where word = 'moderation-null-requester-m'),
+                'selectedThemeIds', pg_catalog.jsonb_build_array(
+                    (select id from public.themes
+                     where code = 'moderation-secondary')
+                )
+            ),
+            pg_catalog.jsonb_build_object(
+                'kind', 'theme-change',
+                'wordId', (select id from public.words
+                           where word = 'moderation-theme-fixture-z'),
+                'changes', pg_catalog.jsonb_build_array(
+                    pg_catalog.jsonb_build_object(
+                        'themeId', (select id from public.themes
+                                    where code = 'moderation-change-delete'),
+                        'type', 'add'
+                    )
+                )
+            )
+        )::text
+    ),
+    'approval accepts null authoritative whole-word and theme requesters'
+);
+reset role;
+select ok(
+    exists (
+        select 1 from public.words
+        where word = 'moderation-null-requester-m'
+          and added_by is null
+    ) and exists (
+        select 1 from public.logs
+        where word = 'moderation-null-requester-m'
+          and make_by is null and state = 'approved'
+    ),
+    'null whole-word requester remains null on the word and moderation log'
+);
+select ok(
+    not exists (
+        select 1 from public.docs_logs
+        where word = 'moderation-null-requester-m'
+          and add_by is not null
+    ) and exists (
+        select 1 from public.docs_logs
+        where word = 'moderation-null-requester-m'
+          and docs_id = 941013 and add_by is null and type = 'add'
+    ) and exists (
+        select 1 from public.docs_logs
+        where word = 'moderation-theme-fixture-z'
+          and docs_id = 941006 and add_by is null and type = 'add'
+    ),
+    'null whole-word and theme requesters remain null in docs logs'
+);
+select is(
+    (select contribution from public.users
+     where id = '41000000-0000-4000-8000-000000000001'),
+    (select contribution from moderation_null_requester_baseline),
+    'null requesters do not credit the moderator'
 );
 
 insert into public.wait_words (word, requested_by, request_type)

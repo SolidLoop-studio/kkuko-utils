@@ -525,7 +525,7 @@ begin
             select * into wait_row
             from public.wait_words as wait_word
             where wait_word.id = request_id;
-            contributor := coalesce(wait_row.requested_by, p_actor);
+            contributor := wait_row.requested_by;
 
             if not p_is_approval then
                 insert into public.logs (
@@ -583,16 +583,19 @@ begin
                     array[]::bigint[]
                 ) into direct_docs_ids
                 from public.docs as document
-                where (
-                    document.typez = 'letter'
-                    and pg_catalog.btrim(document.name) =
-                        pg_catalog.right(wait_row.word, 1)
-                ) or (
-                    document.typez = 'theme'
-                    and document.name in (
-                        select theme.name
-                        from public.themes as theme
-                        where theme.id = any(selected_theme_ids)
+                where document.id <> all(special_docs_ids)
+                  and (
+                    (
+                        document.typez = 'letter'
+                        and pg_catalog.btrim(document.name) =
+                            pg_catalog.right(wait_row.word, 1)
+                    ) or (
+                        document.typez = 'theme'
+                        and document.name in (
+                            select theme.name
+                            from public.themes as theme
+                            where theme.id = any(selected_theme_ids)
+                        )
                     )
                 );
 
@@ -600,6 +603,7 @@ begin
                 select document.id, wait_row.word, contributor, 'add'
                 from public.docs as document
                 where document.id = any(direct_docs_ids)
+                  and document.id <> all(special_docs_ids)
                 order by document.id;
                 affected_docs_ids := affected_docs_ids || direct_docs_ids;
 
@@ -623,18 +627,21 @@ begin
                     array[]::bigint[]
                 ) into direct_docs_ids
                 from public.docs as document
-                where (
-                    document.typez = 'letter'
-                    and pg_catalog.btrim(document.name) =
-                        pg_catalog.right(word_row.word, 1)
-                ) or (
-                    document.typez = 'theme'
-                    and document.name in (
-                        select theme.name
-                        from public.word_themes as word_theme
-                        join public.themes as theme
-                          on theme.id = word_theme.theme_id
-                        where word_theme.word_id = word_row.id
+                where document.id <> all(special_docs_ids)
+                  and (
+                    (
+                        document.typez = 'letter'
+                        and pg_catalog.btrim(document.name) =
+                            pg_catalog.right(word_row.word, 1)
+                    ) or (
+                        document.typez = 'theme'
+                        and document.name in (
+                            select theme.name
+                            from public.word_themes as word_theme
+                            join public.themes as theme
+                              on theme.id = word_theme.theme_id
+                            where word_theme.word_id = word_row.id
+                        )
                     )
                 );
 
@@ -642,6 +649,7 @@ begin
                 select document.id, word_row.word, contributor, 'delete'
                 from public.docs as document
                 where document.id = any(direct_docs_ids)
+                  and document.id <> all(special_docs_ids)
                 order by document.id;
                 affected_docs_ids := affected_docs_ids || direct_docs_ids;
 
@@ -651,10 +659,12 @@ begin
                 where existing_word.id = word_row.id;
             end if;
 
-            perform public.increment_contribution(
-                target_id => contributor,
-                inc_amount => 1
-            );
+            if contributor is not null then
+                perform public.increment_contribution(
+                    target_id => contributor,
+                    inc_amount => 1
+                );
+            end if;
             processed_word_request_count :=
                 processed_word_request_count + 1;
             continue;
@@ -686,7 +696,7 @@ begin
                 continue;
             end if;
 
-            contributor := coalesce(wait_theme_row.req_by, p_actor);
+            contributor := wait_theme_row.req_by;
             if change ->> 'type' = 'add' then
                 insert into public.word_themes (word_id, theme_id)
                 values (moderation_word_id, moderation_theme_id);
@@ -703,6 +713,7 @@ begin
             where existing_word.id = moderation_word_id
               and document.typez = 'theme'
               and document.name = theme.name
+              and document.id <> all(special_docs_ids)
             returning docs_id into direct_docs_id;
             if direct_docs_id is not null then
                 affected_docs_ids := pg_catalog.array_append(
@@ -731,10 +742,12 @@ begin
             )
             where existing_word.id = moderation_word_id;
 
-            perform public.increment_contribution(
-                target_id => contributor,
-                inc_amount => 1
-            );
+            if contributor is not null then
+                perform public.increment_contribution(
+                    target_id => contributor,
+                    inc_amount => 1
+                );
+            end if;
             processed_theme_change_count :=
                 processed_theme_change_count + 1;
         end loop;
