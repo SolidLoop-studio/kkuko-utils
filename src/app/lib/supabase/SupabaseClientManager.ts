@@ -189,9 +189,12 @@ class GetManager implements IGetManager {
                 word: string;
                 requested_by: string | null;
                 request_type: "add" | "delete";
-            }[] = waitAddWordsData2
-                .filter(({ wait_words: { request_type } }) => request_type === "add")
-                .map(({ wait_words }) => wait_words);
+            }[] = [
+                ...waitAddWordsData2
+                    .filter(({ wait_words: { request_type } }) => request_type === "add")
+                    .map(({ wait_words }) => wait_words),
+                ...waitDelWordsData,
+            ];
             const pendingWords = new Set(waitWords.map(({ word }) => word));
             waitWordsData1.forEach(({ words: { word }, typez, req_by }) => {
                 if (!pendingWords.has(word)) {
@@ -199,7 +202,6 @@ class GetManager implements IGetManager {
                     pendingWords.add(word);
                 }
             })
-            waitWords.push(...waitDelWordsData)
 
             return { data: { words: wordsData.filter(({ word }) => !waitWords.some(w => word === w.word)), waitWords }, error: null }
         } else if (typez === "ect") {

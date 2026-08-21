@@ -82,6 +82,16 @@ export function toModerateWordRequestsCommand(
             return validationError('requestType', '알 수 없는 요청 종류입니다.');
         }
 
+        if (target.requestType === 'delete') {
+            return ok({
+                selections: [{
+                    kind: 'word-request',
+                    requestId: target.requestId,
+                    selectedThemeIds: [],
+                }],
+            });
+        }
+
         const themeIds = normalizeThemeIds(target.selectedThemeIds);
         if (!themeIds.ok) {
             return themeIds;

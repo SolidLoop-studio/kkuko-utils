@@ -106,7 +106,7 @@ git grep -n -E "\bSCM\." -- "src/**/*.ts" "src/**/*.tsx"
   - cloud Supabase migration은 사용자/운영자 실행 대기 상태
 - `words-docs/[id]` 관리자 moderation
   - 요청 승인·반려는 기존 원자적 요청 moderation RPC를 재사용
-  - 등록 단어 직접 삭제는 재개 가능한 삭제 Application service로 이전
+  - 등록 단어 직접 삭제는 전용 직접 삭제 Application service와 원자적 RPC로 이전
   - 주제 변경 요청을 지원하고 같은 docs에 대한 중복 주제 로그를 제거
   - 직접 삭제 cloud migration은 사용자/운영자가 통제하는 rollout 대기 상태
 

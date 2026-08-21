@@ -42,7 +42,9 @@ jest.mock('@tanstack/react-virtual', () => ({
 }));
 
 import { useDocsWordModeration } from '../../../modules/word-moderation';
+import { createBrowserWordModerationServices } from '../../../modules/word-moderation/infrastructure/browser/browser-word-moderation-services';
 import { ok } from '../../../shared/application/result';
+import { SCM } from '../../../app/lib/supabaseClient';
 import { loadingReducer, themeReducer, userReducer } from '../../../app/store/slice';
 import DocsDataHome from '../../../app/words-docs/[id]/DocsDataHome';
 import { useUserWordRequestActions } from '../../../app/words-docs/[id]/use-user-word-request-actions';
@@ -50,15 +52,21 @@ import type { DocsWordData } from '../../../app/words-docs/[id]/docs-word-data';
 
 const mockUseDocsWordModeration = jest.mocked(useDocsWordModeration);
 const mockUseUserWordRequestActions = jest.mocked(useUserWordRequestActions);
+const mockCreateBrowserServices = jest.mocked(createBrowserWordModerationServices);
 const approve = jest.fn();
 const reject = jest.fn();
 const deleteDirectly = jest.fn();
+const docsWords = jest.fn();
+const targetGet = jest.fn();
 
-const createWrapper = () => {
+const createWrapper = (
+    role: 'guest' | 'r1' | 'r4' | 'admin' = 'admin',
+    uuid: string | undefined = 'admin-1',
+) => {
     const store = configureStore({
         reducer: { user: userReducer, loading: loadingReducer, theme: themeReducer },
         preloadedState: {
-            user: { username: 'admin', uuid: 'admin-1', role: 'admin' as const },
+            user: { username: uuid === undefined ? undefined : 'tester', uuid, role },
             loading: { isLoading: false, progress: 100, currentTask: '완료' },
             theme: { theme: 'light' as const },
         },
@@ -125,6 +133,7 @@ const cases: Array<{
 
 describe('DocsDataHome administrator removal completion integration', () => {
     beforeEach(() => {
+        jest.clearAllMocks();
         approve.mockResolvedValue(ok({
             processedWordRequestCount: 1,
             processedThemeChangeCount: 1,
@@ -149,6 +158,18 @@ describe('DocsDataHome administrator removal completion integration', () => {
             CancelDeleteRequest: jest.fn(),
             RequestDelete: jest.fn(),
         });
+        docsWords.mockResolvedValue({
+            data: { words: [], waitWords: [] },
+            error: null,
+        });
+        jest.mocked(SCM.get).mockReturnValue({
+            docsLastUpdate: jest.fn(),
+            docsWords,
+        } as never);
+        targetGet.mockResolvedValue(ok({ targets: [] }));
+        mockCreateBrowserServices.mockReturnValue({
+            docsWordMutationTargetService: { get: targetGet },
+        } as never);
     });
 
     it.each(cases)('$name으로 마지막 행을 제거해도 완료 Modal이 유지된다', async ({ row, actionText }) => {
@@ -177,4 +198,144 @@ describe('DocsDataHome administrator removal completion integration', () => {
         expect(await screen.findByText('작업이 완료되었습니다!')).toBeInTheDocument();
         await waitFor(() => expect(screen.getByText('단어를 찾을 수 없습니다')).toBeInTheDocument());
     });
+
+    const wholeDeleteRow: DocsWordData = {
+        word: '나비',
+        status: 'delete',
+        maker: 'whole-requester',
+        mutationTarget: {
+            kind: 'word-request',
+            requestId: 29,
+            requestType: 'delete',
+            selectedThemeIds: [],
+        },
+    };
+
+    it.each([
+        ['whole-requester', true],
+        ['theme-requester', false],
+    ] as const)(
+        'shows the legacy whole-request cancellation only to %s before overlap resolution',
+        async (uuid, shouldShowCancellation) => {
+            const user = userEvent.setup();
+            render(
+                <DocsDataHome
+                    id={55}
+                    data={[wholeDeleteRow]}
+                    metaData={{
+                        title: '동물',
+                        lastUpdate: '2026-08-22T00:00:00.000Z',
+                        typez: 'theme',
+                    }}
+                    starCount={[]}
+                />,
+                { wrapper: createWrapper('r1', uuid) },
+            );
+
+            const wordCell = await screen.findByText('나비');
+            const tableRow = wordCell.closest('tr');
+            if (tableRow === null) throw new Error('row not found: 나비');
+            await user.click(within(tableRow).getByRole('button', { name: '작업' }));
+
+            const cancellation = screen.queryByText('삭제 요청을 취소합니다.');
+            if (shouldShowCancellation) {
+                expect(cancellation).toBeInTheDocument();
+            } else {
+                expect(cancellation).not.toBeInTheDocument();
+            }
+        },
+    );
+
+    it.each([
+        {
+            name: 'same-type overlap',
+            themeStatus: 'delete' as const,
+            themeTarget: {
+                kind: 'theme-change' as const,
+                wordId: 11,
+                themeId: 13,
+                type: 'delete' as const,
+            },
+            nextActionText: '삭제 요청을 수락합니다.',
+            nextAction: approve,
+        },
+        {
+            name: 'differing-type overlap',
+            themeStatus: 'add' as const,
+            themeTarget: {
+                kind: 'theme-change' as const,
+                wordId: 11,
+                themeId: 13,
+                type: 'add' as const,
+            },
+            nextActionText: '추가 요청을 거절합니다.',
+            nextAction: reject,
+        },
+    ])(
+        '$name recomposes the word after whole-request rejection and exposes the surviving theme action',
+        async ({ themeStatus, themeTarget, nextActionText, nextAction }) => {
+            const user = userEvent.setup();
+            docsWords.mockResolvedValue({
+                data: {
+                    words: [],
+                    waitWords: [{
+                        word: '나비',
+                        requested_by: 'theme-requester',
+                        request_type: themeStatus,
+                    }],
+                },
+                error: null,
+            });
+            targetGet.mockResolvedValue(ok({ targets: [themeTarget] }));
+
+            render(
+                <DocsDataHome
+                    id={55}
+                    data={[wholeDeleteRow]}
+                    metaData={{
+                        title: '동물',
+                        lastUpdate: '2026-08-22T00:00:00.000Z',
+                        typez: 'theme',
+                    }}
+                    starCount={[]}
+                />,
+                { wrapper: createWrapper('admin', 'theme-requester') },
+            );
+
+            let wordCell = await screen.findByText('나비');
+            let tableRow = wordCell.closest('tr');
+            if (tableRow === null) throw new Error('row not found: 나비');
+            await user.click(within(tableRow).getByRole('button', { name: '작업' }));
+            const rejectWhole = await screen.findByText('삭제 요청을 거절합니다.');
+            await user.click(within(rejectWhole.parentElement as HTMLElement).getByRole('button'));
+
+            await waitFor(() => {
+                expect(docsWords).toHaveBeenCalledWith({
+                    name: '동물',
+                    duem: false,
+                    typez: 'theme',
+                });
+                expect(targetGet).toHaveBeenCalledWith({
+                    docsId: 55,
+                    rows: [{ word: '나비', status: themeStatus }],
+                });
+            });
+            expect(reject).toHaveBeenNthCalledWith(1, wholeDeleteRow.mutationTarget);
+
+            await user.click(await screen.findByRole('button', { name: '확인' }));
+            wordCell = await screen.findByText('나비');
+            tableRow = wordCell.closest('tr');
+            if (tableRow === null) throw new Error('row not found after refresh: 나비');
+            expect(within(tableRow).getByText(themeStatus)).toBeInTheDocument();
+            await user.click(within(tableRow).getByRole('button', { name: '작업' }));
+
+            expect(screen.queryByText(`${themeStatus === 'add' ? '추가' : '삭제'} 요청을 취소합니다.`))
+                .not.toBeInTheDocument();
+            const nextActionLabel = await screen.findByText(nextActionText);
+            await user.click(within(nextActionLabel.parentElement as HTMLElement).getByRole('button'));
+
+            await waitFor(() => expect(nextAction).toHaveBeenCalledWith(themeTarget));
+            expect(docsWords).toHaveBeenCalledTimes(1);
+        },
+    );
 });

@@ -20,6 +20,17 @@ describe('docs word moderation domain', () => {
         }));
     });
 
+    it('drops injected theme selections from a whole-word deletion command', () => {
+        expect(toModerateWordRequestsCommand({
+            kind: 'word-request',
+            requestId: 8,
+            requestType: 'delete',
+            selectedThemeIds: [9, 3],
+        })).toEqual(ok({
+            selections: [{ kind: 'word-request', requestId: 8, selectedThemeIds: [] }],
+        }));
+    });
+
     it('maps a theme change target to the shared moderation command', () => {
         expect(toModerateWordRequestsCommand({
             kind: 'theme-change',
@@ -93,7 +104,7 @@ describe('docs word moderation domain', () => {
             kind: 'word-request', requestId: 1, requestType: 'ok', selectedThemeIds: [],
         }, 'requestType'],
         ['an invalid selected theme id', {
-            kind: 'word-request', requestId: 1, requestType: 'delete', selectedThemeIds: [0],
+            kind: 'word-request', requestId: 1, requestType: 'add', selectedThemeIds: [0],
         }, 'selectedThemeIds'],
         ['an invalid theme-change word id', {
             kind: 'theme-change', wordId: 0, themeId: 2, type: 'add',

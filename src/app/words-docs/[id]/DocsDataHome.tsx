@@ -31,6 +31,7 @@ import {
     DOCS_WORD_TARGET_REFRESH_ERROR_MESSAGE,
     type DocsWordAdminAction,
     type DocsWordData,
+    enrichDocsWordData,
 } from "./docs-word-data";
 
 interface DocsPageProp {
@@ -329,6 +330,98 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
         });
     };
 
+    const replaceRowsForWord = (word: string, refreshedRows: DocsWordData[]) => {
+        setWordsData((currentRows) => {
+            const insertionIndex = currentRows.findIndex((currentRow) => currentRow.word === word);
+            if (insertionIndex === -1) return currentRows;
+
+            const nextRows = currentRows.filter((currentRow) => currentRow.word !== word);
+            nextRows.splice(insertionIndex, 0, ...refreshedRows);
+            return nextRows;
+        });
+    };
+
+    const applyRefreshFailureFallback = (
+        action: DocsWordAdminAction,
+        row: DocsWordData,
+    ) => {
+        const isTransitionToOk = (action === "approve" && row.status === "add")
+            || (action === "reject" && row.status === "delete");
+
+        setWordsData((currentRows) => isTransitionToOk
+            ? currentRows.map((currentRow) => (
+                isSameDocsWordRow(currentRow, row)
+                    ? {
+                        word: currentRow.word,
+                        status: "ok" as const,
+                        maker: undefined,
+                        mutationTarget: null,
+                    }
+                    : currentRow
+            ))
+            : currentRows.filter((currentRow) => !isSameDocsWordRow(currentRow, row)));
+    };
+
+    const refreshThemeRowsAfterWholeRequest = async (
+        action: DocsWordAdminAction,
+        row: DocsWordData,
+    ): Promise<boolean> => {
+        try {
+            const { data: snapshot, error } = await SCM.get().docsWords({
+                name: metaData.title,
+                duem: false,
+                typez: "theme",
+            });
+            if (error !== null || snapshot === null) {
+                throw new Error("theme docs refresh failed");
+            }
+
+            const pendingRows = snapshot.waitWords
+                .filter(({ word }) => word === row.word)
+                .map(({ word, requested_by, request_type }) => ({
+                    word,
+                    status: request_type,
+                    maker: requested_by ?? undefined,
+                }));
+            const pendingWords = new Set(pendingRows.map(({ word }) => word));
+            const baseRows = [
+                ...snapshot.words
+                    .filter(({ word }) => word === row.word && !pendingWords.has(word))
+                    .map(({ word }) => ({
+                        word,
+                        status: "ok" as const,
+                        maker: undefined,
+                    })),
+                ...pendingRows,
+            ];
+            if (baseRows.length === 0) {
+                replaceRowsForWord(row.word, []);
+                return true;
+            }
+
+            const refreshedResult = await enrichDocsWordData(
+                id,
+                baseRows,
+                createBrowserWordModerationServices().docsWordMutationTargetService,
+            );
+            if (!refreshedResult.ok) {
+                throw new Error("theme docs target refresh failed");
+            }
+
+            replaceRowsForWord(row.word, refreshedResult.value);
+            if (refreshedResult.value.some(({ mutationTarget }) => mutationTarget === null)) {
+                showTargetRefreshError();
+                return false;
+            }
+
+            return true;
+        } catch {
+            applyRefreshFailureFallback(action, row);
+            showTargetRefreshError();
+            return false;
+        }
+    };
+
     const transitionRowToOk = async (row: DocsWordData): Promise<boolean> => {
         let registeredTarget: Extract<DocsWordMutationTarget, { kind: "registered-word" }> | null = null;
 
@@ -372,6 +465,12 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
         action: DocsWordAdminAction,
         row: DocsWordData,
     ): Promise<boolean> => {
+        if (metaData.typez === "theme" && row.mutationTarget?.kind === "word-request") {
+            const didRefresh = await refreshThemeRowsAfterWholeRequest(action, row);
+            if (didRefresh) setIsAdminCompleteModalOpen(true);
+            return didRefresh;
+        }
+
         const isTransitionToOk = (action === "approve" && row.status === "add")
             || (action === "reject" && row.status === "delete");
         if (isTransitionToOk) {

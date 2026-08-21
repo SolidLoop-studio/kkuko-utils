@@ -162,11 +162,11 @@ describe('SupabaseDocsWordModerationGateway', () => {
         ['DIRECT_WORD_DELETION_INVALID_INPUT', 'validation', '삭제할 단어 정보가 올바르지 않습니다.'],
         ['DIRECT_WORD_DELETION_CONFLICT', 'conflict', '단어가 이미 삭제되었거나 변경되었습니다.'],
         ['DIRECT_WORD_DELETION_INTERNAL_ERROR', 'infrastructure', '단어 삭제 중 오류가 발생했습니다.'],
-    ] as const)('maps the safe direct deletion error for %s', async (code, kind, message) => {
+    ] as const)('maps the safe direct deletion error for %s', async (symbol, kind, message) => {
         const client = new FakeSupabaseClient({});
         client.rpc.mockResolvedValue({
             data: null,
-            error: { code, details: 'private database detail', message: 'private message' },
+            error: { code: 'P0001', details: 'private database detail', message: symbol },
         });
 
         const result = await new SupabaseDocsWordModerationGateway(client).deleteWord({ wordId: 17 });
@@ -179,6 +179,14 @@ describe('SupabaseDocsWordModerationGateway', () => {
         ['an unexpected PostgREST error', {
             data: null,
             error: { code: 'PGRST999', details: 'private database detail', message: 'private message' },
+        }],
+        ['a symbolic code paired with an unknown message', {
+            data: null,
+            error: {
+                code: 'DIRECT_WORD_DELETION_FORBIDDEN',
+                details: 'private database detail',
+                message: 'private message',
+            },
         }],
         ['a rejected RPC call', new Error('private network detail')],
     ])('sanitizes %s from direct deletion without exposing raw details', async (_description, response) => {
@@ -197,11 +205,11 @@ describe('SupabaseDocsWordModerationGateway', () => {
 
     it.each(['toString', '__proto__'])(
         'treats inherited prototype key %s as an unexpected direct deletion error',
-        async (code) => {
+        async (message) => {
             const client = new FakeSupabaseClient({});
             client.rpc.mockResolvedValue({
                 data: null,
-                error: { code, details: 'private database detail', message: 'private message' },
+                error: { code: 'P0001', details: 'private database detail', message },
             });
 
             const result = await new SupabaseDocsWordModerationGateway(client).deleteWord({ wordId: 17 });
@@ -210,6 +218,20 @@ describe('SupabaseDocsWordModerationGateway', () => {
             expect(JSON.stringify(result)).not.toContain('private');
         },
     );
+
+    it('does not map an inherited symbolic direct deletion message', async () => {
+        const client = new FakeSupabaseClient({});
+        const error = Object.assign(
+            Object.create({ message: 'DIRECT_WORD_DELETION_FORBIDDEN' }) as object,
+            { code: 'P0001', details: 'private database detail' },
+        );
+        client.rpc.mockResolvedValue({ data: null, error });
+
+        const result = await new SupabaseDocsWordModerationGateway(client).deleteWord({ wordId: 17 });
+
+        expect(result).toEqual(directWordDeletionInfrastructureFailure);
+        expect(JSON.stringify(result)).not.toContain('private');
+    });
 
     it('maps authoritative whole-word, theme-change, and registered-word targets by input index', async () => {
         const client = new FakeSupabaseClient({
@@ -319,7 +341,7 @@ describe('SupabaseDocsWordModerationGateway', () => {
                     id: 8,
                     word: '가방',
                     request_type: 'delete',
-                    wait_word_themes: [],
+                    wait_word_themes: [{ theme_id: 8 }, { theme_id: 4 }],
                 },
                 {
                     id: 7,

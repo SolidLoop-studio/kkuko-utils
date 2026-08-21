@@ -120,6 +120,25 @@ describe('useDocsWordModeration', () => {
         }]);
     });
 
+    it('drops injected theme selections when approving a whole-word deletion', async () => {
+        const services = createServices();
+        const requestService = services.wordRequestModerationService as FakeWordRequestModerationService;
+        const { result } = renderHook(() => useDocsWordModeration(services), {
+            wrapper: createWrapper(),
+        });
+
+        await act(async () => result.current.approve({
+            kind: 'word-request',
+            requestId: 6,
+            requestType: 'delete',
+            selectedThemeIds: [8, 4],
+        }));
+
+        expect(requestService.approvedCommands).toEqual([{
+            selections: [{ kind: 'word-request', requestId: 6, selectedThemeIds: [] }],
+        }]);
+    });
+
     it('maps a theme-change approval target to an approval command', async () => {
         const services = createServices();
         const requestService = services.wordRequestModerationService as FakeWordRequestModerationService;
@@ -158,7 +177,7 @@ describe('useDocsWordModeration', () => {
         }));
 
         expect(requestService.rejectedCommands).toEqual([{
-            selections: [{ kind: 'word-request', requestId: 17, selectedThemeIds: [8] }],
+            selections: [{ kind: 'word-request', requestId: 17, selectedThemeIds: [] }],
         }]);
     });
 

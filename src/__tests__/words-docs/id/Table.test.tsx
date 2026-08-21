@@ -155,6 +155,7 @@ const mockCancelAddRequest = jest.fn();
 const mockCancelDeleteRequest = jest.fn();
 const mockRequestDelete = jest.fn();
 const mockTargetGet = jest.fn();
+const mockDocsWords = jest.fn();
 
 const createDeferred = <T,>() => {
     let resolve!: (value: T) => void;
@@ -694,10 +695,80 @@ describe('legacy theme docs row composition', () => {
             error: null,
         });
     });
+
+    it.each([
+        ['same-type', 'delete' as const],
+        ['differing-type', 'add' as const],
+    ])(
+        'prefers a whole delete request over a %s theme request from another requester',
+        async (_description, themeRequestType) => {
+            const tableResponses = {
+                word_themes_wait: {
+                    data: [{
+                        words: { word: '나비' },
+                        typez: themeRequestType,
+                        req_by: 'theme-requester',
+                    }],
+                    error: null,
+                },
+                wait_word_themes: { data: [], error: null },
+            };
+            const fakeSupabase = {
+                from: jest.fn((table: 'themes' | keyof typeof tableResponses) => ({
+                    select: jest.fn(() => table === 'themes'
+                        ? {
+                            eq: jest.fn(() => ({
+                                maybeSingle: jest.fn().mockResolvedValue({
+                                    data: { id: 13 },
+                                    error: null,
+                                }),
+                            })),
+                        }
+                        : {
+                            eq: jest.fn().mockResolvedValue(tableResponses[table]),
+                        }),
+                })),
+                rpc: jest.fn((name: string) => Promise.resolve(
+                    name === 'get_words_by_theme'
+                        ? { data: [{ word: '나비' }], error: null }
+                        : {
+                            data: [{
+                                word: '나비',
+                                requested_by: 'whole-requester',
+                                request_type: 'delete',
+                            }],
+                            error: null,
+                        },
+                )),
+            };
+            const manager = new SupabaseClientManager(fakeSupabase as never);
+
+            await expect(manager.get().docsWords({
+                name: '동물',
+                duem: false,
+                typez: 'theme',
+            })).resolves.toEqual({
+                data: {
+                    words: [],
+                    waitWords: [{
+                        word: '나비',
+                        requested_by: 'whole-requester',
+                        request_type: 'delete',
+                    }],
+                },
+                error: null,
+            });
+        },
+    );
 });
 
 describe('DocsDataHome row transitions', () => {
     beforeEach(() => {
+        mockDocsWords.mockResolvedValue({
+            data: { words: [], waitWords: [] },
+            error: null,
+        });
+        jest.mocked(SCM.get).mockReturnValue({ docsWords: mockDocsWords } as never);
         mockTargetGet.mockResolvedValue(ok({
             targets: [{ kind: 'registered-word', wordId: 101 }],
         }));
@@ -762,6 +833,12 @@ describe('DocsDataHome row transitions', () => {
             wordId: 109,
         },
     ])('$name 성공은 ok target을 다시 조회한 뒤 maker와 target을 교체한다', async ({ row, action, wordId }) => {
+        if (row.mutationTarget?.kind === 'word-request') {
+            mockDocsWords.mockResolvedValue({
+                data: { words: [{ word: row.word }], waitWords: [] },
+                error: null,
+            });
+        }
         mockTargetGet.mockResolvedValue(ok({
             targets: [{ kind: 'registered-word', wordId }],
         }));
@@ -786,6 +863,10 @@ describe('DocsDataHome row transitions', () => {
         ['service failure', err({ kind: 'conflict' as const, message: 'private target detail' })],
         ['missing registered target', ok({ targets: [null] })],
     ])('%s 뒤에는 이미 처리된 행을 ok/null로 유지하고 안전한 Modal을 표시한다', async (_name, targetResult) => {
+        mockDocsWords.mockResolvedValue({
+            data: { words: [{ word: rows[0].word }], waitWords: [] },
+            error: null,
+        });
         mockTargetGet.mockResolvedValue(targetResult);
         const user = userEvent.setup();
         renderHome([rows[0]]);

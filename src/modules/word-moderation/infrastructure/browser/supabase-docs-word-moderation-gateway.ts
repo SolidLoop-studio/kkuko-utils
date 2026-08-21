@@ -217,9 +217,13 @@ const parseDirectWordDeletionResult = (value: unknown): DeleteWordDirectlyResult
 };
 
 const directWordDeletionError = (value: unknown) => {
-    const code = isRecord(value) && typeof value.code === 'string' ? value.code : null;
-    if (code !== null && Object.hasOwn(directWordDeletionErrors, code)) {
-        return directWordDeletionErrors[code as keyof typeof directWordDeletionErrors];
+    const message = isRecord(value)
+        && Object.hasOwn(value, 'message')
+        && typeof value.message === 'string'
+        ? value.message
+        : null;
+    if (message !== null && Object.hasOwn(directWordDeletionErrors, message)) {
+        return directWordDeletionErrors[message as keyof typeof directWordDeletionErrors];
     }
     return directWordDeletionInfrastructureError();
 };
@@ -387,7 +391,9 @@ export class SupabaseDocsWordModerationGateway implements DocsWordMutationTarget
                         kind: 'word-request',
                         requestId: candidate.id,
                         requestType: candidate.requestType,
-                        selectedThemeIds: candidate.selectedThemeIds,
+                        selectedThemeIds: candidate.requestType === 'delete'
+                            ? []
+                            : candidate.selectedThemeIds,
                     };
                 }
                 if (matchingWholeWordCandidates.length > 1 || wholeWordCandidates.length > 0) {
