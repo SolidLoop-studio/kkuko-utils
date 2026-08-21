@@ -24,7 +24,7 @@ describe('browser word moderation services', () => {
         jest.resetModules();
     });
 
-    it('returns one stable singleton with approval and deletion services', () => {
+    it('returns one stable singleton with approval, deletion, and docs target services', () => {
         process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
         jest.resetModules();
@@ -32,6 +32,7 @@ describe('browser word moderation services', () => {
         jest.isolateModules(() => {
             const { RunWordApprovalService } = require('../../../../../modules/word-moderation/application/run-word-approval');
             const { RunWordDeletionService } = require('../../../../../modules/word-moderation/application/run-word-deletion');
+            const { GetDocsWordMutationTargetsService } = require('../../../../../modules/word-moderation/application/get-docs-word-mutation-targets');
             const { createBrowserWordModerationServices } = require('../../../../../modules/word-moderation/infrastructure/browser/browser-word-moderation-services');
 
             const first = createBrowserWordModerationServices();
@@ -40,6 +41,12 @@ describe('browser word moderation services', () => {
             expect(first).toBe(second);
             expect(first.wordApprovalService).toBeInstanceOf(RunWordApprovalService);
             expect(first.wordDeletionService).toBeInstanceOf(RunWordDeletionService);
+            expect(first.docsWordMutationTargetService).toBeInstanceOf(
+                GetDocsWordMutationTargetsService,
+            );
+            expect(first.docsWordMutationTargetService).toBe(
+                second.docsWordMutationTargetService,
+            );
         });
     });
 
@@ -54,7 +61,10 @@ describe('browser word moderation services', () => {
 
         expect(() => {
             jest.isolateModules(() => {
-                require('../../../../../modules/word-moderation/infrastructure/browser/browser-word-moderation-services');
+                const { createBrowserWordModerationServices } = require('../../../../../modules/word-moderation/infrastructure/browser/browser-word-moderation-services');
+                const services = createBrowserWordModerationServices();
+
+                expect(services.docsWordMutationTargetService).toBeDefined();
             });
         }).not.toThrow();
     });

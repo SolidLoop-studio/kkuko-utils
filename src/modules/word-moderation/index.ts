@@ -4,11 +4,23 @@ export {
 export {
     ModerateWordRequestsService,
 } from './application/moderate-word-requests';
+export {
+    GetDocsWordMutationTargetsService,
+} from './application/get-docs-word-mutation-targets';
 export type {
     WordApprovalJobStore,
     WordApprovalOperationGateway,
     WordRequestModerationGateway,
 } from './application/ports';
+export type {
+    DocsWordMutationTargetGateway,
+} from './application/docs-word-moderation-ports';
+export type {
+    DocsWordMutationTarget,
+    DocsWordMutationTargetRow,
+    GetDocsWordMutationTargetsQuery,
+    GetDocsWordMutationTargetsResult,
+} from './application/docs-word-moderation-types';
 export type {
     ApprovalBatch,
     ApprovalProgress,
