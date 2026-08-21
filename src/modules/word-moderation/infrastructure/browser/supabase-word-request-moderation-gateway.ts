@@ -28,22 +28,23 @@ const infrastructureError = (): ApplicationError => ({
 });
 
 const wordRequestModerationErrors = {
-    UNAUTHORIZED: {
+    WORD_REQUEST_MODERATION_UNAUTHORIZED: {
         kind: 'unauthorized',
         message: '인증이 필요합니다.',
     },
-    FORBIDDEN: {
+    WORD_REQUEST_MODERATION_FORBIDDEN: {
         kind: 'forbidden',
         message: '권한이 없습니다.',
     },
-    INVALID_INPUT: {
+    WORD_REQUEST_MODERATION_INVALID_INPUT: {
         kind: 'validation',
         message: '입력값이 올바르지 않습니다.',
     },
-    CONFLICT: {
+    WORD_REQUEST_MODERATION_CONFLICT: {
         kind: 'conflict',
         message: '요청이 이미 처리되었거나 충돌이 발생했습니다.',
     },
+    WORD_REQUEST_MODERATION_INTERNAL_ERROR: infrastructureError(),
 } as const;
 
 const mapWordRequestModerationError = (error: RpcError): ApplicationError => {

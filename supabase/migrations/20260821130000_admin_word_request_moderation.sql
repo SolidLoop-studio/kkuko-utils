@@ -149,36 +149,38 @@ begin
             end if;
             request_ids := pg_catalog.array_append(request_ids, request_id);
 
-            if exists (
-                select 1
-                from pg_catalog.jsonb_array_elements(
-                    selection -> 'selectedThemeIds'
-                ) as selected(value)
-                where not private.is_word_request_moderation_safe_integer(
-                    selected.value
-                )
-            ) or exists (
-                select 1
-                from pg_catalog.jsonb_array_elements(
-                    selection -> 'selectedThemeIds'
-                ) as selected(value)
-                group by selected.value
-                having pg_catalog.count(*) > 1
-            ) then
-                raise exception using
-                    errcode = 'P0001',
-                    message = 'WORD_REQUEST_MODERATION_INVALID_INPUT';
-            end if;
+            if p_is_approval then
+                if exists (
+                    select 1
+                    from pg_catalog.jsonb_array_elements(
+                        selection -> 'selectedThemeIds'
+                    ) as selected(value)
+                    where not private.is_word_request_moderation_safe_integer(
+                        selected.value
+                    )
+                ) or exists (
+                    select 1
+                    from pg_catalog.jsonb_array_elements(
+                        selection -> 'selectedThemeIds'
+                    ) as selected(value)
+                    group by selected.value
+                    having pg_catalog.count(*) > 1
+                ) then
+                    raise exception using
+                        errcode = 'P0001',
+                        message = 'WORD_REQUEST_MODERATION_INVALID_INPUT';
+                end if;
 
-            select coalesce(
-                pg_catalog.array_agg((selected.value #>> '{}')::bigint),
-                array[]::bigint[]
-            )
-            into selected_theme_ids
-            from pg_catalog.jsonb_array_elements(
-                selection -> 'selectedThemeIds'
-            ) as selected(value);
-            all_theme_ids := all_theme_ids || selected_theme_ids;
+                select coalesce(
+                    pg_catalog.array_agg((selected.value #>> '{}')::bigint),
+                    array[]::bigint[]
+                )
+                into selected_theme_ids
+                from pg_catalog.jsonb_array_elements(
+                    selection -> 'selectedThemeIds'
+                ) as selected(value);
+                all_theme_ids := all_theme_ids || selected_theme_ids;
+            end if;
             continue;
         end if;
 
@@ -388,62 +390,64 @@ begin
                     message = 'WORD_REQUEST_MODERATION_CONFLICT';
             end if;
 
-            select coalesce(
-                pg_catalog.array_agg((selected.value #>> '{}')::bigint),
-                array[]::bigint[]
-            )
-            into selected_theme_ids
-            from pg_catalog.jsonb_array_elements(
-                selection -> 'selectedThemeIds'
-            ) as selected(value);
+            if p_is_approval then
+                select coalesce(
+                    pg_catalog.array_agg((selected.value #>> '{}')::bigint),
+                    array[]::bigint[]
+                )
+                into selected_theme_ids
+                from pg_catalog.jsonb_array_elements(
+                    selection -> 'selectedThemeIds'
+                ) as selected(value);
 
-            if wait_row.request_type = 'add' then
-                if pg_catalog.cardinality(selected_theme_ids) = 0
-                   or wait_row.word_id is not null
-                   or exists (
-                        select 1 from public.words as existing_word
-                        where existing_word.word = wait_row.word
-                   ) then
+                if wait_row.request_type = 'add' then
+                    if pg_catalog.cardinality(selected_theme_ids) = 0
+                       or wait_row.word_id is not null
+                       or exists (
+                            select 1 from public.words as existing_word
+                            where existing_word.word = wait_row.word
+                       ) then
+                        raise exception using
+                            errcode = 'P0001',
+                            message = 'WORD_REQUEST_MODERATION_CONFLICT';
+                    end if;
+                elsif wait_row.request_type = 'delete' then
+                    if pg_catalog.cardinality(selected_theme_ids) <> 0
+                       or wait_row.word_id is null
+                       or not exists (
+                            select 1 from public.words as existing_word
+                            where existing_word.id = wait_row.word_id
+                              and existing_word.word = wait_row.word
+                       ) then
+                        raise exception using
+                            errcode = 'P0001',
+                            message = 'WORD_REQUEST_MODERATION_CONFLICT';
+                    end if;
+                else
                     raise exception using
                         errcode = 'P0001',
                         message = 'WORD_REQUEST_MODERATION_CONFLICT';
                 end if;
-            elsif wait_row.request_type = 'delete' then
-                if pg_catalog.cardinality(selected_theme_ids) <> 0
-                   or wait_row.word_id is null
-                   or not exists (
-                        select 1 from public.words as existing_word
-                        where existing_word.id = wait_row.word_id
-                          and existing_word.word = wait_row.word
-                   ) then
+
+                if exists (
+                    select selected_theme.id
+                    from pg_catalog.unnest(selected_theme_ids)
+                        as selected_theme(id)
+                    where not exists (
+                        select 1
+                        from public.wait_word_themes as wait_theme
+                        where wait_theme.wait_word_id = request_id
+                          and wait_theme.theme_id = selected_theme.id
+                    )
+                       or not exists (
+                        select 1 from public.themes as theme
+                        where theme.id = selected_theme.id
+                    )
+                ) then
                     raise exception using
                         errcode = 'P0001',
                         message = 'WORD_REQUEST_MODERATION_CONFLICT';
                 end if;
-            else
-                raise exception using
-                    errcode = 'P0001',
-                    message = 'WORD_REQUEST_MODERATION_CONFLICT';
-            end if;
-
-            if exists (
-                select selected_theme.id
-                from pg_catalog.unnest(selected_theme_ids)
-                    as selected_theme(id)
-                where not exists (
-                    select 1
-                    from public.wait_word_themes as wait_theme
-                    where wait_theme.wait_word_id = request_id
-                      and wait_theme.theme_id = selected_theme.id
-                )
-                   or not exists (
-                    select 1 from public.themes as theme
-                    where theme.id = selected_theme.id
-                )
-            ) then
-                raise exception using
-                    errcode = 'P0001',
-                    message = 'WORD_REQUEST_MODERATION_CONFLICT';
             end if;
             continue;
         end if;
@@ -476,21 +480,21 @@ begin
             ) or not exists (
                 select 1 from public.themes as theme
                 where theme.id = moderation_theme_id
-            ) or (
+            ) or (p_is_approval and (
                 change ->> 'type' = 'add'
                 and exists (
                     select 1 from public.word_themes as word_theme
                     where word_theme.word_id = moderation_word_id
                       and word_theme.theme_id = moderation_theme_id
                 )
-            ) or (
+            )) or (p_is_approval and (
                 change ->> 'type' = 'delete'
                 and not exists (
                     select 1 from public.word_themes as word_theme
                     where word_theme.word_id = moderation_word_id
                       and word_theme.theme_id = moderation_theme_id
                 )
-            ) then
+            )) then
                 raise exception using
                     errcode = 'P0001',
                     message = 'WORD_REQUEST_MODERATION_CONFLICT';
@@ -731,23 +735,6 @@ begin
               and wait_theme.theme_id = moderation_theme_id
               and wait_theme.typez::text = change ->> 'type';
 
-            update public.words as existing_word
-            set noin_canuse = exists (
-                select 1
-                from public.word_themes as word_theme
-                join public.themes as theme
-                  on theme.id = word_theme.theme_id
-                where word_theme.word_id = moderation_word_id
-                  and theme.code = any(noin_theme_codes)
-            )
-            where existing_word.id = moderation_word_id;
-
-            if contributor is not null then
-                perform public.increment_contribution(
-                    target_id => contributor,
-                    inc_amount => 1
-                );
-            end if;
             processed_theme_change_count :=
                 processed_theme_change_count + 1;
         end loop;

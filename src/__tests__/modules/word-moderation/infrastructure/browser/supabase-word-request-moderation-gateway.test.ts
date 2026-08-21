@@ -102,20 +102,32 @@ describe('SupabaseWordRequestModerationGateway', () => {
     });
 
     it.each([
-        ['UNAUTHORIZED', 'unauthorized'],
-        ['FORBIDDEN', 'forbidden'],
-        ['INVALID_INPUT', 'validation'],
-        ['CONFLICT', 'conflict'],
-        ['INTERNAL_ERROR', 'infrastructure'],
-    ])('maps the %s RPC error to a %s application error', async (message, kind) => {
+        ['WORD_REQUEST_MODERATION_UNAUTHORIZED', 'unauthorized', '인증이 필요합니다.'],
+        ['WORD_REQUEST_MODERATION_FORBIDDEN', 'forbidden', '권한이 없습니다.'],
+        ['WORD_REQUEST_MODERATION_INVALID_INPUT', 'validation', '입력값이 올바르지 않습니다.'],
+        [
+            'WORD_REQUEST_MODERATION_CONFLICT',
+            'conflict',
+            '요청이 이미 처리되었거나 충돌이 발생했습니다.',
+        ],
+        [
+            'WORD_REQUEST_MODERATION_INTERNAL_ERROR',
+            'infrastructure',
+            '데이터 처리 중 오류가 발생했습니다.',
+        ],
+    ])('maps the literal %s RPC error to a safe %s application error', async (
+        message,
+        kind,
+        safeMessage,
+    ) => {
         rpc.mockResolvedValue({
             data: null,
             error: { code: 'P0001', message },
         });
 
-        await expect(gateway.approve(command)).resolves.toMatchObject({
+        await expect(gateway.approve(command)).resolves.toEqual({
             ok: false,
-            error: { kind },
+            error: { kind, message: safeMessage, code: 'P0001' },
         });
     });
 

@@ -83,7 +83,7 @@ where id in (201, 209, 252);
 insert into public.words (word, k_canuse, noin_canuse, added_by) values
     ('moderation-delete-fixture-y', true, false,
      '41000000-0000-4000-8000-000000000001'),
-    ('moderation-theme-fixture-z', true, false,
+    ('moderation-theme-fixture-z', true, true,
      '41000000-0000-4000-8000-000000000001'),
     ('moderation-reject-delete-y', true, false,
      '41000000-0000-4000-8000-000000000001'),
@@ -434,6 +434,24 @@ select is(
     1,
     'the remaining theme wait row is the unselected request'
 );
+select is(
+    (select contribution from public.users
+     where id = '41000000-0000-4000-8000-000000000006'),
+    0,
+    'theme-change approval does not increment lifetime contribution'
+);
+select is(
+    (select month_contribution from public.users
+     where id = '41000000-0000-4000-8000-000000000006'),
+    0,
+    'theme-change approval does not increment monthly contribution'
+);
+select is(
+    (select noin_canuse from public.words
+     where word = 'moderation-theme-fixture-z'),
+    true,
+    'theme-change approval leaves the word noin_canuse value unchanged'
+);
 
 insert into public.wait_words (word, requested_by, request_type)
 values ('moderation-540-fixture-q',
@@ -509,9 +527,7 @@ select public.reject_word_requests(
             'kind', 'word-request',
             'requestId', (select id from public.wait_words
                           where word = 'moderation-reject-add-x'),
-            'selectedThemeIds', pg_catalog.jsonb_build_array(
-                (select id from public.themes where code = '530')
-            )
+            'selectedThemeIds', '[]'::jsonb
         ),
         pg_catalog.jsonb_build_object(
             'kind', 'word-request',
@@ -537,7 +553,7 @@ reset role;
 select is(
     (select result from moderation_rejection_result),
     '{"affectedDocsIds":[],"processedThemeChangeCount":1,"processedWordRequestCount":2}'::jsonb,
-    'rejection returns exact selected counts and no affected docs IDs'
+    'UI-real add rejection with empty themes returns exact counts and no docs IDs'
 );
 select is(
     (select pg_catalog.count(*)::integer from public.wait_words
