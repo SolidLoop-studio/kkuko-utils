@@ -2,7 +2,7 @@ begin;
 
 create schema if not exists private;
 
-create table public.word_approval_operations (
+create table if not exists public.word_approval_operations (
     operation_id uuid primary key,
     actor_id uuid not null references public.users(id),
     input_hash text not null check (length(input_hash) = 64),
@@ -14,11 +14,11 @@ create table public.word_approval_operations (
     completed_at timestamptz
 );
 
-create unique index word_approval_operations_running_input_key
+create unique index if not exists word_approval_operations_running_input_key
     on public.word_approval_operations (actor_id, input_hash)
     where status = 'running';
 
-create table public.word_approval_batches (
+create table if not exists public.word_approval_batches (
     operation_id uuid not null references public.word_approval_operations(operation_id) on delete cascade,
     batch_index integer not null check (batch_index >= 0),
     payload_hash text not null check (length(payload_hash) = 64),
