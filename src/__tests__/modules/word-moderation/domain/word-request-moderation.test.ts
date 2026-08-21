@@ -103,4 +103,43 @@ describe('word request moderation domain', () => {
         expect(duplicate).toMatchObject({ ok: false, error: { kind: 'validation' } });
         expect(contradictory).toMatchObject({ ok: false, error: { kind: 'validation' } });
     });
+
+    it.each([
+        ['a missing command shape', {}],
+        ['null selections', { selections: null }],
+        ['a null selection', { selections: [null] }],
+        ['a word request without selected theme ids', {
+            selections: [{ kind: 'word-request', requestId: 1 }],
+        }],
+        ['a theme change without changes', {
+            selections: [{ kind: 'theme-change', wordId: 1 }],
+        }],
+    ] as Array<[string, unknown]>)('returns validation for %s', (_name, payload) => {
+        expect(normalizeWordRequestModerationCommand(
+            payload as ModerateWordRequestsCommand,
+        )).toMatchObject({
+            ok: false,
+            error: { kind: 'validation' },
+        });
+    });
+
+    it.each([
+        ['an unknown selection kind', {
+            selections: [{ kind: 'unsupported', wordId: 1, changes: [] }],
+        }],
+        ['an unknown theme change type', {
+            selections: [{
+                kind: 'theme-change',
+                wordId: 1,
+                changes: [{ themeId: 2, type: 'replace' }],
+            }],
+        }],
+    ] as Array<[string, unknown]>)('returns validation for %s', (_name, payload) => {
+        expect(normalizeWordRequestModerationCommand(
+            payload as ModerateWordRequestsCommand,
+        )).toMatchObject({
+            ok: false,
+            error: { kind: 'validation' },
+        });
+    });
 });
