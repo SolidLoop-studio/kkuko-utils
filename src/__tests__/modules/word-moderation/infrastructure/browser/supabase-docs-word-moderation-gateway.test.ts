@@ -195,6 +195,22 @@ describe('SupabaseDocsWordModerationGateway', () => {
         expect(JSON.stringify(result)).not.toContain('private');
     });
 
+    it.each(['toString', '__proto__'])(
+        'treats inherited prototype key %s as an unexpected direct deletion error',
+        async (code) => {
+            const client = new FakeSupabaseClient({});
+            client.rpc.mockResolvedValue({
+                data: null,
+                error: { code, details: 'private database detail', message: 'private message' },
+            });
+
+            const result = await new SupabaseDocsWordModerationGateway(client).deleteWord({ wordId: 17 });
+
+            expect(result).toEqual(directWordDeletionInfrastructureFailure);
+            expect(JSON.stringify(result)).not.toContain('private');
+        },
+    );
+
     it('maps authoritative whole-word, theme-change, and registered-word targets by input index', async () => {
         const client = new FakeSupabaseClient({
             docs: [response({ name: '동물', typez: 'theme' })],

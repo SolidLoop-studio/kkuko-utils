@@ -218,7 +218,7 @@ const parseDirectWordDeletionResult = (value: unknown): DeleteWordDirectlyResult
 
 const directWordDeletionError = (value: unknown) => {
     const code = isRecord(value) && typeof value.code === 'string' ? value.code : null;
-    if (code !== null && code in directWordDeletionErrors) {
+    if (code !== null && Object.hasOwn(directWordDeletionErrors, code)) {
         return directWordDeletionErrors[code as keyof typeof directWordDeletionErrors];
     }
     return directWordDeletionInfrastructureError();
