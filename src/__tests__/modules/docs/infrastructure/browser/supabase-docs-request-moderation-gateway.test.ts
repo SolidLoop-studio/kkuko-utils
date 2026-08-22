@@ -24,7 +24,12 @@ const rejectCommand: RejectDocsRequestsCommand = {
     requestIds: [11, 22],
 };
 
-const successfulResult = {
+const successfulApproveResult = {
+    processedRequestIds: [11],
+    processedRequestCount: 1,
+};
+
+const successfulRejectResult = {
     processedRequestIds: [22, 11],
     processedRequestCount: 2,
 };
@@ -45,13 +50,13 @@ const createGateway = () => {
 describe('SupabaseDocsRequestModerationGateway', () => {
     it('approves selections through the approval RPC and normalizes its result', async () => {
         const { gateway, rpc } = createGateway();
-        rpc.mockResolvedValue({ data: successfulResult, error: null });
+        rpc.mockResolvedValue({ data: successfulApproveResult, error: null });
 
         await expect(gateway.approve(approveCommand)).resolves.toEqual({
             ok: true,
             value: {
-                processedRequestIds: [11, 22],
-                processedRequestCount: 2,
+                processedRequestIds: [11],
+                processedRequestCount: 1,
             },
         });
         expect(rpc).toHaveBeenCalledWith('approve_docs_requests', {
@@ -61,7 +66,7 @@ describe('SupabaseDocsRequestModerationGateway', () => {
 
     it('rejects request IDs through the rejection RPC', async () => {
         const { gateway, rpc } = createGateway();
-        rpc.mockResolvedValue({ data: successfulResult, error: null });
+        rpc.mockResolvedValue({ data: successfulRejectResult, error: null });
 
         await expect(gateway.reject(rejectCommand)).resolves.toEqual({
             ok: true,
@@ -76,9 +81,37 @@ describe('SupabaseDocsRequestModerationGateway', () => {
     });
 
     it.each([
-        ['duplicate processed request IDs', { ...successfulResult, processedRequestIds: [11, 11] }],
-        ['a mismatched processed request count', { ...successfulResult, processedRequestCount: 1 }],
-        ['a negative processed request ID', { ...successfulResult, processedRequestIds: [-1] }],
+        ['approval', () => approveCommand, 'approve' as const, [22]],
+        ['approval', () => approveCommand, 'approve' as const, []],
+        ['approval', () => approveCommand, 'approve' as const, [11, 22]],
+        ['rejection', () => rejectCommand, 'reject' as const, [11, 33]],
+        ['rejection', () => rejectCommand, 'reject' as const, []],
+        ['rejection', () => rejectCommand, 'reject' as const, [11, 22, 33]],
+    ])('returns a safe infrastructure error when the %s response IDs do not exactly match the command', async (
+        _description,
+        createCommand,
+        method,
+        processedRequestIds,
+    ) => {
+        const { gateway, rpc } = createGateway();
+        rpc.mockResolvedValue({
+            data: {
+                processedRequestIds,
+                processedRequestCount: processedRequestIds.length,
+            },
+            error: null,
+        });
+
+        await expect(gateway[method](createCommand() as never)).resolves.toEqual({
+            ok: false,
+            error: infrastructureError,
+        });
+    });
+
+    it.each([
+        ['duplicate processed request IDs', { ...successfulRejectResult, processedRequestIds: [11, 11] }],
+        ['a mismatched processed request count', { ...successfulRejectResult, processedRequestCount: 1 }],
+        ['a negative processed request ID', { ...successfulApproveResult, processedRequestIds: [-1] }],
         ['a non-object response', null],
     ])('returns a safe infrastructure error for %s', async (_description, data) => {
         const { gateway, rpc } = createGateway();

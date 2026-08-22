@@ -57,7 +57,7 @@ export function normalizeApproveDocsRequestsCommand(
             return validationError('requestId', '중복된 요청 ID가 있습니다.');
         }
         if (typeof rawSelection.duem !== 'boolean') {
-            return validationError('duem', '어인정 여부는 불리언이어야 합니다.');
+            return validationError('duem', '두음 여부는 불리언이어야 합니다.');
         }
         requestIds.add(rawSelection.requestId);
         selections.push({ requestId: rawSelection.requestId, duem: rawSelection.duem });

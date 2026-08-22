@@ -51,6 +51,19 @@ describe('docs request moderation domain', () => {
         });
     });
 
+    it('describes a non-boolean approval duem value as a duem validation error', () => {
+        expect(normalizeApproveDocsRequestsCommand({
+            selections: [{ requestId: 1, duem: 'true' as unknown as boolean }],
+        })).toEqual({
+            ok: false,
+            error: {
+                kind: 'validation',
+                field: 'duem',
+                message: '두음 여부는 불리언이어야 합니다.',
+            },
+        });
+    });
+
     it.each([
         ['an empty rejection request ID list', { requestIds: [] }, 'requestIds'],
         ['a rejection request ID list with 31 entries', {

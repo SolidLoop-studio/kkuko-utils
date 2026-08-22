@@ -66,7 +66,10 @@ const isRpcError = (value: unknown): value is RpcError => (
     && (value.code === undefined || value.code === null || typeof value.code === 'string')
 );
 
-const parseDocsRequestModerationResult = (value: unknown): DocsRequestModerationResult | null => {
+const parseDocsRequestModerationResult = (
+    value: unknown,
+    expectedRequestIds: number[],
+): DocsRequestModerationResult | null => {
     if (!isRecord(value)
         || !isNonNegativeSafeInteger(value.processedRequestCount)
         || !Array.isArray(value.processedRequestIds)
@@ -74,14 +77,19 @@ const parseDocsRequestModerationResult = (value: unknown): DocsRequestModeration
         return null;
     }
 
-    const processedRequestIds = value.processedRequestIds;
+    const processedRequestIds = [...value.processedRequestIds].sort((left, right) => left - right);
+    const sortedExpectedRequestIds = [...expectedRequestIds].sort((left, right) => left - right);
     if (processedRequestIds.length !== value.processedRequestCount
-        || new Set(processedRequestIds).size !== processedRequestIds.length) {
+        || new Set(processedRequestIds).size !== processedRequestIds.length
+        || processedRequestIds.length !== sortedExpectedRequestIds.length
+        || !processedRequestIds.every((requestId, index) => (
+            requestId === sortedExpectedRequestIds[index]
+        ))) {
         return null;
     }
 
     return {
-        processedRequestIds: [...processedRequestIds].sort((left, right) => left - right),
+        processedRequestIds,
         processedRequestCount: value.processedRequestCount,
     };
 };
@@ -105,16 +113,25 @@ export class SupabaseDocsRequestModerationGateway implements DocsRequestModerati
     ) {}
 
     approve(command: ApproveDocsRequestsCommand): Promise<Result<DocsRequestModerationResult>> {
-        return this.moderate('approve_docs_requests', { p_selections: command.selections });
+        return this.moderate(
+            'approve_docs_requests',
+            { p_selections: command.selections },
+            command.selections.map(({ requestId }) => requestId),
+        );
     }
 
     reject(command: RejectDocsRequestsCommand): Promise<Result<DocsRequestModerationResult>> {
-        return this.moderate('reject_docs_requests', { p_request_ids: command.requestIds });
+        return this.moderate(
+            'reject_docs_requests',
+            { p_request_ids: command.requestIds },
+            command.requestIds,
+        );
     }
 
     private async moderate(
         functionName: string,
         args: Record<string, unknown>,
+        expectedRequestIds: number[],
     ): Promise<Result<DocsRequestModerationResult>> {
         let response: unknown;
         try {
@@ -135,7 +152,7 @@ export class SupabaseDocsRequestModerationGateway implements DocsRequestModerati
             return err(mapDocsRequestModerationError(response.error));
         }
 
-        const result = parseDocsRequestModerationResult(response.data);
+        const result = parseDocsRequestModerationResult(response.data, expectedRequestIds);
         return result === null ? err(infrastructureError()) : ok(result);
     }
 }
