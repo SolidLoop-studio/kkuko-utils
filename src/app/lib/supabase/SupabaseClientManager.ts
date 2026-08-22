@@ -51,9 +51,6 @@ class AddManager implements IAddManager {
             req_by: userId ?? null,
         })
     }
-    public async docs(docsInserQuery: { name: string, maker: string | null, duem: boolean, typez: "letter" }[]) {
-        return await this.supabase.from('docs').insert(docsInserQuery);
-    }
     public async nickname(nick: string) {
         const res = await axios.post('/api/auth/set_nickname', { nickname: nick.trim() });
         return res.data;
@@ -816,9 +813,6 @@ class DeleteManager implements IDeleteManager {
     }
     public async startDocs({ docsId, userId }: { docsId: number, userId: string }) {
         return await this.supabase.from('user_star_docs').delete().eq('docs_id', docsId).eq('user_id', userId);
-    }
-    public async waitDocsByIds(id: number[]) {
-        return await this.supabase.from('docs_wait').delete().in('id', id);
     }
     public async waitWordsByWords(words: string[]) {
         return await this.supabase.from('wait_words').delete().in('word', words);

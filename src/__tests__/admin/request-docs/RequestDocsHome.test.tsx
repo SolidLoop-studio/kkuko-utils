@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 jest.unmock('../../../app/components/ui/card');
@@ -8,17 +8,25 @@ jest.unmock('../../../app/components/ui/table');
 jest.unmock('../../../app/components/ui/pagination');
 jest.unmock('../../../app/components/ErrModal');
 
-const mockDocs = jest.fn();
-const mockWaitDocsByIds = jest.fn();
-
-jest.mock('../../../app/lib/supabaseClient', () => ({
-    SCM: {
-        add: () => ({ docs: mockDocs }),
-        delete: () => ({ waitDocsByIds: mockWaitDocsByIds }),
-    },
+jest.mock('../../../modules/docs', () => ({
+    useDocsRequestModeration: jest.fn(),
 }));
 
+import { useDocsRequestModeration } from '../../../modules/docs';
 import DocsWaitManager from '../../../app/admin/request-docs/RequestDocsHome';
+
+const mockUseDocsRequestModeration = useDocsRequestModeration as jest.MockedFunction<typeof useDocsRequestModeration>;
+const mockApprove = jest.fn();
+const mockReject = jest.fn();
+const mockClearError = jest.fn();
+
+const successfulResult = {
+    ok: true as const,
+    value: {
+        processedRequestIds: [11],
+        processedRequestCount: 1,
+    },
+};
 
 const requests = [
     {
@@ -48,83 +56,132 @@ const createDeferred = <T,>() => {
     return { promise, resolve };
 };
 
-describe('DocsWaitManager legacy request moderation behavior', () => {
+const mockModerationHook = (isPending = false) => {
+    mockUseDocsRequestModeration.mockReturnValue({
+        approve: mockApprove,
+        reject: mockReject,
+        isPending,
+        error: null,
+        clearError: mockClearError,
+    });
+};
+
+describe('DocsWaitManager docs request moderation', () => {
     beforeEach(() => {
         jest.clearAllMocks();
-        mockDocs.mockResolvedValue({ error: null });
-        mockWaitDocsByIds.mockResolvedValue({ error: null });
+        mockModerationHook();
+        mockApprove.mockResolvedValue(successfulResult);
+        mockReject.mockResolvedValue(successfulResult);
     });
 
     const renderManager = () => render(<DocsWaitManager initialData={requests} />);
 
-    it('선택한 요청과 두음 설정으로 docs를 승인하고 성공 후 행을 제거한다', async () => {
+    it('선택이 없거나 요청 처리 중이면 두 작업 버튼을 비활성화한다', () => {
+        const { rerender } = renderManager();
+
+        expect(screen.getByRole('button', { name: '선택 승인' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: '선택 거절' })).toBeDisabled();
+
+        mockModerationHook(true);
+        rerender(<DocsWaitManager initialData={requests} />);
+
+        expect(screen.getByRole('button', { name: '선택 승인' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: '선택 거절' })).toBeDisabled();
+    });
+
+    it('선택한 요청과 두음 설정으로 승인 명령을 보내고 처리된 ID만 정리한다', async () => {
         const user = userEvent.setup();
-        const docsDeferred = createDeferred<{ error: null }>();
-        const deleteDeferred = createDeferred<{ error: null }>();
-        mockDocs.mockReturnValue(docsDeferred.promise);
-        mockWaitDocsByIds.mockReturnValue(deleteDeferred.promise);
         renderManager();
 
-        const selection = screen.getByRole('checkbox', { name: '가 선택' });
-        await user.click(selection);
+        await user.click(screen.getByRole('checkbox', { name: '가 선택' }));
+        await user.click(screen.getByRole('checkbox', { name: '나 선택' }));
         await user.click(document.getElementById('initial-consonant-11')!);
+        await user.click(document.getElementById('initial-consonant-22')!);
         await user.click(screen.getByRole('button', { name: '선택 승인' }));
 
-        expect(mockDocs).toHaveBeenCalledWith([{
-            name: '가',
-            maker: '00000000-0000-0000-0000-000000000011',
-            duem: true,
-            typez: 'letter',
-        }]);
-        expect(screen.getByText('가', { selector: 'td' })).toBeInTheDocument();
-
-        docsDeferred.resolve({ error: null });
-        await waitFor(() => expect(mockWaitDocsByIds).toHaveBeenCalledWith([11]));
-        expect(screen.getByText('가', { selector: 'td' })).toBeInTheDocument();
-
-        deleteDeferred.resolve({ error: null });
-        expect(mockWaitDocsByIds).toHaveBeenCalledWith([11]);
+        expect(mockApprove).toHaveBeenCalledWith({
+            selections: [
+                { requestId: 11, duem: true },
+                { requestId: 22, duem: true },
+            ],
+        });
         await waitFor(() => expect(screen.queryByText('가', { selector: 'td' })).not.toBeInTheDocument());
-        expect(selection).not.toBeInTheDocument();
+        expect(screen.getByText('나', { selector: 'td' })).toBeInTheDocument();
+        expect(screen.getByRole('checkbox', { name: '나 선택' })).toBeChecked();
+        expect(document.getElementById('initial-consonant-22')).toBeChecked();
     });
 
-    it('docs 생성 실패 시 요청 삭제와 화면 정리를 수행하지 않는다', async () => {
+    it('선택한 요청으로 반려 명령을 보낸다', async () => {
         const user = userEvent.setup();
-        mockDocs.mockResolvedValue({ error: { name: 'PostgrestError', message: 'insert failed', code: '23505' } });
-        renderManager();
-
-        const selection = screen.getByRole('checkbox', { name: '가 선택' });
-        await user.click(selection);
-        await user.click(screen.getByRole('button', { name: '선택 승인' }));
-
-        expect(mockWaitDocsByIds).not.toHaveBeenCalled();
-        expect(selection).toBeChecked();
-        expect(screen.getByText('insert failed')).toBeInTheDocument();
-        expect(screen.getByText('가', { selector: 'td' })).toBeInTheDocument();
-    });
-
-    it('요청 삭제 실패 시 선택과 행을 유지한다', async () => {
-        const user = userEvent.setup();
-        mockWaitDocsByIds.mockResolvedValue({ error: { name: 'PostgrestError', message: 'delete failed', code: '23505' } });
-        renderManager();
-
-        const selection = screen.getByRole('checkbox', { name: '가 선택' });
-        await user.click(selection);
-        await user.click(screen.getByRole('button', { name: '선택 승인' }));
-
-        await waitFor(() => expect(screen.getByText('delete failed')).toBeInTheDocument());
-        expect(selection).toBeChecked();
-        expect(screen.getByText('가', { selector: 'td' })).toBeInTheDocument();
-    });
-
-    it('선택한 요청을 반려하고 성공 후 행을 제거한다', async () => {
-        const user = userEvent.setup();
+        mockReject.mockResolvedValue({
+            ok: true,
+            value: {
+                processedRequestIds: [22],
+                processedRequestCount: 1,
+            },
+        });
         renderManager();
 
         await user.click(screen.getByRole('checkbox', { name: '나 선택' }));
         await user.click(screen.getByRole('button', { name: '선택 거절' }));
 
-        expect(mockWaitDocsByIds).toHaveBeenCalledWith([22]);
+        expect(mockReject).toHaveBeenCalledWith({ requestIds: [22] });
         await waitFor(() => expect(screen.queryByText('나', { selector: 'td' })).not.toBeInTheDocument());
+    });
+
+    it('처리 중에는 중복 제출을 막는다', async () => {
+        const user = userEvent.setup();
+        const pendingApprove = createDeferred<typeof successfulResult>();
+        mockApprove.mockReturnValue(pendingApprove.promise);
+        const { rerender } = renderManager();
+
+        await user.click(screen.getByRole('checkbox', { name: '가 선택' }));
+        await user.click(screen.getByRole('button', { name: '선택 승인' }));
+
+        mockModerationHook(true);
+        rerender(<DocsWaitManager initialData={requests} />);
+
+        const approveButton = screen.getByRole('button', { name: '선택 승인' });
+        const rejectButton = screen.getByRole('button', { name: '선택 거절' });
+        expect(approveButton).toBeDisabled();
+        expect(rejectButton).toBeDisabled();
+        await user.click(approveButton);
+        await user.click(rejectButton);
+        expect(mockApprove).toHaveBeenCalledTimes(1);
+        expect(mockReject).not.toHaveBeenCalled();
+
+        await act(async () => {
+            pendingApprove.resolve(successfulResult);
+        });
+    });
+
+    it.each([
+        ['validation', '입력값이 올바르지 않습니다.'],
+        ['conflict', '요청 목록이 변경되었습니다. 새로고침 후 다시 시도해 주세요.'],
+        ['unauthorized', '로그인이 필요합니다.'],
+        ['forbidden', '관리자 권한이 필요합니다.'],
+        ['infrastructure', '문서 요청 처리 중 오류가 발생했습니다.'],
+    ] as const)('%s 오류는 안전한 메시지를 표시하고 상태를 보존한다', async (kind, publicMessage) => {
+        const user = userEvent.setup();
+        const privateMessage = `${kind} private message`;
+        mockApprove.mockResolvedValue({
+            ok: false,
+            error: {
+                kind,
+                message: kind === 'validation' ? publicMessage : privateMessage,
+            },
+        });
+        renderManager();
+
+        const selection = screen.getByRole('checkbox', { name: '가 선택' });
+        await user.click(selection);
+        await user.click(screen.getByRole('button', { name: '선택 승인' }));
+
+        expect(await screen.findByText(publicMessage)).toBeInTheDocument();
+        if (kind !== 'validation') {
+            expect(screen.queryByText(privateMessage)).not.toBeInTheDocument();
+        }
+        expect(selection).toBeChecked();
+        expect(screen.getByText('가', { selector: 'td' })).toBeInTheDocument();
     });
 });
