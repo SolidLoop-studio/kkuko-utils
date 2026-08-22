@@ -1,74 +1,60 @@
-import { act, renderHook } from '@testing-library/react';
-import type { SetStateAction } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import type { PropsWithChildren, SetStateAction } from 'react';
 
-jest.mock('../../../app/lib/supabaseClient', () => ({
-    SCM: {
-        get: jest.fn(),
-        delete: jest.fn(),
-        add: jest.fn(),
-    },
-}));
+jest.mock(
+    '../../../modules/word-requests/infrastructure/browser/browser-word-request-services',
+    () => ({ createBrowserWordRequestServices: jest.fn() }),
+);
 
-import { SCM } from '../../../app/lib/supabaseClient';
 import { useUserWordRequestActions } from '../../../app/words-docs/[id]/use-user-word-request-actions';
+import type { UserWordRequestResult, UserWordRequestService } from '../../../modules/word-requests';
+import type { ApplicationError } from '../../../shared/application/application-error';
+import { err, ok, type Result } from '../../../shared/application/result';
 
-const databaseError = {
-    name: 'PostgrestError',
-    message: 'private database detail',
-    details: '',
-    hint: '',
-    code: 'XX000',
+const applicationError: ApplicationError = {
+    kind: 'conflict',
+    code: 'WORD_REQUEST_CONFLICT',
+    message: '이미 단어 요청이 존재합니다.',
 };
 
-const waitWord = {
-    id: 7,
-    request_type: 'add' as const,
-    requested_at: '2026-08-22T00:00:00.000Z',
-    requested_by: 'requester-1',
-    status: 'pending' as const,
-    word: '가방',
-    word_id: null,
-    users: { nickname: '신청자' },
-};
+const createService = (
+    overrides: Partial<UserWordRequestService> = {},
+): UserWordRequestService => ({
+    requestDeletion: jest.fn().mockResolvedValue(ok({
+        requestId: 11,
+        word: '나비',
+        requestType: 'delete',
+    })),
+    cancel: jest.fn().mockResolvedValue(ok({
+        requestId: 7,
+        word: '가방',
+        requestType: 'add',
+    })),
+    ...overrides,
+});
 
-const registeredWord = {
-    added_at: '2026-08-22T00:00:00.000Z',
-    added_by: 'maker-1',
-    chosungs: 'ㄴㅂ',
-    first_letter: '나',
-    id: 11,
-    k_canuse: true,
-    last_letter: '비',
-    length: 2,
-    mission_mark: 0,
-    noin_canuse: true,
-    word: '나비',
-    users: { nickname: '등록자' },
+const createWrapper = () => {
+    const queryClient = new QueryClient({
+        defaultOptions: { mutations: { retry: false } },
+    });
+
+    return function Wrapper({ children }: PropsWithChildren) {
+        return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+    };
 };
 
 describe('useUserWordRequestActions', () => {
-    const getManager = {
-        waitWordInfoByWord: jest.fn(),
-        wordInfoByWord: jest.fn(),
-    };
-    const deleteManager = { waitWordById: jest.fn() };
-    const addManager = { waitWord: jest.fn() };
-
-    beforeEach(() => {
-        jest.mocked(SCM.get).mockReturnValue(getManager as never);
-        jest.mocked(SCM.delete).mockReturnValue(deleteManager as never);
-        jest.mocked(SCM.add).mockReturnValue(addManager as never);
-        getManager.waitWordInfoByWord.mockResolvedValue({ data: waitWord, error: null });
-        getManager.wordInfoByWord.mockResolvedValue({ data: registeredWord, error: null });
-        deleteManager.waitWordById.mockResolvedValue({ data: null, error: null });
-        addManager.waitWord.mockResolvedValue({
-            data: { ...waitWord, request_type: 'delete', word: '나비', word_id: 11 },
-            error: null,
-        });
-    });
-
-    const renderActions = (isProcessing = false, events: string[] = []) => {
-        const makeError = jest.fn(() => events.push('error'));
+    const renderActions = ({
+        service = createService(),
+        isProcessing = false,
+        events = [],
+    }: {
+        service?: UserWordRequestService;
+        isProcessing?: boolean;
+        events?: string[];
+    } = {}) => {
+        const makeError = jest.fn((error: ApplicationError) => events.push(`error:${error.kind}`));
         const setIsProcessing = jest.fn((value: SetStateAction<boolean>) => {
             events.push(`processing:${typeof value === 'function' ? value(false) : value}`);
         });
@@ -77,107 +63,123 @@ describe('useUserWordRequestActions', () => {
         const view = renderHook(() => useUserWordRequestActions({
             makeError,
             setIsProcessing,
-            user: { username: 'tester', uuid: 'user-1', role: 'r1' },
             completeWork,
             isProcessing,
-        }));
+            service,
+        }), { wrapper: createWrapper() });
 
-        return { ...view, makeError, setIsProcessing, completeWork };
+        return { ...view, makeError, setIsProcessing, completeWork, service };
     };
 
-    it.each([
-        ['CancelAddRequest', '추가 요청 취소'],
-        ['CancelDeleteRequest', '삭제 요청 취소'],
-    ] as const)('%s는 단어 조회 후 해당 대기 행을 삭제하고 마지막 성공 뒤에만 완료한다', async (actionName, _description) => {
+    it('requests deletion through the application service and completes only after success', async () => {
         const events: string[] = [];
-        getManager.waitWordInfoByWord.mockImplementation(async () => {
-            events.push('lookup-wait-word');
-            return { data: waitWord, error: null };
+        const service = createService({
+            requestDeletion: async () => {
+                events.push('request-deletion');
+                return ok({ requestId: 11, word: '나비', requestType: 'delete' });
+            },
         });
-        deleteManager.waitWordById.mockImplementation(async () => {
-            events.push('delete-wait-word');
-            return { data: null, error: null };
+        const { result } = renderActions({ service, events });
+
+        await act(async () => result.current.requestDelete('나비'));
+
+        expect(events).toEqual(['processing:true', 'request-deletion', 'processing:false', 'complete']);
+    });
+
+    it.each([
+        ['cancelAddRequest', '추가 요청 취소'],
+        ['cancelDeleteRequest', '삭제 요청 취소'],
+    ] as const)('%s cancels through the application service and completes after success', async (actionName, _description) => {
+        const events: string[] = [];
+        const cancel = jest.fn(async () => {
+            events.push('cancel');
+            return ok({ requestId: 7, word: '가방', requestType: 'add' as const });
         });
-        const { result } = renderActions(false, events);
+        const service = createService({
+            cancel,
+        });
+        const { result } = renderActions({ service, events });
 
         await act(async () => result.current[actionName]('가방'));
 
-        expect(getManager.waitWordInfoByWord).toHaveBeenCalledWith('가방');
-        expect(deleteManager.waitWordById).toHaveBeenCalledWith(7);
-        expect(events).toEqual([
-            'processing:true',
-            'lookup-wait-word',
-            'delete-wait-word',
-            'processing:false',
-            'complete',
-        ]);
+        expect(cancel).toHaveBeenCalledWith({ word: '가방' });
+        expect(events).toEqual(['processing:true', 'cancel', 'processing:false', 'complete']);
     });
 
-    it('RequestDelete는 등록 단어를 조회해 기존 wait_words payload를 삽입한다', async () => {
-        const events: string[] = [];
-        getManager.wordInfoByWord.mockImplementation(async () => {
-            events.push('lookup-registered-word');
-            return { data: registeredWord, error: null };
-        });
-        addManager.waitWord.mockImplementation(async () => {
-            events.push('insert-wait-word');
-            return {
-                data: { ...waitWord, request_type: 'delete', word: '나비', word_id: 11 },
-                error: null,
-            };
-        });
-        const { result } = renderActions(false, events);
-
-        await act(async () => result.current.RequestDelete('나비'));
-
-        expect(getManager.wordInfoByWord).toHaveBeenCalledWith('나비');
-        expect(addManager.waitWord).toHaveBeenCalledWith({
-            word: '나비',
-            requested_by: 'user-1',
-            request_type: 'delete',
-            word_id: 11,
-        });
-        expect(events).toEqual([
-            'processing:true',
-            'lookup-registered-word',
-            'insert-wait-word',
-            'processing:false',
-            'complete',
-        ]);
-    });
-
-    it.each(['CancelAddRequest', 'CancelDeleteRequest', 'RequestDelete'] as const)(
-        '%s는 이미 처리 중이면 어떤 SCM 호출도 시작하지 않는다',
+    it.each(['requestDelete', 'cancelAddRequest', 'cancelDeleteRequest'] as const)(
+        '%s does not start while the screen is already processing',
         async (actionName) => {
-            const { result, setIsProcessing, completeWork } = renderActions(true);
+            const service = createService();
+            const { result, setIsProcessing, completeWork } = renderActions({ service, isProcessing: true });
 
             await act(async () => result.current[actionName]('가방'));
 
             expect(setIsProcessing).not.toHaveBeenCalled();
-            expect(SCM.get).not.toHaveBeenCalled();
-            expect(SCM.delete).not.toHaveBeenCalled();
-            expect(SCM.add).not.toHaveBeenCalled();
+            expect(service.requestDeletion).not.toHaveBeenCalled();
+            expect(service.cancel).not.toHaveBeenCalled();
             expect(completeWork).not.toHaveBeenCalled();
         },
     );
 
-    it('취소의 마지막 delete가 실패하면 오류 callback만 호출하고 완료하지 않는다', async () => {
-        deleteManager.waitWordById.mockResolvedValue({ data: null, error: databaseError });
-        const { result, makeError, completeWork } = renderActions();
+    it('does not start another action while the application mutation is pending', async () => {
+        let resolveRequest!: (result: Result<UserWordRequestResult>) => void;
+        const pendingRequest = new Promise<Result<UserWordRequestResult>>((resolve) => {
+            resolveRequest = resolve;
+        });
+        const requestDeletion: UserWordRequestService['requestDeletion'] = jest.fn(() => pendingRequest);
+        const service = createService({ requestDeletion });
+        const { result } = renderActions({ service });
 
-        await act(async () => result.current.CancelAddRequest('가방'));
+        let firstRequest!: Promise<void>;
+        await act(async () => {
+            firstRequest = result.current.requestDelete('나비');
+        });
+        await waitFor(() => expect(service.requestDeletion).toHaveBeenCalledTimes(1));
 
-        expect(makeError).toHaveBeenCalledWith(databaseError);
-        expect(completeWork).not.toHaveBeenCalled();
+        await act(async () => result.current.requestDelete('나비'));
+        expect(service.requestDeletion).toHaveBeenCalledTimes(1);
+
+        await act(async () => {
+            resolveRequest(ok({ requestId: 11, word: '나비', requestType: 'delete' }));
+            await firstRequest;
+        });
     });
 
-    it('삭제 요청 insert가 실패하면 오류 callback만 호출하고 완료하지 않는다', async () => {
-        addManager.waitWord.mockResolvedValue({ data: null, error: databaseError });
-        const { result, makeError, completeWork } = renderActions();
+    it.each([
+        ['requestDelete', '나비', (service: UserWordRequestService) => service.requestDeletion],
+        ['cancelAddRequest', '가방', (service: UserWordRequestService) => service.cancel],
+        ['cancelDeleteRequest', '가방', (service: UserWordRequestService) => service.cancel],
+    ] as const)('%s reports a failed Result safely and never completes', async (actionName, word, getAction) => {
+        const events: string[] = [];
+        const service = createService({
+            requestDeletion: jest.fn().mockResolvedValue(err(applicationError)),
+            cancel: jest.fn().mockResolvedValue(err(applicationError)),
+        });
+        const { result, makeError, completeWork } = renderActions({ service, events });
 
-        await act(async () => result.current.RequestDelete('나비'));
+        await act(async () => result.current[actionName](word));
 
-        expect(makeError).toHaveBeenCalledWith(databaseError);
+        expect(getAction(service)).toHaveBeenCalledWith({ word });
+        expect(makeError).toHaveBeenCalledTimes(1);
+        expect(makeError).toHaveBeenCalledWith(applicationError);
         expect(completeWork).not.toHaveBeenCalled();
+        expect(events).toEqual(['processing:true', 'error:conflict', 'processing:false']);
+    });
+
+    it('reports a thrown service failure as a safe application error and never completes', async () => {
+        const events: string[] = [];
+        const service = createService({
+            requestDeletion: jest.fn().mockRejectedValue(new Error('private service detail')),
+        });
+        const { result, makeError, completeWork } = renderActions({ service, events });
+
+        await act(async () => result.current.requestDelete('나비'));
+
+        expect(makeError).toHaveBeenCalledWith(expect.objectContaining({
+            kind: 'infrastructure',
+            message: '단어 요청 처리 중 오류가 발생했습니다.',
+        }));
+        expect(completeWork).not.toHaveBeenCalled();
+        expect(events).toEqual(['processing:true', 'error:infrastructure', 'processing:false']);
     });
 });

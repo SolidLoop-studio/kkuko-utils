@@ -19,7 +19,6 @@ import type { DocsWordAdminAction, DocsWordData } from "./docs-word-data";
 const WorkModal = lazy(() => import("./WorkModal"));
 
 type RequestModerationTarget = Exclude<DocsWordMutationTarget, { kind: "registered-word" }>;
-type UserWordRequestError = Parameters<Parameters<typeof useUserWordRequestActions>[0]["makeError"]>[0];
 
 const isRequestTargetForRow = (
     row: DocsWordData,
@@ -212,15 +211,14 @@ const Table = ({
         setIsCompleteModalOpen(true);
     };
 
-    const makeError = (error: UserWordRequestError) => {
+    const makeError = (error: ApplicationError) => {
         closeWork();
         seterrorModalView({
-            ErrName: error.name,
+            ErrName: 'UserWordRequestError',
             ErrMessage: error.message,
-            ErrStackRace: error.stack,
-            inputValue: null
+            ErrStackRace: error.code,
+            inputValue: null,
         });
-        setIsProcessing(false);
     };
 
     const {
@@ -232,13 +230,12 @@ const Table = ({
         clearError,
     } = useDocsWordModeration();
     const {
-        CancelAddRequest,
-        CancelDeleteRequest,
-        RequestDelete,
+        cancelAddRequest,
+        cancelDeleteRequest,
+        requestDelete,
     } = useUserWordRequestActions({
         makeError,
         setIsProcessing,
-        user,
         completeWork: CompleWork,
         isProcessing,
     });
@@ -411,12 +408,12 @@ const Table = ({
                         onDeleteReject={isRequestTargetForRow(modal) && modal.status === "delete"
                             ? () => runRequestModeration("reject", modal)
                             : undefined}
-                        onCancelAddRequest={() => CancelAddRequest(modal.word)}
-                        onCancelDeleteRequest={() => CancelDeleteRequest(modal.word)}
+                        onCancelAddRequest={() => cancelAddRequest(modal.word)}
+                        onCancelDeleteRequest={() => cancelDeleteRequest(modal.word)}
                         onDelete={modal.status === "ok" && modal.mutationTarget?.kind === "registered-word"
                             ? () => runDirectDeletion(modal)
                             : undefined}
-                        onRequestDelete={() => RequestDelete(modal.word)}
+                        onRequestDelete={() => requestDelete(modal.word)}
                     />
                 </Suspense>
             )}

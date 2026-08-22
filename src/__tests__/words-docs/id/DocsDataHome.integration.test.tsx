@@ -154,9 +154,9 @@ describe('DocsDataHome administrator removal completion integration', () => {
             clearError: jest.fn(),
         });
         mockUseUserWordRequestActions.mockReturnValue({
-            CancelAddRequest: jest.fn(),
-            CancelDeleteRequest: jest.fn(),
-            RequestDelete: jest.fn(),
+            cancelAddRequest: jest.fn(),
+            cancelDeleteRequest: jest.fn(),
+            requestDelete: jest.fn(),
         });
         docsWords.mockResolvedValue({
             data: { words: [], waitWords: [] },

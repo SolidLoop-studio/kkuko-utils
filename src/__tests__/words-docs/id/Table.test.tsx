@@ -239,9 +239,9 @@ describe('Table administrator and legacy user actions', () => {
             clearError: mockClearError,
         });
         mockUseUserWordRequestActions.mockReturnValue({
-            CancelAddRequest: mockCancelAddRequest,
-            CancelDeleteRequest: mockCancelDeleteRequest,
-            RequestDelete: mockRequestDelete,
+            cancelAddRequest: mockCancelAddRequest,
+            cancelDeleteRequest: mockCancelDeleteRequest,
+            requestDelete: mockRequestDelete,
         });
     });
 
