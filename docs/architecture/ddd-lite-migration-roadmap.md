@@ -24,6 +24,7 @@
 - [재개 가능한 단어 승인 배치 구현 계획](../superpowers/plans/2026-08-20-resumable-word-approval-batch.md)
 - [단어 승인 RPC 통합 테스트](../testing/word-approval-rpc-integration.md)
 - [단어 삭제 RPC 통합 테스트](../testing/word-deletion-rpc-integration.md)
+- [관리자 docs 요청 moderation RPC 통합 테스트](../testing/docs-request-moderation-rpc-integration.md)
 - [단어 삭제 RPC 클라우드 반영 절차](../deployment/word-deletion-rpc-cloud-rollout.md)
 
 ## 2. 요약
@@ -42,7 +43,7 @@
 - Next.js Route Handler는 모든 DB 요청의 의무적인 중간 계층이 아니다. 서버 secret 또는 서버 전용 통합이 필요한 경우에만 사용한다.
 - 기존 `SCM`은 한 번에 제거하지 않고, 위험도가 높은 기능부터 strangler 방식으로 축소한다.
 
-첫 세로 슬라이스인 관리자 단어 대량 승인, `admin/del-words`의 재개 가능한 대량 삭제, `admin/request-words`의 개별 승인·반려 mutation, 그리고 `words-docs/[id]`의 관리자 요청 승인·반려와 직접 삭제가 위 원칙으로 이전되었다. docs 내부 단어 관리는 기존 요청 moderation RPC를 재사용하며, 주제 변경 moderation과 중복 없는 주제 docs 로그 기록도 지원한다. 이 화면의 `RequestDelete`, `CancelAddRequest`, `CancelDeleteRequest` 사용자 mutation은 Phase 2의 legacy 범위로 남아 있다. 다음 Phase 1 행동은 `admin/request-docs/RequestDocsHome.tsx`의 현행 동작 characterization과 transaction 경계 설계다. 로컬 DB bootstrap은 병행해서 재현 가능하게 만들되, 프로덕션에서 동작 중인 하드코딩 trigger는 당장 변경하지 않고 실제 의미를 기록한 뒤 `docs` context 또는 DB backend를 이전하기 전에 제거한다.
+첫 세로 슬라이스인 관리자 단어 대량 승인, `admin/del-words`의 재개 가능한 대량 삭제, `admin/request-words`의 개별 승인·반려 mutation, `words-docs/[id]`의 관리자 요청 승인·반려와 직접 삭제, 그리고 `admin/request-docs`의 승인·반려 mutation이 위 원칙으로 이전되었다. docs 내부 단어 관리는 기존 요청 moderation RPC를 재사용하며, 주제 변경 moderation과 중복 없는 주제 docs 로그 기록도 지원한다. `admin/request-docs/RequestDocsWrapper.tsx`의 요청 목록 조회는 Phase 4까지 legacy SCM read로 남는다. 이 화면의 `RequestDelete`, `CancelAddRequest`, `CancelDeleteRequest` 사용자 mutation은 Phase 2의 legacy 범위로 남아 있다. Phase 1은 완료되었고 다음 기능 세로 슬라이스는 Phase 2 사용자 단어 요청 mutation이다. docs 요청 moderation migration은 로컬 DB 테스트로만 검증되었으며, cloud Supabase 반영은 사용자/운영자가 통제하는 rollout 대기 상태다. 로컬 DB bootstrap은 병행해서 재현 가능하게 만들되, 프로덕션에서 동작 중인 하드코딩 trigger는 당장 변경하지 않고 실제 의미를 기록한 뒤 `docs` context 또는 DB backend를 이전하기 전에 제거한다.
 
 ## 3. 현재 상태
 
@@ -118,7 +119,7 @@ git grep -n -E "\bSCM\." -- "src/**/*.ts" "src/**/*.tsx"
 
 | 기능군 | 대표 파일 | 현재 위험 |
 | --- | --- | --- |
-| 관리자 docs 요청 | `admin/request-docs/RequestDocsHome.tsx` | docs 생성·요청 삭제가 UI 호출 순서에 의존 |
+| 관리자 docs 요청 목록 조회 | `admin/request-docs/RequestDocsWrapper.tsx` | `addWaitDocs` query가 Phase 4까지 legacy SCM read로 남아 있음 |
 | 사용자 단어 요청 | `word/add/WordAddHome.tsx`, `word/adds/WordsAddHome.tsx`, `words-docs/[id]/use-user-word-request-actions.ts` | 중복 확인, 요청, 주제 관계 생성과 요청 취소가 legacy SCM 호출로 분리 |
 | 단어 조회 | `word/search/**`, `word/words-download/**`, `word/stats/**` | DB Row와 검색 query shape가 presentation에 노출 |
 | docs 조회·즐겨찾기 | `words-docs/**` | 조회, 조회 수 mutation, 즐겨찾기가 같은 화면에 혼재 |
@@ -795,7 +796,7 @@ SCM 삭제
 6. 필수 reference가 없을 때의 공개 오류 code와 운영 로그를 추가한다.
 7. docs PK 값이 달라도 같은 업무 결과가 나오는지 검증한다.
 
-### Phase 1. 남은 관리자 moderation mutation 이전
+### Phase 1. 관리자 moderation mutation 이전 (완료)
 
 우선순위: 최상
 
@@ -803,13 +804,16 @@ SCM 삭제
 
 1. `admin/request-words/AdminRequestHome.tsx`의 개별 승인·반려 mutation (완료)
 2. `words-docs/[id]`의 관리자 요청 승인·반려와 직접 삭제 (완료)
-3. `admin/request-docs/RequestDocsHome.tsx` (다음 대상)
+3. `admin/request-docs/RequestDocsHome.tsx`의 승인·반려 mutation (완료)
 
 `admin/del-words`, `admin/request-words`의 개별 승인·반려 mutation,
-`words-docs/[id]`의 관리자 요청 승인·반려와 직접 삭제는 완료되었다. docs 내부 요청은
-기존 원자적 요청 moderation RPC를 재사용하고, 주제 변경 moderation과 중복 없는 주제
-docs 로그를 지원한다. 다음 행동은 `admin/request-docs/RequestDocsHome.tsx`의 현행 동작
-characterization과 transaction 경계 설계다.
+`words-docs/[id]`의 관리자 요청 승인·반려와 직접 삭제, 그리고
+`admin/request-docs/RequestDocsHome.tsx`의 승인·반려 mutation은 완료되었다. docs 내부
+요청은 기존 원자적 요청 moderation RPC를 재사용하고, 주제 변경 moderation과 중복 없는
+주제 docs 로그를 지원한다. `RequestDocsWrapper`의 요청 목록 query는 mutation slice에
+포함하지 않았으므로 Phase 4 docs context 이전까지 legacy SCM read로 유지한다. docs 요청
+moderation migration은 로컬 pgTAP behavior/concurrency test로 검증되었고, cloud 반영은
+사용자/운영자가 통제하는 rollout을 기다린다.
 
 이유:
 
@@ -992,6 +996,7 @@ Notifications:
 | 관리자 단어 삭제 (`admin/del-words`) | 완료 | cloud Supabase migration은 사용자/운영자 실행 대기, 운영 지표 관찰 |
 | 관리자 요청 단어/개별 승인 | 부분 완료 | 개별 승인·반려 mutation은 완료; wrapper와 주제 선택 조회는 legacy SCM에 남아 있음 |
 | docs 내부 관리자 단어 moderation | 완료 | 기존 요청 moderation RPC 재사용; 직접 삭제 cloud migration은 사용자/운영자 통제 rollout 대기 |
+| 관리자 docs 요청 moderation | 완료 | 승인·반려 mutation은 RPC로 이전; 요청 목록 `addWaitDocs` query는 Phase 4 legacy SCM read, migration cloud rollout은 사용자/운영자 실행 대기 |
 | 사용자 단어 요청 | 미착수 | Phase 2 세로 슬라이스 설계 |
 | word-catalog 조회 | 미착수 | 검색부터 mapper/query 패턴 확립 |
 | docs context | 미착수 | reference key 안정화 후 이전 |
@@ -1022,9 +1027,9 @@ Notifications:
 
 기능 전환은 다음 순서로 진행한다.
 
-1. `admin/request-docs` mutation을 characterization과 transaction 경계 설계부터 이전한다.
-2. 사용자 단어 요청 mutation을 이전한다. 여기에는 `words-docs/[id]`의 `RequestDelete`, `CancelAddRequest`, `CancelDeleteRequest`가 포함된다.
-3. `word-catalog` 검색 query를 시작으로 읽기 경계를 분리한다.
+1. Phase 2 사용자 단어 요청 mutation을 이전한다. 여기에는 `words-docs/[id]`의 `RequestDelete`, `CancelAddRequest`, `CancelDeleteRequest`가 포함된다.
+2. `word-catalog` 검색 query를 시작으로 읽기 경계를 분리한다.
+3. Phase 4에서 `admin/request-docs/RequestDocsWrapper.tsx`의 요청 목록 query를 포함한 docs context read 경계를 이전한다.
 4. 각 단계에서 대체된 SCM 메서드와 import를 즉시 제거한다.
 
 다음 기반 작업은 기능 전환과 병행한다.
