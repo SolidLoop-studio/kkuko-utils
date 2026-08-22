@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 
 import {
@@ -35,10 +35,12 @@ export function useUserWordRequestActions({
         cancel,
         isPending,
     } = useUserWordRequests(service);
+    const isActionInFlightRef = useRef(false);
 
     const runAction = useCallback(async (action: () => Promise<Result<UserWordRequestResult>>) => {
-        if (isProcessing || isPending) return;
+        if (isProcessing || isPending || isActionInFlightRef.current) return;
 
+        isActionInFlightRef.current = true;
         setIsProcessing(true);
         let hasSucceeded = false;
         try {
@@ -52,6 +54,7 @@ export function useUserWordRequestActions({
         } catch {
             makeError(infrastructureError());
         } finally {
+            isActionInFlightRef.current = false;
             setIsProcessing(false);
         }
 

@@ -145,6 +145,32 @@ describe('useUserWordRequestActions', () => {
         });
     });
 
+    it('starts only one mutation for back-to-back action calls before React re-renders', async () => {
+        let resolveRequest!: (result: Result<UserWordRequestResult>) => void;
+        const pendingRequest = new Promise<Result<UserWordRequestResult>>((resolve) => {
+            resolveRequest = resolve;
+        });
+        const requestDeletion: UserWordRequestService['requestDeletion'] = jest.fn(() => pendingRequest);
+        const service = createService({ requestDeletion });
+        const { result } = renderActions({ service });
+
+        let firstRequest!: Promise<void>;
+        let secondRequest!: Promise<void>;
+        act(() => {
+            firstRequest = result.current.requestDelete('나비');
+            secondRequest = result.current.requestDelete('나비');
+        });
+
+        try {
+            await waitFor(() => expect(requestDeletion).toHaveBeenCalledTimes(1));
+        } finally {
+            await act(async () => {
+                resolveRequest(ok({ requestId: 11, word: '나비', requestType: 'delete' }));
+                await Promise.all([firstRequest, secondRequest]);
+            });
+        }
+    });
+
     it.each([
         ['requestDelete', '나비', (service: UserWordRequestService) => service.requestDeletion],
         ['cancelAddRequest', '가방', (service: UserWordRequestService) => service.cancel],
