@@ -51,9 +51,9 @@ insert into public.docs_wait (id, docs_name, req_by) values
      '43000000-0000-4000-8000-000000000003'),
     (910002, 'docs-request-moderation-test-b',
      '43000000-0000-4000-8000-000000000003'),
-    (910003, 'docs-request-moderation-test-conflict',
+    (910003, 'docs-request-moderation-test-rollback-clean',
      '43000000-0000-4000-8000-000000000003'),
-    (910004, 'docs-request-moderation-test-rollback',
+    (910004, 'docs-request-moderation-test-conflict',
      '43000000-0000-4000-8000-000000000003'),
     (910005, 'docs-request-moderation-test-reject-a',
      '43000000-0000-4000-8000-000000000003'),
@@ -112,7 +112,7 @@ select is(
         where routine.oid =
             'public.approve_docs_requests(jsonb)'::pg_catalog.regprocedure
     ),
-    'search_path=',
+    'search_path=""',
     'approval uses an empty search path'
 );
 select is(
@@ -122,7 +122,7 @@ select is(
         where routine.oid =
             'public.reject_docs_requests(jsonb)'::pg_catalog.regprocedure
     ),
-    'search_path=',
+    'search_path=""',
     'rejection uses an empty search path'
 );
 
@@ -288,8 +288,8 @@ select ok(
 set local role authenticated;
 select throws_ok(
     $$ select public.approve_docs_requests(
-        '[{"requestId":910004,"duem":true},
-          {"requestId":910003,"duem":false}]'::jsonb
+        '[{"requestId":910004,"duem":false},
+          {"requestId":910003,"duem":true}]'::jsonb
     ) $$,
     'P0001', 'DOCS_REQUEST_MODERATION_INTERNAL_ERROR',
     'a unique docs-name failure maps to the stable internal error'
@@ -300,9 +300,9 @@ select ok(
     and exists (select 1 from public.docs_wait where id = 910004)
     and not exists (
         select 1 from public.docs
-        where name = 'docs-request-moderation-test-rollback'
+        where name = 'docs-request-moderation-test-rollback-clean'
     ),
-    'approval failure rolls back every insert and selected wait-row delete'
+    'later approval failure rolls back the earlier insert and both wait rows'
 );
 
 delete from public.docs
