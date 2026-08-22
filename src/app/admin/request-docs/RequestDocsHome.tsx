@@ -247,7 +247,7 @@ export default function DocsWaitManager({initialData}: {initialData?: DocsWaitRe
                   </PaginationItem>
 
                   {/* 페이지네이션 렌더링 - 최대 5개 버튼 표시 */}
-                  {new Array(Math.min(5, totalPages)).fill(null).map((_, i) => {
+                  {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
                     let pageNum;
 
                     if (totalPages <= 5) {

@@ -1,6 +1,9 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
+
 jest.unmock('../../../app/components/ui/card');
 jest.unmock('../../../app/components/ui/button');
 jest.unmock('../../../app/components/ui/checkbox');
