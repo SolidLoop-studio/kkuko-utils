@@ -80,6 +80,19 @@ describe('SupabaseUserWordRequestGateway', () => {
         }));
     });
 
+    it('returns an infrastructure error for an inherited error-kind key', async () => {
+        const { gateway, rpc } = createGateway();
+        rpc.mockResolvedValue({
+            data: null,
+            error: { code: 'P0001', message: 'constructor' },
+        });
+
+        await expect(gateway.requestDeletion({ word: '나비' })).resolves.toEqual(err({
+            ...infrastructureError,
+            code: 'P0001',
+        }));
+    });
+
     it.each([
         ['WORD_REQUEST_UNAUTHORIZED', 'unauthorized'],
         ['WORD_REQUEST_INVALID_INPUT', 'validation'],

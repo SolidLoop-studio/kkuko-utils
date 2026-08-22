@@ -78,7 +78,7 @@ const parseUserWordRequestResult = (
 
 const mapUserWordRequestError = (error: RpcError): ApplicationError => {
     const publicErrorCode = error.message as keyof typeof errorKinds;
-    if (publicErrorCode in errorKinds) {
+    if (Object.prototype.hasOwnProperty.call(errorKinds, publicErrorCode)) {
         return {
             kind: errorKinds[publicErrorCode],
             message: errorMessages[publicErrorCode],
