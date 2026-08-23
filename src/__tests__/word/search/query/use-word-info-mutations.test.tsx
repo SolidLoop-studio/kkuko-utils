@@ -1,6 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
+import * as wordModerationModule from '@/src/modules/word-moderation';
+import * as wordRequestsModule from '@/src/modules/word-requests';
 
 jest.mock(
     '../../../../modules/word-requests/infrastructure/browser/browser-word-request-services',
@@ -15,6 +17,28 @@ jest.mock(
         createBrowserWordModerationServices: jest.fn(),
     }),
 );
+
+jest.mock('../../../../modules/word-requests', () => {
+    const actual = jest.requireActual<typeof import('../../../../modules/word-requests')>(
+        '../../../../modules/word-requests',
+    );
+
+    return {
+        ...actual,
+        useUserWordRequests: jest.fn(actual.useUserWordRequests),
+    };
+});
+
+jest.mock('../../../../modules/word-moderation', () => {
+    const actual = jest.requireActual<typeof import('../../../../modules/word-moderation')>(
+        '../../../../modules/word-moderation',
+    );
+
+    return {
+        ...actual,
+        useDocsWordModeration: jest.fn(actual.useDocsWordModeration),
+    };
+});
 
 import {
     type RequestWordThemeChangesCommand,
@@ -231,6 +255,35 @@ describe('useWordInfoMutations', () => {
         expect(directWordDeletionService.commands).toEqual([{ wordId: 23 }]);
     });
 
+    it('passes the exact registered-word target to the composed moderation hook', async () => {
+        const { services } = createServices();
+        const deleteDirectly = jest.fn().mockResolvedValue(ok(directDeletionResult));
+        jest.mocked(wordModerationModule.useDocsWordModeration).mockReturnValueOnce({
+            approve: async () => ok({
+                processedWordRequestCount: 0,
+                processedThemeChangeCount: 0,
+                affectedDocsIds: [],
+            }),
+            reject: async () => ok({
+                processedWordRequestCount: 0,
+                processedThemeChangeCount: 0,
+                affectedDocsIds: [],
+            }),
+            deleteDirectly,
+            isPending: false,
+            error: null,
+            clearError: jest.fn(),
+        });
+        const { result } = renderWordInfoMutations(services);
+
+        await act(async () => result.current.deleteDirectly(29));
+
+        expect(deleteDirectly).toHaveBeenCalledWith({
+            kind: 'registered-word',
+            wordId: 29,
+        });
+    });
+
     it('is pending while a composed action remains unresolved', async () => {
         const deferred = createDeferred<Result<UserWordRequestResult>>();
         const { services, userWordRequestService } = createServices();
@@ -312,5 +365,32 @@ describe('useWordInfoMutations', () => {
         }));
         expect(retryResult).toEqual(ok(cancellationResult));
         expect(userWordRequestService.cancellationCommands).toEqual([cancellationCommand]);
+    });
+
+    it('sanitizes a rejected composed action and releases the lock for a later action', async () => {
+        const { services } = createServices();
+        const cancel = jest.fn().mockResolvedValue(ok(cancellationResult));
+        jest.mocked(wordRequestsModule.useUserWordRequests).mockReturnValueOnce({
+            requestDeletion: jest.fn().mockRejectedValue({ privateDetail: 'connection string' }),
+            cancel,
+            isPending: false,
+            error: null,
+            clearError: jest.fn(),
+        });
+        const { result } = renderWordInfoMutations(services);
+
+        let failedResult!: Result<UserWordRequestResult>;
+        let retryResult!: Result<UserWordRequestResult>;
+        await act(async () => {
+            failedResult = await result.current.requestDeletion(deletionCommand);
+            retryResult = await result.current.cancelRequest(cancellationCommand);
+        });
+
+        expect(failedResult).toEqual(err({
+            kind: 'infrastructure',
+            message: '단어 요청 처리 중 오류가 발생했습니다.',
+        }));
+        expect(retryResult).toEqual(ok(cancellationResult));
+        expect(cancel).toHaveBeenCalledWith(cancellationCommand);
     });
 });
