@@ -524,44 +524,6 @@ class GetManager implements IGetManager {
 
         return (sum((lasWordsCount1 ?? []).map(({ count }) => count))) + (lasWordsCount2 || 0)
     }
-    public async wordsByQuery(query: string) {
-        const startTime = Date.now();
-
-        const cleanQuery = query.trim().replace(/[^ㄱ-힣a-zA-Z0-9]/g, '');
-
-        const { data: getWords, error: getWordsError } = await this.supabase
-            .from('words')
-            .select('word')
-            .ilike('word', `${cleanQuery}%`);
-        if (getWordsError) return { data: null, error: getWordsError };
-
-        const { data: getWaitWords, error: getWaitWordsError } = await this.supabase
-            .from('wait_words')
-            .select('word')
-            .ilike('word', `${cleanQuery}%`);
-        if (getWaitWordsError) return { data: null, error: getWaitWordsError };
-
-        const words = getWords.map((item) => item.word) || [];
-        const waitWords = getWaitWords.map((item) => item.word) || [];
-        const allWords = [...words];
-        const wordsSet = new Set(words);
-        waitWords.forEach((word) => {
-            if (!wordsSet.has(word)) {
-                allWords.push(word);
-            }
-        });
-
-        const result = { data: allWords.sort((a, b) => a.length - b.length), error: null };
-
-        const elapsed = Date.now() - startTime;
-        const remaining = 2000 - elapsed;
-        if (remaining > 0) {
-            await new Promise((resolve) => setTimeout(resolve, remaining));
-        }
-
-        return result;
-    }
-
     public async letterCountInfo() {
         const now = Date.now();
         if (this.wordLetterCountsCacheTime !== 0 && now - this.wordLetterCountsCacheTime < CACHE_DURATION) {

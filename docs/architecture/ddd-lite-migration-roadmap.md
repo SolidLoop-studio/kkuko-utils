@@ -869,9 +869,14 @@ moderation migration은 로컬 pgTAP behavior/concurrency test로 검증되었�
 
 대상 순서:
 
-1. 검색과 자동완성
-2. 단어 상세
-3. 고급 검색 Route Handler
+1. 검색과 자동완성 (완료)
+   - `src/app/word/search/WordSearch.tsx`, `src/app/word/search/[query]/SearchBar.tsx`,
+     `src/app/word/search/components/SearchResults.tsx`,
+     `src/app/word/search/components/ThemeSelectionModal.tsx`,
+     `src/app/word/search/hooks/useWordSearch.ts`를 `word-catalog` browser query hook으로 이전했다.
+   - `src/modules/word-catalog/presentation`의 검색, 자동완성, 주제 query hook과 React Query key를 사용한다.
+2. 단어 상세 (다음 슬라이스)
+3. 고급 검색 Route Handler (단어 상세 다음)
 4. 다운로드
 5. 통계와 랜덤 단어
 
@@ -1013,7 +1018,7 @@ Notifications:
 | docs 내부 관리자 단어 moderation | 완료 | 기존 요청 moderation RPC 재사용; 직접 삭제 cloud migration은 사용자/운영자 통제 rollout 대기 |
 | 관리자 docs 요청 moderation | 완료 | 승인·반려 mutation은 RPC로 이전; 요청 목록 `addWaitDocs` query는 Phase 4 legacy SCM read, migration cloud rollout은 사용자/운영자 실행 대기 |
 | 사용자 단어 요청 | 부분 완료 | Phase 2 mutation 코드 이전은 완료; 단일·대량 추가 요청을 포함한 관련 cloud migration rollout은 사용자/운영자 실행 대기 |
-| word-catalog 조회 | 미착수 | 검색부터 mapper/query 패턴 확립 |
+| word-catalog 조회 | 부분 완료 | 브라우저 검색·자동완성 query slice 완료; 다음은 단어 상세, 그다음 고급 검색 Route Handler |
 | docs context | 미착수 | reference key 안정화 후 이전 |
 | identity/profile | 미착수 | Auth와 profile DB 계약 분리 |
 | notifications/storage | 미착수 | query/command/storage port 분리 |
@@ -1042,8 +1047,8 @@ Notifications:
 
 기능 전환은 다음 순서로 진행한다.
 
-1. Phase 3 `word-catalog`의 첫 세로 슬라이스로 검색 query의 읽기 경계를 분리한다.
-2. 검색 query에서 확립한 mapper/query 패턴을 단어 상세와 고급 검색 Route Handler로 확장한다.
+1. Phase 3 `word-catalog`의 다음 세로 슬라이스로 단어 상세 query의 읽기 경계를 분리한다.
+2. 검색 query에서 확립한 mapper/query 패턴을 단어 상세 다음 고급 검색 Route Handler로 확장한다.
 3. Phase 4에서 `admin/request-docs/RequestDocsWrapper.tsx`의 요청 목록 query를 포함한 docs context read 경계를 이전한다.
 4. 각 단계에서 대체된 SCM 메서드와 import를 즉시 제거한다.
 
