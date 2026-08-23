@@ -14,6 +14,10 @@ declare
     normalized_word text := pg_catalog.btrim(p_word);
     change_count integer;
     word_match_count integer := 0;
+    locked_theme_count integer := 0;
+    locked_theme_codes text[] := array[]::text[];
+    inserted_count integer;
+    violation_constraint text;
     word_row public.words%rowtype;
     candidate_word public.words%rowtype;
     theme_row public.themes%rowtype;
@@ -97,22 +101,6 @@ begin
             message = 'WORD_THEME_REQUEST_NOT_FOUND';
     end if;
 
-    if exists (
-        select 1
-        from (
-            select change.entry ->> 'themeCode' as code
-            from pg_catalog.jsonb_array_elements(p_changes) as change(entry)
-        ) as requested_theme
-        left join public.themes as theme
-          on theme.code = requested_theme.code
-        group by requested_theme.code
-        having pg_catalog.count(theme.id) <> 1
-    ) then
-        raise exception using
-            errcode = 'P0001',
-            message = 'WORD_THEME_REQUEST_NOT_FOUND';
-    end if;
-
     for theme_row in
         select theme.*
         from public.themes as theme
@@ -124,8 +112,27 @@ begin
         order by theme.id
         for update of theme
     loop
-        null;
+        locked_theme_count := locked_theme_count + 1;
+        locked_theme_codes := pg_catalog.array_append(
+            locked_theme_codes, theme_row.code
+        );
     end loop;
+
+    if locked_theme_count <> change_count or exists (
+        select 1
+        from (
+            select change.entry ->> 'themeCode' as code
+            from pg_catalog.jsonb_array_elements(p_changes) as change(entry)
+        ) as requested_theme
+        left join pg_catalog.unnest(locked_theme_codes) as locked_theme(code)
+          on locked_theme.code = requested_theme.code
+        group by requested_theme.code
+        having pg_catalog.count(locked_theme.code) <> 1
+    ) then
+        raise exception using
+            errcode = 'P0001',
+            message = 'WORD_THEME_REQUEST_NOT_FOUND';
+    end if;
 
     for relation_theme_id in
         select word_theme.theme_id
@@ -208,11 +215,26 @@ begin
         join public.themes as theme
           on theme.code = change.entry ->> 'themeCode'
         order by theme.id;
-    exception
-        when unique_violation then
+
+        get diagnostics inserted_count = row_count;
+        if inserted_count <> change_count then
             raise exception using
                 errcode = 'P0001',
-                message = 'WORD_THEME_REQUEST_CONFLICT';
+                message = 'WORD_THEME_REQUEST_INTERNAL_ERROR';
+        end if;
+    exception
+        when unique_violation then
+            get stacked diagnostics
+                violation_constraint = constraint_name;
+            if violation_constraint =
+               'word_themes_wait_word_theme_unique' then
+                raise exception using
+                    errcode = 'P0001',
+                    message = 'WORD_THEME_REQUEST_CONFLICT';
+            end if;
+            raise exception using
+                errcode = 'P0001',
+                message = 'WORD_THEME_REQUEST_INTERNAL_ERROR';
         when others then
             raise exception using
                 errcode = 'P0001',

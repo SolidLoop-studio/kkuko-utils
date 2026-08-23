@@ -58,19 +58,35 @@ select extensions.dblink_exec(
     delete from public.word_themes_wait
     where word_id in (
         select id from public.words
-        where word = 'theme-request-concurrency-fixture'
+        where word in (
+            'theme-request-concurrency-fixture',
+            'theme-request-resolution-race'
+        )
     );
     delete from public.word_themes
     where word_id in (
         select id from public.words
-        where word = 'theme-request-concurrency-fixture'
+        where word in (
+            'theme-request-concurrency-fixture',
+            'theme-request-resolution-race'
+        )
     );
     delete from public.words
-    where word = 'theme-request-concurrency-fixture';
+    where word in (
+        'theme-request-concurrency-fixture',
+        'theme-request-resolution-race'
+    );
     delete from public.themes
-    where code = 'tr-concurrency';
+    where code in (
+        'tr-concurrency',
+        'tr-resolution-race',
+        'tr-resolution-race-renamed'
+    );
     delete from public.docs_logs
-    where word = 'theme-request-concurrency-fixture';
+    where word in (
+        'theme-request-concurrency-fixture',
+        'theme-request-resolution-race'
+    );
     delete from public.docs
     where id in (201, 202)
       and name in (
@@ -101,13 +117,14 @@ select extensions.dblink_exec(
         (201, 'user-word-theme-request-concurrency-special-201', 'ect'),
         (202, 'user-word-theme-request-concurrency-special-202', 'ect')
     on conflict (id) do nothing;
-    insert into public.words (word, k_canuse, noin_canuse, added_by)
-    values (
-        'theme-request-concurrency-fixture', true, true,
-        '48000000-0000-4000-8000-000000000001'
-    );
-    insert into public.themes (name, code)
-    values ('Theme Request Concurrency', 'tr-concurrency');
+    insert into public.words (word, k_canuse, noin_canuse, added_by) values
+        ('theme-request-concurrency-fixture', true, true,
+         '48000000-0000-4000-8000-000000000001'),
+        ('theme-request-resolution-race', true, true,
+         '48000000-0000-4000-8000-000000000001');
+    insert into public.themes (name, code) values
+        ('Theme Request Concurrency', 'tr-concurrency'),
+        ('Theme Request Resolution Race', 'tr-resolution-race');
 
     create or replace function public.user_word_theme_request_concurrency_call(
         p_word text,
@@ -334,6 +351,92 @@ select is(
     'the stored requester is the winning authenticated session'
 );
 
+select extensions.dblink_exec(
+    'user_word_theme_request_setup',
+    $race_update$
+    begin;
+    update public.themes
+    set code = 'tr-resolution-race-renamed'
+    where code = 'tr-resolution-race';
+    $race_update$
+);
+select extensions.dblink_send_query(
+    'user_word_theme_request_apply_a',
+    $$select public.user_word_theme_request_concurrency_call(
+        'theme-request-resolution-race',
+        '[{"themeCode":"tr-resolution-race","type":"add"}]'
+    )$$
+);
+
+create temporary table user_word_theme_request_resolution_observation (
+    request_blocked_on_theme boolean not null
+);
+do $synchronize_resolution$
+declare
+    request_wait_count integer := 0;
+begin
+    for attempt in 1..100 loop
+        select pg_catalog.count(*)::integer into request_wait_count
+        from pg_catalog.pg_locks as held_lock
+        where held_lock.pid = (
+            select connection.pid
+            from user_word_theme_request_connection_pids as connection
+            where connection.connection_name =
+                'user_word_theme_request_apply_a'
+        )
+          and not held_lock.granted;
+        exit when request_wait_count > 0;
+        perform pg_catalog.pg_sleep(0.05);
+    end loop;
+
+    insert into user_word_theme_request_resolution_observation
+    values (request_wait_count > 0);
+    perform extensions.dblink_exec(
+        'user_word_theme_request_setup', 'commit'
+    );
+end;
+$synchronize_resolution$;
+
+select ok(
+    (select request_blocked_on_theme
+     from user_word_theme_request_resolution_observation),
+    'the request overlaps a concurrent theme rename before locking it'
+);
+
+create temporary table user_word_theme_request_resolution_results (
+    result jsonb not null
+);
+insert into user_word_theme_request_resolution_results (result)
+select response.result
+from extensions.dblink_get_result(
+    'user_word_theme_request_apply_a', false
+) as response(result jsonb);
+select response.result
+from extensions.dblink_get_result(
+    'user_word_theme_request_apply_a', false
+) as response(result jsonb);
+
+select is(
+    (
+        select result ->> 'message'
+        from user_word_theme_request_resolution_results
+        where result ->> 'status' = 'error'
+    ),
+    'WORD_THEME_REQUEST_NOT_FOUND',
+    'a theme renamed before lock acquisition returns stable not found'
+);
+select is(
+    (
+        select pg_catalog.count(*)::integer
+        from public.word_themes_wait as pending_request
+        join public.words as registered_word
+          on registered_word.id = pending_request.word_id
+        where registered_word.word = 'theme-request-resolution-race'
+    ),
+    0,
+    'the theme resolution race inserts no pending row'
+);
+
 do $disconnect$
 begin
     perform extensions.dblink_disconnect('user_word_theme_request_apply_a');
@@ -352,19 +455,35 @@ select extensions.dblink_exec(
     delete from public.word_themes_wait
     where word_id in (
         select id from public.words
-        where word = 'theme-request-concurrency-fixture'
+        where word in (
+            'theme-request-concurrency-fixture',
+            'theme-request-resolution-race'
+        )
     );
     delete from public.word_themes
     where word_id in (
         select id from public.words
-        where word = 'theme-request-concurrency-fixture'
+        where word in (
+            'theme-request-concurrency-fixture',
+            'theme-request-resolution-race'
+        )
     );
     delete from public.words
-    where word = 'theme-request-concurrency-fixture';
+    where word in (
+        'theme-request-concurrency-fixture',
+        'theme-request-resolution-race'
+    );
     delete from public.themes
-    where code = 'tr-concurrency';
+    where code in (
+        'tr-concurrency',
+        'tr-resolution-race',
+        'tr-resolution-race-renamed'
+    );
     delete from public.docs_logs
-    where word = 'theme-request-concurrency-fixture';
+    where word in (
+        'theme-request-concurrency-fixture',
+        'theme-request-resolution-race'
+    );
     delete from public.docs
     where id in (201, 202)
       and name in (
@@ -391,13 +510,23 @@ select extensions.dblink_disconnect('user_word_theme_request_setup');
 select ok(
     not exists (
         select 1 from public.words
-        where word = 'theme-request-concurrency-fixture'
+        where word in (
+            'theme-request-concurrency-fixture',
+            'theme-request-resolution-race'
+        )
     ) and not exists (
         select 1 from public.themes
-        where code = 'tr-concurrency'
+        where code in (
+            'tr-concurrency',
+            'tr-resolution-race',
+            'tr-resolution-race-renamed'
+        )
     ) and not exists (
         select 1 from public.docs_logs
-        where word = 'theme-request-concurrency-fixture'
+        where word in (
+            'theme-request-concurrency-fixture',
+            'theme-request-resolution-race'
+        )
     ) and pg_catalog.to_regprocedure(
         'public.user_word_theme_request_concurrency_call(text,jsonb)'
     ) is null and pg_catalog.to_regprocedure(

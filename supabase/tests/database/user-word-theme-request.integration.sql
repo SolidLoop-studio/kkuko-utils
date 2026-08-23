@@ -3,6 +3,7 @@ begin;
 -- Simulate legacy-corrupt lookup data while keeping the real schema unchanged
 -- after this transaction rolls back.
 alter table public.themes drop constraint unique_code;
+alter table public.words drop constraint unique_word;
 
 create or replace function pg_temp.set_user_word_theme_request_actor(
     actor_id uuid
@@ -46,6 +47,12 @@ insert into public.words (word, k_canuse, noin_canuse, added_by) values
     ('theme-request-batch', true, true,
      '47000000-0000-4000-8000-000000000001'),
     ('theme-request-rollback', true, true,
+     '47000000-0000-4000-8000-000000000001'),
+    ('theme-request-unique-trigger', true, true,
+     '47000000-0000-4000-8000-000000000001'),
+    ('theme-request-ambiguous-word', true, true,
+     '47000000-0000-4000-8000-000000000001'),
+    ('theme-request-ambiguous-word', true, true,
      '47000000-0000-4000-8000-000000000001');
 
 insert into public.themes (name, code) values
@@ -56,6 +63,7 @@ insert into public.themes (name, code) values
     ('Theme Request Batch Delete', 'tr-batch-delete'),
     ('Theme Request Rollback A', 'tr-rollback-a'),
     ('Theme Request Rollback B', 'tr-rollback-b'),
+    ('Theme Request Unique Trigger', 'tr-unique-trigger'),
     ('Theme Request Ambiguous A', 'tr-ambiguous'),
     ('Theme Request Ambiguous B', 'tr-ambiguous');
 
@@ -301,6 +309,14 @@ select throws_ok(
 );
 select throws_ok(
     $$select public.request_word_theme_changes(
+        'theme-request-ambiguous-word',
+        '[{"themeCode":"tr-missing-relation","type":"add"}]'
+    )$$,
+    'P0001', 'WORD_THEME_REQUEST_NOT_FOUND',
+    'an ambiguous registered word is rejected'
+);
+select throws_ok(
+    $$select public.request_word_theme_changes(
         'theme-request-word',
         '[{"themeCode":"tr-unknown","type":"add"}]'
     )$$,
@@ -400,6 +416,15 @@ begin
     ) then
         raise exception 'USER_WORD_THEME_REQUEST_TEST_FORCED_FAILURE';
     end if;
+    if new.theme_id = (
+        select theme.id from public.themes as theme
+        where theme.code = 'tr-unique-trigger'
+    ) then
+        raise exception using
+            errcode = '23505',
+            message = 'USER_WORD_THEME_REQUEST_TEST_FORCED_UNIQUE_FAILURE',
+            constraint = 'user_word_theme_request_trigger_unique';
+    end if;
     return new;
 end;
 $function$;
@@ -417,6 +442,14 @@ select throws_ok(
     'P0001', 'WORD_THEME_REQUEST_INTERNAL_ERROR',
     'an unexpected insert failure returns only the stable internal error'
 );
+select throws_ok(
+    $$select public.request_word_theme_changes(
+        'theme-request-unique-trigger',
+        '[{"themeCode":"tr-unique-trigger","type":"add"}]'
+    )$$,
+    'P0001', 'WORD_THEME_REQUEST_INTERNAL_ERROR',
+    'a trigger unique violation is an internal error, not a conflict'
+);
 reset role;
 drop trigger user_word_theme_request_test_fail_insert
     on public.word_themes_wait;
@@ -431,6 +464,17 @@ select is(
     ),
     0,
     'an unexpected failure rolls back every row in the batch'
+);
+select is(
+    (
+        select pg_catalog.count(*)::integer
+        from public.word_themes_wait as pending_request
+        join public.words as registered_word
+          on registered_word.id = pending_request.word_id
+        where registered_word.word = 'theme-request-unique-trigger'
+    ),
+    0,
+    'a trigger unique violation leaves no pending request row'
 );
 
 select * from finish();
