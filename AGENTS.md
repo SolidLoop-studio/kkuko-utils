@@ -22,6 +22,7 @@ Main features include:
 - `src/`: Source code
 - `src/__tests__/`: Test code
 - `src/app/`: Web application source code
+- `src/modules`: Module code used in the code
 - `public/`: Static files used by the web application
 - `docs/`: Documentation used for web development, such as external API specifications and naming conventions
 - `.github/`, `scripts/`: GitHub-related files and scripts used in deployment and other workflows
@@ -157,7 +158,7 @@ Authentication uses Google OAuth through Supabase.
 
 ## Testing
 
-Tests are located in `src/__tests__/` and mirror the structure of `src/app/`.
+Tests are located in `src/__tests__/` and mirror the structure of `src/`.
 
 The setup file (`jest.setup.ts`) mocks:
 
