@@ -99,13 +99,11 @@ export interface IGetManager{
 // delete 관련 타입
 export interface IDeleteManager{
     waitWordById(wordId: number): Promise<PostgrestSingleResponse<null>>;
-    wordById(wordId: number): Promise<PostgrestSingleResponse<word[]>>;
     wordByIds(wordIds: number[]): Promise<PostgrestSingleResponse<word[]>>;
     wordTheme(deleteQuery: { word_id: number, theme_id: number }[]): Promise<PostgrestSingleResponse<delete_word_themes_bulk>>;
     waitWordThemes(query:{word_id: number, theme_id: number}[]): Promise<PostgrestSingleResponse<undefined>>;
     startDocs({ docsId, userId }: { docsId: number; userId: string; }): Promise<PostgrestSingleResponse<null>>;
     waitWordsByWords(words: string[]): Promise<PostgrestSingleResponse<null>>;
-    waitWordByWord(word: string): Promise<PostgrestSingleResponse<null>>;
     logsByIds(ids: number[]): Promise<PostgrestSingleResponse<null>>;
     docsLogsByIds(ids: number[]): Promise<PostgrestSingleResponse<null>>;
     notificationById(id: number): Promise<PostgrestSingleResponse<null>>;
