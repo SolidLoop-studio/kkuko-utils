@@ -17,6 +17,7 @@
     "test:docs-request-moderation-db": "supabase test db --local supabase/tests/database/docs-request-moderation.integration.sql supabase/tests/database/docs-request-moderation-concurrency.integration.sql",
     "test:direct-word-deletion-db": "supabase test db --local supabase/tests/database/direct-word-deletion.integration.sql supabase/tests/database/direct-word-deletion-concurrency.integration.sql",
     "test:user-word-request-db": "supabase test db --local supabase/tests/database/user-word-request.integration.sql supabase/tests/database/user-word-request-concurrency.integration.sql",
+    "test:user-word-theme-request-db": "supabase test db --local supabase/tests/database/user-word-theme-request.integration.sql supabase/tests/database/user-word-theme-request-concurrency.integration.sql",
     "test:test": "jest 2>&1 | tee test.txt",
     "test:ci": "jest --ci --coverage --watchAll=false",
     "prepare": "husky"
