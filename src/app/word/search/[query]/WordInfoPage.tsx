@@ -14,6 +14,7 @@ export default function WordInfoPage({ query }: { query: string }) {
     const [errorView, setErrorView] = useState<string | null>(null);
     const [wordInfo, setWordInfo] = useState<WordInfoProps | null>(null);
     const [isNotFound, setIsNotFound] = useState(false);
+    const [refreshVersion, setRefreshVersion] = useState(0);
     const router = useRouter();
 
     // 로딩 상태를 더 상세하게 관리하기 위한 상태
@@ -102,13 +103,16 @@ export default function WordInfoPage({ query }: { query: string }) {
             goLastLetterWords: wordInfo.goLastLetterWords,
             moreExplanation: wordInfo.exp ? gget() : undefined,
             goFirstLetterWord: gf,
-            goLastLetterWord: lf
+            goLastLetterWord: lf,
+            reloadWordInfo: () => setRefreshVersion((version) => version + 1),
         });
     };
 
     useEffect(() => {
         const fetchWordInfo = async () => {
             try {
+                setErrorView(null);
+                setIsNotFound(false);
                 updateLoadingState(10, "단어 정보 확인 중...");
 
                 // 단어 테이블 확인
@@ -257,7 +261,7 @@ export default function WordInfoPage({ query }: { query: string }) {
             }
         }
         
-    }, [query]);
+    }, [query, refreshVersion]);
 
     if (isNotFound) { return notFound(); }
 
