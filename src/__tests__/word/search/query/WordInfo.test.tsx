@@ -104,9 +104,18 @@ jest.mock('../../../../app/components/ui/dialog', () => ({
 
 jest.mock('../../../../app/components/ConfirmModal', () => ({
     __esModule: true,
-    default: ({ title, onConfirm }: { title: string; onConfirm: () => void }) => (
+    default: ({
+        title,
+        description,
+        onConfirm,
+    }: {
+        title: string;
+        description: string;
+        onConfirm: () => void;
+    }) => (
         <div role="dialog" aria-label="confirmation">
             <p>{title}</p>
+            <p>{description}</p>
             <button onClick={onConfirm}>확인</button>
         </div>
     ),
@@ -235,7 +244,12 @@ describe('WordInfo mutations', () => {
         currentUser = { uuid: 'r4-user', role: 'r4' };
         renderWordInfo();
 
-        await confirmPrimaryAction();
+        fireEvent.click(screen.getByRole('button', { name: '삭제요청' }));
+        expect(screen.getByRole('dialog', { name: 'confirmation' })).toHaveTextContent(
+            '요청후 취소 할 수 있습니다.',
+        );
+        fireEvent.click(screen.getByRole('button', { name: '확인' }));
+        await waitFor(() => expect(screen.getByRole('dialog', { name: 'completion' })).toBeInTheDocument());
 
         expect(requestDeletion).toHaveBeenCalledWith({ word: '나비' });
         expect(deleteDirectly).not.toHaveBeenCalled();
@@ -246,7 +260,13 @@ describe('WordInfo mutations', () => {
         currentUser = { uuid: 'admin-user', role: 'admin' };
         renderWordInfo();
 
-        await confirmPrimaryAction();
+        expect(screen.queryByRole('button', { name: '삭제요청' })).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+        expect(screen.getByRole('dialog', { name: 'confirmation' })).toHaveTextContent(
+            '삭제 후 복구할 수 없습니다.',
+        );
+        fireEvent.click(screen.getByRole('button', { name: '확인' }));
+        await waitFor(() => expect(screen.getByRole('dialog', { name: 'completion' })).toBeInTheDocument());
 
         expect(deleteDirectly).toHaveBeenCalledWith(23);
         expect(requestDeletion).not.toHaveBeenCalled();

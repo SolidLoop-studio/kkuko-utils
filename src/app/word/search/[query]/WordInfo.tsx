@@ -306,7 +306,7 @@ const WordInfo = ({ wordInfo }: { wordInfo: WordInfoProps }) => {
                                 }
                                 {((wordInfo.status === "ok" && user.uuid) || (wordInfo.status !== "ok" && wordInfo.requester_uuid === user.uuid)) &&
                                     (<Button variant="destructive" className="flex items-center gap-1" disabled={isPending} onClick={() => setConFirmModalOpen(true)}>
-                                        <Trash2 size={16} /> {wordInfo.status === "ok" ? "삭제요청" : "요청취소"}
+                                        <Trash2 size={16} /> {wordInfo.status === "ok" ? user.role === 'admin' ? "삭제" : "삭제요청" : "요청취소"}
                                     </Button>)
                                 }
                             </div>
@@ -577,7 +577,11 @@ const WordInfo = ({ wordInfo }: { wordInfo: WordInfoProps }) => {
             {conFirmModalOpen &&
                 <ConfirmModal
                     title={`"${wordInfo.word}"${josa(wordInfo.word, "을/를")[wordInfo.word.length]} ${wordInfo.status === "ok" ? user.role === 'admin' ? "삭제" : "삭제 요청" : `${wordInfo.status === "삭제요청" ? "삭제" : "추가"} 요청 취소`}를 하시겠습니까?`}
-                    description={"요청후 취소 할 수 " + (wordInfo.status === "ok" ? "있습니다." : "없습니다.")}
+                    description={wordInfo.status === "ok"
+                        ? user.role === 'admin'
+                            ? "삭제 후 복구할 수 없습니다."
+                            : "요청후 취소 할 수 있습니다."
+                        : "요청후 취소 할 수 없습니다."}
                     open={conFirmModalOpen}
                     onClose={() => setConFirmModalOpen(false)}
                     onConfirm={onCancelOrDeleteRequest}
