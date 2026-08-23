@@ -21,6 +21,20 @@ const applicationError: ApplicationError = {
 const createService = (
     overrides: Partial<UserWordRequestService> = {},
 ): UserWordRequestService => ({
+    requestAddition: jest.fn().mockResolvedValue(ok({
+        requestId: 10,
+        word: '가방',
+        requestType: 'add',
+        themes: [],
+    })),
+    requestAdditions: jest.fn().mockResolvedValue(ok({
+        requestedWordCount: 1,
+        createdWordRequestCount: 1,
+        updatedWordRequestCount: 0,
+        changedRegisteredWordCount: 0,
+        createdThemeChangeRequestCount: 0,
+        unchangedWordCount: 0,
+    })),
     requestDeletion: jest.fn().mockResolvedValue(ok({
         requestId: 11,
         word: '나비',

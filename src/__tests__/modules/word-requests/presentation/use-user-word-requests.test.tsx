@@ -12,6 +12,10 @@ jest.mock(
 import type { ApplicationError } from '@/src/shared/application/application-error';
 import { err, ok, type Result } from '@/src/shared/application/result';
 import {
+    RequestWordAdditionCommand,
+    RequestWordAdditionResult,
+    RequestWordAdditionsCommand,
+    RequestWordAdditionsResult,
     UserWordRequestCommand,
     UserWordRequestResult,
     type UserWordRequestService,
@@ -19,7 +23,14 @@ import {
 } from '@/src/modules/word-requests';
 
 const deletionCommand: UserWordRequestCommand = { word: '나비' };
+const additionCommand: RequestWordAdditionCommand = {
+    word: '가방',
+    themeCodes: ['animal'],
+};
 const cancellationCommand: UserWordRequestCommand = { word: '가방' };
+const additionBatchCommand: RequestWordAdditionsCommand = {
+    entries: [{ word: '가방', themeCodes: ['animal'] }],
+};
 const deletionResult: UserWordRequestResult = {
     requestId: 11,
     word: '나비',
@@ -29,6 +40,20 @@ const cancellationResult: UserWordRequestResult = {
     requestId: 12,
     word: '가방',
     requestType: 'add',
+};
+const additionResult: RequestWordAdditionResult = {
+    requestId: 10,
+    word: '가방',
+    requestType: 'add',
+    themes: [{ themeCode: 'animal', themeName: '동물' }],
+};
+const additionBatchResult: RequestWordAdditionsResult = {
+    requestedWordCount: 1,
+    createdWordRequestCount: 1,
+    updatedWordRequestCount: 0,
+    changedRegisteredWordCount: 0,
+    createdThemeChangeRequestCount: 0,
+    unchangedWordCount: 0,
 };
 
 const createDeferred = <T,>() => {
@@ -41,6 +66,8 @@ const createDeferred = <T,>() => {
 };
 
 const createService = (): UserWordRequestService => ({
+    requestAddition: jest.fn().mockResolvedValue(ok(additionResult)),
+    requestAdditions: jest.fn().mockResolvedValue(ok(additionBatchResult)),
     requestDeletion: jest.fn().mockResolvedValue(ok(deletionResult)),
     cancel: jest.fn().mockResolvedValue(ok(cancellationResult)),
 });
@@ -58,6 +85,33 @@ const renderUserWordRequests = (service: UserWordRequestService) => {
 };
 
 describe('useUserWordRequests', () => {
+    it('dispatches addition commands and returns the addition result', async () => {
+        const service = createService();
+        const { result } = renderUserWordRequests(service);
+
+        let actionResult: Result<RequestWordAdditionResult> | undefined;
+        await act(async () => {
+            actionResult = await result.current.requestAddition(additionCommand);
+        });
+
+        expect(actionResult).toEqual(ok(additionResult));
+        expect(service.requestAddition).toHaveBeenCalledWith(additionCommand);
+    });
+
+    it('dispatches addition batch commands and returns the summary', async () => {
+        const service = createService();
+        const onProgress = jest.fn();
+        const { result } = renderUserWordRequests(service);
+
+        let actionResult: Result<RequestWordAdditionsResult> | undefined;
+        await act(async () => {
+            actionResult = await result.current.requestAdditions(additionBatchCommand, onProgress);
+        });
+
+        expect(actionResult).toEqual(ok(additionBatchResult));
+        expect(service.requestAdditions).toHaveBeenCalledWith(additionBatchCommand, onProgress);
+    });
+
     it('returns the deletion result and exposes pending while the service is unresolved', async () => {
         const deferred = createDeferred<Result<UserWordRequestResult>>();
         const service = createService();

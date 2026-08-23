@@ -41,6 +41,10 @@ jest.mock('../../../../modules/word-moderation', () => {
 });
 
 import {
+    type RequestWordAdditionCommand,
+    type RequestWordAdditionResult,
+    type RequestWordAdditionsCommand,
+    type RequestWordAdditionsResult,
     type RequestWordThemeChangesCommand,
     type RequestWordThemeChangesResult,
     type UserWordRequestCommand,
@@ -102,6 +106,30 @@ const createDeferred = <T,>() => {
 class FakeUserWordRequestService implements UserWordRequestService {
     deletionCommands: UserWordRequestCommand[] = [];
     cancellationCommands: UserWordRequestCommand[] = [];
+
+    async requestAddition(
+        command: RequestWordAdditionCommand,
+    ): Promise<Result<RequestWordAdditionResult>> {
+        return ok({
+            requestId: 10,
+            word: command.word,
+            requestType: 'add',
+            themes: [],
+        });
+    }
+
+    async requestAdditions(
+        command: RequestWordAdditionsCommand,
+    ): Promise<Result<RequestWordAdditionsResult>> {
+        return ok({
+            requestedWordCount: command.entries.length,
+            createdWordRequestCount: 0,
+            updatedWordRequestCount: 0,
+            changedRegisteredWordCount: 0,
+            createdThemeChangeRequestCount: 0,
+            unchangedWordCount: command.entries.length,
+        });
+    }
 
     requestDeletionHandler: (
         command: UserWordRequestCommand,
@@ -371,6 +399,13 @@ describe('useWordInfoMutations', () => {
         const { services } = createServices();
         const cancel = jest.fn().mockResolvedValue(ok(cancellationResult));
         jest.mocked(wordRequestsModule.useUserWordRequests).mockReturnValueOnce({
+            requestAddition: jest.fn().mockResolvedValue(ok({
+                requestId: 10,
+                word: '가방',
+                requestType: 'add',
+                themes: [],
+            })),
+            requestAdditions: jest.fn(),
             requestDeletion: jest.fn().mockRejectedValue({ privateDetail: 'connection string' }),
             cancel,
             isPending: false,

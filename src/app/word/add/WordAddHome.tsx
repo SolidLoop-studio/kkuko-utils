@@ -14,6 +14,8 @@ import { fetcher } from "../lib";
 import WordAddForm from "../components/WordAddFrom";
 import { isNoin } from "@/src/app/lib/lib";
 import { DocsLogData } from "@/src/app/types/type";
+import type { ApplicationError } from "@/src/shared/application/application-error";
+import { useUserWordRequests } from "@/src/modules/word-requests";
 
 interface TopicInfo {
     topicsCode: Record<string, string>;
@@ -33,6 +35,7 @@ export default function WordAddHome(){
         topicsID: {}
     });
     const { data } = useSWR("themes", fetcher, { dedupingInterval: 120000 });
+    const { requestAddition } = useUserWordRequests();
 
     useEffect(() => {
         setIsLogin(!!user.uuid);
@@ -65,6 +68,15 @@ export default function WordAddHome(){
             inputValue: `/word/add`
         });
     }
+
+    const makeApplicationError = (applicationError: ApplicationError) => {
+        setError({
+            ErrName: `ApplicationError:${applicationError.kind}`,
+            ErrMessage: applicationError.message,
+            ErrStackRace: applicationError.code ?? "",
+            inputValue: "/word/add",
+        });
+    };
 
     const onSaveByAdmin = async (word: string, themes: string[]) => {
         if (!user.uuid || !['admin','r4'].includes(user.role)) return;
@@ -153,59 +165,23 @@ export default function WordAddHome(){
             return onSaveByAdmin(word, themes);
         }
 
-        try {
-            // Check if word already exists
-            const { data: existingWord, error: exstedCheckError } = await SCM.get().wordInfoByWord(word);
-
-            if (exstedCheckError) { return makeError(exstedCheckError); }
-
-            if (existingWord) { return setWorkFail("이미 존재하는 단어입니다."); }
-
-            // Insert word into wait list
-            const insertWaitWordData = {
-                word,
-                requested_by: user.uuid,
-                request_type: "add" as const
-            };
-
-            const { data: insertedWaitWord, error: insertedWaitWordError } = await SCM.add().waitWord(insertWaitWordData);
-
-            if (insertedWaitWordError) {
-                if (insertedWaitWordError.code === '23505') {
-                    return setWorkFail("이미 요청이 들어온 단어입니다.");
-                    
-                }
-                return makeError(insertedWaitWordError);
+        const result = await requestAddition({ word, themeCodes: themes });
+        if (!result.ok) {
+            if (result.error.kind === 'conflict') {
+                setWorkFail(result.error.message);
+            } else {
+                makeApplicationError(result.error);
             }
+            return;
+        }
 
-            // Insert selected topics
-            if (insertedWaitWord) {
-                const insertWaitWordTopicsData = themes
-                    .filter(tc => topicInfo.topicsID[tc])
-                    .map(tc => ({
-                        wait_word_id: insertedWaitWord.id,
-                        theme_id: topicInfo.topicsID[tc]
-                    }));
-
-                const { error: insertWaitWordTopicsDataError } = await SCM.add().waitWordThemes(insertWaitWordTopicsData);
-
-                if (insertWaitWordTopicsDataError) {
-                    throw insertWaitWordTopicsDataError;
-                }
-
-                setCompleteState({
-                    word: word,
-                    selectedTheme: themes.map(code => topicInfo.topicsCode[code]).join(', '),
-                    onClose: () => {
-                        setCompleteState(null);
-                    }
-                });
-
+        setCompleteState({
+            word: result.value.word,
+            selectedTheme: result.value.themes.map(({ themeName }) => themeName).join(', '),
+            onClose: () => {
+                setCompleteState(null);
             }
-
-        } 
-        catch { } 
-        finally { }
+        });
         
     };
 
