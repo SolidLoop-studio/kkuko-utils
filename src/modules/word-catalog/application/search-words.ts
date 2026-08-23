@@ -26,11 +26,13 @@ const trimOrUndefined = (value: string | undefined): string | undefined => {
 };
 
 const normalizeLimit = (limit: number): number => (
-    Number.isSafeInteger(limit) && limit > 0 ? limit : DEFAULT_SEARCH_LIMIT
+    Number.isInteger(limit) && (limit > 0 || limit === -1)
+        ? limit
+        : DEFAULT_SEARCH_LIMIT
 );
 
 const normalizeLength = (value: number, fallback: number): number => (
-    Number.isSafeInteger(value) && value > 0 ? value : fallback
+    Number.isInteger(value) && value > 0 ? value : fallback
 );
 
 const validateAdvancedWordSearchQuery = (
@@ -96,7 +98,7 @@ const validateAdvancedWordSearchQuery = (
             });
         }
         case 'jaqi': {
-            if (!Number.isSafeInteger(query.themeId) || query.themeId <= 0) {
+            if (!Number.isInteger(query.themeId) || query.themeId <= 0) {
                 return err(validationError('themeId', '주제를 선택해 주세요.'));
             }
             return ok({

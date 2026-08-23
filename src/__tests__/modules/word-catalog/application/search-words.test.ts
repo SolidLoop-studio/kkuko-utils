@@ -166,6 +166,34 @@ describe('SearchWordsService', () => {
         });
     });
 
+    test('kung search rejects a missing start letter without calling infrastructure', async () => {
+        const gateway = createGateway();
+        const service = new SearchWordsService(gateway);
+
+        const result = await service.search({
+            type: 'advanced',
+            query: {
+                mode: 'kung',
+                start: ' ',
+                end: undefined,
+                mission: '',
+                isAcceptedOnly: true,
+                isManner: true,
+                isJen: false,
+                isEtiquette: false,
+                sortOrder: 'abc',
+                limit: 100,
+            },
+        });
+
+        expect(result).toEqual(err({
+            kind: 'validation',
+            field: 'start',
+            message: '시작 글자가 필요합니다.',
+        }));
+        expect(gateway.searchAdvanced).not.toHaveBeenCalled();
+    });
+
     test('hunmin search requires exactly two characters', async () => {
         const gateway = createGateway();
         const service = new SearchWordsService(gateway);
@@ -181,6 +209,23 @@ describe('SearchWordsService', () => {
             message: '훈민정음 검색어는 두 글자여야 합니다.',
         }));
         expect(gateway.searchAdvanced).not.toHaveBeenCalled();
+    });
+
+    test('hunmin search forwards a normalized valid query', async () => {
+        const gateway = createGateway();
+        const service = new SearchWordsService(gateway);
+
+        await service.search({
+            type: 'advanced',
+            query: { mode: 'hunmin', query: ' ㄱㄴ ', mission: ' 가 ', limit: 100 },
+        });
+
+        expect(gateway.searchAdvanced).toHaveBeenCalledWith({
+            mode: 'hunmin',
+            query: 'ㄱㄴ',
+            mission: '가',
+            limit: 100,
+        });
     });
 
     test('jaqi search requires a positive theme id', async () => {
@@ -200,6 +245,23 @@ describe('SearchWordsService', () => {
         expect(gateway.searchAdvanced).not.toHaveBeenCalled();
     });
 
+    test('jaqi search forwards a normalized valid query', async () => {
+        const gateway = createGateway();
+        const service = new SearchWordsService(gateway);
+
+        await service.search({
+            type: 'advanced',
+            query: { mode: 'jaqi', query: ' ㄱㄴ ', themeId: 3, limit: 100 },
+        });
+
+        expect(gateway.searchAdvanced).toHaveBeenCalledWith({
+            mode: 'jaqi',
+            query: 'ㄱㄴ',
+            themeId: 3,
+            limit: 100,
+        });
+    });
+
     test('invalid limits use the existing default of one hundred', async () => {
         const gateway = createGateway();
         const service = new SearchWordsService(gateway);
@@ -211,6 +273,55 @@ describe('SearchWordsService', () => {
 
         expect(gateway.searchAdvanced).toHaveBeenCalledWith(
             koreanStartQuery({ limit: 100 }),
+        );
+    });
+
+    test('preserves the legacy unlimited limit value', async () => {
+        const gateway = createGateway();
+        const service = new SearchWordsService(gateway);
+
+        await service.search({
+            type: 'advanced',
+            query: koreanStartQuery({ limit: -1 }),
+        });
+
+        expect(gateway.searchAdvanced).toHaveBeenCalledWith(
+            koreanStartQuery({ limit: -1 }),
+        );
+    });
+
+    test('defaults invalid finite and non-finite chain lengths', async () => {
+        const gateway = createGateway();
+        const service = new SearchWordsService(gateway);
+
+        await service.search({
+            type: 'advanced',
+            query: koreanStartQuery({ minimumLength: 2.5, maximumLength: Infinity }),
+        });
+
+        expect(gateway.searchAdvanced).toHaveBeenCalledWith(
+            koreanStartQuery({ minimumLength: 2, maximumLength: 100 }),
+        );
+    });
+
+    test('preserves finite integer chain lengths beyond the safe-integer range', async () => {
+        const gateway = createGateway();
+        const service = new SearchWordsService(gateway);
+        const finiteIntegerLength = 9007199254740992;
+
+        await service.search({
+            type: 'advanced',
+            query: koreanStartQuery({
+                minimumLength: finiteIntegerLength,
+                maximumLength: finiteIntegerLength,
+            }),
+        });
+
+        expect(gateway.searchAdvanced).toHaveBeenCalledWith(
+            koreanStartQuery({
+                minimumLength: finiteIntegerLength,
+                maximumLength: finiteIntegerLength,
+            }),
         );
     });
 
