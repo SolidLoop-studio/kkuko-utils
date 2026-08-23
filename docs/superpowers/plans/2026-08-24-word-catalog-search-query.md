@@ -345,4 +345,3 @@ Expected: every command exits 0; all Jest suites pass. Existing non-failing cons
 git add src/app/lib/supabase docs/architecture/ddd-lite-migration-roadmap.md
 git commit -m "refactor: retire legacy word suggestion query"
 ```
-
