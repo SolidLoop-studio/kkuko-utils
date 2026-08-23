@@ -15,12 +15,12 @@ declare
     change_count integer;
     word_match_count integer := 0;
     locked_theme_count integer := 0;
-    locked_theme_codes text[] := array[]::text[];
+    resolved_changes jsonb := '[]'::jsonb;
     inserted_count integer;
     violation_constraint text;
     word_row public.words%rowtype;
     candidate_word public.words%rowtype;
-    theme_row public.themes%rowtype;
+    resolved_theme record;
     relation_theme_id bigint;
 begin
     if actor is null then
@@ -101,11 +101,15 @@ begin
             message = 'WORD_THEME_REQUEST_NOT_FOUND';
     end if;
 
-    for theme_row in
-        select theme.*
+    for resolved_theme in
+        select theme.id as theme_id,
+               theme.code as theme_code,
+               theme.name as theme_name,
+               requested_theme.request_type
         from public.themes as theme
         join (
-            select change.entry ->> 'themeCode' as code
+            select change.entry ->> 'themeCode' as code,
+                   change.entry ->> 'type' as request_type
             from pg_catalog.jsonb_array_elements(p_changes) as change(entry)
         ) as requested_theme
           on requested_theme.code = theme.code
@@ -113,8 +117,13 @@ begin
         for update of theme
     loop
         locked_theme_count := locked_theme_count + 1;
-        locked_theme_codes := pg_catalog.array_append(
-            locked_theme_codes, theme_row.code
+        resolved_changes := resolved_changes || pg_catalog.jsonb_build_array(
+            pg_catalog.jsonb_build_object(
+                'themeId', resolved_theme.theme_id,
+                'themeCode', resolved_theme.theme_code,
+                'themeName', resolved_theme.theme_name,
+                'type', resolved_theme.request_type
+            )
         );
     end loop;
 
@@ -124,10 +133,12 @@ begin
             select change.entry ->> 'themeCode' as code
             from pg_catalog.jsonb_array_elements(p_changes) as change(entry)
         ) as requested_theme
-        left join pg_catalog.unnest(locked_theme_codes) as locked_theme(code)
-          on locked_theme.code = requested_theme.code
+        left join pg_catalog.jsonb_array_elements(
+            resolved_changes
+        ) as locked_theme(entry)
+          on locked_theme.entry ->> 'themeCode' = requested_theme.code
         group by requested_theme.code
-        having pg_catalog.count(locked_theme.code) <> 1
+        having pg_catalog.count(locked_theme.entry) <> 1
     ) then
         raise exception using
             errcode = 'P0001',
@@ -137,13 +148,11 @@ begin
     for relation_theme_id in
         select word_theme.theme_id
         from public.word_themes as word_theme
-        join public.themes as theme
-          on theme.id = word_theme.theme_id
-        join (
-            select change.entry ->> 'themeCode' as code
-            from pg_catalog.jsonb_array_elements(p_changes) as change(entry)
-        ) as requested_theme
-          on requested_theme.code = theme.code
+        join pg_catalog.jsonb_array_elements(
+            resolved_changes
+        ) as resolved_change(entry)
+          on (resolved_change.entry ->> 'themeId')::bigint =
+             word_theme.theme_id
         where word_theme.word_id = word_row.id
         order by word_theme.theme_id
         for update of word_theme
@@ -154,13 +163,11 @@ begin
     for relation_theme_id in
         select pending_request.theme_id
         from public.word_themes_wait as pending_request
-        join public.themes as theme
-          on theme.id = pending_request.theme_id
-        join (
-            select change.entry ->> 'themeCode' as code
-            from pg_catalog.jsonb_array_elements(p_changes) as change(entry)
-        ) as requested_theme
-          on requested_theme.code = theme.code
+        join pg_catalog.jsonb_array_elements(
+            resolved_changes
+        ) as resolved_change(entry)
+          on (resolved_change.entry ->> 'themeId')::bigint =
+             pending_request.theme_id
         where pending_request.word_id = word_row.id
         order by pending_request.theme_id
         for update of pending_request
@@ -171,13 +178,11 @@ begin
     if exists (
         select 1
         from public.word_themes_wait as pending_request
-        join public.themes as theme
-          on theme.id = pending_request.theme_id
-        join (
-            select change.entry ->> 'themeCode' as code
-            from pg_catalog.jsonb_array_elements(p_changes) as change(entry)
-        ) as requested_theme
-          on requested_theme.code = theme.code
+        join pg_catalog.jsonb_array_elements(
+            resolved_changes
+        ) as resolved_change(entry)
+          on (resolved_change.entry ->> 'themeId')::bigint =
+             pending_request.theme_id
         where pending_request.word_id = word_row.id
     ) then
         raise exception using
@@ -187,15 +192,16 @@ begin
 
     if exists (
         select 1
-        from pg_catalog.jsonb_array_elements(p_changes) as change(entry)
-        join public.themes as theme
-          on theme.code = change.entry ->> 'themeCode'
+        from pg_catalog.jsonb_array_elements(
+            resolved_changes
+        ) as resolved_change(entry)
         left join public.word_themes as word_theme
           on word_theme.word_id = word_row.id
-         and word_theme.theme_id = theme.id
-        where (change.entry ->> 'type' = 'add'
+         and word_theme.theme_id =
+             (resolved_change.entry ->> 'themeId')::bigint
+        where (resolved_change.entry ->> 'type' = 'add'
                and word_theme.word_id is not null)
-           or (change.entry ->> 'type' = 'delete'
+           or (resolved_change.entry ->> 'type' = 'delete'
                and word_theme.word_id is null)
     ) then
         raise exception using
@@ -208,13 +214,13 @@ begin
             word_id, theme_id, typez, req_by
         )
         select word_row.id,
-               theme.id,
-               (change.entry ->> 'type')::public.request_type_enum,
+               (resolved_change.entry ->> 'themeId')::bigint,
+               (resolved_change.entry ->> 'type')::public.request_type_enum,
                actor
-        from pg_catalog.jsonb_array_elements(p_changes) as change(entry)
-        join public.themes as theme
-          on theme.code = change.entry ->> 'themeCode'
-        order by theme.id;
+        from pg_catalog.jsonb_array_elements(
+            resolved_changes
+        ) as resolved_change(entry)
+        order by (resolved_change.entry ->> 'themeId')::bigint;
 
         get diagnostics inserted_count = row_count;
         if inserted_count <> change_count then
@@ -246,15 +252,16 @@ begin
         'changes', (
             select pg_catalog.jsonb_agg(
                 pg_catalog.jsonb_build_object(
-                    'themeCode', theme.code,
-                    'themeName', theme.name,
-                    'type', change.entry ->> 'type'
+                    'themeCode', resolved_change.entry ->> 'themeCode',
+                    'themeName', resolved_change.entry ->> 'themeName',
+                    'type', resolved_change.entry ->> 'type'
                 )
-                order by theme.code, change.entry ->> 'type'
+                order by resolved_change.entry ->> 'themeCode',
+                         resolved_change.entry ->> 'type'
             )
-            from pg_catalog.jsonb_array_elements(p_changes) as change(entry)
-            join public.themes as theme
-              on theme.code = change.entry ->> 'themeCode'
+            from pg_catalog.jsonb_array_elements(
+                resolved_changes
+            ) as resolved_change(entry)
         )
     );
 end;

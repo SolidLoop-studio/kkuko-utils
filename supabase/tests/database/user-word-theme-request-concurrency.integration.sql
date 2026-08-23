@@ -51,7 +51,10 @@ select extensions.dblink_exec(
     begin;
     drop trigger if exists user_word_theme_request_concurrency_pause_insert
         on public.word_themes_wait;
+    drop trigger if exists user_word_theme_request_duplicate_pause_insert
+        on public.word_themes_wait;
     drop function if exists public.user_word_theme_request_concurrency_pause();
+    drop function if exists public.user_word_theme_request_duplicate_pause();
     drop function if exists public.user_word_theme_request_concurrency_call(
         text, jsonb
     );
@@ -60,7 +63,8 @@ select extensions.dblink_exec(
         select id from public.words
         where word in (
             'theme-request-concurrency-fixture',
-            'theme-request-resolution-race'
+            'theme-request-resolution-race',
+            'theme-request-duplicate-race'
         )
     );
     delete from public.word_themes
@@ -68,25 +72,30 @@ select extensions.dblink_exec(
         select id from public.words
         where word in (
             'theme-request-concurrency-fixture',
-            'theme-request-resolution-race'
+            'theme-request-resolution-race',
+            'theme-request-duplicate-race'
         )
     );
     delete from public.words
     where word in (
         'theme-request-concurrency-fixture',
-        'theme-request-resolution-race'
+        'theme-request-resolution-race',
+        'theme-request-duplicate-race'
     );
     delete from public.themes
     where code in (
         'tr-concurrency',
         'tr-resolution-race',
-        'tr-resolution-race-renamed'
+        'tr-resolution-race-renamed',
+        'tr-duplicate-race'
     );
     delete from public.docs_logs
     where word in (
         'theme-request-concurrency-fixture',
-        'theme-request-resolution-race'
+        'theme-request-resolution-race',
+        'theme-request-duplicate-race'
     );
+    alter table public.themes drop constraint if exists unique_code;
     delete from public.docs
     where id in (201, 202)
       and name in (
@@ -121,10 +130,13 @@ select extensions.dblink_exec(
         ('theme-request-concurrency-fixture', true, true,
          '48000000-0000-4000-8000-000000000001'),
         ('theme-request-resolution-race', true, true,
+         '48000000-0000-4000-8000-000000000001'),
+        ('theme-request-duplicate-race', true, true,
          '48000000-0000-4000-8000-000000000001');
     insert into public.themes (name, code) values
         ('Theme Request Concurrency', 'tr-concurrency'),
-        ('Theme Request Resolution Race', 'tr-resolution-race');
+        ('Theme Request Resolution Race', 'tr-resolution-race'),
+        ('Theme Request Duplicate Original', 'tr-duplicate-race');
 
     create or replace function public.user_word_theme_request_concurrency_call(
         p_word text,
@@ -170,6 +182,27 @@ select extensions.dblink_exec(
     before insert on public.word_themes_wait
     for each row
     execute function public.user_word_theme_request_concurrency_pause();
+
+    create or replace function public.user_word_theme_request_duplicate_pause()
+    returns trigger
+    language plpgsql
+    set search_path = ''
+    as $function$
+    begin
+        if new.word_id = (
+            select registered_word.id
+            from public.words as registered_word
+            where registered_word.word = 'theme-request-duplicate-race'
+        ) then
+            perform pg_catalog.pg_advisory_xact_lock(946023, 2);
+        end if;
+        return new;
+    end;
+    $function$;
+    create trigger user_word_theme_request_duplicate_pause_insert
+    after insert on public.word_themes_wait
+    for each row
+    execute function public.user_word_theme_request_duplicate_pause();
     commit;
     $setup$
 );
@@ -437,6 +470,96 @@ select is(
     'the theme resolution race inserts no pending row'
 );
 
+select extensions.dblink_exec(
+    'user_word_theme_request_setup',
+    'do $lock$ begin perform pg_catalog.pg_advisory_lock(946023, 2); end $lock$;'
+);
+select extensions.dblink_send_query(
+    'user_word_theme_request_apply_a',
+    $$select public.user_word_theme_request_concurrency_call(
+        'theme-request-duplicate-race',
+        '[{"themeCode":"tr-duplicate-race","type":"add"}]'
+    )$$
+);
+
+create temporary table user_word_theme_request_duplicate_observation (
+    request_paused_after_insert boolean not null
+);
+do $synchronize_duplicate$
+declare
+    request_wait_count integer := 0;
+begin
+    for attempt in 1..100 loop
+        select pg_catalog.count(*)::integer into request_wait_count
+        from pg_catalog.pg_locks as held_lock
+        where held_lock.pid = (
+            select connection.pid
+            from user_word_theme_request_connection_pids as connection
+            where connection.connection_name =
+                'user_word_theme_request_apply_a'
+        )
+          and not held_lock.granted;
+        exit when request_wait_count > 0;
+        perform pg_catalog.pg_sleep(0.05);
+    end loop;
+
+    insert into user_word_theme_request_duplicate_observation
+    values (request_wait_count > 0);
+    perform extensions.dblink_exec(
+        'user_word_theme_request_setup',
+        $$insert into public.themes (name, code) values (
+            'Theme Request Duplicate Concurrent', 'tr-duplicate-race'
+        )$$
+    );
+    perform extensions.dblink_exec(
+        'user_word_theme_request_setup',
+        'do $unlock$ begin perform pg_catalog.pg_advisory_unlock(946023, 2); end $unlock$;'
+    );
+end;
+$synchronize_duplicate$;
+
+select ok(
+    (select request_paused_after_insert
+     from user_word_theme_request_duplicate_observation),
+    'the request pauses after queue insertion before duplicate theme creation'
+);
+
+create temporary table user_word_theme_request_duplicate_results (
+    result jsonb not null
+);
+insert into user_word_theme_request_duplicate_results (result)
+select response.result
+from extensions.dblink_get_result(
+    'user_word_theme_request_apply_a', false
+) as response(result jsonb);
+select response.result
+from extensions.dblink_get_result(
+    'user_word_theme_request_apply_a', false
+) as response(result jsonb);
+
+select is(
+    (
+        select result -> 'result'
+        from user_word_theme_request_duplicate_results
+        where result ->> 'status' = 'success'
+    ),
+    '{"word":"theme-request-duplicate-race","changes":[
+       {"themeCode":"tr-duplicate-race","themeName":"Theme Request Duplicate Original","type":"add"}
+     ]}'::jsonb,
+    'a concurrent duplicate code cannot duplicate the stable response item'
+);
+select is(
+    (
+        select pg_catalog.count(*)::integer
+        from public.word_themes_wait as pending_request
+        join public.words as registered_word
+          on registered_word.id = pending_request.word_id
+        where registered_word.word = 'theme-request-duplicate-race'
+    ),
+    1,
+    'the duplicate-code race commits exactly one pending row'
+);
+
 do $disconnect$
 begin
     perform extensions.dblink_disconnect('user_word_theme_request_apply_a');
@@ -450,14 +573,18 @@ select extensions.dblink_exec(
     begin;
     drop trigger user_word_theme_request_concurrency_pause_insert
         on public.word_themes_wait;
+    drop trigger user_word_theme_request_duplicate_pause_insert
+        on public.word_themes_wait;
     drop function public.user_word_theme_request_concurrency_pause();
+    drop function public.user_word_theme_request_duplicate_pause();
     drop function public.user_word_theme_request_concurrency_call(text, jsonb);
     delete from public.word_themes_wait
     where word_id in (
         select id from public.words
         where word in (
             'theme-request-concurrency-fixture',
-            'theme-request-resolution-race'
+            'theme-request-resolution-race',
+            'theme-request-duplicate-race'
         )
     );
     delete from public.word_themes
@@ -465,25 +592,31 @@ select extensions.dblink_exec(
         select id from public.words
         where word in (
             'theme-request-concurrency-fixture',
-            'theme-request-resolution-race'
+            'theme-request-resolution-race',
+            'theme-request-duplicate-race'
         )
     );
     delete from public.words
     where word in (
         'theme-request-concurrency-fixture',
-        'theme-request-resolution-race'
+        'theme-request-resolution-race',
+        'theme-request-duplicate-race'
     );
     delete from public.themes
     where code in (
         'tr-concurrency',
         'tr-resolution-race',
-        'tr-resolution-race-renamed'
+        'tr-resolution-race-renamed',
+        'tr-duplicate-race'
     );
     delete from public.docs_logs
     where word in (
         'theme-request-concurrency-fixture',
-        'theme-request-resolution-race'
+        'theme-request-resolution-race',
+        'theme-request-duplicate-race'
     );
+    alter table public.themes
+        add constraint unique_code unique (code);
     delete from public.docs
     where id in (201, 202)
       and name in (
@@ -512,29 +645,42 @@ select ok(
         select 1 from public.words
         where word in (
             'theme-request-concurrency-fixture',
-            'theme-request-resolution-race'
+            'theme-request-resolution-race',
+            'theme-request-duplicate-race'
         )
     ) and not exists (
         select 1 from public.themes
         where code in (
             'tr-concurrency',
             'tr-resolution-race',
-            'tr-resolution-race-renamed'
+            'tr-resolution-race-renamed',
+            'tr-duplicate-race'
         )
     ) and not exists (
         select 1 from public.docs_logs
         where word in (
             'theme-request-concurrency-fixture',
-            'theme-request-resolution-race'
+            'theme-request-resolution-race',
+            'theme-request-duplicate-race'
         )
     ) and pg_catalog.to_regprocedure(
         'public.user_word_theme_request_concurrency_call(text,jsonb)'
     ) is null and pg_catalog.to_regprocedure(
         'public.user_word_theme_request_concurrency_pause()'
+    ) is null and pg_catalog.to_regprocedure(
+        'public.user_word_theme_request_duplicate_pause()'
     ) is null and not exists (
         select 1 from pg_catalog.pg_trigger
-        where tgname = 'user_word_theme_request_concurrency_pause_insert'
+        where tgname in (
+            'user_word_theme_request_concurrency_pause_insert',
+            'user_word_theme_request_duplicate_pause_insert'
+        )
           and not tgisinternal
+    ) and exists (
+        select 1
+        from pg_catalog.pg_constraint as constraint_row
+        where constraint_row.conrelid = 'public.themes'::pg_catalog.regclass
+          and constraint_row.conname = 'unique_code'
     ),
     'concurrency cleanup leaves no fixtures or synchronization objects'
 );
