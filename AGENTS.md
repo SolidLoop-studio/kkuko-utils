@@ -122,7 +122,7 @@ Authentication uses Google OAuth through Supabase.
 - Do not perform unnecessary refactoring.
 - Do not modify files outside the requested scope.
 - When adding a new feature, add tests whenever reasonably possible.
-- If creating a separate worktree, do not reinstall `node_modules` unnecessarily. Use a symbolic link to the existing `node_modules` directory or use `npm ci`.
+- When creating a separate worktree, symlink the existing `node_modules` only if the lockfile is unchanged, remove only the symlink before deleting the worktree, and use `npm ci` if dependencies differ.
 
 ## Rules for Code Implementation
 
