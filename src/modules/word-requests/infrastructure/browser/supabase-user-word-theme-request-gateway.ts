@@ -124,14 +124,15 @@ const parseResult = (
 
 const mapError = (error: RpcError): ApplicationError => {
     const publicErrorCode = error.message as keyof typeof errorKinds;
+    const databaseCode = hasOwn(error, 'code') ? error.code ?? undefined : undefined;
     if (Object.prototype.hasOwnProperty.call(errorKinds, publicErrorCode)) {
         return {
             kind: errorKinds[publicErrorCode],
             message: errorMessages[publicErrorCode],
-            code: error.code ?? undefined,
+            code: databaseCode,
         };
     }
-    return { ...infrastructureError(), code: error.code ?? undefined };
+    return { ...infrastructureError(), code: databaseCode };
 };
 
 /** 브라우저 주제 변경 요청 RPC와 Application DTO를 연결합니다. */

@@ -104,6 +104,18 @@ describe('SupabaseUserWordThemeRequestGateway', () => {
         }));
     });
 
+    it('does not expose an inherited database error code', async () => {
+        const { gateway, rpc } = createGateway();
+        const inheritedCodeError: { message: string } = Object.create({ code: 'P0001' });
+        inheritedCodeError.message = 'WORD_THEME_REQUEST_UNAUTHORIZED';
+        rpc.mockResolvedValue({ data: null, error: inheritedCodeError });
+
+        await expect(gateway.requestThemeChanges(command)).resolves.toEqual(err({
+            kind: 'unauthorized',
+            message: '인증이 필요합니다.',
+        }));
+    });
+
     it.each([
         ['WORD_THEME_REQUEST_UNAUTHORIZED', 'unauthorized'],
         ['WORD_THEME_REQUEST_INVALID_INPUT', 'validation'],
