@@ -17,9 +17,9 @@ export default function WordSearch() {
     const {
         searchType, setSearchType,
         mode, setMode,
-        results, setResults,
+        results,
         loading,
-        searchPerformed, setSearchPerformed,
+        searchPerformed,
         startLetter, setStartLetter,
         endLetter, setEndLetter,
         mission, setMission,
@@ -39,8 +39,6 @@ export default function WordSearch() {
 
     const handleSearchTypeChange = (type: 'simple' | 'advanced') => {
         setSearchType(type);
-        setSearchPerformed(false);
-        setResults([]);
     };
 
     return (
@@ -119,8 +117,6 @@ export default function WordSearch() {
                 onSelectMode={(m) => {
                     setMode(m);
                     setShowModeModal(false);
-                    setSearchPerformed(false);
-                    setResults([]);
                     if (m === 'kung') {
                         setMinLength(3);
                         setMaxLength(3);

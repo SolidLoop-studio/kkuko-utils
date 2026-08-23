@@ -1,202 +1,265 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { SCM } from '@/src/app/lib/supabaseClient';
-import { advancedQueryType } from '@/src/app/types/type';
-import { GameMode, SearchResult } from '../types';
 
-export const useWordSearch = () => {
+import {
+    useWordCatalogSearch,
+    type AdvancedWordSearchQuery,
+    type WordCatalogSearchService,
+    type WordSearchMode,
+    type WordSearchRequest,
+    type WordThemeSummary,
+} from '@/src/modules/word-catalog';
+
+type SearchType = 'simple' | 'advanced';
+type Manner = '' | 'man' | 'jen' | 'eti';
+
+const parseDisplayLimit = (displayLimit: string): number => (
+    displayLimit === '' || Number.isNaN(Number(displayLimit))
+        ? 100
+        : Number(displayLimit)
+);
+
+const createKoreanSearchQuery = ({
+    mode,
+    startLetter,
+    endLetter,
+    mission,
+    ingjung,
+    manner,
+    duem,
+    minLength,
+    maxLength,
+    sortBy,
+    limit,
+}: {
+    mode: 'kor-start' | 'kor-end';
+    startLetter: string;
+    endLetter: string;
+    mission: string;
+    ingjung: boolean;
+    manner: Manner;
+    duem: boolean;
+    minLength: number;
+    maxLength: number;
+    sortBy: 'abc' | 'length' | 'attack';
+    limit: number;
+}): AdvancedWordSearchQuery => ({
+    mode,
+    start: startLetter.trim() || undefined,
+    end: endLetter.trim() || undefined,
+    mission: mission.trim(),
+    isAcceptedOnly: ingjung,
+    isManner: manner === 'man',
+    isJen: manner === 'jen',
+    isEtiquette: manner === 'eti',
+    isDuemApplied: duem,
+    minimumLength: minLength,
+    maximumLength: maxLength,
+    sortOrder: sortBy,
+    limit,
+});
+
+/** 단어 검색 폼 상태를 제출 기반 word-catalog 조회 요청으로 변환한다. */
+export const useWordSearch = (service?: WordCatalogSearchService) => {
     const searchParams = useSearchParams();
-    const [searchType, setSearchType] = useState<'simple' | 'advanced'>('simple');
-    const [mode, setMode] = useState<GameMode>('kor-start');
-    const [results, setResults] = useState<SearchResult[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [searchPerformed, setSearchPerformed] = useState(false);
+    const [searchTypeState, setSearchTypeState] = useState<SearchType>('simple');
+    const [modeState, setModeState] = useState<WordSearchMode>('kor-start');
+    const [committedRequest, setCommittedRequest] = useState<WordSearchRequest | null>(null);
 
-    // 검색 파라미터
     const [startLetter, setStartLetter] = useState('');
     const [endLetter, setEndLetter] = useState('');
     const [mission, setMission] = useState('');
-    const [minLength, setMinLength] = useState<number>(2);
-    const [maxLength, setMaxLength] = useState<number>(100);
+    const [minLength, setMinLength] = useState(2);
+    const [maxLength, setMaxLength] = useState(100);
     const [sortBy, setSortBy] = useState<'abc' | 'length' | 'attack'>('length');
     const [duem, setDuem] = useState(true);
     const [miniInfo, setMiniInfo] = useState(false);
-    const [manner, setManner] = useState<''|'man' | 'jen' | 'eti'>('man');
+    const [manner, setManner] = useState<Manner>('man');
     const [ingjung, setIngjung] = useState(true);
     const [simpleQuery, setSimpleQuery] = useState('');
-    const [displayLimit, setDisplayLimit] = useState<string>('100');
-    const [selectedTheme, setSelectedTheme] = useState<{id: number, name: string} | null>(null);
-    const [autoSearchTriggered, setAutoSearchTriggered] = useState(false);
+    const [displayLimit, setDisplayLimit] = useState('100');
+    const [selectedTheme, setSelectedTheme] = useState<WordThemeSummary | null>(null);
 
-    // URL 쿼리 파라미터 처리
+    const searchQuery = useWordCatalogSearch(committedRequest, service);
+    const clearSearch = useCallback(() => setCommittedRequest(null), []);
+
+    const setSearchType = useCallback((nextSearchType: SearchType) => {
+        setSearchTypeState(nextSearchType);
+        setCommittedRequest(null);
+    }, []);
+
+    const setMode = useCallback((nextMode: WordSearchMode) => {
+        setModeState(nextMode);
+        setCommittedRequest(null);
+    }, []);
+
+    const handleSimpleSearch = useCallback(() => {
+        setCommittedRequest({ type: 'simple', query: simpleQuery.trim() });
+    }, [simpleQuery]);
+
+    const handleSearch = useCallback(() => {
+        const limit = parseDisplayLimit(displayLimit);
+        let query: AdvancedWordSearchQuery;
+
+        if (modeState === 'kor-start' || modeState === 'kor-end') {
+            query = createKoreanSearchQuery({
+                mode: modeState,
+                startLetter,
+                endLetter,
+                mission,
+                ingjung,
+                manner,
+                duem,
+                minLength,
+                maxLength,
+                sortBy,
+                limit,
+            });
+        } else if (modeState === 'kung') {
+            query = {
+                mode: 'kung',
+                start: startLetter.trim().slice(0, 3) || undefined,
+                end: endLetter.trim().slice(0, 3) || undefined,
+                mission: mission.trim(),
+                isAcceptedOnly: ingjung,
+                isManner: manner === 'man',
+                isJen: manner === 'jen',
+                isEtiquette: manner === 'eti',
+                sortOrder: sortBy,
+                limit,
+            };
+        } else if (modeState === 'hunmin') {
+            query = {
+                mode: 'hunmin',
+                query: simpleQuery.trim(),
+                mission: mission.trim(),
+                limit,
+            };
+        } else {
+            query = {
+                mode: 'jaqi',
+                query: simpleQuery.trim(),
+                themeId: selectedTheme?.id ?? 0,
+                limit,
+            };
+        }
+
+        setCommittedRequest({ type: 'advanced', query });
+    }, [
+        displayLimit,
+        duem,
+        endLetter,
+        ingjung,
+        manner,
+        maxLength,
+        minLength,
+        mission,
+        modeState,
+        selectedTheme,
+        simpleQuery,
+        sortBy,
+        startLetter,
+    ]);
+
     useEffect(() => {
         const modeParam = searchParams.get('mode');
-        const qParam = searchParams.get('q');
-
-        if (modeParam || qParam) {
-            // mode 파라미터 처리
-            let targetMode: GameMode = 'kor-start';
-            if (modeParam === 'f') {
-                targetMode = 'kor-start';
-            } else if (modeParam === 'l') {
-                targetMode = 'kor-end';
-            } else if (modeParam === 'k') {
-                targetMode = 'kung';
-            }
-
-            setMode(targetMode);
-            setSearchType('advanced');
-
-            // q 파라미터 처리
-            if (qParam) {
-                setManner(''); // manner을 빈 문자열로 설정
-
-                if (targetMode === 'kor-start' || targetMode === 'kung') {
-                    setStartLetter(qParam);
-                } else if (targetMode === 'kor-end') {
-                    setEndLetter(qParam);
-                }
-
-                // 쿵쿵따 모드인 경우 길이 설정
-                if (targetMode === 'kung') {
-                    setMinLength(3);
-                    setMaxLength(3);
-                }
-
-                // 자동 검색 트리거
-                setAutoSearchTriggered(true);
-            }
+        const queryParam = searchParams.get('q');
+        if (!modeParam && !queryParam) {
+            return;
         }
+
+        const targetMode: WordSearchMode = modeParam === 'l'
+            ? 'kor-end'
+            : modeParam === 'k'
+                ? 'kung'
+                : 'kor-start';
+        setModeState(targetMode);
+        setSearchTypeState('advanced');
+
+        if (!queryParam) {
+            setCommittedRequest(null);
+            return;
+        }
+
+        const normalizedQuery = queryParam.trim();
+        setManner('');
+        if (targetMode === 'kor-end') {
+            setEndLetter(normalizedQuery);
+        } else {
+            setStartLetter(normalizedQuery);
+        }
+        if (targetMode === 'kung') {
+            setMinLength(3);
+            setMaxLength(3);
+        }
+
+        const query: AdvancedWordSearchQuery = targetMode === 'kung'
+            ? {
+                mode: 'kung',
+                start: normalizedQuery.slice(0, 3) || undefined,
+                end: undefined,
+                mission: '',
+                isAcceptedOnly: true,
+                isManner: false,
+                isJen: false,
+                isEtiquette: false,
+                sortOrder: 'length',
+                limit: 100,
+            }
+            : createKoreanSearchQuery({
+                mode: targetMode,
+                startLetter: targetMode === 'kor-start' ? normalizedQuery : '',
+                endLetter: targetMode === 'kor-end' ? normalizedQuery : '',
+                mission: '',
+                ingjung: true,
+                manner: '',
+                duem: true,
+                minLength: 2,
+                maxLength: 100,
+                sortBy: 'length',
+                limit: 100,
+            });
+        setCommittedRequest({ type: 'advanced', query });
     }, [searchParams]);
 
-    // 자동 검색 실행
-    useEffect(() => {
-        if (autoSearchTriggered) {
-            setAutoSearchTriggered(false);
-            // 약간의 지연을 두어 상태가 모두 업데이트된 후 검색 실행
-            setTimeout(() => {
-                handleSearch();
-            }, 100);
-        }
-    }, [autoSearchTriggered]);
-
-    const handleSearch = async () => {
-        setLoading(true);
-        setSearchPerformed(true);
-        setResults([]);
-
-        try {
-            let query: advancedQueryType;
-
-            if (mode === 'kor-start' || mode === 'kor-end') {
-                if (mode === 'kor-start' && startLetter.trim() === '') return;
-                if (mode === 'kor-end' && endLetter.trim() === '') return;
-                query = {
-                    mode,
-                    start: startLetter?.trim() || undefined,
-                    end: endLetter?.trim() || undefined,
-                    mission,
-                    ingjung,
-                    man: manner === 'man',
-                    jen: manner === 'jen',
-                    eti: manner === 'eti',
-                    duem,
-                    miniInfo,
-                    length_min: minLength,
-                    length_max: maxLength,
-                    sort_by: sortBy,
-                    limit: displayLimit === '' || isNaN(Number(displayLimit)) ? 100 : Number(displayLimit)
-                };
-            } else if (mode === 'kung') {
-                if (startLetter.trim() === '') return;
-                query = {
-                    mode: 'kung',
-                    start: startLetter?.trim().slice(0,3) || undefined,
-                    end: endLetter?.trim().slice(0,3) || undefined,
-                    mission,
-                    ingjung,
-                    man: manner === 'man',
-                    jen: manner === 'jen',
-                    eti: manner === 'eti',
-                    duem,
-                    miniInfo,
-                    length_min: 3,
-                    length_max: 3,
-                    sort_by: sortBy,
-                    limit: displayLimit === '' || isNaN(Number(displayLimit)) ? 100 : Number(displayLimit)
-                };
-            } else if (mode === 'hunmin') {
-                if (simpleQuery.trim() === '' || simpleQuery.trim().length !== 2) return;
-                query = {
-                    mode: 'hunmin',
-                    query: simpleQuery.trim(),
-                    mission,
-                    limit: displayLimit === '' || isNaN(Number(displayLimit)) ? 100 : Number(displayLimit)
-                };
-            } else {
-                if (!selectedTheme) return;
-                query = {
-                    mode: 'jaqi',
-                    query: simpleQuery.trim(),
-                    theme: selectedTheme.id,
-                    limit: displayLimit === '' || isNaN(Number(displayLimit)) ? 100 : Number(displayLimit)
-                };
-            }
-
-            const { data, error } = await SCM.get().wordsByAdvancedQuery(query);
-            if (error) {
-                console.error('검색 오류:', error);
-                return;
-            }
-            setResults(data);
-        } catch (error) {
-            console.error('검색 중 오류 발생:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleSimpleSearch = async () => {
-        setLoading(true);
-        setSearchPerformed(true);
-        setResults([]);
-
-        try {
-            if (simpleQuery.trim() === '') return;
-
-            const { data, error } = await SCM.get().wordsByQuery(simpleQuery.trim());
-            if (error) {
-                console.error('검색 오류:', error);
-                return;
-            }
-            setResults(data.map(word => ({ word, nextWordCount: -1 })));
-        } catch (error) {
-            console.error('검색 중 오류 발생:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     return {
-        searchType, setSearchType,
-        mode, setMode,
-        results, setResults,
-        loading, setLoading,
-        searchPerformed, setSearchPerformed,
-        startLetter, setStartLetter,
-        endLetter, setEndLetter,
-        mission, setMission,
-        minLength, setMinLength,
-        maxLength, setMaxLength,
-        sortBy, setSortBy,
-        duem, setDuem,
-        miniInfo, setMiniInfo,
-        manner, setManner,
-        ingjung, setIngjung,
-        simpleQuery, setSimpleQuery,
-        displayLimit, setDisplayLimit,
-        selectedTheme, setSelectedTheme,
+        searchType: searchTypeState,
+        setSearchType,
+        mode: modeState,
+        setMode,
+        committedRequest,
+        results: searchQuery.data ?? [],
+        loading: searchQuery.isFetching,
+        error: searchQuery.error ?? null,
+        searchPerformed: committedRequest !== null,
+        clearSearch,
+        startLetter,
+        setStartLetter,
+        endLetter,
+        setEndLetter,
+        mission,
+        setMission,
+        minLength,
+        setMinLength,
+        maxLength,
+        setMaxLength,
+        sortBy,
+        setSortBy,
+        duem,
+        setDuem,
+        miniInfo,
+        setMiniInfo,
+        manner,
+        setManner,
+        ingjung,
+        setIngjung,
+        simpleQuery,
+        setSimpleQuery,
+        displayLimit,
+        setDisplayLimit,
+        selectedTheme,
+        setSelectedTheme,
         handleSearch,
-        handleSimpleSearch
+        handleSimpleSearch,
     };
 };

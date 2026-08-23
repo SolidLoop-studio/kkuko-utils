@@ -1,16 +1,14 @@
 import { useState } from 'react';
-import useSWR from 'swr';
 import { X, Loader2 } from 'lucide-react';
-import { SCM } from '@/src/app/lib/supabaseClient';
-import { Theme } from '../types';
+import { useWordThemes, type WordThemeSummary } from '@/src/modules/word-catalog';
 import { disassemble } from 'es-hangul';
 import { filterKoreanText } from '@/src/app/lib/lib';
 
 interface ThemeSelectionModalProps {
     isOpen: boolean;
     onClose: () => void;
-    selectedTheme: { id: number; name: string } | null;
-    onSelectTheme: (theme: { id: number; name: string } | null) => void;
+    selectedTheme: WordThemeSummary | null;
+    onSelectTheme: (theme: WordThemeSummary | null) => void;
 }
 
 export default function ThemeSelectionModal({
@@ -21,14 +19,11 @@ export default function ThemeSelectionModal({
 }: ThemeSelectionModalProps) {
     const [themeSearchQuery, setThemeSearchQuery] = useState('');
 
-    const { data: themes, error: themesError } = useSWR<Theme[]>(
-        isOpen ? 'themes' : null,
-        async () => {
-            const { data, error } = await SCM.get().allThemes();
-            if (error) throw error;
-            return data;
-        }
-    );
+    const {
+        data: themes,
+        error: themesError,
+        isLoading: areThemesLoading,
+    } = useWordThemes(isOpen);
 
     if (!isOpen) return null;
 
@@ -73,7 +68,7 @@ export default function ThemeSelectionModal({
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-6">
-                    {!themes ? (
+                    {areThemesLoading ? (
                         <div className="flex items-center justify-center py-12">
                             <Loader2 className="h-8 w-8 text-purple-500 animate-spin" />
                             <span className="ml-2 text-gray-600 dark:text-gray-300">주제 로딩 중...</span>
@@ -122,7 +117,7 @@ export default function ThemeSelectionModal({
                                                                 name="theme"
                                                                 value={theme.id}
                                                                 checked={selectedTheme?.id === theme.id}
-                                                                onChange={() => onSelectTheme({id: theme.id, name: theme.name})}
+                                                                onChange={() => onSelectTheme(theme)}
                                                                 className="w-4 h-4 text-purple-600 focus:ring-2 focus:ring-purple-500 flex-shrink-0"
                                                             />
                                                             <div className="flex-1 min-w-0">
@@ -153,7 +148,7 @@ export default function ThemeSelectionModal({
                                                                 name="theme"
                                                                 value={theme.id}
                                                                 checked={selectedTheme?.id === theme.id}
-                                                                onChange={() => onSelectTheme({id: theme.id, name: theme.name})}
+                                                                onChange={() => onSelectTheme(theme)}
                                                                 className="w-4 h-4 text-purple-600 focus:ring-2 focus:ring-purple-500 flex-shrink-0"
                                                             />
                                                             <div className="flex-1 min-w-0">
@@ -185,7 +180,7 @@ export default function ThemeSelectionModal({
                                                             name="theme"
                                                             value={theme.id}
                                                             checked={selectedTheme?.id === theme.id}
-                                                            onChange={() => onSelectTheme({id: theme.id, name: theme.name})}
+                                                            onChange={() => onSelectTheme(theme)}
                                                             className="w-4 h-4 text-purple-600 focus:ring-2 focus:ring-purple-500 flex-shrink-0"
                                                         />
                                                         <div className="flex-1 min-w-0">
