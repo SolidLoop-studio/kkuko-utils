@@ -13,6 +13,7 @@ import type { ApplicationError } from '../../../../shared/application/applicatio
 const mockPush = jest.fn();
 const mockNotFound = jest.fn(() => 'not-found');
 const mockAxiosGet = jest.fn();
+const mockWordInfoRender = jest.fn();
 
 jest.mock('next/navigation', () => ({
     useRouter: () => ({ push: mockPush }),
@@ -41,31 +42,34 @@ jest.mock('../../../../app/components/ErrorPage', () => ({
 
 jest.mock('../../../../app/word/search/[query]/WordInfo', () => ({
     __esModule: true,
-    default: ({ wordInfo }: { wordInfo: WordInfoProps }) => (
-        <section aria-label="word detail">
-            <div data-testid="word">{wordInfo.word}</div>
-            <div data-testid="initial">{wordInfo.initial}</div>
-            <div data-testid="length">{wordInfo.length}</div>
-            <div data-testid="status">{wordInfo.status}</div>
-            <div data-testid="chainable">{String(wordInfo.isChainable)}</div>
-            <div data-testid="senior-approved">{String(wordInfo.isSeniorApproved)}</div>
-            <div data-testid="database-id">{wordInfo.dbId}</div>
-            <div data-testid="mission">{JSON.stringify(wordInfo.missionLetter)}</div>
-            <div data-testid="themes">{JSON.stringify(wordInfo.topic)}</div>
-            <div data-testid="documents">{JSON.stringify(wordInfo.documents)}</div>
-            <div data-testid="counts">
-                {wordInfo.goFirstLetterWords},{wordInfo.goLastLetterWords}
-            </div>
-            <div data-testid="requester">
-                {wordInfo.requester_uuid}|{wordInfo.requester}|{wordInfo.requestTime}
-            </div>
-            <div data-testid="connection-pending">{String(wordInfo.isConnectionLoading)}</div>
-            <div data-testid="explanation">{wordInfo.moreExplanation as ReactNode}</div>
-            <button onClick={() => void wordInfo.goFirstLetterWord(['라', '나'])}>previous</button>
-            <button onClick={() => void wordInfo.goLastLetterWord(['다'])}>next</button>
-            <button onClick={wordInfo.reloadWordInfo}>reload</button>
-        </section>
-    ),
+    default: ({ wordInfo }: { wordInfo: WordInfoProps }) => {
+        mockWordInfoRender(wordInfo);
+        return (
+            <section aria-label="word detail">
+                <div data-testid="word">{wordInfo.word}</div>
+                <div data-testid="initial">{wordInfo.initial}</div>
+                <div data-testid="length">{wordInfo.length}</div>
+                <div data-testid="status">{wordInfo.status}</div>
+                <div data-testid="chainable">{String(wordInfo.isChainable)}</div>
+                <div data-testid="senior-approved">{String(wordInfo.isSeniorApproved)}</div>
+                <div data-testid="database-id">{wordInfo.dbId}</div>
+                <div data-testid="mission">{JSON.stringify(wordInfo.missionLetter)}</div>
+                <div data-testid="themes">{JSON.stringify(wordInfo.topic)}</div>
+                <div data-testid="documents">{JSON.stringify(wordInfo.documents)}</div>
+                <div data-testid="counts">
+                    {wordInfo.goFirstLetterWords},{wordInfo.goLastLetterWords}
+                </div>
+                <div data-testid="requester">
+                    {wordInfo.requester_uuid}|{wordInfo.requester}|{wordInfo.requestTime}
+                </div>
+                <div data-testid="connection-pending">{String(wordInfo.isConnectionLoading)}</div>
+                <div data-testid="explanation">{wordInfo.moreExplanation as ReactNode}</div>
+                <button onClick={() => void wordInfo.goFirstLetterWord(['라', '나'])}>previous</button>
+                <button onClick={() => void wordInfo.goLastLetterWord(['다'])}>next</button>
+                <button onClick={wordInfo.reloadWordInfo}>reload</button>
+            </section>
+        );
+    },
 }));
 
 const refetch = jest.fn();
@@ -214,6 +218,33 @@ describe('WordInfoPage query orchestration', () => {
         const link = await screen.findByRole('link', { name: '해당 단어가 끄코위키에 있습니다.' });
         expect(link).toHaveAttribute('href', 'https://kkukowiki.kr/w/가나다가');
         expect(mockAxiosGet).toHaveBeenCalledWith('/api/get_kkukowiki?title=가나다가');
+    });
+
+    it('never renders a previous KkukoWiki link during word or approval-status transitions', async () => {
+        mockAxiosGet.mockResolvedValue({ status: 200 });
+        const view = render(<WordInfoPage query="가나다가" />);
+        await screen.findByRole('link', { name: '해당 단어가 끄코위키에 있습니다.' });
+
+        const nextApprovedDetail = { ...detailFixture, word: '나비' };
+        mockWordInfoRender.mockClear();
+        setDetailQuery({ data: nextApprovedDetail });
+        view.rerender(<WordInfoPage query="나비" />);
+
+        const firstWordTransition = mockWordInfoRender.mock.calls[0][0] as WordInfoProps;
+        expect(firstWordTransition.moreExplanation).toBeUndefined();
+        await waitFor(() => expect(screen.getByRole('link')).toHaveAttribute(
+            'href',
+            'https://kkukowiki.kr/w/나비',
+        ));
+
+        mockWordInfoRender.mockClear();
+        setDetailQuery({
+            data: { ...nextApprovedDetail, status: 'pending-addition' },
+        });
+        view.rerender(<WordInfoPage query="나비" />);
+
+        const firstStatusTransition = mockWordInfoRender.mock.calls[0][0] as WordInfoProps;
+        expect(firstStatusTransition.moreExplanation).toBeUndefined();
     });
 
     it('ignores failed KkukoWiki checks without replacing the word detail', async () => {

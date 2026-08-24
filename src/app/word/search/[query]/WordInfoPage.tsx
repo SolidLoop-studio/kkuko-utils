@@ -63,18 +63,24 @@ export default function WordInfoPage({ query }: { query: string }) {
     const router = useRouter();
     const detailQuery = useWordDetail(query);
     const connectedWord = useRandomConnectedWord();
-    const [kkukoWikiUrl, setKkukoWikiUrl] = useState<string>();
+    const [kkukoWikiLink, setKkukoWikiLink] = useState<{
+        word: string;
+        url: string;
+    }>();
     const detail = detailQuery.data;
 
     useEffect(() => {
-        setKkukoWikiUrl(undefined);
+        setKkukoWikiLink(undefined);
         if (!detail || detail.status === 'pending-addition') return;
 
         let isCurrentWord = true;
         void axios.get(`/api/get_kkukowiki?title=${detail.word}`)
             .then((response) => {
                 if (isCurrentWord && response.status === 200) {
-                    setKkukoWikiUrl(`https://kkukowiki.kr/w/${detail.word}`);
+                    setKkukoWikiLink({
+                        word: detail.word,
+                        url: `https://kkukowiki.kr/w/${detail.word}`,
+                    });
                 }
             })
             .catch(() => undefined);
@@ -89,6 +95,11 @@ export default function WordInfoPage({ query }: { query: string }) {
     if (detailQuery.error) return <ErrorPage message={detailQuery.error.message} />;
     if (connectedWord.error) return <ErrorPage message={connectedWord.error.message} />;
     if (!detail) return null;
+
+    const kkukoWikiUrl = detail.status !== 'pending-addition'
+        && kkukoWikiLink?.word === detail.word
+        ? kkukoWikiLink.url
+        : undefined;
 
     const navigateToConnectedWord = async (
         direction: WordConnectionDirection,
