@@ -21,6 +21,7 @@ export type {
     WordDownloadSource,
     WordDownloadStats,
 } from './application/word-download-types';
+export type { WordStatisticEntry, WordStatistics } from './application/word-statistics-types';
 export { wordCatalogQueryKeys } from './presentation/word-catalog-query-keys';
 export {
     useWordCatalogSearch,
@@ -34,6 +35,10 @@ export {
     useWordDownload,
     type WordDownloadService,
 } from './presentation/use-word-download';
+export {
+    useWordStatistics,
+    type WordStatisticsService,
+} from './presentation/use-word-statistics';
 export { useRandomConnectedWord } from './presentation/use-random-connected-word';
 export { useWordSuggestions } from './presentation/use-word-suggestions';
 export { useWordThemes } from './presentation/use-word-themes';

@@ -17,5 +17,6 @@ export const wordCatalogQueryKeys = {
         'download',
         filter,
     ] as const,
+    statistics: () => [...wordCatalogQueryKeys.all, 'statistics'] as const,
     themes: () => [...wordCatalogQueryKeys.all, 'themes'] as const,
 };
