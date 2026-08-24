@@ -177,8 +177,9 @@ const createWordInfo = (
     topic: { ok: ['지명'], waitAdd: [], waitDel: [] },
     isChainable: true,
     isSeniorApproved: true,
-    goFirstLetterWords: () => new Promise<number>(() => undefined),
-    goLastLetterWords: () => new Promise<number>(() => undefined),
+    goFirstLetterWords: 4,
+    goLastLetterWords: 7,
+    isConnectionLoading: false,
     status: 'ok',
     dbId: 23,
     documents: [],
@@ -240,6 +241,28 @@ beforeEach(() => {
 });
 
 describe('WordInfo mutations', () => {
+    it('renders connection counts and disables both connections while lookup is pending', () => {
+        const wordInfo = createWordInfo();
+        const view = renderWordInfo(wordInfo);
+
+        const previousButton = screen.getByRole('button', { name: /\(4\)/ });
+        const nextButton = screen.getByRole('button', { name: /\(7\)/ });
+        expect(previousButton).toBeEnabled();
+        expect(nextButton).toBeEnabled();
+
+        view.rerender(
+            <WordInfo
+                wordInfo={{
+                    ...wordInfo,
+                    isConnectionLoading: true,
+                }}
+            />,
+        );
+
+        expect(screen.getByRole('button', { name: /\(4\)/ })).toBeDisabled();
+        expect(screen.getByRole('button', { name: /\(7\)/ })).toBeDisabled();
+    });
+
     it('routes an r4 registered-word deletion through a deletion request', async () => {
         currentUser = { uuid: 'r4-user', role: 'r4' };
         renderWordInfo();

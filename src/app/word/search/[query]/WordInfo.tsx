@@ -34,8 +34,9 @@ export interface WordInfoProps {
     };
     isChainable: boolean;
     isSeniorApproved: boolean;
-    goFirstLetterWords: () => Promise<number>;
-    goLastLetterWords: () => Promise<number>;
+    goFirstLetterWords: number;
+    goLastLetterWords: number;
+    isConnectionLoading: boolean;
     status: "ok" | "추가요청" | "삭제요청";
     dbId: number;
     documents: { doc_id: number; doc_name: string }[];
@@ -74,8 +75,8 @@ const WordInfo = ({ wordInfo }: { wordInfo: WordInfoProps }) => {
     const router = useRouter();
     const fir1 = reverDuemLaw(wordInfo.word[0]);
     const las1 = [DuemRaw(wordInfo.word[wordInfo.word.length - 1])];
-    const [goFirstLetterWords, setGoFirstLetterWords] = useState<number | null>(null);
-    const [goLastLetterWords, setGoLastLetterWords] = useState<number | null>(null);
+    const goFirstLetterWords = wordInfo.goFirstLetterWords;
+    const goLastLetterWords = wordInfo.goLastLetterWords;
 
     const makeError = (error: ApplicationError, inputValue: string) => {
         setErrorModalView({
@@ -85,19 +86,6 @@ const WordInfo = ({ wordInfo }: { wordInfo: WordInfoProps }) => {
             inputValue,
         });
     }
-
-    useEffect(()=>{
-        const gf = async () => {
-            const s = await wordInfo.goFirstLetterWords();
-            setGoFirstLetterWords(s)
-        }
-        const gl = async () => {
-            const s = await wordInfo.goLastLetterWords();
-            setGoLastLetterWords(s);
-        }
-        gf();
-        gl();
-    },[])
 
     // 상태에 따른 스타일 설정
     const getStatusBadge = () => {
@@ -317,17 +305,14 @@ const WordInfo = ({ wordInfo }: { wordInfo: WordInfoProps }) => {
                 <Card className="mb-6 shadow-md border-none overflow-hidden dark:bg-gray-800">
                     <CardContent className="py-4 flex items-center justify-center gap-6">
                         {/* 첫 글자로 시작하는 단어 버튼 */}
-                        {goFirstLetterWords===null ? (
-                            <div className="flex items-center gap-1 text-red-400 border border-red-200 rounded-md px-3 py-2 dark:text-red-300 dark:border-red-700">
-                                <Loader2 size={16} className="animate-spin" />
-                                <span className="font-bold text-sm">로드중</span>
-                            </div>
-                        ) : (goFirstLetterWords > 0 ? (
+                        {goFirstLetterWords > 0 ? (
                             <Button
                                 variant="outline"
                                 className="flex items-center gap-1 text-green-600 border-green-300 hover:bg-green-50 dark:text-green-400 dark:border-green-700 dark:hover:bg-green-900"
+                                disabled={wordInfo.isConnectionLoading}
                                 onClick={()=>{wordInfo.goFirstLetterWord(fir1)}}
                             >
+                                {wordInfo.isConnectionLoading && <Loader2 size={16} className="animate-spin" />}
                                 <span className="font-bold">&lt;{wordInfo.word[0]}</span>
                                 <span className="text-sm ml-1">({goFirstLetterWords})</span>
                             </Button>
@@ -336,7 +321,7 @@ const WordInfo = ({ wordInfo }: { wordInfo: WordInfoProps }) => {
                                 <AlertCircle size={16} />
                                 <span className="font-bold">&lt;{wordInfo.word[0]}</span>
                             </div>
-                        ))}
+                        )}
 
                         {/* 연결 표시 */}
                         <div className="flex items-center">
@@ -344,17 +329,14 @@ const WordInfo = ({ wordInfo }: { wordInfo: WordInfoProps }) => {
                         </div>
 
                         {/* 마지막 글자로 끝나는 단어 버튼 */}
-                        {goLastLetterWords === null ? (
-                            <div className="flex items-center gap-1 text-red-400 border border-red-200 rounded-md px-3 py-2 dark:text-red-300 dark:border-red-700">
-                                <Loader2 size={16} className="animate-spin" />
-                                <span className="font-bold text-sm">로드중</span>
-                            </div>
-                        ) : goLastLetterWords > 0 ? (
+                        {goLastLetterWords > 0 ? (
                             <Button
                                 variant="outline"
                                 className="flex items-center gap-1 text-blue-600 border-blue-300 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-700 dark:hover:bg-blue-900"
+                                disabled={wordInfo.isConnectionLoading}
                                 onClick={()=>{wordInfo.goLastLetterWord(las1)}}
                             >
+                                {wordInfo.isConnectionLoading && <Loader2 size={16} className="animate-spin" />}
                                 <span className="font-bold">{wordInfo.word[wordInfo.word.length - 1]}&gt;</span>
                                 <span className="text-sm ml-1">({goLastLetterWords})</span>
                             </Button>
