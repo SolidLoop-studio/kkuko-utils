@@ -13,6 +13,14 @@ export type {
     WordDetailDocument,
     WordDetailStatus,
 } from './application/word-detail-types';
+export type {
+    WordDownloadData,
+    WordDownloadFilter,
+    WordDownloadPendingRequest,
+    WordDownloadRegisteredWord,
+    WordDownloadSource,
+    WordDownloadStats,
+} from './application/word-download-types';
 export { wordCatalogQueryKeys } from './presentation/word-catalog-query-keys';
 export {
     useWordCatalogSearch,
