@@ -3,10 +3,11 @@ jest.mock('../../../../../shared/infrastructure/supabase/browser-client', () => 
 }));
 
 import { SearchWordsService } from '@/src/modules/word-catalog/application/search-words';
+import { GetWordDetailService } from '@/src/modules/word-catalog/application/get-word-detail';
 import { createBrowserWordCatalogServices } from '@/src/modules/word-catalog/infrastructure/browser/browser-word-catalog-services';
 
 describe('browser word catalog services', () => {
-    it('creates fresh word-search services wired to the browser Supabase client', async () => {
+    it('creates fresh word catalog services wired to the browser Supabase client', async () => {
         const { browserSupabaseClient } = jest.requireMock(
             '../../../../../shared/infrastructure/supabase/browser-client',
         ) as { browserSupabaseClient: { from: jest.Mock; rpc: jest.Mock } };
@@ -27,6 +28,9 @@ describe('browser word catalog services', () => {
         expect(first.searchWordsService).toBeInstanceOf(SearchWordsService);
         expect(second.searchWordsService).toBeInstanceOf(SearchWordsService);
         expect(first.searchWordsService).not.toBe(second.searchWordsService);
+        expect(first.wordDetailService).toBeInstanceOf(GetWordDetailService);
+        expect(second.wordDetailService).toBeInstanceOf(GetWordDetailService);
+        expect(first.wordDetailService).not.toBe(second.wordDetailService);
         await expect(first.searchWordsService.suggest(' 가 ')).resolves.toEqual({
             ok: true,
             value: ['가나', '가나다'],

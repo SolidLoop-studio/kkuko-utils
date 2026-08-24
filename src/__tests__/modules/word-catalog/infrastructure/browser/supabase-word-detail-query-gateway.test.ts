@@ -235,6 +235,73 @@ describe('SupabaseWordDetailQueryGateway', () => {
             .resolves.toEqual(ok(null));
     });
 
+    it('returns an approved previous connected word without querying pending words', async () => {
+        const { client } = createQueryClient();
+        client.rpc.mockResolvedValueOnce(response([{ word: '나비' }]));
+
+        await expect(new SupabaseWordDetailQueryGateway(client).findRandomConnectedWord({
+            direction: 'previous',
+            letters: ['나', '라'],
+        })).resolves.toEqual(ok('나비'));
+
+        expect(client.rpc).toHaveBeenCalledTimes(1);
+        expect(client.rpc).toHaveBeenCalledWith('random_word_ff', { fir1: ['나', '라'] });
+    });
+
+    it('falls back to a pending next connected word when no approved word is available', async () => {
+        const { client } = createQueryClient();
+        client.rpc
+            .mockResolvedValueOnce(response([]))
+            .mockResolvedValueOnce(response([{ word: '비누' }]));
+
+        await expect(new SupabaseWordDetailQueryGateway(client).findRandomConnectedWord({
+            direction: 'next',
+            letters: ['비'],
+        })).resolves.toEqual(ok('비누'));
+
+        expect(client.rpc.mock.calls).toEqual([
+            ['random_word_ll', { fir1: ['비'] }],
+            ['random_wait_word_ll', { prefixes: ['비'] }],
+        ]);
+    });
+
+    it('returns null when neither approved nor pending connected words are available', async () => {
+        const { client } = createQueryClient();
+        client.rpc
+            .mockResolvedValueOnce(response([]))
+            .mockResolvedValueOnce(response([]));
+
+        await expect(new SupabaseWordDetailQueryGateway(client).findRandomConnectedWord({
+            direction: 'previous',
+            letters: ['나'],
+        })).resolves.toEqual(ok(null));
+    });
+
+    it('returns the stable infrastructure error for malformed connected-word rows', async () => {
+        const { client } = createQueryClient();
+        client.rpc.mockResolvedValueOnce(response([{ word: '비누' }, { word: ' ' }]));
+
+        await expect(new SupabaseWordDetailQueryGateway(client).findRandomConnectedWord({
+            direction: 'next',
+            letters: ['비'],
+        })).resolves.toEqual(err(coreError));
+    });
+
+    it.each([
+        ['the approved connected-word RPC', [response([], { message: 'private' })]],
+        ['the pending connected-word RPC', [response([]), response([], { message: 'private' })]],
+    ])('returns the stable infrastructure error when %s fails', async (_description, rpcResponses: QueryResponse[]) => {
+        const { client } = createQueryClient();
+        for (const rpcResponse of rpcResponses) {
+            client.rpc.mockResolvedValueOnce(rpcResponse);
+        }
+
+        await expect(new SupabaseWordDetailQueryGateway(client).findRandomConnectedWord({
+            direction: 'previous',
+            letters: ['나'],
+        })).resolves.toEqual(err(coreError));
+    });
+
     it.each([
         ['a core query error', () => createQueryClient({ words: [response(null, { message: 'private' })] }).client],
         ['a malformed approved word', () => createQueryClient({ words: [response({ id: '7', word: '나비' })] }).client],

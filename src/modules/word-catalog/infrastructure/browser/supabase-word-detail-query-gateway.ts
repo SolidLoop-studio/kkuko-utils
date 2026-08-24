@@ -3,7 +3,7 @@ import type { ApplicationError } from '@/src/shared/application/application-erro
 import { err, ok, type Result } from '@/src/shared/application/result';
 import { browserSupabaseClient } from '@/src/shared/infrastructure/supabase/browser-client';
 import type { WordDetailQueryGateway } from '../../application/word-detail-ports';
-import type { WordDetail } from '../../application/word-detail-types';
+import type { FindRandomConnectedWordInput, WordDetail } from '../../application/word-detail-types';
 
 type QueryResponse = { data: unknown; error: unknown; count?: number | null };
 
@@ -83,6 +83,15 @@ const parseMaybeSingle = (response: unknown): Record<string, unknown> | null | u
 const parseRows = (response: unknown): unknown[] | null => {
     const parsed = parseResponse(response);
     return parsed !== null && Array.isArray(parsed.data) ? parsed.data : null;
+};
+
+const parseRandomWord = (rows: unknown[]): string | null | undefined => {
+    let firstWord: string | null = null;
+    for (const row of rows) {
+        if (!isRecord(row) || !isNonBlankString(row.word)) return undefined;
+        firstWord ??= row.word;
+    }
+    return firstWord;
 };
 
 const parseRequester = (
@@ -192,7 +201,7 @@ const parseCountRows = (rows: unknown[]): number | null => {
 };
 
 /** Supabase 단어·대기 요청·문서 데이터를 단어 상세 조회 DTO로 투영한다. */
-export class SupabaseWordDetailQueryGateway implements Pick<WordDetailQueryGateway, 'findDetail'> {
+export class SupabaseWordDetailQueryGateway implements WordDetailQueryGateway {
     constructor(
         private readonly client: WordDetailQueryClient = browserSupabaseClient as unknown as WordDetailQueryClient,
     ) {}
@@ -226,6 +235,26 @@ export class SupabaseWordDetailQueryGateway implements Pick<WordDetailQueryGatew
                 return await this.projectApproved(approved, pending);
             }
             return await this.projectPendingAddition(pending!);
+        } catch {
+            return err(infrastructureError());
+        }
+    }
+
+    async findRandomConnectedWord(input: FindRandomConnectedWordInput): Promise<Result<string | null>> {
+        const names = input.direction === 'previous'
+            ? { approved: 'random_word_ff', pending: 'random_wait_word_ff' }
+            : { approved: 'random_word_ll', pending: 'random_wait_word_ll' };
+        try {
+            const approvedRows = parseRows(await this.client.rpc(names.approved, { fir1: input.letters }));
+            if (approvedRows === null) return err(infrastructureError());
+            const approvedWord = parseRandomWord(approvedRows);
+            if (approvedWord === undefined) return err(infrastructureError());
+            if (approvedWord !== null) return ok(approvedWord);
+
+            const pendingRows = parseRows(await this.client.rpc(names.pending, { prefixes: input.letters }));
+            if (pendingRows === null) return err(infrastructureError());
+            const pendingWord = parseRandomWord(pendingRows);
+            return pendingWord === undefined ? err(infrastructureError()) : ok(pendingWord);
         } catch {
             return err(infrastructureError());
         }
