@@ -223,9 +223,9 @@ export class SupabaseWordDetailQueryGateway implements Pick<WordDetailQueryGatew
             }
 
             if (approved !== null) {
-                return this.projectApproved(approved, pending);
+                return await this.projectApproved(approved, pending);
             }
-            return this.projectPendingAddition(pending!);
+            return await this.projectPendingAddition(pending!);
         } catch {
             return err(infrastructureError());
         }
@@ -357,10 +357,10 @@ export class SupabaseWordDetailQueryGateway implements Pick<WordDetailQueryGatew
             const rows = parseRows(countRows);
             const currentCount = rows === null ? null : parseCountRows(rows);
             const pending = parseResponse(pendingResponse);
-            if (currentCount === null || pending === null || !isNonNegativeSafeInteger(pending.count ?? 0)) {
+            if (currentCount === null || pending === null || !isNonNegativeSafeInteger(pending.count)) {
                 return 0;
             }
-            return currentCount + (pending.count ?? 0);
+            return currentCount + pending.count;
         } catch {
             return 0;
         }
@@ -377,10 +377,10 @@ export class SupabaseWordDetailQueryGateway implements Pick<WordDetailQueryGatew
             const rows = parseRows(countRows);
             const currentCount = rows === null ? null : parseCountRows(rows);
             const pending = parseResponse(pendingResponse);
-            if (currentCount === null || pending === null || !isNonNegativeSafeInteger(pending.count ?? 0)) {
+            if (currentCount === null || pending === null || !isNonNegativeSafeInteger(pending.count)) {
                 return 0;
             }
-            return currentCount + (pending.count ?? 0);
+            return currentCount + pending.count;
         } catch {
             return 0;
         }

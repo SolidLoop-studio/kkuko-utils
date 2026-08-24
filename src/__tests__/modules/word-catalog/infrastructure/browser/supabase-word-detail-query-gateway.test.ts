@@ -13,6 +13,8 @@ type QueryResponse = {
     count?: number | null;
 };
 
+type QueryResult = QueryResponse | Error;
+
 type QueryOperation = {
     method: 'from' | 'select' | 'eq' | 'in' | 'or' | 'maybeSingle';
     table?: string;
@@ -22,7 +24,7 @@ type QueryOperation = {
 type Fixture = Partial<Record<
     'words' | 'wait_words' | 'word_themes' | 'word_themes_wait' | 'wait_word_themes'
     | 'docs' | 'word_last_letter_counts' | 'word_first_letter_counts',
-    QueryResponse[]
+    QueryResult[]
 >>;
 
 const response = (data: unknown, error: { message: string } | null = null, count?: number | null): QueryResponse => ({
@@ -39,7 +41,7 @@ const coreError: ApplicationError = {
 
 class FakeQuery implements PromiseLike<QueryResponse> {
     constructor(
-        private readonly queryResponse: QueryResponse,
+        private readonly queryResult: QueryResult,
         private readonly table: string,
         private readonly operations: QueryOperation[],
     ) {}
@@ -66,19 +68,25 @@ class FakeQuery implements PromiseLike<QueryResponse> {
 
     maybeSingle(): Promise<QueryResponse> {
         this.operations.push({ method: 'maybeSingle', table: this.table, args: [] });
-        return Promise.resolve(this.queryResponse);
+        return this.resolve();
     }
 
     then<TResult1 = QueryResponse, TResult2 = never>(
         onfulfilled?: ((value: QueryResponse) => TResult1 | PromiseLike<TResult1>) | null,
         onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
     ): PromiseLike<TResult1 | TResult2> {
-        return Promise.resolve(this.queryResponse).then(onfulfilled, onrejected);
+        return this.resolve().then(onfulfilled, onrejected);
+    }
+
+    private resolve(): Promise<QueryResponse> {
+        return this.queryResult instanceof Error
+            ? Promise.reject(this.queryResult)
+            : Promise.resolve(this.queryResult);
     }
 }
 
 const createQueryClient = (fixture: Fixture = {}) => {
-    const defaults: Record<string, QueryResponse[]> = {
+    const defaults: Record<string, QueryResult[]> = {
         words: [response(null)],
         wait_words: [response(null), response(null, null, 0), response(null, null, 0)],
         word_themes: [response([])],
@@ -245,6 +253,15 @@ describe('SupabaseWordDetailQueryGateway', () => {
             .resolves.toEqual(err(coreError));
     });
 
+    it('returns the stable infrastructure error when a follow-up theme query rejects', async () => {
+        const fixture = registeredFixture();
+        fixture.word_themes = [new Error('network failure')];
+        const { client } = createQueryClient(fixture);
+
+        await expect(new SupabaseWordDetailQueryGateway(client).findDetail('나비'))
+            .resolves.toEqual(err(coreError));
+    });
+
     it.each([
         ['previous', (fixture: Fixture) => {
             fixture.word_last_letter_counts = [response([], { message: 'count failure' })];
@@ -260,6 +277,31 @@ describe('SupabaseWordDetailQueryGateway', () => {
         const result = await new SupabaseWordDetailQueryGateway(client).findDetail('나비');
 
         expect(result).toEqual(ok(expect.objectContaining(
+            direction === 'previous'
+                ? { previousWordCount: 0, nextWordCount: 5 }
+                : { previousWordCount: 8, nextWordCount: 0 },
+        )));
+    });
+
+    it.each([
+        ['previous', 'missing', (fixture: Fixture) => {
+            fixture.wait_words = [response(null), response(null), response(null, null, 1)];
+        }],
+        ['previous', 'null', (fixture: Fixture) => {
+            fixture.wait_words = [response(null), response(null, null, null), response(null, null, 1)];
+        }],
+        ['next', 'missing', (fixture: Fixture) => {
+            fixture.wait_words = [response(null), response(null, null, 1), response(null)];
+        }],
+        ['next', 'null', (fixture: Fixture) => {
+            fixture.wait_words = [response(null), response(null, null, 1), response(null, null, null)];
+        }],
+    ])('degrades the %s count when the exact pending count is %s', async (direction, _kind, breakDirection) => {
+        const fixture = registeredFixture();
+        breakDirection(fixture);
+        const { client } = createQueryClient(fixture);
+
+        await expect(new SupabaseWordDetailQueryGateway(client).findDetail('나비')).resolves.toEqual(ok(expect.objectContaining(
             direction === 'previous'
                 ? { previousWordCount: 0, nextWordCount: 5 }
                 : { previousWordCount: 8, nextWordCount: 0 },
