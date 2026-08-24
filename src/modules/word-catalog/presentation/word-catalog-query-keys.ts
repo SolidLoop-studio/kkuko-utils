@@ -8,5 +8,8 @@ export const wordCatalogQueryKeys = {
     suggestions: (query: string) => (
         [...wordCatalogQueryKeys.all, 'suggestions', query] as const
     ),
+    detail: (word: string) => (
+        [...wordCatalogQueryKeys.all, 'detail', word] as const
+    ),
     themes: () => [...wordCatalogQueryKeys.all, 'themes'] as const,
 };
