@@ -27,6 +27,7 @@ const createKoreanSearchQuery = ({
     ingjung,
     manner,
     duem,
+    miniInfo,
     minLength,
     maxLength,
     sortBy,
@@ -39,6 +40,7 @@ const createKoreanSearchQuery = ({
     ingjung: boolean;
     manner: Manner;
     duem: boolean;
+    miniInfo: boolean;
     minLength: number;
     maxLength: number;
     sortBy: 'abc' | 'length' | 'attack';
@@ -52,6 +54,7 @@ const createKoreanSearchQuery = ({
     isManner: manner === 'man',
     isJen: manner === 'jen',
     isEtiquette: manner === 'eti',
+    hasMiniInfo: miniInfo,
     isDuemApplied: duem,
     minimumLength: minLength,
     maximumLength: maxLength,
@@ -110,6 +113,7 @@ export const useWordSearch = (service?: WordCatalogSearchService) => {
                 ingjung,
                 manner,
                 duem,
+                miniInfo,
                 minLength,
                 maxLength,
                 sortBy,
@@ -125,6 +129,7 @@ export const useWordSearch = (service?: WordCatalogSearchService) => {
                 isManner: manner === 'man',
                 isJen: manner === 'jen',
                 isEtiquette: manner === 'eti',
+                hasMiniInfo: miniInfo,
                 sortOrder: sortBy,
                 limit,
             };
@@ -153,6 +158,7 @@ export const useWordSearch = (service?: WordCatalogSearchService) => {
         manner,
         maxLength,
         minLength,
+        miniInfo,
         mission,
         modeState,
         selectedTheme,
@@ -203,6 +209,7 @@ export const useWordSearch = (service?: WordCatalogSearchService) => {
                 isManner: false,
                 isJen: false,
                 isEtiquette: false,
+                hasMiniInfo: false,
                 sortOrder: 'length',
                 limit: 100,
             }
@@ -214,6 +221,7 @@ export const useWordSearch = (service?: WordCatalogSearchService) => {
                 ingjung: true,
                 manner: '',
                 duem: true,
+                miniInfo: false,
                 minLength: 2,
                 maxLength: 100,
                 sortBy: 'length',

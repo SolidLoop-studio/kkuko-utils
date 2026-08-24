@@ -37,6 +37,7 @@ const koreanStartQuery: AdvancedWordSearchQuery = {
     isManner: false,
     isJen: true,
     isEtiquette: false,
+    hasMiniInfo: true,
     isDuemApplied: true,
     minimumLength: 2,
     maximumLength: 5,
@@ -58,6 +59,7 @@ const kungQuery: AdvancedWordSearchQuery = {
     isManner: true,
     isJen: false,
     isEtiquette: true,
+    hasMiniInfo: false,
     limit: -1,
     sortOrder: 'length',
 };

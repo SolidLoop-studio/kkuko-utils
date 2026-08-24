@@ -10,6 +10,7 @@ interface KoreanWordSearchOptions {
     isManner: boolean;
     isJen: boolean;
     isEtiquette: boolean;
+    hasMiniInfo: boolean;
     limit: number;
     sortOrder: WordSearchSortOrder;
 }

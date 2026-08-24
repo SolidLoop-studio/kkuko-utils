@@ -55,6 +55,7 @@ describe('GET /api/words/search', () => {
                 isJen: true,
                 isEtiquette: false,
                 isDuemApplied: false,
+                hasMiniInfo: true,
                 minimumLength: 3,
                 maximumLength: 7,
                 sortOrder: 'attack',
@@ -67,6 +68,19 @@ describe('GET /api/words/search', () => {
 
     it('returns the existing start-letter validation message without calling the service', async () => {
         const response = await GET(createRequest('mode=kor-start'));
+
+        expect(response.status).toBe(400);
+        await expect(response.json()).resolves.toEqual({ error: '시작 초성이 필요합니다.' });
+        expect(mockSearch).not.toHaveBeenCalled();
+    });
+
+    it('returns the existing start-letter validation message for whitespace-only input', async () => {
+        mockSearch.mockResolvedValue({
+            ok: false,
+            error: { kind: 'validation', field: 'start', message: '시작 글자가 필요합니다.' },
+        });
+
+        const response = await GET(createRequest('mode=kor-start&q=%20%20%20'));
 
         expect(response.status).toBe(400);
         await expect(response.json()).resolves.toEqual({ error: '시작 초성이 필요합니다.' });

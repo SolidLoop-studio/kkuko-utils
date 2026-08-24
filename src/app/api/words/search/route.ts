@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     const maximumLength = parseInt(searchParams.get('maxLength') || '100');
     const sortOrder = (searchParams.get('sortBy') || 'length') as 'abc' | 'length' | 'attack';
     const isDuemApplied = searchParams.get('duem') !== 'false';
+    const hasMiniInfo = searchParams.get('miniInfo') === 'true';
     const mannerMode = searchParams.get('manner') || 'man';
     const isAcceptedOnly = searchParams.get('ingjung') !== 'false';
     const displayLimit = parseInt(searchParams.get('limit') || '100');
@@ -22,19 +23,22 @@ export async function GET(request: NextRequest) {
     if (gameMode === 'kor-start' || gameMode === 'kor-end') {
         const start = gameMode === 'kor-start' ? searchQuery : searchParams.get('start') || undefined;
         const end = gameMode === 'kor-end' ? searchQuery : searchParams.get('start') || undefined;
+        const normalizedStart = start?.trim();
+        const normalizedEnd = end?.trim();
 
-        if (gameMode === 'kor-start' && !start) return handleErrorResponse('시작 초성이 필요합니다.');
-        if (gameMode === 'kor-end' && !end) return handleErrorResponse('끝 초성이 필요합니다.');
+        if (gameMode === 'kor-start' && !normalizedStart) return handleErrorResponse('시작 초성이 필요합니다.');
+        if (gameMode === 'kor-end' && !normalizedEnd) return handleErrorResponse('끝 초성이 필요합니다.');
 
         query = {
             mode: gameMode,
-            start: start?.trim(),
-            end: end?.trim(),
+            start: normalizedStart,
+            end: normalizedEnd,
             mission: mission.trim(),
             isAcceptedOnly,
             isManner: mannerMode === 'man',
             isJen: mannerMode === 'jen',
             isEtiquette: mannerMode === 'eti',
+            hasMiniInfo,
             isDuemApplied,
             minimumLength,
             maximumLength,
@@ -52,6 +56,7 @@ export async function GET(request: NextRequest) {
             isManner: mannerMode === 'man',
             isJen: mannerMode === 'jen',
             isEtiquette: mannerMode === 'eti',
+            hasMiniInfo,
             sortOrder,
             limit,
         };
