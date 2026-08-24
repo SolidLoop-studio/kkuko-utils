@@ -39,7 +39,7 @@ describe('GET /api/words/search', () => {
 
     it('maps a populated kor-start request to an advanced word search and returns its results', async () => {
         const response = await GET(createRequest(
-            'mode=kor-start&q=%20%EA%B0%80%20&start=%20%EB%82%98%20&mission=%20%EB%8B%A4%20'
+            'mode=kor-start&q=%20%EA%B0%80%20&end=%20%EB%82%98%20&mission=%20%EB%8B%A4%20'
             + '&minLength=3&maxLength=7&sortBy=attack&duem=false&miniInfo=true&manner=jen&ingjung=false&limit=25&themeId=99',
         ));
 
@@ -64,6 +64,31 @@ describe('GET /api/words/search', () => {
         });
         expect(response.status).toBe(200);
         await expect(response.json()).resolves.toEqual([{ word: '가나다', nextWordCount: 7 }]);
+    });
+
+    it('maps the kor-end secondary start filter independently from its q end filter', async () => {
+        const response = await GET(createRequest('mode=kor-end&q=%20%EB%82%98%20&start=%20%EA%B0%80%20'));
+
+        expect(mockSearch).toHaveBeenCalledWith({
+            type: 'advanced',
+            query: {
+                mode: 'kor-end',
+                start: '가',
+                end: '나',
+                mission: '',
+                isAcceptedOnly: true,
+                isManner: true,
+                isJen: false,
+                isEtiquette: false,
+                hasMiniInfo: false,
+                isDuemApplied: true,
+                minimumLength: 2,
+                maximumLength: 100,
+                sortOrder: 'length',
+                limit: 100,
+            },
+        });
+        expect(response.status).toBe(200);
     });
 
     it('returns the existing start-letter validation message without calling the service', async () => {

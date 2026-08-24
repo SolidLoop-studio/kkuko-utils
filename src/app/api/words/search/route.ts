@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
     if (gameMode === 'kor-start' || gameMode === 'kor-end') {
         const start = gameMode === 'kor-start' ? searchQuery : searchParams.get('start') || undefined;
-        const end = gameMode === 'kor-end' ? searchQuery : searchParams.get('start') || undefined;
+        const end = gameMode === 'kor-end' ? searchQuery : searchParams.get('end') || undefined;
         const normalizedStart = start?.trim();
         const normalizedEnd = end?.trim();
 
