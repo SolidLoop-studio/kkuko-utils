@@ -1,4 +1,4 @@
-import type { addWordQueryType, addWordThemeQueryType, advancedQueryType, DocsLogData, WordLogData } from '@/src/app/types/type';
+import type { addWordQueryType, addWordThemeQueryType, DocsLogData, WordLogData } from '@/src/app/types/type';
 import { AuthError, OAuthResponse, PostgrestError, PostgrestSingleResponse, Session, Subscription } from '@supabase/supabase-js';
 import type { Database } from '@/src/app/types/database.types'
 
@@ -77,7 +77,6 @@ export interface IGetManager{
     wordsThemesByWordId(wordIds: number[]): Promise<PostgrestSingleResponse<{word_id: number, themes: theme}[]>>;
     allUser(sortField?: 'contribution' | 'month_contribution' | 'nickname', isAsc?: boolean): Promise<PostgrestSingleResponse<user[]>>;
     letterCountInfo(): Promise<{data: {firstLetterCounts: Record<string, {count: number; k_count: number; n_count: number}>; lastLetterCounts: Record<string, {count: number; k_count: number; n_count: number}>;}, error: null}|{data: null; error: PostgrestError}>;
-    wordsByAdvancedQuery(input: advancedQueryType): Promise<{data: {word: string, nextWordCount: number}[], error: null} | {data: null; error: PostgrestError}>;
     wordState(): Promise<{data: {firstLetterCounts: word_first_letter_counts[]; lastLetterCounts: word_last_letter_counts[];}, error: null}|{data: null; error: PostgrestError}>;
     docsLastUpdate(id: number): Promise<PostgrestSingleResponse<{last_update: string;} | null>>
     allNotifications(): Promise<PostgrestSingleResponse<notification[]>>;

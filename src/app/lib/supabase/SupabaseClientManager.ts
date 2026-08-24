@@ -1,7 +1,7 @@
 import { ISupabaseClientManager, IAddManager, IGetManager, IDeleteManager, IUpdateManager } from './ISupabaseClientManager';
 import type { PostgrestError, PostgrestSingleResponse, Session, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/src/app/types/database.types';
-import type { addWordQueryType, addWordThemeQueryType, DocsLogData, WordLogData, advancedQueryType } from '@/src/app/types/type';
+import type { addWordQueryType, addWordThemeQueryType, DocsLogData, WordLogData } from '@/src/app/types/type';
 import DuemLaw, { reverDuemLaw } from '../hangulUtils';
 import { sum, chunk } from 'es-toolkit';
 import { StorageError } from '@supabase/storage-js';
@@ -493,114 +493,6 @@ class GetManager implements IGetManager {
             }, error: null
         }
     }
-    public async wordsByAdvancedQuery(input: advancedQueryType) {
-        const startTime = Date.now(); // 시작 시간 기록
-
-        const { data: letterData, error: letterError } = await this.letterCountInfo();
-        if (letterError) return { data: null, error: letterError };
-
-        const result: { data: { word: string, nextWordCount: number }[], error: null } | { data: null; error: PostgrestError } = { data: [], error: null };
-
-        switch (input.mode) {
-            case 'kor-start': {
-                const { data, error } = await this.supabase.rpc('get_korean_words_advanced_s', {
-                    p_start: input.start,
-                    p_end: input.end,
-                    p_length_max: input.length_max,
-                    p_length_min: input.length_min,
-                    p_man: input.man,
-                    p_eti: input.eti,
-                    p_jen: input.jen,
-                    p_ingjung: input.ingjung,
-                    p_limit: input.limit,
-                    p_mission: input.mission,
-                    p_sort_by: input.sort_by,
-                    p_duem: input.duem
-                });
-                if (error) return { data: null, error };
-                result.data = data.map((word) => ({
-                    word: word.word,
-                    nextWordCount: letterData.firstLetterCounts[word.word[word.word.length - 1]]?.[input.ingjung ? 'k_count' : 'n_count'] ?? 0
-                }));
-                break;
-            }
-            case 'kor-end': {
-                const { data, error } = await this.supabase.rpc('get_korean_words_advanced_e', {
-                    p_start: input.start,
-                    p_end: input.end,
-                    p_length_max: input.length_max,
-                    p_length_min: input.length_min,
-                    p_man: input.man,
-                    p_eti: input.eti,
-                    p_jen: input.jen,
-                    p_ingjung: input.ingjung,
-                    p_limit: input.limit,
-                    p_mission: input.mission,
-                    p_sort_by: input.sort_by,
-                    p_duem: input.duem
-                });
-                if (error) return { data: null, error };
-                result.data = data.map((word) => ({
-                    word: word.word,
-                    nextWordCount: letterData.lastLetterCounts[word.word[0]]?.[input.ingjung ? 'k_count' : 'n_count'] ?? 0
-                }));
-                break;
-            }
-            case 'kung': {
-                const { data, error } = await this.supabase.rpc('get_korean_words_advanced_kung', {
-                    p_start: input.start,
-                    p_end: input.end,
-                    p_man: input.man,
-                    p_eti: input.eti,
-                    p_jen: input.jen,
-                    p_ingjung: input.ingjung,
-                    p_limit: input.limit,
-                    p_mission: input.mission,
-                    p_sort_by: input.sort_by
-                });
-                if (error) return { data: null, error };
-                result.data = data.map((word) => ({
-                    word: word.word,
-                    nextWordCount: letterData.firstLetterCounts[word.word[word.word.length - 1]]?.[input.ingjung ? 'len3_k_count' : 'len3_n_count'] ?? 0
-                }));
-                break;
-            }
-            case 'hunmin': {
-                const { data, error } = await this.supabase.rpc('get_korean_words_advanced_hunmin', {
-                    p_chosungs: input.query,
-                    p_limit: input.limit,
-                    p_mission: input.mission === '' ? undefined : input.mission
-                });
-                if (error) return { data: null, error };
-                result.data = data.map((word) => ({ word: word.word, nextWordCount: -1 }));
-                break;
-            }
-            case 'jaqi': {
-                const { data, error } = await this.supabase.rpc('get_korean_words_advanced_jaqi', {
-                    p_chosungs: input.query,
-                    p_theme_id: input.theme
-                });
-                if (error) return { data: null, error };
-                result.data = data
-                    .sort((a, b) => b.word.length - a.word.length)
-                    .map((word) => ({ word: word.word, nextWordCount: -1 }));
-                break;
-            }
-            default:
-                result.data = [];
-                result.error = null;
-        }
-
-        // 최소 2초 맞추기
-        const elapsed = Date.now() - startTime;
-        const remaining = 2000 - elapsed;
-        if (remaining > 0) {
-            await new Promise((resolve) => setTimeout(resolve, remaining));
-        }
-
-        return result;
-    }
-
     public async logsByFilter({ filterState, filterType, from, to }: { filterState: 'approved' | 'rejected' | 'pending' | 'all'; filterType: 'delete' | 'add' | 'all'; from: number; to: number; }) {
         let query = this.supabase
             .from('logs')
