@@ -139,7 +139,7 @@ const registeredFixture = (): Fixture => ({
 });
 
 describe('SupabaseWordDetailQueryGateway', () => {
-    it('maps an approved word with pending theme changes, documents, and connection counts', async () => {
+    it('maps an approved word and applies reverse-duem only to pending previous counts', async () => {
         const { client, operations } = createQueryClient(registeredFixture());
         const gateway = new SupabaseWordDetailQueryGateway(client);
 
@@ -168,7 +168,7 @@ describe('SupabaseWordDetailQueryGateway', () => {
             nextWordCount: 5,
         }));
         expect(operations).toEqual(expect.arrayContaining([
-            { method: 'in', table: 'word_last_letter_counts', args: ['last_letter', ['나', '라']] },
+            { method: 'eq', table: 'word_last_letter_counts', args: ['last_letter', '나'] },
             { method: 'or', table: 'wait_words', args: ['word.ilike.%나,word.ilike.%라'] },
             { method: 'eq', table: 'word_first_letter_counts', args: ['first_letter', '비'] },
             { method: 'or', table: 'wait_words', args: ['word.ilike.비%'] },

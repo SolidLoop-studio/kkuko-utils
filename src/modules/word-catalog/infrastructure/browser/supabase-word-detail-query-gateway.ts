@@ -379,7 +379,7 @@ export class SupabaseWordDetailQueryGateway implements WordDetailQueryGateway {
         try {
             const letters = reverDuemLaw(firstLetter);
             const [countRows, pendingResponse] = await Promise.all([
-                this.client.from('word_last_letter_counts').select('count').in('last_letter', letters),
+                this.client.from('word_last_letter_counts').select('count').eq('last_letter', firstLetter),
                 this.client.from('wait_words').select('id', { count: 'exact', head: true })
                     .or(letters.map((letter) => `word.ilike.%${letter}`).join(',')),
             ]);
