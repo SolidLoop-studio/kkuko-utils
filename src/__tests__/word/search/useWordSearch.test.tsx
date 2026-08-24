@@ -70,6 +70,7 @@ describe('useWordSearch', () => {
             result.current.setStartLetter(' 가 ');
             result.current.setEndLetter(' 나 ');
             result.current.setMission(' 다 ');
+            result.current.setMiniInfo(true);
             result.current.setDisplayLimit('-1');
         });
         expect(service.search).not.toHaveBeenCalled();
@@ -87,6 +88,7 @@ describe('useWordSearch', () => {
                 isManner: true,
                 isJen: false,
                 isEtiquette: false,
+                hasMiniInfo: true,
                 isDuemApplied: true,
                 minimumLength: 2,
                 maximumLength: 100,
