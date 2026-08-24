@@ -4,7 +4,6 @@ import type { Database } from '@/src/app/types/database.types'
 
 type wait_word = Database['public']['Tables']['wait_words']['Row']
 type theme = Database['public']['Tables']['themes']['Row']
-type wait_word_theme = Database['public']['Tables']['wait_word_themes']['Row'] & { themes: theme; }
 type word = Database['public']['Tables']['words']['Row']
 type word_theme = {words: word, themes: theme }
 type docs = Database['public']['Tables']['docs']['Row']
@@ -40,11 +39,8 @@ export interface IAddManager {
 
 // get 관련 타입
 export interface IGetManager{
-    waitWordInfoByWord(word: string): Promise<PostgrestSingleResponse<wait_word & {users: {nickname: string} | null} | null>>;
-    waitWordThemes(wordId: number): Promise<PostgrestSingleResponse<wait_word_theme[]>>;
     wordInfoByWord(word: string): Promise<PostgrestSingleResponse<word & {users: {nickname: string} | null} | null>>;
     allDocs(): Promise<PostgrestSingleResponse<(docs & { users: user | null })[]>>;
-    wordThemeByWordId(wordId: number): Promise<PostgrestSingleResponse<word_theme[]>>;
     docsInfoByDocsId(docsId: number): Promise<PostgrestSingleResponse<(docs & { users: user | null }) | null>>
     docsWordCount({ name, duem, typez }: { name: string, duem: boolean, typez: "letter" | "theme" }|{name:number, duem:boolean, typez:"ect"}): Promise<{count: number | null; error: PostgrestError | null;}>
     docsVeiwRankByDocsId(docsId: number): Promise<PostgrestSingleResponse<number>>;
@@ -75,13 +71,6 @@ export interface IGetManager{
     allWordWaitTheme(c?: "add" | "delete"): Promise<PostgrestSingleResponse<(word_themes_wait & {words: {word: string, id: number}; themes: theme; users: user | null})[]>>
     waitWordsThemes(waitWordIds: number[]): Promise<{data: (wait_word_themes & {themes: theme, wait_words:{word: string}})[], error: null} | {data: null, error: PostgrestError}>;
     wordsByWords(words: string[]): Promise<PostgrestSingleResponse<(okWord&{wthemes: number[]})[]>>;
-    randomWordByFirstLetter(f: string[]): Promise<{data: string, error: null}|{data: null, error: PostgrestError}|{data: null, error: null}>;
-    randomWordByLastLetter(l: string[]): Promise<{data: string, error: null}|{data: null, error: PostgrestError}|{data: null, error: null}>;
-    wordThemeWaitByWordId(wordId: number): Promise<PostgrestSingleResponse<{themes: theme, typez: "add" | "delete"}[]>>;
-    letterDocsByWord(word: string): Promise<PostgrestSingleResponse<docs[]>>;
-    themeDocsByThemeNames(themeNames: string[]): Promise<PostgrestSingleResponse<docs[]>>;
-    firstWordCountByLetters(letter: string): Promise<number>;
-    lastWordCountByLetters(letter: string): Promise<number>;
     logsByFilter({filterState, filterType, from, to}:{filterState?: "approved" | "rejected" | "pending" | "all", filterType: "delete" | "add" | "all", from: number, to: number}): Promise<PostgrestSingleResponse<(log & {make_by_user: { nickname: string; } | null; processed_by_user: { nickname: string | null } | null;})[]>>
     docsLogsByFilter({ docsName, logType, from, to }: { docsName?: string; logType: 'add' | 'delete' | 'all'; from: number; to: number; }): Promise<PostgrestSingleResponse<(docs_log & { docs: docs; users: { nickname: string } | null })[]>>;
     notice(): Promise<PostgrestSingleResponse<notification | null>>;

@@ -81,12 +81,6 @@ class GetManager implements IGetManager {
     private wordLastLetterCountsCache: Record<string, { count: number, k_count: number, n_count: number }> = {};
     private wordLetterCountsCacheTime: number = 0;
 
-    public async waitWordInfoByWord(word: string) {
-        return await this.supabase.from('wait_words').select('*,users(nickname)').eq('word', word).maybeSingle();
-    }
-    public async waitWordThemes(wordId: number) {
-        return await this.supabase.from('wait_word_themes').select('*,themes(*)').eq('wait_word_id', wordId);
-    }
     public async wordInfoByWord(word: string) {
         return await this.supabase.from('words').select('*,users(nickname)').eq('word', word).maybeSingle();
     }
@@ -96,9 +90,6 @@ class GetManager implements IGetManager {
             q = q.eq('is_hidden', false);
         }
         return await q;
-    }
-    public async wordThemeByWordId(wordId: number) {
-        return await this.supabase.from('word_themes').select('words(*),themes(*)').eq('word_id', wordId);
     }
     public async docsInfoByDocsId(docsId: number) {
         return await this.supabase.from('docs').select('*,users(*)').eq('id', docsId).maybeSingle();
@@ -466,63 +457,6 @@ class GetManager implements IGetManager {
     }
     public async wordsByWords(words: string[]) {
         return await this.supabase.rpc('get_words_with_themes', { words_input: words });
-    }
-    public async randomWordByFirstLetter(f: string[]) {
-        const { data, error } = await this.supabase.rpc('random_word_ff', { fir1: f });
-        if (error) return { data: null, error }
-        const { data: data2, error: error2 } = await this.supabase.rpc('random_wait_word_ff', { prefixes: f });
-        if (error2) return { data: null, error: error2 }
-        if (data.length > 0) return { data: data[0].word, error: null }
-        else if (data2.length > 0) return { data: data2[0].word, error: null }
-        else return { data: null, error: null }
-    }
-    public async randomWordByLastLetter(l: string[]) {
-        const { data, error } = await this.supabase.rpc('random_word_ll', { fir1: l })
-        if (error) return { data: null, error }
-        const { data: data2, error: error2 } = await this.supabase.rpc('random_wait_word_ll', { prefixes: l })
-        if (error2) return { data: null, error: error2 }
-        if (data.length > 0) return { data: data[0].word, error: null };
-        if (data2.length > 0) return { data: data2[0].word, error: null }
-        return { data: null, error: null };
-    }
-    public async wordThemeWaitByWordId(wordId: number) {
-        return await this.supabase.from('word_themes_wait').select('themes(*), typez').eq('word_id', wordId)
-    }
-    public async letterDocsByWord(word: string) {
-        return await this.supabase.from('docs').select('*').eq('name', word[word.length - 1]).eq('typez', 'letter');
-    }
-    public async themeDocsByThemeNames(themeNames: string[]) {
-        return this.supabase.from('docs').select('*').eq('typez', 'theme').in('name', themeNames);
-    }
-    public async firstWordCountByLetters(letter: string) {
-        const { data: firWordsCount1, error: firWordsError1 } = await this.supabase
-            .from('word_last_letter_counts')
-            .select('*')
-            .eq('last_letter', letter);
-
-        const { count: firWordsCount2, error: firWordsError2 } = await this.supabase
-            .from('wait_words')
-            .select('*', { count: 'exact', head: true })
-            .or(reverDuemLaw(letter).map(c => `word.ilike.%${c}`).join(','));
-
-        if (firWordsError1 || firWordsError2) return 0;
-
-        return (sum((firWordsCount1 ?? []).map(({ count }) => count))) + (firWordsCount2 || 0);
-    }
-    public async lastWordCountByLetters(letter: string) {
-        const { data: lasWordsCount1, error: lasWordsError1 } = await this.supabase
-            .from('word_first_letter_counts')
-            .select('*')
-            .eq('first_letter', letter);
-
-        const { count: lasWordsCount2, error: lasWordsError2 } = await this.supabase
-            .from('wait_words')
-            .select('*', { count: 'exact', head: true })
-            .or([...new Set([letter, DuemLaw(letter)])].map(c => `word.ilike.${c}%`).join(','));
-
-        if (lasWordsError1 || lasWordsError2) return 0;
-
-        return (sum((lasWordsCount1 ?? []).map(({ count }) => count))) + (lasWordsCount2 || 0)
     }
     public async letterCountInfo() {
         const now = Date.now();

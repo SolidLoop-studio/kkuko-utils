@@ -46,7 +46,7 @@
 - Next.js Route Handler는 모든 DB 요청의 의무적인 중간 계층이 아니다. 서버 secret 또는 서버 전용 통합이 필요한 경우에만 사용한다.
 - 기존 `SCM`은 한 번에 제거하지 않고, 위험도가 높은 기능부터 strangler 방식으로 축소한다.
 
-첫 세로 슬라이스인 관리자 단어 대량 승인, `admin/del-words`의 재개 가능한 대량 삭제, `admin/request-words`의 개별 승인·반려 mutation, `words-docs/[id]`의 관리자 요청 승인·반려와 직접 삭제, `admin/request-docs`의 승인·반려 mutation, `words-docs/[id]`의 사용자 `RequestDelete`, `CancelAddRequest`, `CancelDeleteRequest` mutation, `word/search/[query]/WordInfo.tsx`의 요청·취소·주제 변경 요청·직접 삭제 mutation, `word/add/WordAddHome.tsx`의 일반 사용자 단일 추가 요청, 그리고 `word/adds/WordsAddHome.tsx`의 대량 추가 요청 mutation이 위 원칙으로 이전되었다. docs 내부 단어 관리는 기존 요청 moderation RPC를 재사용하며, 주제 변경 moderation과 중복 없는 주제 docs 로그 기록도 지원한다. `WordInfo.tsx`에서는 `admin`만 직접 삭제하고 `r4`는 일반 사용자의 삭제 요청 흐름을 따른다. 원자적인 사용자 단어 주제 변경, 단일 추가 요청, 대량 추가 요청 RPC는 로컬 DB integration/concurrency test로 검증되었다. 대량 요청은 300개 단위 원자적·멱등 batch로 실행되어 같은 파일 재제출로 안전하게 재개할 수 있다. `WordAddHome.tsx`의 관리자·`r4` 직접 추가 경로는 사용자 요청 슬라이스 범위 밖이므로 legacy SCM mutation으로 유지한다. `admin/request-docs/RequestDocsWrapper.tsx`의 요청 목록 조회는 Phase 4까지 legacy SCM read로 남는다. Phase 2 사용자 단어 요청 mutation의 코드 이전은 완료되었고 다음 세로 슬라이스는 Phase 3 `word-catalog` 검색 query다. 관련 migration의 cloud Supabase 반영은 완료로 간주하지 않으며 사용자/운영자가 통제하는 rollout 대기 상태다. 로컬 DB bootstrap은 병행해서 재현 가능하게 만들되, 프로덕션에서 동작 중인 하드코딩 trigger는 당장 변경하지 않고 실제 의미를 기록한 뒤 `docs` context 또는 DB backend를 이전하기 전에 제거한다.
+첫 세로 슬라이스인 관리자 단어 대량 승인, `admin/del-words`의 재개 가능한 대량 삭제, `admin/request-words`의 개별 승인·반려 mutation, `words-docs/[id]`의 관리자 요청 승인·반려와 직접 삭제, `admin/request-docs`의 승인·반려 mutation, `words-docs/[id]`의 사용자 `RequestDelete`, `CancelAddRequest`, `CancelDeleteRequest` mutation, `word/search/[query]/WordInfo.tsx`의 요청·취소·주제 변경 요청·직접 삭제 mutation, `word/add/WordAddHome.tsx`의 일반 사용자 단일 추가 요청, 그리고 `word/adds/WordsAddHome.tsx`의 대량 추가 요청 mutation이 위 원칙으로 이전되었다. docs 내부 단어 관리는 기존 요청 moderation RPC를 재사용하며, 주제 변경 moderation과 중복 없는 주제 docs 로그 기록도 지원한다. `WordInfo.tsx`에서는 `admin`만 직접 삭제하고 `r4`는 일반 사용자의 삭제 요청 흐름을 따른다. 원자적인 사용자 단어 주제 변경, 단일 추가 요청, 대량 추가 요청 RPC는 로컬 DB integration/concurrency test로 검증되었다. 대량 요청은 300개 단위 원자적·멱등 batch로 실행되어 같은 파일 재제출로 안전하게 재개할 수 있다. `WordAddHome.tsx`의 관리자·`r4` 직접 추가 경로는 사용자 요청 슬라이스 범위 밖이므로 legacy SCM mutation으로 유지한다. `admin/request-docs/RequestDocsWrapper.tsx`의 요청 목록 조회는 Phase 4까지 legacy SCM read로 남는다. Phase 3 `word-catalog`의 검색·자동완성과 단어 상세 query는 완료되었고 다음 세로 슬라이스는 고급 검색 Route Handler다. 관련 migration의 cloud Supabase 반영은 완료로 간주하지 않으며 사용자/운영자가 통제하는 rollout 대기 상태다. 로컬 DB bootstrap은 병행해서 재현 가능하게 만들되, 프로덕션에서 동작 중인 하드코딩 trigger는 당장 변경하지 않고 실제 의미를 기록한 뒤 `docs` context 또는 DB backend를 이전하기 전에 제거한다.
 
 ## 3. 현재 상태
 
@@ -875,8 +875,10 @@ moderation migration은 로컬 pgTAP behavior/concurrency test로 검증되었�
      `src/app/word/search/components/ThemeSelectionModal.tsx`,
      `src/app/word/search/hooks/useWordSearch.ts`를 `word-catalog` browser query hook으로 이전했다.
    - `src/modules/word-catalog/presentation`의 검색, 자동완성, 주제 query hook과 React Query key를 사용한다.
-2. 단어 상세 (다음 슬라이스)
-3. 고급 검색 Route Handler (단어 상세 다음)
+2. 단어 상세 (완료)
+   - `src/app/word/search/[query]/WordInfoPage.tsx`의 상세, 연관 단어, docs 조회를 `word-catalog` query service와 React Query hook으로 이전했다.
+   - `word/add/WordAddHome.tsx`의 관리자·`r4` 직접 추가 경로는 중복 단어 존재 확인에 `wordInfoByWord`를 계속 사용한다. 이 경로는 단어 상세 조회 슬라이스 밖이므로 해당 legacy getter는 유지한다.
+3. 고급 검색 Route Handler (다음 슬라이스)
 4. 다운로드
 5. 통계와 랜덤 단어
 
@@ -1018,7 +1020,7 @@ Notifications:
 | docs 내부 관리자 단어 moderation | 완료 | 기존 요청 moderation RPC 재사용; 직접 삭제 cloud migration은 사용자/운영자 통제 rollout 대기 |
 | 관리자 docs 요청 moderation | 완료 | 승인·반려 mutation은 RPC로 이전; 요청 목록 `addWaitDocs` query는 Phase 4 legacy SCM read, migration cloud rollout은 사용자/운영자 실행 대기 |
 | 사용자 단어 요청 | 부분 완료 | Phase 2 mutation 코드 이전은 완료; 단일·대량 추가 요청을 포함한 관련 cloud migration rollout은 사용자/운영자 실행 대기 |
-| word-catalog 조회 | 부분 완료 | 브라우저 검색·자동완성 query slice 완료; 다음은 단어 상세, 그다음 고급 검색 Route Handler |
+| word-catalog 조회 | 부분 완료 | 브라우저 검색·자동완성 및 단어 상세 query slice 완료; 다음은 고급 검색 Route Handler |
 | docs context | 미착수 | reference key 안정화 후 이전 |
 | identity/profile | 미착수 | Auth와 profile DB 계약 분리 |
 | notifications/storage | 미착수 | query/command/storage port 분리 |
@@ -1047,10 +1049,9 @@ Notifications:
 
 기능 전환은 다음 순서로 진행한다.
 
-1. Phase 3 `word-catalog`의 다음 세로 슬라이스로 단어 상세 query의 읽기 경계를 분리한다.
-2. 검색 query에서 확립한 mapper/query 패턴을 단어 상세 다음 고급 검색 Route Handler로 확장한다.
-3. Phase 4에서 `admin/request-docs/RequestDocsWrapper.tsx`의 요청 목록 query를 포함한 docs context read 경계를 이전한다.
-4. 각 단계에서 대체된 SCM 메서드와 import를 즉시 제거한다.
+1. Phase 3 `word-catalog`의 다음 세로 슬라이스로 고급 검색 Route Handler의 읽기 경계를 분리한다.
+2. Phase 4에서 `admin/request-docs/RequestDocsWrapper.tsx`의 요청 목록 query를 포함한 docs context read 경계를 이전한다.
+3. 각 단계에서 대체된 SCM 메서드와 import를 즉시 제거한다.
 
 다음 기반 작업은 기능 전환과 병행한다.
 
