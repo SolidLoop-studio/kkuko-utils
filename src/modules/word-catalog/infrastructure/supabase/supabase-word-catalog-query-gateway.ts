@@ -1,6 +1,5 @@
-import type { ApplicationError } from '@/src/shared/application/application-error';
-import { err, ok, type Result } from '@/src/shared/application/result';
-import { browserSupabaseClient } from '@/src/shared/infrastructure/supabase/browser-client';
+import type { ApplicationError } from '../../../../shared/application/application-error';
+import { err, ok, type Result } from '../../../../shared/application/result';
 import type { WordCatalogQueryGateway } from '../../application/word-search-ports';
 import type {
     AdvancedWordSearchQuery,
@@ -13,7 +12,7 @@ type SupabaseResponse = {
     error: unknown;
 };
 
-interface WordCatalogQueryClient {
+export interface SupabaseWordCatalogQueryClient {
     from(table: string): {
         select(columns: string): PromiseLike<SupabaseResponse> & {
             ilike(column: string, pattern: string): Promise<SupabaseResponse>;
@@ -132,10 +131,10 @@ const parseThemes = (rows: unknown[]): WordThemeSummary[] | null => {
     return themes;
 };
 
-/** 브라우저 Supabase 조회 결과를 word-catalog DTO로 변환한다. */
+/** Supabase 조회 결과를 word-catalog DTO로 변환한다. */
 export class SupabaseWordCatalogQueryGateway implements WordCatalogQueryGateway {
     constructor(
-        private readonly client: WordCatalogQueryClient = browserSupabaseClient as unknown as WordCatalogQueryClient,
+        private readonly client: SupabaseWordCatalogQueryClient,
     ) {}
 
     async suggestWords(query: string): Promise<Result<string[]>> {

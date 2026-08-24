@@ -2,9 +2,9 @@ jest.mock('../../../../../shared/infrastructure/supabase/browser-client', () => 
     browserSupabaseClient: { from: jest.fn(), rpc: jest.fn() },
 }));
 
-import { SearchWordsService } from '@/src/modules/word-catalog/application/search-words';
-import { GetWordDetailService } from '@/src/modules/word-catalog/application/get-word-detail';
-import { createBrowserWordCatalogServices } from '@/src/modules/word-catalog/infrastructure/browser/browser-word-catalog-services';
+import { SearchWordsService } from '../../../../../modules/word-catalog/application/search-words';
+import { GetWordDetailService } from '../../../../../modules/word-catalog/application/get-word-detail';
+import { createBrowserWordCatalogServices } from '../../../../../modules/word-catalog/infrastructure/browser/browser-word-catalog-services';
 
 describe('browser word catalog services', () => {
     it('creates fresh word catalog services wired to the browser Supabase client', async () => {

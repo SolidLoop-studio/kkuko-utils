@@ -1,12 +1,7 @@
-import { err, ok } from '@/src/shared/application/result';
-import type { ApplicationError } from '@/src/shared/application/application-error';
-import type { AdvancedWordSearchQuery } from '@/src/modules/word-catalog/application/word-search-types';
-
-jest.mock('../../../../../shared/infrastructure/supabase/browser-client', () => ({
-    browserSupabaseClient: { from: jest.fn(), rpc: jest.fn() },
-}));
-
-import { SupabaseWordCatalogQueryGateway } from '@/src/modules/word-catalog/infrastructure/browser/supabase-word-catalog-query-gateway';
+import { err, ok } from '../../../../../shared/application/result';
+import type { ApplicationError } from '../../../../../shared/application/application-error';
+import type { AdvancedWordSearchQuery } from '../../../../../modules/word-catalog/application/word-search-types';
+import { SupabaseWordCatalogQueryGateway } from '../../../../../modules/word-catalog/infrastructure/supabase/supabase-word-catalog-query-gateway';
 
 type QueryError = { message: string };
 type QueryResponse = { data: unknown; error: QueryError | null };
