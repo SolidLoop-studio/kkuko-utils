@@ -30,6 +30,10 @@ export {
     useWordDetail,
     type WordDetailService,
 } from './presentation/use-word-detail';
+export {
+    useWordDownload,
+    type WordDownloadService,
+} from './presentation/use-word-download';
 export { useRandomConnectedWord } from './presentation/use-random-connected-word';
 export { useWordSuggestions } from './presentation/use-word-suggestions';
 export { useWordThemes } from './presentation/use-word-themes';

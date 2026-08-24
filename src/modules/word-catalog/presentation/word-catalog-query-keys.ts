@@ -1,4 +1,5 @@
 import type { WordSearchRequest } from '../application/word-search-types';
+import type { WordDownloadFilter } from '../application/word-download-types';
 
 export const wordCatalogQueryKeys = {
     all: ['word-catalog'] as const,
@@ -11,5 +12,10 @@ export const wordCatalogQueryKeys = {
     detail: (word: string) => (
         [...wordCatalogQueryKeys.all, 'detail', word] as const
     ),
+    wordDownload: (filter: WordDownloadFilter) => [
+        ...wordCatalogQueryKeys.all,
+        'download',
+        filter,
+    ] as const,
     themes: () => [...wordCatalogQueryKeys.all, 'themes'] as const,
 };
