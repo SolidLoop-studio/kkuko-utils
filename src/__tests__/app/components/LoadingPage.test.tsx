@@ -5,9 +5,9 @@ import LoadingPage from '@/src/app/components/LoadingPage';
 import { updateLoadingState } from '@/src/app/store/slice';
 import { store } from '@/src/app/store/store';
 
-const renderLoadingPage = (forceVisible?: boolean) => render(
+const renderLoadingPage = (isForcedVisible?: boolean) => render(
     <Provider store={store}>
-        <LoadingPage title="문서 로그" forceVisible={forceVisible} />
+        <LoadingPage title="문서 로그" isForcedVisible={isForcedVisible} />
     </Provider>,
 );
 

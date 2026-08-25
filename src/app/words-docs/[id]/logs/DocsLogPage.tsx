@@ -8,7 +8,7 @@ import { useDocsLogs } from '@/src/modules/docs';
 export default function DocsLogPage({id}:{id: number}){
     const { data, error, isLoading } = useDocsLogs(id);
 
-    if (isLoading) return <LoadingPage title={"문서 로그"} forceVisible />;
+    if (isLoading) return <LoadingPage title={"문서 로그"} isForcedVisible />;
 
     if (error?.kind === 'not-found') return <NotFound />;
 

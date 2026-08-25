@@ -20,10 +20,10 @@ export const useLoadingState = () => {
     };
 };
 
-export default function LoadingPage({ title, forceVisible = false }: { title: string; forceVisible?: boolean }) {
+export default function LoadingPage({ title, isForcedVisible = false }: { title: string; isForcedVisible?: boolean }) {
     const { loadingState } = useLoadingState();
-    const isForcedLoading = forceVisible && !loadingState.isLoading;
-    const isVisible = loadingState.isLoading || forceVisible;
+    const isForcedLoading = isForcedVisible && !loadingState.isLoading;
+    const isVisible = loadingState.isLoading || isForcedVisible;
     const progress = isForcedLoading ? 0 : loadingState.progress;
     const task = isForcedLoading ? '로딩 중...' : loadingState.currentTask;
 

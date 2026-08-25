@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
 
 jest.mock(
@@ -28,6 +28,12 @@ const projection: DocsLogProjection = {
 const otherProjection: DocsLogProjection = {
     docsId: 42,
     docsName: '다',
+    entries: [],
+};
+
+const refreshedProjection: DocsLogProjection = {
+    docsId: 41,
+    docsName: '나 (갱신)',
     entries: [],
 };
 
@@ -93,6 +99,25 @@ describe('useDocsLogs', () => {
         expect(queryClient.getQueryData(['docs', 42, 'logs'])).toEqual(otherProjection);
         expect(get).toHaveBeenNthCalledWith(1, 41);
         expect(get).toHaveBeenNthCalledWith(2, 42);
+    });
+
+    it('replaces the current query data with a newer projection when refetched', async () => {
+        const get = mockDocsLogsQueryService(ok(projection));
+        get.mockResolvedValueOnce(ok(projection)).mockResolvedValueOnce(ok(refreshedProjection));
+        const { queryClient, QueryWrapper } = createQueryWrapper();
+        const { result } = renderHook(() => useDocsLogs(41), { wrapper: QueryWrapper });
+
+        await waitFor(() => expect(result.current.data).toEqual(projection));
+
+        await act(async () => {
+            await result.current.refetch();
+        });
+
+        await waitFor(() => expect(result.current.data).toEqual(refreshedProjection));
+
+        expect(queryClient.getQueryData(['docs', 41, 'logs'])).toEqual(refreshedProjection);
+        expect(get).toHaveBeenCalledTimes(2);
+        expect(get).toHaveBeenNthCalledWith(2, 41);
     });
 
     it('exposes a validation error without retrying', async () => {
