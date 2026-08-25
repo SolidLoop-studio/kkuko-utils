@@ -15,7 +15,20 @@ jest.mock(
     '../../../../../modules/docs/infrastructure/browser/supabase-docs-log-query-gateway',
     () => ({
         SupabaseDocsLogQueryGateway: jest.fn().mockImplementation(() => ({
-            loadByDocsId: jest.fn().mockResolvedValue({ ok: true, value: null }),
+            loadByDocsId: jest.fn().mockResolvedValue({
+                ok: true,
+                value: {
+                    docsId: 101,
+                    docsName: '로그 문서',
+                    entries: [{
+                        id: 11,
+                        word: '로그단어',
+                        userNickname: '기록자',
+                        occurredAt: '2026-08-25T01:00:00.000Z',
+                        type: 'add',
+                    }],
+                },
+            }),
         })),
     }),
 );
@@ -24,7 +37,23 @@ jest.mock(
     '../../../../../modules/docs/infrastructure/browser/supabase-docs-info-query-gateway',
     () => ({
         SupabaseDocsInfoQueryGateway: jest.fn().mockImplementation(() => ({
-            loadByDocsId: jest.fn().mockResolvedValue({ ok: true, value: null }),
+            loadByDocsId: jest.fn().mockResolvedValue({
+                ok: true,
+                value: {
+                    metadata: {
+                        id: 102,
+                        createdAt: '2026-08-20T01:00:00.000Z',
+                        name: '정보 문서',
+                        makerNickname: '제작자',
+                        type: 'letter',
+                        lastUpdatedAt: '2026-08-25T02:00:00.000Z',
+                        views: 12,
+                    },
+                    wordCount: 34,
+                    starCount: 5,
+                    viewRank: 6,
+                },
+            }),
         })),
     }),
 );
@@ -33,7 +62,20 @@ jest.mock(
     '../../../../../modules/docs/infrastructure/browser/supabase-docs-content-query-gateway',
     () => ({
         SupabaseDocsContentQueryGateway: jest.fn().mockImplementation(() => ({
-            loadByDocsId: jest.fn().mockResolvedValue({ ok: true, value: null }),
+            loadByDocsId: jest.fn().mockResolvedValue({
+                ok: true,
+                value: {
+                    metadata: {
+                        id: 103,
+                        title: '본문 문서',
+                        lastUpdatedAt: '2026-08-25T03:00:00.000Z',
+                        type: 'theme',
+                    },
+                    starredUserIds: ['user-1'],
+                    words: [{ word: '본문단어', status: 'ok', requesterNickname: '요청자' }],
+                    isSpecial: false,
+                },
+            }),
         })),
     }),
 );
@@ -62,15 +104,51 @@ describe('browser docs services', () => {
         expect(SupabaseDocsInfoQueryGateway).toHaveBeenCalledTimes(1);
         expect(SupabaseDocsContentQueryGateway).toHaveBeenCalledTimes(1);
         await expect(services.docsListQueryService.get()).resolves.toEqual({ ok: true, value: [] });
-        await expect(services.docsLogsQueryService.get(1)).resolves.toEqual({ ok: false, error: {
-            kind: 'not-found', message: '문서를 찾을 수 없습니다.',
-        } });
-        await expect(services.docsInfoQueryService.get(1)).resolves.toEqual({ ok: false, error: {
-            kind: 'not-found', message: '문서를 찾을 수 없습니다.',
-        } });
-        await expect(services.docsContentQueryService.get(1)).resolves.toEqual({ ok: false, error: {
-            kind: 'not-found', message: '문서를 찾을 수 없습니다.',
-        } });
+        await expect(services.docsLogsQueryService.get(1)).resolves.toEqual({
+            ok: true,
+            value: {
+                docsId: 101,
+                docsName: '로그 문서',
+                entries: [{
+                    id: 11,
+                    word: '로그단어',
+                    userNickname: '기록자',
+                    occurredAt: '2026-08-25T01:00:00.000Z',
+                    type: 'add',
+                }],
+            },
+        });
+        await expect(services.docsInfoQueryService.get(1)).resolves.toEqual({
+            ok: true,
+            value: {
+                metadata: {
+                    id: 102,
+                    createdAt: '2026-08-20T01:00:00.000Z',
+                    name: '정보 문서',
+                    makerNickname: '제작자',
+                    type: 'letter',
+                    lastUpdatedAt: '2026-08-25T02:00:00.000Z',
+                    views: 12,
+                },
+                wordCount: 34,
+                starCount: 5,
+                viewRank: 6,
+            },
+        });
+        await expect(services.docsContentQueryService.get(1)).resolves.toEqual({
+            ok: true,
+            value: {
+                metadata: {
+                    id: 103,
+                    title: '본문 문서',
+                    lastUpdatedAt: '2026-08-25T03:00:00.000Z',
+                    type: 'theme',
+                },
+                starredUserIds: ['user-1'],
+                words: [{ word: '본문단어', status: 'ok', requesterNickname: '요청자' }],
+                isSpecial: false,
+            },
+        });
     });
 
     it('creates a fresh docs request moderation service wired to the Supabase gateway', async () => {
