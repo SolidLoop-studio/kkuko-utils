@@ -32,10 +32,10 @@ delete from public.words where word in (
     '������������������',
     '�޴޴޴޴޴޴޴޴�',
     '�ɲɲɲɲɲɲɲɲ�',
-    '가가가',
-    '가나가',
-    '가나가나',
-    '가가가실패'
+    '가가힣',
+    '가나힣',
+    '가나힣힣',
+    '가가힣실패'
 );
 delete from public.docs_logs where word in (
     '�R�R�R�R�R�R�R�R�R',
@@ -44,10 +44,10 @@ delete from public.docs_logs where word in (
     '������������������',
     '�޴޴޴޴޴޴޴޴�',
     '�ɲɲɲɲɲɲɲɲ�',
-    '가가가',
-    '가나가',
-    '가나가나',
-    '가가가실패'
+    '가가힣',
+    '가나힣',
+    '가나힣힣',
+    '가가힣실패'
 );
 delete from public.users where id in (
     '52000000-0000-4000-8000-000000000001',
@@ -161,70 +161,102 @@ select is(
 );
 
 insert into public.words (word, k_canuse, added_by) values (
-    '가가가', false,
+    '가가힣', false,
     '52000000-0000-4000-8000-000000000001'
 );
-select is(
-    (select count(*)::integer from public.docs_logs
-      where word = '가가가' and docs_id in (209, 224, 239) and type = 'add'),
-    3,
-    'repeated 가 produces one add log for each of its three mission docs'
+select results_eq(
+    $$ select docs_id, type
+       from public.docs_logs
+      where word = '가가힣' and docs_id between 209 and 252
+      order by id $$,
+    $$ values
+       (209::bigint, 'add'::public.request_type_enum),
+       (224::bigint, 'add'::public.request_type_enum),
+       (239::bigint, 'add'::public.request_type_enum) $$,
+    'repeated 가 preserves the exact three-category mission add mapping'
 );
-delete from public.words where word = '가가가';
-select is(
-    (select count(*)::integer from public.docs_logs
-      where word = '가가가' and docs_id in (209, 224, 239) and type = 'delete'),
-    3,
-    'deleting the repeated 가 fixture records matching mission deletes'
+delete from public.words where word = '가가힣';
+select results_eq(
+    $$ select docs_id, type
+       from public.docs_logs
+      where word = '가가힣' and docs_id between 209 and 252 and type = 'delete'
+      order by id $$,
+    $$ values
+       (209::bigint, 'delete'::public.request_type_enum),
+       (224::bigint, 'delete'::public.request_type_enum),
+       (239::bigint, 'delete'::public.request_type_enum) $$,
+    'deleting repeated 가 preserves the exact three-category mission mapping'
 );
 
 insert into public.words (word, k_canuse, added_by) values (
-    '가나가', false,
+    '가나힣', false,
     '52000000-0000-4000-8000-000000000001'
 );
-select is(
-    (select count(*)::integer from public.docs_logs
-      where word = '가나가' and docs_id between 209 and 252 and type = 'add'),
-    6,
-    'a length-three word produces six mission add logs'
+select results_eq(
+    $$ select docs_id, type
+       from public.docs_logs
+      where word = '가나힣' and docs_id between 209 and 252
+      order by id $$,
+    $$ values
+       (209::bigint, 'add'::public.request_type_enum),
+       (224::bigint, 'add'::public.request_type_enum),
+       (239::bigint, 'add'::public.request_type_enum),
+       (210::bigint, 'add'::public.request_type_enum),
+       (225::bigint, 'add'::public.request_type_enum),
+       (240::bigint, 'add'::public.request_type_enum) $$,
+    'a length-three word preserves the exact letter and category mission add mapping'
 );
-delete from public.words where word = '가나가';
-select is(
-    (select count(*)::integer from public.docs_logs
-      where word = '가나가' and docs_id between 209 and 252 and type = 'delete'),
-    6,
-    'deleting the length-three fixture records six mission deletes'
+delete from public.words where word = '가나힣';
+select results_eq(
+    $$ select docs_id, type
+       from public.docs_logs
+      where word = '가나힣' and docs_id between 209 and 252 and type = 'delete'
+      order by id $$,
+    $$ values
+       (209::bigint, 'delete'::public.request_type_enum),
+       (224::bigint, 'delete'::public.request_type_enum),
+       (239::bigint, 'delete'::public.request_type_enum),
+       (210::bigint, 'delete'::public.request_type_enum),
+       (225::bigint, 'delete'::public.request_type_enum),
+       (240::bigint, 'delete'::public.request_type_enum) $$,
+    'deleting a length-three word preserves the exact letter and category mission mapping'
 );
 
 insert into public.words (word, k_canuse, added_by) values (
-    '가나가나', false,
+    '가나힣힣', false,
     '52000000-0000-4000-8000-000000000001'
 );
-select is(
-    (select count(*)::integer from public.docs_logs
-      where word = '가나가나' and docs_id between 209 and 238 and type = 'add'),
-    4,
-    'a non-three-character word produces four word-chain and reverse mission add logs'
+select results_eq(
+    $$ select docs_id, type
+       from public.docs_logs
+      where word = '가나힣힣' and docs_id between 209 and 252
+      order by id $$,
+    $$ values
+       (209::bigint, 'add'::public.request_type_enum),
+       (224::bigint, 'add'::public.request_type_enum),
+       (210::bigint, 'add'::public.request_type_enum),
+       (225::bigint, 'add'::public.request_type_enum) $$,
+    'a non-three-character word preserves the exact word-chain and reverse mission add mapping'
 );
-select is(
-    (select count(*)::integer from public.docs_logs
-      where word = '가나가나' and docs_id between 239 and 252),
-    0,
-    'a non-three-character word produces no Kkungkkungtta mission logs'
-);
-delete from public.words where word = '가나가나';
-select is(
-    (select count(*)::integer from public.docs_logs
-      where word = '가나가나' and docs_id between 209 and 238 and type = 'delete'),
-    4,
-    'deleting the non-three-character fixture records matching mission deletes'
+delete from public.words where word = '가나힣힣';
+select results_eq(
+    $$ select docs_id, type
+       from public.docs_logs
+      where word = '가나힣힣' and docs_id between 209 and 252 and type = 'delete'
+      order by id $$,
+    $$ values
+       (209::bigint, 'delete'::public.request_type_enum),
+       (224::bigint, 'delete'::public.request_type_enum),
+       (210::bigint, 'delete'::public.request_type_enum),
+       (225::bigint, 'delete'::public.request_type_enum) $$,
+    'deleting a non-three-character word preserves the exact word-chain and reverse mission mapping'
 );
 
 update public.docs
    set last_update = '2000-01-01'::timestamptz
  where id in (208, 209, 223, 224, 238, 239);
 insert into public.words (word, k_canuse, added_by) values (
-    '가가가', false,
+    '가나힣', false,
     '52000000-0000-4000-8000-000000000001'
 );
 select ok(
@@ -238,12 +270,14 @@ select ok(
 delete from public.docs where id = 209;
 select throws_ok(
     $$ insert into public.words (word, k_canuse, added_by) values
-       ('가가가실패', false, '52000000-0000-4000-8000-000000000001') $$,
-    null
+       ('가가힣실패', false, '52000000-0000-4000-8000-000000000001') $$,
+    null,
+    null,
+    'the missing legacy child aborts the word insert'
 );
 select ok(
-    not exists (select 1 from public.words where word = '가가가실패')
-    and not exists (select 1 from public.docs_logs where word = '가가가실패'),
+    not exists (select 1 from public.words where word = '가가힣실패')
+    and not exists (select 1 from public.docs_logs where word = '가가힣실패'),
     'the missing-child failure rolls back its word and docs-log rows'
 );
 
