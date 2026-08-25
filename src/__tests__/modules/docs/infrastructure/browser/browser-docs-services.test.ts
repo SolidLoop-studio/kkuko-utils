@@ -80,11 +80,31 @@ jest.mock(
     }),
 );
 
+jest.mock(
+    '../../../../../modules/docs/infrastructure/browser/supabase-letter-docs-duplicate-query-gateway',
+    () => ({
+        SupabaseLetterDocsDuplicateQueryGateway: jest.fn().mockImplementation(() => ({
+            existsByName: jest.fn().mockResolvedValue({ ok: true, value: false }),
+        })),
+    }),
+);
+
+jest.mock(
+    '../../../../../modules/docs/infrastructure/browser/supabase-docs-creation-request-gateway',
+    () => ({
+        SupabaseDocsCreationRequestGateway: jest.fn().mockImplementation(() => ({
+            request: jest.fn().mockResolvedValue({ ok: true, value: undefined }),
+        })),
+    }),
+);
+
 import { GetDocsContentService } from '@/src/modules/docs/application/get-docs-content';
 import { GetDocsInfoService } from '@/src/modules/docs/application/get-docs-info';
 import { GetDocsListService } from '@/src/modules/docs/application/get-docs-list';
 import { GetDocsLogsService } from '@/src/modules/docs/application/get-docs-logs';
+import { CheckLetterDocsDuplicateService } from '@/src/modules/docs/application/check-letter-docs-duplicate';
 import { ModerateDocsRequestsService } from '@/src/modules/docs/application/moderate-docs-requests';
+import { RequestDocsCreationService } from '@/src/modules/docs/application/request-docs-creation';
 import { createBrowserDocsServices } from '@/src/modules/docs/infrastructure/browser/browser-docs-services';
 import { SupabaseDocsContentQueryGateway } from '@/src/modules/docs/infrastructure/browser/supabase-docs-content-query-gateway';
 import { SupabaseDocsInfoQueryGateway } from '@/src/modules/docs/infrastructure/browser/supabase-docs-info-query-gateway';
@@ -177,5 +197,25 @@ describe('browser docs services', () => {
         expect(browserSupabaseClient.rpc).toHaveBeenCalledWith('approve_docs_requests', {
             p_selections: [{ requestId: 11, duem: true }],
         });
+    });
+
+    it('creates fresh letter duplicate and creation request services wired to their adapters', async () => {
+        const first = createBrowserDocsServices();
+        const second = createBrowserDocsServices();
+
+        expect(first.letterDocsDuplicateQueryService)
+            .toBeInstanceOf(CheckLetterDocsDuplicateService);
+        expect(first.docsCreationRequestService)
+            .toBeInstanceOf(RequestDocsCreationService);
+        expect(first.letterDocsDuplicateQueryService)
+            .not.toBe(second.letterDocsDuplicateQueryService);
+        expect(first.docsCreationRequestService)
+            .not.toBe(second.docsCreationRequestService);
+        await expect(first.letterDocsDuplicateQueryService.check('가'))
+            .resolves.toEqual({ ok: true, value: false });
+        await expect(first.docsCreationRequestService.request({
+            docsName: '가',
+            requesterId: 'user-7',
+        })).resolves.toEqual({ ok: true, value: undefined });
     });
 });

@@ -43,12 +43,6 @@ class AddManager implements IAddManager {
     public async waitWordThemes(insertWaitWordThemeData: { wait_word_id: number, theme_id: number }[]) {
         return await this.supabase.from('wait_word_themes').insert(insertWaitWordThemeData);
     }
-    public async waitDocs({ docsName, userId }: { docsName: string, userId: string | undefined }) {
-        return await this.supabase.from('docs_wait').insert({
-            docs_name: docsName,
-            req_by: userId ?? null,
-        })
-    }
     public async nickname(nick: string) {
         const res = await axios.post('/api/auth/set_nickname', { nickname: nick.trim() });
         return res.data;
@@ -165,9 +159,6 @@ class GetManager implements IGetManager {
             time: now
         }
         return { data, error: null }
-    }
-    public async letterDocs() {
-        return await this.supabase.from('docs').select('*').eq('typez', 'letter');
     }
     public async releaseNote() {
         return await this.supabase.from('release_note').select('*').order('created_at', { ascending: false });

@@ -9,9 +9,12 @@ import { convertQwertyToHangul } from "es-hangul";
 import { useSelector } from "react-redux";
 import type { RootState } from "../store/store";
 import LoginRequiredModal from "../components/LoginRequiredModal";
-import { SCM } from "@/src/app/lib/supabaseClient";
 import CompleteModal from "../components/CompleteModal";
-import { usePendingDocsRequests } from "@/src/modules/docs";
+import {
+    useDocsCreationRequest,
+    useLetterDocsDuplicate,
+    usePendingDocsRequests,
+} from "@/src/modules/docs";
 
 interface Document {
     id: string;
@@ -58,6 +61,9 @@ const WordsDocsHome = ({ docs }: WordsDocsHomeProps) => {
     const [showComplete, setShowComplete] = useState(false);
     const [showNeedLogin, setShowNeedLogin] = useState(false);
     const user = useSelector((state: RootState) => state.user);
+    const { refetch: refetchLetterDocsDuplicate } =
+        useLetterDocsDuplicate(newDocName);
+    const { request: requestDocsCreation } = useDocsCreationRequest();
     const { refetch: refetchPendingDocsRequests } = usePendingDocsRequests();
 
     const toggleType = (typez: string) => {
@@ -165,9 +171,9 @@ const WordsDocsHome = ({ docs }: WordsDocsHomeProps) => {
             setNewDocLoading(true);
             setNewDocError(null);
 
-            const {data: checkData ,error: checkError} = await SCM.get().letterDocs();
+            const duplicateResult = await refetchLetterDocsDuplicate();
             const pendingResult = await refetchPendingDocsRequests();
-            if (checkError) {
+            if (duplicateResult.error || duplicateResult.data === undefined) {
                 setNewDocError("문서 추가 요청에 실패했습니다. 잠시 후 다시 시도해주세요.");
                 setTimeout(() => {
                     setNewDocError(null);
@@ -183,7 +189,7 @@ const WordsDocsHome = ({ docs }: WordsDocsHomeProps) => {
                 setNewDocLoading(false);
                 return;
             }
-            if (checkData.some(doc => doc.name === newDocName)) {
+            if (duplicateResult.data) {
                 setNewDocError("이미 존재하는 문서명입니다.");
                 setTimeout(() => {
                     setNewDocError(null);
@@ -200,12 +206,12 @@ const WordsDocsHome = ({ docs }: WordsDocsHomeProps) => {
                 return;
             }
 
-            const {error} = await SCM.add().waitDocs({
+            const requestResult = await requestDocsCreation({
                 docsName: newDocName,
-                userId: user.uuid
-            })
-            if (error) {
-                setNewDocError("문서 추가 요청에 실패했습니다. 잠시 후 다시 시도해주세요." + error.message + error.details);
+                requesterId: user.uuid,
+            });
+            if (!requestResult.ok) {
+                setNewDocError(requestResult.error.message);
                 setTimeout(() => {
                     setNewDocError(null);
                 }, 3000);
