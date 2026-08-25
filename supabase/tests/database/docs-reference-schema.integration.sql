@@ -283,15 +283,49 @@ select ok(
         'service_role', 'public.fn_process_word_docs_update()', 'EXECUTE'),
     'application roles cannot execute the mission trigger function'
 );
-select ok(
+select is(
     (
-        select routine.prosrc like '%pg_catalog.now()%'
-           and routine.prosrc !~ '(^|[^.[:alnum:]_])now\(\)'
+        select pg_catalog.regexp_count(
+            routine.prosrc,
+            '(^|[^[:alnum:]_])now[[:space:]]*\('
+        )::integer
           from pg_catalog.pg_proc as routine
          where routine.oid =
             'public.fn_process_word_docs_update()'::pg_catalog.regprocedure
     ),
-    'the mission trigger schema-qualifies every now call'
+    2,
+    'the mission trigger contains exactly two total now calls'
+);
+select is(
+    (
+        select pg_catalog.regexp_count(
+            routine.prosrc,
+            '(^|[^[:alnum:]_])pg_catalog[[:space:]]*\.[[:space:]]*now[[:space:]]*\('
+        )::integer
+          from pg_catalog.pg_proc as routine
+         where routine.oid =
+            'public.fn_process_word_docs_update()'::pg_catalog.regprocedure
+    ),
+    2,
+    'the mission trigger contains exactly two pg_catalog.now calls'
+);
+select is(
+    (
+        select (
+            pg_catalog.regexp_count(
+                routine.prosrc,
+                '(^|[^[:alnum:]_])now[[:space:]]*\('
+            ) - pg_catalog.regexp_count(
+                routine.prosrc,
+                '(^|[^[:alnum:]_])pg_catalog[[:space:]]*\.[[:space:]]*now[[:space:]]*\('
+            )
+        )::integer
+          from pg_catalog.pg_proc as routine
+         where routine.oid =
+            'public.fn_process_word_docs_update()'::pg_catalog.regprocedure
+    ),
+    0,
+    'the mission trigger contains zero bare now calls'
 );
 
 select alike(

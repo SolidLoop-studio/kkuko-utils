@@ -22,13 +22,16 @@ $function$;
 
 insert into auth.users (id) values
     ('47000000-0000-4000-8000-000000000001'),
-    ('47000000-0000-4000-8000-000000000002');
+    ('47000000-0000-4000-8000-000000000002'),
+    ('47000000-0000-4000-8000-000000000003');
 
 insert into public.users (id, nickname, role) values
     ('47000000-0000-4000-8000-000000000001',
      'docs-write-authorized', 'r4'),
     ('47000000-0000-4000-8000-000000000002',
-     'docs-write-other', 'r1');
+     'docs-write-other', 'r1'),
+    ('47000000-0000-4000-8000-000000000003',
+     'docs-write-admin', 'admin');
 
 select no_plan();
 
@@ -86,6 +89,63 @@ select is(
       where docs_name = '나'),
     0,
     'the rejected cross-user request leaves no docs_wait row'
+);
+
+reset role;
+
+select pg_temp.set_docs_write_actor(
+    '47000000-0000-4000-8000-000000000003'
+);
+set local role authenticated;
+
+select lives_ok(
+    $$ insert into public.docs (name, typez)
+       values ('docs-write-admin-ordinary', 'ect') $$,
+    'an authenticated admin can insert an ordinary docs row'
+);
+
+select is(
+    (select reference_code from public.docs
+      where name = 'docs-write-admin-ordinary'),
+    null,
+    'an authenticated admin can create an ordinary docs row with a null semantic reference'
+);
+
+select throws_ok(
+    $$ insert into public.docs (name, typez, reference_code)
+       values ('docs-write-admin-semantic-spoof', 'ect', 'test.admin.spoof') $$,
+    '42501',
+    null,
+    'an authenticated admin cannot supply a non-null docs semantic reference'
+);
+
+select is(
+    (select count(*)::integer from public.docs
+      where name = 'docs-write-admin-semantic-spoof'),
+    0,
+    'the rejected admin semantic-reference insert leaves no docs row'
+);
+
+reset role;
+
+select pg_temp.set_docs_write_actor(
+    '47000000-0000-4000-8000-000000000002'
+);
+set local role authenticated;
+
+select throws_ok(
+    $$ insert into public.docs (name, typez)
+       values ('docs-write-r1-ordinary', 'ect') $$,
+    '42501',
+    null,
+    'an authenticated r1 user cannot create an ordinary docs row'
+);
+
+select is(
+    (select count(*)::integer from public.docs
+      where name = 'docs-write-r1-ordinary'),
+    0,
+    'the rejected r1 insert leaves no docs row'
 );
 
 reset role;
