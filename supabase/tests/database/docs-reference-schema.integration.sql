@@ -244,5 +244,64 @@ select ok(
     'application roles cannot execute the mission trigger function'
 );
 
+select alike(
+    (select routine.prosrc from pg_catalog.pg_proc as routine
+      where routine.oid = 'public.sync_parent_last_update()'::pg_catalog.regprocedure),
+    '%ko.word-chain.mission%',
+    'the parent trigger names the word-chain mission parent reference'
+);
+select alike(
+    (select routine.prosrc from pg_catalog.pg_proc as routine
+      where routine.oid = 'public.sync_parent_last_update()'::pg_catalog.regprocedure),
+    '%ko.reverse-word-chain.mission%',
+    'the parent trigger names the reverse word-chain mission parent reference'
+);
+select alike(
+    (select routine.prosrc from pg_catalog.pg_proc as routine
+      where routine.oid = 'public.sync_parent_last_update()'::pg_catalog.regprocedure),
+    '%ko.kkungkkungtta.mission%',
+    'the parent trigger names the Kkungkkungtta mission parent reference'
+);
+select unalike(
+    (select routine.prosrc from pg_catalog.pg_proc as routine
+      where routine.oid = 'public.sync_parent_last_update()'::pg_catalog.regprocedure),
+    '%between 209 and 222%',
+    'the parent trigger no longer uses word-chain child ID ranges'
+);
+select unalike(
+    (select routine.prosrc from pg_catalog.pg_proc as routine
+      where routine.oid = 'public.sync_parent_last_update()'::pg_catalog.regprocedure),
+    '%between 224 and 237%',
+    'the parent trigger no longer uses reverse word-chain child ID ranges'
+);
+select unalike(
+    (select routine.prosrc from pg_catalog.pg_proc as routine
+      where routine.oid = 'public.sync_parent_last_update()'::pg_catalog.regprocedure),
+    '%between 239 and 252%',
+    'the parent trigger no longer uses Kkungkkungtta child ID ranges'
+);
+select ok(
+    (select routine.prosecdef
+       from pg_catalog.pg_proc as routine
+      where routine.oid = 'public.sync_parent_last_update()'::pg_catalog.regprocedure),
+    'the parent trigger is SECURITY DEFINER'
+);
+select is(
+    (select pg_catalog.array_to_string(routine.proconfig, ',')
+       from pg_catalog.pg_proc as routine
+      where routine.oid = 'public.sync_parent_last_update()'::pg_catalog.regprocedure),
+    'search_path=""',
+    'the parent trigger has an empty search path'
+);
+select ok(
+    not pg_catalog.has_function_privilege(
+        'anon', 'public.sync_parent_last_update()', 'EXECUTE')
+    and not pg_catalog.has_function_privilege(
+        'authenticated', 'public.sync_parent_last_update()', 'EXECUTE')
+    and not pg_catalog.has_function_privilege(
+        'service_role', 'public.sync_parent_last_update()', 'EXECUTE'),
+    'application roles cannot execute the parent trigger function'
+);
+
 select * from finish();
 rollback;
