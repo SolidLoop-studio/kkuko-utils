@@ -384,10 +384,15 @@ select is((select pg_catalog.count(*)::integer from public.logs where word in (
 )), 3, 'replay는 log를 중복 생성하지 않는다');
 select is((select contribution from public.users where id = '00000000-0000-4000-8000-0000000000c4'), 2, 'replay는 contribution을 중복 생성하지 않는다');
 
-insert into public.docs (id, name, typez, last_update)
-values
-    (201, '삭제통합특수문서A', 'ect', '1999-01-01'),
-    (202, '삭제통합특수문서B', 'ect', '1999-01-01');
+update public.docs
+set
+    name = case id
+        when 201 then '삭제통합특수문서A'
+        when 202 then '삭제통합특수문서B'
+    end,
+    typez = 'ect',
+    last_update = '1999-01-01'
+where id in (201, 202);
 select is((select pg_catalog.count(*)::integer from public.docs where id in (201, 202)), 2, 'special docs fixture가 있다');
 insert into public.words (word, added_by) values
     ('삭제통합특수문서동작확인¤', '00000000-0000-4000-8000-0000000000c5');

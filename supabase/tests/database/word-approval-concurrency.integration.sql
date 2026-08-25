@@ -9,7 +9,7 @@ language sql
 stable
 as $function$
     select pg_catalog.format(
-        'host=host.docker.internal port=54322 dbname=%s user=postgres password=postgres',
+        'host=host.docker.internal port=55322 dbname=%s user=postgres password=postgres',
         pg_catalog.current_database()
     );
 $function$;
