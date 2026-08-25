@@ -3,7 +3,7 @@ import type { PostgrestError, PostgrestSingleResponse, Session, SupabaseClient }
 import type { Database } from '@/src/app/types/database.types';
 import type { addWordQueryType, addWordThemeQueryType, DocsLogData, WordLogData } from '@/src/app/types/type';
 import DuemLaw, { reverDuemLaw } from '../hangulUtils';
-import { sum, chunk } from 'es-toolkit';
+import { chunk } from 'es-toolkit';
 import { StorageError } from '@supabase/storage-js';
 import { misssionCharMask } from '../lib';
 import axios from 'axios';
@@ -94,45 +94,12 @@ class GetManager implements IGetManager {
     public async docsInfoByDocsId(docsId: number) {
         return await this.supabase.from('docs').select('*,users(*)').eq('id', docsId).maybeSingle();
     }
-    public async docsWordCount({ name, duem, typez }: { name: string, duem: boolean, typez: "letter" | "theme" } | { name: number, duem: boolean, typez: "ect" }) {
-        if (typez === "letter") {
-            if (duem) {
-                const { data, error } = await this.supabase.from('word_last_letter_counts').select('count').in('last_letter', reverDuemLaw(name[0]));
-                return { count: sum(data?.map(({ count }) => count) ?? []) ?? 0, error }
-            } else {
-                const { data, error } = await this.supabase.from('word_last_letter_counts').select('count').eq('last_letter', name[0]).maybeSingle();
-                return { count: data?.count ?? 0, error }
-            }
-        }
-        else if (typez === "theme") {
-            const { data: themeData, error: themeDataError } = await this.themeInfoByThemeName(name)
-            if (themeDataError || !themeData) return { count: 0, error: themeDataError }
-            const { count, error } = await this.supabase.from('word_themes').select('*', { count: 'exact', head: true }).eq('theme_id', themeData.id);
-            return { count, error }
-        } else if (typez === "ect") {
-            if (name === 201 || name === 202) {
-                const { count, error } = await this.supabase.from('words').select('*', { count: 'exact', head: true }).eq('k_canuse', true).gt('length', 8);
-                return { count, error };
-            } else {
-                return { count: 0, error: { name: "unexcept", details: "", code: "", message: "", hint: "" } as PostgrestError }
-            }
-        } else {
-            return { count: 0, error: { name: "unexcept", details: "", code: "", message: "", hint: "" } as PostgrestError }
-        }
-    }
-    public async docsVeiwRankByDocsId(docsId: number) {
-        return await this.supabase.rpc('get_doc_rank', { doc_id: docsId })
-    }
     public async allThemes() {
         return await this.supabase.from('themes').select('*');
     }
     public async themeInfoByThemeName(name: string) {
         const { data, error } = await this.supabase.from('themes').select('*').eq('name', name).maybeSingle();
         return { data, error }
-    }
-    public async docsStarCount(id: number) {
-        const { data, error } = await this.supabase.from('user_star_docs').select('*').eq('docs_id', id);
-        return { data: data?.length ?? 0, error };
     }
     public async docsStar(id: number) {
         return await this.supabase.from('user_star_docs').select('user_id').eq('docs_id', id);

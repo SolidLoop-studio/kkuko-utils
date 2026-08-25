@@ -39,11 +39,8 @@ export interface IGetManager{
     wordInfoByWord(word: string): Promise<PostgrestSingleResponse<word & {users: {nickname: string} | null} | null>>;
     allDocs(): Promise<PostgrestSingleResponse<(docs & { users: user | null })[]>>;
     docsInfoByDocsId(docsId: number): Promise<PostgrestSingleResponse<(docs & { users: user | null }) | null>>
-    docsWordCount({ name, duem, typez }: { name: string, duem: boolean, typez: "letter" | "theme" }|{name:number, duem:boolean, typez:"ect"}): Promise<{count: number | null; error: PostgrestError | null;}>
-    docsVeiwRankByDocsId(docsId: number): Promise<PostgrestSingleResponse<number>>;
     allThemes(): Promise<PostgrestSingleResponse<theme[]>>
     themeInfoByThemeName(name: string): Promise<{ data: theme | null; error: PostgrestError | null;}>
-    docsStarCount(id: number): Promise<{ data: number; error: PostgrestError | null;}>
     docsStar(id: number): Promise<PostgrestSingleResponse<{user_id: string;}[]>>;
     docsWords({ name, duem, typez }: { name: string; duem: boolean; typez: "letter" | "theme";} | {name: number; duem: boolean; typez: "ect";}): Promise<{data: null, error: PostgrestError} | {data: {words: okWord[], waitWords: ({ word: string; request_type: "add" | "delete"; requested_by: string | null; })[]}, error: null}>
     allWaitWords(c?:"add" | "delete"): Promise<PostgrestSingleResponse<(wait_word & {words: word | null; users: user | null})[]>>;
