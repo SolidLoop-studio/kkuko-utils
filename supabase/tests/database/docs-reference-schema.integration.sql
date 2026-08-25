@@ -303,5 +303,251 @@ select ok(
     'application roles cannot execute the parent trigger function'
 );
 
+select ok(
+    exists (
+        select 1
+          from pg_catalog.pg_trigger as trigger
+          join pg_catalog.pg_attribute as attribute
+            on attribute.attrelid = trigger.tgrelid
+           and attribute.attname = 'last_update'
+         where trigger.tgname = 'trg_sync_parent_last_update'
+           and trigger.tgrelid = 'public.docs'::pg_catalog.regclass
+           and trigger.tgfoid =
+               'public.sync_parent_last_update()'::pg_catalog.regprocedure
+           and not trigger.tgisinternal
+           and trigger.tgenabled = 'O'
+           and trigger.tgtype & 1 = 1
+           and trigger.tgtype & 2 = 0
+           and trigger.tgtype & 16 = 16
+           and attribute.attnum::smallint = any(trigger.tgattr::smallint[])
+    ),
+    'the docs parent timestamp trigger remains an enabled AFTER UPDATE OF last_update binding'
+);
+
+create temporary table parent_trigger_observation (
+    scenario text primary key,
+    word_chain_parent_changed boolean not null,
+    reverse_word_chain_parent_changed boolean not null,
+    kkungkkungtta_parent_changed boolean not null,
+    source_last_update_preserved boolean not null
+) on commit drop;
+
+insert into public.docs (name, typez, reference_code, last_update) values
+    ('parent-trigger-malformed-suffix', 'ect', 'ko.word-chain.mission.ga.extra', '2000-01-01'::timestamptz),
+    ('parent-trigger-unknown-suffix', 'ect', 'ko.reverse-word-chain.mission.unknown', '2000-01-01'::timestamptz),
+    ('parent-trigger-unrelated-code', 'ect', 'future.unrelated', '2000-01-01'::timestamptz),
+    ('parent-trigger-null-code', 'ect', null, '2000-01-01'::timestamptz);
+
+do $block$
+declare
+    baseline constant timestamptz := '2000-01-01'::timestamptz;
+    changed_at constant timestamptz := '2001-01-01'::timestamptz;
+    mission_keys text[] := array[
+        'ga', 'na', 'da', 'ra', 'ma', 'ba', 'sa',
+        'a', 'ja', 'cha', 'ka', 'ta', 'pa', 'ha'
+    ];
+    mission_key text;
+    word_chain_parent_id bigint;
+    reverse_word_chain_parent_id bigint;
+    kkungkkungtta_parent_id bigint;
+    source_id bigint;
+begin
+    select id into word_chain_parent_id
+      from public.docs
+     where reference_code = 'ko.word-chain.mission';
+    select id into reverse_word_chain_parent_id
+      from public.docs
+     where reference_code = 'ko.reverse-word-chain.mission';
+    select id into kkungkkungtta_parent_id
+      from public.docs
+     where reference_code = 'ko.kkungkkungtta.mission';
+
+    foreach mission_key in array mission_keys loop
+        update public.docs
+           set last_update = baseline
+         where id in (
+             word_chain_parent_id,
+             reverse_word_chain_parent_id,
+             kkungkkungtta_parent_id
+         );
+        update public.docs
+           set last_update = changed_at
+         where reference_code = 'ko.word-chain.mission.' || mission_key;
+        insert into pg_temp.parent_trigger_observation
+        select
+            'word-chain.' || mission_key,
+            (select last_update <> baseline from public.docs where id = word_chain_parent_id),
+            (select last_update <> baseline from public.docs where id = reverse_word_chain_parent_id),
+            (select last_update <> baseline from public.docs where id = kkungkkungtta_parent_id),
+            true;
+
+        update public.docs
+           set last_update = baseline
+         where id in (
+             word_chain_parent_id,
+             reverse_word_chain_parent_id,
+             kkungkkungtta_parent_id
+         );
+        update public.docs
+           set last_update = changed_at
+         where reference_code = 'ko.reverse-word-chain.mission.' || mission_key;
+        insert into pg_temp.parent_trigger_observation
+        select
+            'reverse-word-chain.' || mission_key,
+            (select last_update <> baseline from public.docs where id = word_chain_parent_id),
+            (select last_update <> baseline from public.docs where id = reverse_word_chain_parent_id),
+            (select last_update <> baseline from public.docs where id = kkungkkungtta_parent_id),
+            true;
+
+        update public.docs
+           set last_update = baseline
+         where id in (
+             word_chain_parent_id,
+             reverse_word_chain_parent_id,
+             kkungkkungtta_parent_id
+         );
+        update public.docs
+           set last_update = changed_at
+         where reference_code = 'ko.kkungkkungtta.mission.' || mission_key;
+        insert into pg_temp.parent_trigger_observation
+        select
+            'kkungkkungtta.' || mission_key,
+            (select last_update <> baseline from public.docs where id = word_chain_parent_id),
+            (select last_update <> baseline from public.docs where id = reverse_word_chain_parent_id),
+            (select last_update <> baseline from public.docs where id = kkungkkungtta_parent_id),
+            true;
+    end loop;
+
+    update public.docs
+       set last_update = baseline
+     where id in (
+         word_chain_parent_id,
+         reverse_word_chain_parent_id,
+         kkungkkungtta_parent_id
+     );
+    update public.docs
+       set last_update = last_update
+     where reference_code = 'ko.word-chain.mission.ga';
+    insert into pg_temp.parent_trigger_observation
+    select
+        'unchanged-last-update',
+        (select last_update <> baseline from public.docs where id = word_chain_parent_id),
+        (select last_update <> baseline from public.docs where id = reverse_word_chain_parent_id),
+        (select last_update <> baseline from public.docs where id = kkungkkungtta_parent_id),
+        true;
+
+    foreach source_id in array array[
+        (select id from public.docs where reference_code = 'ko.word-chain.long'),
+        (select id from public.docs where reference_code = 'ko.reverse-word-chain.long'),
+        (select id from public.docs where name = 'parent-trigger-malformed-suffix'),
+        (select id from public.docs where name = 'parent-trigger-unknown-suffix'),
+        (select id from public.docs where name = 'parent-trigger-unrelated-code'),
+        (select id from public.docs where name = 'parent-trigger-null-code')
+    ] loop
+        update public.docs
+           set last_update = baseline
+         where id in (
+             word_chain_parent_id,
+             reverse_word_chain_parent_id,
+             kkungkkungtta_parent_id
+         );
+        update public.docs
+           set last_update = changed_at
+         where id = source_id;
+        insert into pg_temp.parent_trigger_observation
+        select
+            'non-child.' || source_id,
+            (select last_update <> baseline from public.docs where id = word_chain_parent_id),
+            (select last_update <> baseline from public.docs where id = reverse_word_chain_parent_id),
+            (select last_update <> baseline from public.docs where id = kkungkkungtta_parent_id),
+            (select last_update = changed_at from public.docs where id = source_id);
+    end loop;
+
+    foreach source_id in array array[
+        word_chain_parent_id,
+        reverse_word_chain_parent_id,
+        kkungkkungtta_parent_id
+    ] loop
+        update public.docs
+           set last_update = baseline
+         where id in (
+             word_chain_parent_id,
+             reverse_word_chain_parent_id,
+             kkungkkungtta_parent_id
+         );
+        update public.docs
+           set last_update = changed_at
+         where id = source_id;
+        insert into pg_temp.parent_trigger_observation
+        select
+            'parent-code.' || source_id,
+            (select last_update <> baseline from public.docs where id = word_chain_parent_id),
+            (select last_update <> baseline from public.docs where id = reverse_word_chain_parent_id),
+            (select last_update <> baseline from public.docs where id = kkungkkungtta_parent_id),
+            (select last_update = changed_at from public.docs where id = source_id);
+    end loop;
+end;
+$block$;
+
+select is(
+    (select count(*)::integer from parent_trigger_observation
+      where scenario like 'word-chain.%'
+        and word_chain_parent_changed
+        and not reverse_word_chain_parent_changed
+        and not kkungkkungtta_parent_changed),
+    14,
+    'every exact word-chain suffix updates only the word-chain parent'
+);
+select is(
+    (select count(*)::integer from parent_trigger_observation
+      where scenario like 'reverse-word-chain.%'
+        and not word_chain_parent_changed
+        and reverse_word_chain_parent_changed
+        and not kkungkkungtta_parent_changed),
+    14,
+    'every exact reverse word-chain suffix updates only the reverse word-chain parent'
+);
+select is(
+    (select count(*)::integer from parent_trigger_observation
+      where scenario like 'kkungkkungtta.%'
+        and not word_chain_parent_changed
+        and not reverse_word_chain_parent_changed
+        and kkungkkungtta_parent_changed),
+    14,
+    'every exact Kkungkkungtta suffix updates only the Kkungkkungtta parent'
+);
+select ok(
+    exists (
+        select 1 from parent_trigger_observation
+         where scenario = 'unchanged-last-update'
+           and not word_chain_parent_changed
+           and not reverse_word_chain_parent_changed
+           and not kkungkkungtta_parent_changed
+    ),
+    'an unchanged exact child timestamp does not propagate to a parent'
+);
+select is(
+    (select count(*)::integer from parent_trigger_observation
+      where scenario like 'non-child.%'
+        and not word_chain_parent_changed
+        and not reverse_word_chain_parent_changed
+        and not kkungkkungtta_parent_changed
+        and source_last_update_preserved),
+    6,
+    'long, malformed, unknown, unrelated, and null references do not propagate'
+);
+select is(
+    (select count(*)::integer from parent_trigger_observation
+      where scenario like 'parent-code.%'
+        and (
+            word_chain_parent_changed::integer
+            + reverse_word_chain_parent_changed::integer
+            + kkungkkungtta_parent_changed::integer
+        ) = 1
+        and source_last_update_preserved),
+    3,
+    'updating a parent code changes only its directly updated parent'
+);
+
 select * from finish();
 rollback;
