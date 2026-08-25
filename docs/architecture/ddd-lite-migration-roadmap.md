@@ -122,13 +122,11 @@ git grep -n -E "\bSCM\." -- "src/**/*.ts" "src/**/*.tsx"
 
 | 기능군 | 대표 파일 | 현재 위험 |
 | --- | --- | --- |
-| 관리자 docs 요청 목록 조회 | `admin/request-docs/RequestDocsWrapper.tsx` | Phase 4 query slice 이전 완료; `WordsDocsHome.tsx`의 대기 요청 중복 확인 read도 새 query로 이전됨 |
-| 사용자 단어 요청 | `word/add/WordAddHome.tsx`, `word/adds/WordsAddHome.tsx` | 일반 사용자 단일·대량 추가 요청은 이전 완료; `WordAddHome`의 관리자·`r4` 직접 추가만 별도 관리자 기능으로 legacy SCM에 남음 |
-| 단어 조회 | `word/search/**`, `word/words-download/**`, `word/stats/**` | DB Row와 검색 query shape가 presentation에 노출 |
-| docs 조회·즐겨찾기 | `words-docs/**` | 조회, 조회 수 mutation, 즐겨찾기가 같은 화면에 혼재 |
+| 관리자 요청 단어 조회 | `admin/request-words/AdminWrapper.tsx`, `admin/request-words/ThemeSelectModal.tsx` | 대기 요청·주제 조회의 DB Row와 query shape가 presentation에 노출 |
+| 관리자 단어 직접 추가 | `word/add/WordAddHome.tsx` | 관리자·`r4` 직접 추가의 다중 mutation과 docs 갱신 순서가 legacy SCM에 남음 |
+| docs 조회 수·즐겨찾기·보조 조회 | `words-docs/[id]/DocsDataPage.tsx`, `words-docs/[id]/DocsDataHome.tsx` | best-effort 조회 수, 즐겨찾기 mutation, 미션 marker용 갱신일 조회가 legacy SCM에 남음 |
 | 인증·프로필 | `AutoLogin.tsx`, `auth/auth.tsx`, `profile/**` | Auth SDK 상태와 사용자 DB profile 조회가 SCM에 결합 |
 | 공지 | `notification/**`, `hooks/useNotice.ts` | 조회·작성·Storage 업로드가 하나의 manager에 결합 |
-| API Route | `api/words/search/route.ts` | 서버 코드가 browser용 전역 SCM 경계를 사용 |
 
 ## 4. 현재 문제점과 해결 방향
 
