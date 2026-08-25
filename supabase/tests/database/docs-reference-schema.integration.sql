@@ -2,6 +2,46 @@ begin;
 
 select no_plan();
 
+select ok(
+    exists (
+        select 1
+          from pg_catalog.pg_policy as policy
+         where policy.polname = 'docs_insert_reference_code_null'
+           and policy.polrelid = 'public.docs'::pg_catalog.regclass
+           and policy.polcmd = 'a'
+           and not policy.polpermissive
+           and policy.polroles = array[(
+               select role.oid
+                 from pg_catalog.pg_roles as role
+                where role.rolname = 'authenticated'
+           )]
+           and pg_catalog.pg_get_expr(
+               policy.polwithcheck, policy.polrelid
+           ) = '(reference_code IS NULL)'
+    ),
+    'authenticated docs inserts require null reference codes through a restrictive policy'
+);
+
+select ok(
+    exists (
+        select 1
+          from pg_catalog.pg_policy as policy
+         where policy.polname = 'Enable insert for authenticated users only'
+           and policy.polrelid = 'public.docs_wait'::pg_catalog.regclass
+           and policy.polcmd = 'a'
+           and policy.polpermissive
+           and policy.polroles = array[(
+               select role.oid
+                 from pg_catalog.pg_roles as role
+                where role.rolname = 'authenticated'
+           )]
+           and pg_catalog.pg_get_expr(
+               policy.polwithcheck, policy.polrelid
+           ) = '(req_by = ( SELECT auth.uid() AS uid))'
+    ),
+    'docs creation requests require req_by to equal the authenticated user'
+);
+
 create temporary table expected_docs_reference_code (
     legacy_id bigint primary key,
     reference_code text not null unique
@@ -242,6 +282,16 @@ select ok(
     and not pg_catalog.has_function_privilege(
         'service_role', 'public.fn_process_word_docs_update()', 'EXECUTE'),
     'application roles cannot execute the mission trigger function'
+);
+select ok(
+    (
+        select routine.prosrc like '%pg_catalog.now()%'
+           and routine.prosrc !~ '(^|[^.[:alnum:]_])now\(\)'
+          from pg_catalog.pg_proc as routine
+         where routine.oid =
+            'public.fn_process_word_docs_update()'::pg_catalog.regprocedure
+    ),
+    'the mission trigger schema-qualifies every now call'
 );
 
 select alike(
