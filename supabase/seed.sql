@@ -407,9 +407,57 @@ VALUES
     (286, '슈퍼 마리오', '2026-08-13 06:28:35.902507+00'::timestamptz, 'theme', '2026-08-20 13:02:57.06098+00'::timestamptz, false, false)
 ON CONFLICT (name) DO NOTHING;
 
+with docs_reference_catalog(legacy_id, expected_name, reference_code) as (
+    values
+        (201::bigint, '한국어 끝말잇기 긴단어'::text, 'ko.word-chain.long'::text),
+        (202::bigint, '한국어 앞말잇기 긴단어'::text, 'ko.reverse-word-chain.long'::text),
+        (208::bigint, '한국어 끝말잇기 미션단어'::text, 'ko.word-chain.mission'::text),
+        (223::bigint, '한국어 앞말잇기 미션단어'::text, 'ko.reverse-word-chain.mission'::text),
+        (238::bigint, '한국어 쿵쿵따 미션단어'::text, 'ko.kkungkkungtta.mission'::text)
+    union all
+    select
+        family.first_id + letter.ordinal - 1,
+        family.name_prefix || ' - ' || letter.letter,
+        family.code_prefix || '.' || letter.reference_key
+    from (
+        values
+            (1, '가', 'ga'), (2, '나', 'na'), (3, '다', 'da'),
+            (4, '라', 'ra'), (5, '마', 'ma'), (6, '바', 'ba'),
+            (7, '사', 'sa'), (8, '아', 'a'), (9, '자', 'ja'),
+            (10, '차', 'cha'), (11, '카', 'ka'), (12, '타', 'ta'),
+            (13, '파', 'pa'), (14, '하', 'ha')
+    ) as letter(ordinal, letter, reference_key)
+    cross join (
+        values
+            (209, '한국어 끝말잇기 미션단어', 'ko.word-chain.mission'),
+            (224, '한국어 앞말잇기 미션단어', 'ko.reverse-word-chain.mission'),
+            (239, '한국어 쿵쿵따 미션단어', 'ko.kkungkkungtta.mission')
+    ) as family(first_id, name_prefix, code_prefix)
+)
+update public.docs as document
+   set reference_code = catalog.reference_code
+  from docs_reference_catalog as catalog
+ where document.id = catalog.legacy_id
+   and document.name = catalog.expected_name
+   and (
+       document.reference_code is null
+       or document.reference_code = catalog.reference_code
+   );
+
+do $seed_check$
+begin
+    if (select pg_catalog.count(*) from public.docs
+        where reference_code is not null) <> 47 then
+        raise exception using
+            errcode = 'P0001',
+            message = 'DOCS_REFERENCE_SEED_MISMATCH';
+    end if;
+end;
+$seed_check$;
+
 SELECT setval('public.docs_id_seq', COALESCE((SELECT MAX(id) FROM public.docs), 0), true);
 
-INSERT INTO public.themes (id, total_words)
+INSERT INTO public.words_count (id, total_words)
 VALUES
 (1,0)
 ON CONFLICT DO NOTHING;
