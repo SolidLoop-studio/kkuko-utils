@@ -228,6 +228,13 @@ select is(
     'the mission trigger has an empty search path'
 );
 select ok(
+    (select routine.prosecdef
+       from pg_catalog.pg_proc as routine
+      where routine.oid =
+        'public.fn_process_word_docs_update()'::pg_catalog.regprocedure),
+    'the mission trigger is SECURITY DEFINER'
+);
+select ok(
     not pg_catalog.has_function_privilege(
         'anon', 'public.fn_process_word_docs_update()', 'EXECUTE')
     and not pg_catalog.has_function_privilege(
