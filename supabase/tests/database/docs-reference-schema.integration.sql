@@ -134,5 +134,34 @@ select ok(
     'application roles cannot execute the private resolver'
 );
 
+select alike(
+    (select routine.prosrc from pg_catalog.pg_proc as routine
+      where routine.oid = 'public.words_docs_logs_trg()'::pg_catalog.regprocedure),
+    '%ko.word-chain.long%',
+    'the long trigger names the word-chain semantic reference'
+);
+select unalike(
+    (select routine.prosrc from pg_catalog.pg_proc as routine
+      where routine.oid = 'public.words_docs_logs_trg()'::pg_catalog.regprocedure),
+    '%(201,%',
+    'the long trigger no longer inserts legacy 201 directly'
+);
+select is(
+    (select pg_catalog.array_to_string(routine.proconfig, ',')
+       from pg_catalog.pg_proc as routine
+      where routine.oid = 'public.words_docs_logs_trg()'::pg_catalog.regprocedure),
+    'search_path=""',
+    'the long trigger has an empty search path'
+);
+select ok(
+    not pg_catalog.has_function_privilege(
+        'anon', 'public.words_docs_logs_trg()', 'EXECUTE')
+    and not pg_catalog.has_function_privilege(
+        'authenticated', 'public.words_docs_logs_trg()', 'EXECUTE')
+    and not pg_catalog.has_function_privilege(
+        'service_role', 'public.words_docs_logs_trg()', 'EXECUTE'),
+    'application roles cannot execute the long trigger function'
+);
+
 select * from finish();
 rollback;
