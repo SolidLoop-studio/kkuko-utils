@@ -105,5 +105,34 @@ select throws_ok(
     'assigned semantic references cannot be cleared'
 );
 
+select is(
+    private.require_docs_reference_id('ko.word-chain.long', 'pgTAP'),
+    (select id from public.docs where reference_code = 'ko.word-chain.long'),
+    'the resolver returns the current surrogate key'
+);
+select throws_ok(
+    $$ select private.require_docs_reference_id('test.reference.missing', 'pgTAP') $$,
+    'P0001',
+    'DOCS_REQUIRED_REFERENCE_MISSING',
+    'a missing required reference exposes only the stable public token'
+);
+select is(
+    (select pg_catalog.array_to_string(routine.proconfig, ',')
+       from pg_catalog.pg_proc as routine
+      where routine.oid =
+        'private.require_docs_reference_id(text,text)'::pg_catalog.regprocedure),
+    'search_path=""',
+    'the resolver has an empty search path'
+);
+select ok(
+    not pg_catalog.has_function_privilege(
+        'anon', 'private.require_docs_reference_id(text,text)', 'EXECUTE')
+    and not pg_catalog.has_function_privilege(
+        'authenticated', 'private.require_docs_reference_id(text,text)', 'EXECUTE')
+    and not pg_catalog.has_function_privilege(
+        'service_role', 'private.require_docs_reference_id(text,text)', 'EXECUTE'),
+    'application roles cannot execute the private resolver'
+);
+
 select * from finish();
 rollback;
