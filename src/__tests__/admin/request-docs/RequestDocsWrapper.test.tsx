@@ -1,5 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
+import userEvent from '@testing-library/user-event';
 
 jest.unmock('../../../app/components/ui/card');
 jest.unmock('../../../app/components/ui/button');
@@ -39,6 +41,7 @@ import RequestDocsWrapper from '../../../app/admin/request-docs/RequestDocsWrapp
 
 const mockUsePendingDocsRequests = usePendingDocsRequests as jest.MockedFunction<typeof usePendingDocsRequests>;
 const mockUseDocsRequestModeration = useDocsRequestModeration as jest.MockedFunction<typeof useDocsRequestModeration>;
+const mockApprove = jest.fn();
 
 const request = {
     id: 11,
@@ -48,11 +51,20 @@ const request = {
     requesterId: '00000000-0000-0000-0000-000000000011',
 };
 
-const renderWrapper = () => render(
-    <Provider store={store}>
-        <RequestDocsWrapper />
-    </Provider>,
-);
+const createQueryClient = () => new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+});
+
+const renderWrapper = (queryClient = createQueryClient()) => ({
+    queryClient,
+    ...render(
+        <Provider store={store}>
+            <QueryClientProvider client={queryClient}>
+                <RequestDocsWrapper />
+            </QueryClientProvider>
+        </Provider>,
+    ),
+});
 
 const setPendingQuery = (result: {
     data?: (typeof request)[];
@@ -67,11 +79,15 @@ describe('RequestDocsWrapper', () => {
         jest.clearAllMocks();
         store.dispatch(updateLoadingState({ progress: 100, task: '완료' }));
         mockUseDocsRequestModeration.mockReturnValue({
-            approve: jest.fn(),
+            approve: mockApprove,
             reject: jest.fn(),
             isPending: false,
             error: null,
             clearError: jest.fn(),
+        });
+        mockApprove.mockResolvedValue({
+            ok: true,
+            value: { processedRequestIds: [11], processedRequestCount: 1 },
         });
     });
 
@@ -116,5 +132,26 @@ describe('RequestDocsWrapper', () => {
         expect(screen.getByText('문서 대기 관리자 페이지')).toBeInTheDocument();
         expect(screen.getByText('요청이 없습니다.')).toBeInTheDocument();
         expect(screen.queryByText('legacy docs')).not.toBeInTheDocument();
+    });
+
+    it('removes moderated requests from the pending-query cache before the screen remounts', async () => {
+        const user = userEvent.setup();
+        const queryClient = createQueryClient();
+        queryClient.setQueryData(['docs', 'requests', 'pending'], [request]);
+        mockUsePendingDocsRequests.mockImplementation(() => ({
+            data: queryClient.getQueryData(['docs', 'requests', 'pending']),
+            error: null,
+            isLoading: false,
+        }) as ReturnType<typeof usePendingDocsRequests>);
+
+        const firstRender = renderWrapper(queryClient);
+        await user.click(screen.getByRole('checkbox', { name: '가 선택' }));
+        await user.click(screen.getByRole('button', { name: '선택 승인' }));
+        await waitFor(() => expect(screen.queryByText('가', { selector: 'td' })).not.toBeInTheDocument());
+
+        firstRender.unmount();
+        renderWrapper(queryClient);
+
+        expect(screen.queryByText('가', { selector: 'td' })).not.toBeInTheDocument();
     });
 });

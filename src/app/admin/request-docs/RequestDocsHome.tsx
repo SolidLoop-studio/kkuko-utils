@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/src/app/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/src/app/components/ui/card';
@@ -16,13 +16,34 @@ import type { ApplicationError } from '@/src/shared/application/application-erro
 
 type DocsWaitRequest = {id: number, req_at: string, docs_name: string, req_by: string | null, initial_consonant: boolean, req_byId: string | null}
 
-export default function DocsWaitManager({initialData}: {initialData?: DocsWaitRequest[]}) {
+type DocsWaitManagerProps = {
+  initialData?: DocsWaitRequest[];
+  onModerationSuccess?: (result: DocsRequestModerationResult) => void;
+};
+
+export default function DocsWaitManager({ initialData, onModerationSuccess }: DocsWaitManagerProps) {
   const [docsWaitRequests, setDocsWaitRequests] = useState<DocsWaitRequest[]>(initialData || []);
   const [selectedRequests, setSelectedRequests] = useState<Set<number>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [initialConsonantSettings, setInitialConsonantSettings] = useState<{ [key: number]: boolean }>({});
   const [showErrorMessage, setShowErrorMessage] = useState<ErrorMessage | null>(null);
   const { approve, reject, isPending, clearError } = useDocsRequestModeration();
+
+  useEffect(() => {
+    const nextRequests = initialData || [];
+    const nextRequestIds = new Set(nextRequests.map(({ id }) => id));
+
+    setDocsWaitRequests(nextRequests);
+    setSelectedRequests(prev => new Set([...prev].filter(id => nextRequestIds.has(id))));
+    setInitialConsonantSettings(prev => {
+      const nextSettings: { [key: number]: boolean } = {};
+      Object.entries(prev).forEach(([requestId, value]) => {
+        const id = Number(requestId);
+        if (nextRequestIds.has(id)) nextSettings[id] = value;
+      });
+      return nextSettings;
+    });
+  }, [initialData]);
 
   const itemsPerPage = 10;
   const totalPages = Math.ceil(docsWaitRequests.length / itemsPerPage);
@@ -63,6 +84,7 @@ export default function DocsWaitManager({initialData}: {initialData?: DocsWaitRe
     setCurrentPage(1);
     clearError();
     setShowErrorMessage(null);
+    onModerationSuccess?.(result);
   };
 
   const formatDate = (dateString: string) => {

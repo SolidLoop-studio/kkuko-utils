@@ -132,6 +132,30 @@ describe('DocsWaitManager docs request moderation', () => {
         await waitFor(() => expect(screen.queryByText('나', { selector: 'td' })).not.toBeInTheDocument());
     });
 
+    it('변경된 요청 목록을 반영하면서 남은 요청의 선택과 두음 설정을 보존한다', async () => {
+        const user = userEvent.setup();
+        const { rerender } = renderManager();
+
+        await user.click(screen.getByRole('checkbox', { name: '나 선택' }));
+        await user.click(document.getElementById('initial-consonant-22')!);
+        rerender(<DocsWaitManager initialData={[
+            requests[1],
+            {
+                id: 33,
+                req_at: '2026-08-22T00:02:00.000Z',
+                docs_name: '다',
+                req_by: '신청자 C',
+                initial_consonant: false,
+                req_byId: null,
+            },
+        ]} />);
+
+        await waitFor(() => expect(screen.queryByText('가', { selector: 'td' })).not.toBeInTheDocument());
+        expect(screen.getByText('다', { selector: 'td' })).toBeInTheDocument();
+        expect(screen.getByRole('checkbox', { name: '나 선택' })).toBeChecked();
+        expect(document.getElementById('initial-consonant-22')).toBeChecked();
+    });
+
     it('처리 중에는 중복 제출을 막는다', async () => {
         const user = userEvent.setup();
         const pendingApprove = createDeferred<typeof successfulResult>();
