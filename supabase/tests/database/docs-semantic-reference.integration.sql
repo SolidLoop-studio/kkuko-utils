@@ -97,11 +97,9 @@ insert into mission_timestamp_reference_codes values
     ('ko.reverse-word-chain.mission'),
     ('ko.kkungkkungtta.mission');
 
-update public.docs as document
+update public.docs
    set last_update = '2000-01-01'::timestamptz
-  from mission_timestamp_reference_codes as expected
- where expected.reference_code = document.reference_code
-   and expected.reference_code like '%.mission.%';
+ where reference_code is not null;
 
 update public.docs as document
    set last_update = '2000-01-01'::timestamptz
@@ -112,6 +110,25 @@ update public.docs as document
        'ko.reverse-word-chain.mission',
        'ko.kkungkkungtta.mission'
    );
+
+create temporary table semantic_timestamp_baseline on commit drop as
+select document.reference_code, document.last_update
+from public.docs as document
+where document.reference_code is not null;
+
+select is(
+    (select count(*)::integer from semantic_timestamp_baseline),
+    47,
+    'the timestamp baseline captures all re-keyed semantic references'
+);
+
+select is(
+    (select count(*)::integer
+       from semantic_timestamp_baseline
+      where last_update = '2000-01-01'::timestamptz),
+    47,
+    'resetting parents after children establishes one baseline for all references'
+);
 
 insert into public.words (word, k_canuse)
 values ('힣힣힣힣힣힣힣힣힣', true);
@@ -134,6 +151,29 @@ select is(
 
 select is(
     (select count(*)::integer
+       from public.docs_logs
+      where word = '힣힣힣힣힣힣힣힣힣'
+        and type = 'add'),
+    2,
+    'the varying-PK long insert emits exactly two add logs in total'
+);
+
+select results_eq(
+    $$ select document.reference_code
+         from public.docs_logs as log
+         join public.docs as document on document.id = log.docs_id
+        where log.word = '힣힣힣힣힣힣힣힣힣'
+          and log.type = 'add'
+        order by document.reference_code $$,
+    $$ select reference_code
+         from successful_reference_codes
+        where fixture = 'long'
+        order by reference_code $$,
+    'the long add log reference-code multiset is exact'
+);
+
+select is(
+    (select count(*)::integer
        from public.docs_logs as log
        join public.docs as document on document.id = log.docs_id
        join successful_reference_codes as expected
@@ -143,6 +183,29 @@ select is(
         and log.type = 'add'),
     6,
     'the varying-PK mission insert records ga and na in all three families'
+);
+
+select is(
+    (select count(*)::integer
+       from public.docs_logs
+      where word = '가나힣'
+        and type = 'add'),
+    6,
+    'the varying-PK mission insert emits exactly six add logs in total'
+);
+
+select results_eq(
+    $$ select document.reference_code
+         from public.docs_logs as log
+         join public.docs as document on document.id = log.docs_id
+        where log.word = '가나힣'
+          and log.type = 'add'
+        order by document.reference_code $$,
+    $$ select reference_code
+         from successful_reference_codes
+        where fixture = 'mission-child'
+        order by reference_code $$,
+    'the mission add log reference-code multiset is exact'
 );
 
 select is(
@@ -168,6 +231,32 @@ select is(
     'mission child updates touch six re-keyed children and all three parents'
 );
 
+select results_eq(
+    $$ select document.reference_code
+         from public.docs as document
+         join semantic_timestamp_baseline as baseline
+           on baseline.reference_code = document.reference_code
+        where document.last_update is distinct from baseline.last_update
+        order by document.reference_code $$,
+    $$ select reference_code
+         from mission_timestamp_reference_codes
+        order by reference_code $$,
+    'the successful insert changes exactly the six mission children and three parents'
+);
+
+select is(
+    (select count(*)::integer
+       from public.docs as document
+       join semantic_timestamp_baseline as baseline
+         on baseline.reference_code = document.reference_code
+       left join mission_timestamp_reference_codes as expected
+         on expected.reference_code = document.reference_code
+      where expected.reference_code is null
+        and document.last_update is distinct from baseline.last_update),
+    0,
+    'every other semantic reference retains its timestamp baseline'
+);
+
 delete from public.words
 where word in ('힣힣힣힣힣힣힣힣힣', '가나힣');
 
@@ -186,6 +275,29 @@ select is(
 
 select is(
     (select count(*)::integer
+       from public.docs_logs
+      where word = '힣힣힣힣힣힣힣힣힣'
+        and type = 'delete'),
+    2,
+    'the varying-PK long delete emits exactly two delete logs in total'
+);
+
+select results_eq(
+    $$ select document.reference_code
+         from public.docs_logs as log
+         join public.docs as document on document.id = log.docs_id
+        where log.word = '힣힣힣힣힣힣힣힣힣'
+          and log.type = 'delete'
+        order by document.reference_code $$,
+    $$ select reference_code
+         from successful_reference_codes
+        where fixture = 'long'
+        order by reference_code $$,
+    'the long delete log reference-code multiset is exact'
+);
+
+select is(
+    (select count(*)::integer
        from public.docs_logs as log
        join public.docs as document on document.id = log.docs_id
        join successful_reference_codes as expected
@@ -199,6 +311,29 @@ select is(
 
 select is(
     (select count(*)::integer
+       from public.docs_logs
+      where word = '가나힣'
+        and type = 'delete'),
+    6,
+    'the varying-PK mission delete emits exactly six delete logs in total'
+);
+
+select results_eq(
+    $$ select document.reference_code
+         from public.docs_logs as log
+         join public.docs as document on document.id = log.docs_id
+        where log.word = '가나힣'
+          and log.type = 'delete'
+        order by document.reference_code $$,
+    $$ select reference_code
+         from successful_reference_codes
+        where fixture = 'mission-child'
+        order by reference_code $$,
+    'the mission delete log reference-code multiset is exact'
+);
+
+select is(
+    (select count(*)::integer
        from public.docs_logs as log
        join public.docs as document on document.id = log.docs_id
        join successful_reference_codes as expected
@@ -208,6 +343,15 @@ select is(
         and log.docs_id > 900000),
     8,
     'every successful delete effect uses a re-keyed semantic reference'
+);
+
+select is(
+    (select count(*)::integer
+       from public.docs_logs
+      where word in ('힣힣힣힣힣힣힣힣힣', '가나힣')
+        and docs_id <= 900000),
+    0,
+    'no successful fixture log retains a legacy-range docs ID'
 );
 
 create temporary table missing_long_restore on commit drop as
