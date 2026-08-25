@@ -91,9 +91,10 @@ const parseCount = (value: unknown): number | null | undefined => {
 
 const parseSingleCount = (response: QueryResponse): number | null | undefined => {
     if (response.error !== null || !('data' in response)) return undefined;
-    if (response.data === null) return null;
+    if (response.data === null) return 0;
     if (!isRecord(response.data)) return undefined;
-    return parseCount(response.data.count);
+    const count = parseCount(response.data.count);
+    return count === null ? 0 : count;
 };
 
 const parseMultipleCounts = (response: QueryResponse): number | null | undefined => {

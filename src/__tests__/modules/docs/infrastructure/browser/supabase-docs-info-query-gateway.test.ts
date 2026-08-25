@@ -149,6 +149,18 @@ describe('SupabaseDocsInfoQueryGateway', () => {
         expect(calls.some((call) => call.startsWith('in:last_letter:'))).toBe(true);
     });
 
+    it('keeps the legacy zero count when a non-twoeum letter count row is missing', async () => {
+        const { client, calls } = createClient({
+            letterCountResult: { data: null, error: null },
+        });
+
+        await expect(new SupabaseDocsInfoQueryGateway(client).loadByDocsId(51)).resolves.toEqual(ok(expect.objectContaining({
+            wordCount: 0,
+        })));
+        expect(calls).toContain('from:word_last_letter_counts');
+        expect(calls).toContain('rpc:get_doc_rank:51');
+    });
+
     it('looks up a theme before counting its words', async () => {
         const { client, calls } = createClient({
             docsResult: { data: docsRow({ typez: 'theme', name: '동물' }), error: null },
@@ -230,15 +242,23 @@ describe('SupabaseDocsInfoQueryGateway', () => {
             docsResult: { data: docsRow({ typez: 'theme' }), error: null },
             themeCountResult: { count: null, error: { message: 'private theme count error' } },
         }],
-        ['ect count query error', {
-            docsResult: { data: docsRow({ id: 201, typez: 'ect' }), error: null },
-            ectCountResult: { count: null, error: { message: 'private ect count error' } },
-        }],
         ['rank query error', { rankResult: { data: null, error: { message: 'private rank error' } } }],
     ])('returns a stable infrastructure error for every %s', async (_description, responses) => {
         const { client } = createClient(responses);
 
         await expect(new SupabaseDocsInfoQueryGateway(client).loadByDocsId(51)).resolves.toEqual(err(infrastructureError));
+    });
+
+    it('returns a stable infrastructure error when the supported ect count query fails', async () => {
+        const { client, calls } = createClient({
+            docsResult: { data: docsRow({ id: 201, typez: 'ect' }), error: null },
+            ectCountResult: { count: null, error: { message: 'private ect count error' } },
+        });
+
+        await expect(new SupabaseDocsInfoQueryGateway(client).loadByDocsId(201)).resolves.toEqual(err(infrastructureError));
+        expect(calls).toContain('from:words');
+        expect(calls).toContain('eq:k_canuse:true');
+        expect(calls).toContain('gt:length:8');
     });
 
     it.each([
