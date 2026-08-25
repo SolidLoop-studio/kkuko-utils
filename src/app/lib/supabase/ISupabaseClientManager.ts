@@ -9,7 +9,6 @@ type word_theme = {words: word, themes: theme }
 type docs = Database['public']['Tables']['docs']['Row']
 type user = Database['public']['Tables']['users']['Row'];
 type docs_log = Database['public']['Tables']['docs_logs']['Row'];
-type docs_wait = Database['public']['Tables']['docs_wait']['Row'] & { users: user | null; }
 type user_star_docs = Database['public']['Tables']['user_star_docs']['Row'];
 type log = Database['public']['Tables']['logs']['Row'];
 type word_themes_wait = Database['public']['Tables']['word_themes_wait']['Row'];
@@ -52,7 +51,6 @@ export interface IGetManager{
     wordsThemes(wordIds: number[]): Promise<PostgrestSingleResponse<{ theme_id: number; word_id: number; words: word; themes: theme}[]>>
     allWords({ includeAddReq, includeDeleteReq, includeInjung, includeNoInjung, onlyWordChain, lenf }: { includeAddReq?: boolean; includeDeleteReq?: boolean; includeInjung?: boolean; includeNoInjung?: boolean; onlyWordChain?: boolean; lenf?: boolean; }): Promise<{ data: { word: string; noin_canuse: boolean; k_canuse: boolean; status: "ok" | "add" | "delete"; }[]; error: null } | {data: null; error: PostgrestError; }>
     letterDocs(): Promise<PostgrestSingleResponse<docs[]>>;
-    addWaitDocs(): Promise<PostgrestSingleResponse<docs_wait[]>>;
     releaseNote(): Promise<PostgrestSingleResponse<{ id: number; content: string; created_at: string; title: string; link: string | null }[]>>;
     userById(userId: string): Promise<PostgrestSingleResponse<user | null>>;
     session(): Promise<{data: {session: Session}, error: null} | {data: { session: null}, error: AuthError} | { data: {session: null}, error: null}>;

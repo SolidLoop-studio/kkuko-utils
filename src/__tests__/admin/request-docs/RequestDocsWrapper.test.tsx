@@ -14,23 +14,6 @@ jest.mock('../../../modules/docs', () => ({
     useDocsRequestModeration: jest.fn(),
 }));
 
-jest.mock('../../../app/lib/supabaseClient', () => ({
-    SCM: {
-        get: () => ({
-            addWaitDocs: jest.fn().mockResolvedValue({
-                data: [{
-                    id: 99,
-                    req_at: '2026-08-20T00:00:00.000Z',
-                    docs_name: 'legacy docs',
-                    req_by: 'legacy-requester',
-                    users: { nickname: 'legacy nickname' },
-                }],
-                error: null,
-            }),
-        }),
-    },
-}));
-
 import { resetLoadingState, updateLoadingState } from '../../../app/store/slice';
 import { store } from '../../../app/store/store';
 import {
@@ -121,7 +104,6 @@ describe('RequestDocsWrapper', () => {
         renderWrapper();
 
         expect(screen.getByText('문서 요청 목록을 불러오는 중 오류가 발생했습니다.')).toBeInTheDocument();
-        expect(screen.queryByText('legacy docs')).not.toBeInTheDocument();
     });
 
     it('renders the moderation screen without request rows for an empty result', () => {
@@ -131,7 +113,6 @@ describe('RequestDocsWrapper', () => {
 
         expect(screen.getByText('문서 대기 관리자 페이지')).toBeInTheDocument();
         expect(screen.getByText('요청이 없습니다.')).toBeInTheDocument();
-        expect(screen.queryByText('legacy docs')).not.toBeInTheDocument();
     });
 
     it('removes moderated requests from the pending-query cache before the screen remounts', async () => {

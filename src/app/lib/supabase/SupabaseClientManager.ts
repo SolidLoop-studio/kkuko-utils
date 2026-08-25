@@ -389,9 +389,6 @@ class GetManager implements IGetManager {
     public async letterDocs() {
         return await this.supabase.from('docs').select('*').eq('typez', 'letter');
     }
-    public async addWaitDocs() {
-        return await this.supabase.from('docs_wait').select('*,users(*)');
-    }
     public async releaseNote() {
         return await this.supabase.from('release_note').select('*').order('created_at', { ascending: false });
     }
