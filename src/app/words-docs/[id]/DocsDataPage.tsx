@@ -1,160 +1,75 @@
 "use client";
-import DocsDataHome from "./DocsDataHome";
-import { SCM } from "@/src/app/lib/supabaseClient";
-import NotFound from "@/src/app/not-found-client";
-import ErrorPage from "@/src/app/components/ErrorPage";
-import { useState, useEffect } from "react";
-import type { PostgrestError } from "@supabase/supabase-js";
-import LoadingPage, {useLoadingState } from '@/src/app/components/LoadingPage';
-import type { WordData } from "@/src/app/types/type";
-import { createBrowserWordModerationServices } from "@/src/modules/word-moderation/infrastructure/browser/browser-word-moderation-services";
-import { enrichDocsWordData, type DocsWordData } from "./docs-word-data";
 
-export default function DocsDataPage({id}:{id:number}){
-    const [isNotFound,setIsNotFound] = useState(false);
-    const { loadingState, updateLoadingState } = useLoadingState();
-    const [errorMessage,setErrorMessage] = useState<string|null>(null);
-    const [wordsData,setWordsData] = useState<{words:DocsWordData[], metadata:{title:string, lastUpdate:string, typez: "letter" | "theme" | "ect"}, starCount: string[]} | null>(null);
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-    useEffect(()=>{
-        let isCurrentLoad = true;
-        const updateCurrentLoadingState = (progress: number, task: string) => {
-            if (isCurrentLoad) updateLoadingState(progress, task);
-        };
-        const makeError = (error: PostgrestError) => {
-            if (!isCurrentLoad) return;
-            setErrorMessage(`문서 정보 데이터 로드중 오류.\nErrorName: ${error.name ?? "알수없음"}\nError Message: ${error.message ?? "없음"}\nError code: ${error.code}`)
-            updateCurrentLoadingState(100,"ERR");
-        };
-        const getEnrichedWords = async (baseRows: WordData[]) => {
-            const targetResult = await enrichDocsWordData(
-                id,
-                baseRows,
-                createBrowserWordModerationServices().docsWordMutationTargetService,
-            );
-            if (!isCurrentLoad) return null;
-            if (!targetResult.ok) {
-                setErrorMessage(targetResult.error.message);
-                updateCurrentLoadingState(100, "ERR");
-                return null;
-            }
+import ErrorPage from '@/src/app/components/ErrorPage';
+import LoadingPage from '@/src/app/components/LoadingPage';
+import NotFound from '@/src/app/not-found-client';
+import { SCM } from '@/src/app/lib/supabaseClient';
+import { useDocsContent, type DocsContentProjection } from '@/src/modules/docs';
+import { createBrowserWordModerationServices } from '@/src/modules/word-moderation/infrastructure/browser/browser-word-moderation-services';
+import DocsDataHome from './DocsDataHome';
+import { enrichDocsWordData, type DocsWordData } from './docs-word-data';
 
-            return targetResult.value;
-        };
+const enrichProjectionWords = async (projection: DocsContentProjection): Promise<DocsWordData[] | null> => {
+    const result = await enrichDocsWordData(
+        projection.metadata.id,
+        projection.words.map(({ word, status, requesterNickname }) => ({
+            word,
+            status,
+            maker: requesterNickname,
+        })),
+        createBrowserWordModerationServices().docsWordMutationTargetService,
+    );
+    return result.ok ? result.value : null;
+};
 
-        setIsNotFound(false);
-        setErrorMessage(null);
-        setWordsData(null);
+export default function DocsDataPage({ id }: { id: number }) {
+    const { data, error, isLoading, refetch } = useDocsContent(id);
+    const [enrichedWords, setEnrichedWords] = useState<DocsWordData[] | null>(null);
+    const [enrichmentError, setEnrichmentError] = useState<string | null>(null);
+    const latestRequestRef = useRef(0);
 
-        const getData = async () => {
-            updateCurrentLoadingState(10,"문서 정보 가져오는 중...")
-            const {data: docsData, error: docsDataError} = await SCM.get().docsInfoByDocsId(id);
-            if (!isCurrentLoad) return;
-            if (docsDataError) return makeError(docsDataError);
-            if (docsData===null) return setIsNotFound(true);
-            const {data: docsStarData, error: docsStarError} = await SCM.get().docsStar(docsData.id);
-            if (!isCurrentLoad) return;
-            if (docsStarError) return makeError(docsStarError);
+    useEffect(() => {
+        const requestId = ++latestRequestRef.current;
+        setEnrichedWords(null);
+        setEnrichmentError(null);
+        if (data === undefined) return;
 
-            if (id === 208 || id === 223 || id === 238) {
-                const p = {title: docsData.name, lastUpdate: docsData.last_update, typez: docsData.typez}
-                setWordsData({words: [], metadata: p, starCount:docsStarData.map(({user_id})=>user_id)});
-                await SCM.update().docView(docsData.id);
-                if (!isCurrentLoad) return;
-                updateCurrentLoadingState(100, "완료!");
+        void enrichProjectionWords(data).then((words) => {
+            if (latestRequestRef.current !== requestId) return;
+            if (words === null) {
+                setEnrichmentError('문서 단어 처리 대상을 불러오는 중 오류가 발생했습니다.');
                 return;
             }
-
-            if (docsData.typez === "letter"){
-                updateCurrentLoadingState(40, "문서에 들어간 단어 정보 가져오는 중...");
-                const {data, error: LetterDataError} = await SCM.get().docsWords({name: docsData.name, duem: docsData.duem, typez: "letter"});
-                if (!isCurrentLoad) return;
-                if (LetterDataError) return makeError(LetterDataError);
-                const {words: LetterData1, waitWords: LetterData2} = data;
-
-                await new Promise(resolve => setTimeout(resolve, 1))
-                if (!isCurrentLoad) return;
-                updateCurrentLoadingState(70, "데이터를 가공중...")
-                
-                // 삭제 요청인 단어는 제외
-                const wordsNotInB = LetterData1.filter(a => !LetterData2.some(b => b.word === a.word)).map((p)=>({word: p.word, status: "ok" as const, maker: undefined}));
-                const baseRows = [...wordsNotInB, ...LetterData2.filter(({word})=>word.length > 1).map(({word,requested_by,request_type})=>({word, status: request_type, maker:requested_by}))]
-                const wordsData = await getEnrichedWords(baseRows);
-                if (!isCurrentLoad || wordsData === null) return;
-                const p = {title: docsData.name, lastUpdate: docsData.last_update, typez:docsData.typez}
-                setWordsData({words: wordsData, metadata: p, starCount:docsStarData.map(({user_id})=>user_id)});
-                await SCM.update().docView(docsData.id);
-                if (!isCurrentLoad) return;
-                updateCurrentLoadingState(100, "완료!");
-                return;
+            setEnrichedWords(words);
+            void SCM.update().docView(data.metadata.id).catch(() => undefined);
+        }).catch(() => {
+            if (latestRequestRef.current === requestId) {
+                setEnrichmentError('문서 단어 처리 대상을 불러오는 중 오류가 발생했습니다.');
             }
-            else if (docsData.typez === "theme"){
-                updateCurrentLoadingState(30, "문서에 들어간 단어 정보 가져오는 중...");
-                const {data: themeData, error: themeDataError} = await SCM.get().themeInfoByThemeName(docsData.name);
-                if (!isCurrentLoad) return;
-                if (themeDataError) return makeError(themeDataError);
-                if (!themeData) return setIsNotFound(true)
+        });
+    }, [data]);
 
-                const {data, error} = await SCM.get().docsWords({name: docsData.name, duem: docsData.duem, typez: "theme"})
-                if (!isCurrentLoad) return;
-                if (error) return makeError(error);
+    const refreshContent = useCallback(async (): Promise<DocsWordData[] | null> => {
+        const result = await refetch();
+        if (result.error !== null || result.data === undefined) return null;
+        return enrichProjectionWords(result.data);
+    }, [refetch]);
 
-                await new Promise(resolve => setTimeout(resolve, 1))
-                if (!isCurrentLoad) return;
-                updateCurrentLoadingState(70, "데이터를 가공중...")
-                
-                const {words, waitWords} = data;
-
-                const baseRows = [ ...words.map(({word})=>({ word, status: "ok" as const, maker: undefined })), ...waitWords.map(({word, requested_by, request_type})=>({word, status: request_type, maker: requested_by ?? undefined})) ];
-                const wordsData = await getEnrichedWords(baseRows);
-                if (!isCurrentLoad || wordsData === null) return;
-                const p = {title: docsData.name, lastUpdate: docsData.last_update, typez: docsData.typez}
-                setWordsData({words: wordsData, metadata: p, starCount:docsStarData.map(({user_id})=>user_id)});
-
-                await SCM.update().docView(docsData.id);
-                if (!isCurrentLoad) return;
-                updateCurrentLoadingState(100, "완료!");
-                return
-
-            }
-            else{
-                await new Promise(resolve => setTimeout(resolve, 1));
-                if (!isCurrentLoad) return;
-                updateCurrentLoadingState(30, "문서에 들어간 단어 정보 가져오는 중...");
-                const {data, error} = await SCM.get().docsWords({name: docsData.id, duem: docsData.duem, typez: "ect"});
-                if (!isCurrentLoad) return;
-                if (error) return makeError(error);
-                if (data===null) return setIsNotFound(true);
-                const {words, waitWords} = data;
-
-                await new Promise(resolve => setTimeout(resolve, 1));
-                if (!isCurrentLoad) return;
-                updateCurrentLoadingState(70, "데이터를 가공중...");
-                
-                const baseRows = [ ...words.map(({word})=>({ word, status: "ok" as const, maker: undefined })), ...waitWords.map(({word, requested_by, request_type})=>({word, status: request_type, maker: requested_by ?? undefined})) ];
-                const wordsData = await getEnrichedWords(baseRows);
-                if (!isCurrentLoad || wordsData === null) return;
-                const p = {title: docsData.name, lastUpdate: docsData.last_update, typez: docsData.typez}
-                setWordsData({words: wordsData, metadata: p, starCount:docsStarData.map(({user_id})=>user_id)});
-
-                await SCM.update().docView(docsData.id);
-                if (!isCurrentLoad) return;
-                updateCurrentLoadingState(100, "완료!");
-                return;
-            }
-        }
-        getData();
-        return () => {
-            isCurrentLoad = false;
-        };
-    },[id, updateLoadingState])
-    
-    if (isNotFound) return <NotFound />;
-
-    if (loadingState.isLoading) return <LoadingPage title={"문서"} />
-    
-    if (errorMessage) return <ErrorPage message={errorMessage}/>
-
-    if (wordsData) return <DocsDataHome id={id} data={wordsData.words.sort((a,b)=>a.word.localeCompare(b.word,'ko'))} metaData={wordsData.metadata} starCount={wordsData.starCount} isSpecial={(209 <= id && id <= 222) || (224<= id && id <= 237) || (239<= id && id <= 252)}/>
-    
+    if (isLoading) return <LoadingPage title="문서" isForcedVisible />;
+    if (error?.kind === 'not-found') return <NotFound />;
+    if (error) return <ErrorPage message={error.message} />;
+    if (enrichmentError) return <ErrorPage message={enrichmentError} />;
+    if (data !== undefined && enrichedWords !== null) {
+        return <DocsDataHome
+            id={id}
+            data={[...enrichedWords].sort((left, right) => left.word.localeCompare(right.word, 'ko'))}
+            metaData={{ title: data.metadata.title, lastUpdate: data.metadata.lastUpdatedAt, typez: data.metadata.type }}
+            starCount={data.starredUserIds}
+            isSpecial={data.isSpecial}
+            onContentRefresh={refreshContent}
+        />;
+    }
+    return null;
 }

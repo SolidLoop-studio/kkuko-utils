@@ -199,6 +199,36 @@ describe('DocsDataHome administrator removal completion integration', () => {
         await waitFor(() => expect(screen.getByText('단어를 찾을 수 없습니다')).toBeInTheDocument());
     });
 
+    it('관리자 action 완료 뒤 content snapshot을 다시 받아 표시한다', async () => {
+        const onContentRefresh = jest.fn().mockResolvedValue([{
+            word: '갱신단어',
+            status: 'ok' as const,
+            maker: undefined,
+            mutationTarget: { kind: 'registered-word' as const, wordId: 88 },
+        }]);
+        const user = userEvent.setup();
+        render(
+            <DocsDataHome
+                id={55}
+                data={[cases[0].row]}
+                metaData={{ title: '테스트 문서', lastUpdate: '2026-08-22T00:00:00.000Z', typez: 'theme' }}
+                starCount={[]}
+                onContentRefresh={onContentRefresh}
+            />,
+            { wrapper: createWrapper() },
+        );
+
+        const wordCell = await screen.findByText('가방');
+        const tableRow = wordCell.closest('tr');
+        if (tableRow === null) throw new Error('row not found');
+        await user.click(within(tableRow).getByRole('button', { name: '작업' }));
+        const actionLabel = await screen.findByText('추가 요청을 거절합니다.');
+        await user.click(within(actionLabel.parentElement as HTMLElement).getByRole('button'));
+
+        await waitFor(() => expect(onContentRefresh).toHaveBeenCalledTimes(1));
+        expect(await screen.findByText('갱신단어')).toBeInTheDocument();
+    });
+
     const wholeDeleteRow: DocsWordData = {
         word: '나비',
         status: 'delete',
@@ -246,96 +276,4 @@ describe('DocsDataHome administrator removal completion integration', () => {
         },
     );
 
-    it.each([
-        {
-            name: 'same-type overlap',
-            themeStatus: 'delete' as const,
-            themeTarget: {
-                kind: 'theme-change' as const,
-                wordId: 11,
-                themeId: 13,
-                type: 'delete' as const,
-            },
-            nextActionText: '삭제 요청을 수락합니다.',
-            nextAction: approve,
-        },
-        {
-            name: 'differing-type overlap',
-            themeStatus: 'add' as const,
-            themeTarget: {
-                kind: 'theme-change' as const,
-                wordId: 11,
-                themeId: 13,
-                type: 'add' as const,
-            },
-            nextActionText: '추가 요청을 거절합니다.',
-            nextAction: reject,
-        },
-    ])(
-        '$name recomposes the word after whole-request rejection and exposes the surviving theme action',
-        async ({ themeStatus, themeTarget, nextActionText, nextAction }) => {
-            const user = userEvent.setup();
-            docsWords.mockResolvedValue({
-                data: {
-                    words: [],
-                    waitWords: [{
-                        word: '나비',
-                        requested_by: 'theme-requester',
-                        request_type: themeStatus,
-                    }],
-                },
-                error: null,
-            });
-            targetGet.mockResolvedValue(ok({ targets: [themeTarget] }));
-
-            render(
-                <DocsDataHome
-                    id={55}
-                    data={[wholeDeleteRow]}
-                    metaData={{
-                        title: '동물',
-                        lastUpdate: '2026-08-22T00:00:00.000Z',
-                        typez: 'theme',
-                    }}
-                    starCount={[]}
-                />,
-                { wrapper: createWrapper('admin', 'theme-requester') },
-            );
-
-            let wordCell = await screen.findByText('나비');
-            let tableRow = wordCell.closest('tr');
-            if (tableRow === null) throw new Error('row not found: 나비');
-            await user.click(within(tableRow).getByRole('button', { name: '작업' }));
-            const rejectWhole = await screen.findByText('삭제 요청을 거절합니다.');
-            await user.click(within(rejectWhole.parentElement as HTMLElement).getByRole('button'));
-
-            await waitFor(() => {
-                expect(docsWords).toHaveBeenCalledWith({
-                    name: '동물',
-                    duem: false,
-                    typez: 'theme',
-                });
-                expect(targetGet).toHaveBeenCalledWith({
-                    docsId: 55,
-                    rows: [{ word: '나비', status: themeStatus }],
-                });
-            });
-            expect(reject).toHaveBeenNthCalledWith(1, wholeDeleteRow.mutationTarget);
-
-            await user.click(await screen.findByRole('button', { name: '확인' }));
-            wordCell = await screen.findByText('나비');
-            tableRow = wordCell.closest('tr');
-            if (tableRow === null) throw new Error('row not found after refresh: 나비');
-            expect(within(tableRow).getByText(themeStatus)).toBeInTheDocument();
-            await user.click(within(tableRow).getByRole('button', { name: '작업' }));
-
-            expect(screen.queryByText(`${themeStatus === 'add' ? '추가' : '삭제'} 요청을 취소합니다.`))
-                .not.toBeInTheDocument();
-            const nextActionLabel = await screen.findByText(nextActionText);
-            await user.click(within(nextActionLabel.parentElement as HTMLElement).getByRole('button'));
-
-            await waitFor(() => expect(nextAction).toHaveBeenCalledWith(themeTarget));
-            expect(docsWords).toHaveBeenCalledTimes(1);
-        },
-    );
 });

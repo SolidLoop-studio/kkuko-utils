@@ -38,11 +38,7 @@ export interface IAddManager {
 export interface IGetManager{
     wordInfoByWord(word: string): Promise<PostgrestSingleResponse<word & {users: {nickname: string} | null} | null>>;
     allDocs(): Promise<PostgrestSingleResponse<(docs & { users: user | null })[]>>;
-    docsInfoByDocsId(docsId: number): Promise<PostgrestSingleResponse<(docs & { users: user | null }) | null>>
     allThemes(): Promise<PostgrestSingleResponse<theme[]>>
-    themeInfoByThemeName(name: string): Promise<{ data: theme | null; error: PostgrestError | null;}>
-    docsStar(id: number): Promise<PostgrestSingleResponse<{user_id: string;}[]>>;
-    docsWords({ name, duem, typez }: { name: string; duem: boolean; typez: "letter" | "theme";} | {name: number; duem: boolean; typez: "ect";}): Promise<{data: null, error: PostgrestError} | {data: {words: okWord[], waitWords: ({ word: string; request_type: "add" | "delete"; requested_by: string | null; })[]}, error: null}>
     allWaitWords(c?:"add" | "delete"): Promise<PostgrestSingleResponse<(wait_word & {words: word | null; users: user | null})[]>>;
     wordsThemes(wordIds: number[]): Promise<PostgrestSingleResponse<{ theme_id: number; word_id: number; words: word; themes: theme}[]>>
     allWords({ includeAddReq, includeDeleteReq, includeInjung, includeNoInjung, onlyWordChain, lenf }: { includeAddReq?: boolean; includeDeleteReq?: boolean; includeInjung?: boolean; includeNoInjung?: boolean; onlyWordChain?: boolean; lenf?: boolean; }): Promise<{ data: { word: string; noin_canuse: boolean; k_canuse: boolean; status: "ok" | "add" | "delete"; }[]; error: null } | {data: null; error: PostgrestError; }>
@@ -69,7 +65,6 @@ export interface IGetManager{
     wordsThemesByWordId(wordIds: number[]): Promise<PostgrestSingleResponse<{word_id: number, themes: theme}[]>>;
     allUser(sortField?: 'contribution' | 'month_contribution' | 'nickname', isAsc?: boolean): Promise<PostgrestSingleResponse<user[]>>;
     letterCountInfo(): Promise<{data: {firstLetterCounts: Record<string, {count: number; k_count: number; n_count: number}>; lastLetterCounts: Record<string, {count: number; k_count: number; n_count: number}>;}, error: null}|{data: null; error: PostgrestError}>;
-    docsLastUpdate(id: number): Promise<PostgrestSingleResponse<{last_update: string;} | null>>
     allNotifications(): Promise<PostgrestSingleResponse<notification[]>>;
     notificationById(id: number): Promise<PostgrestSingleResponse<notification | null>>;
 }

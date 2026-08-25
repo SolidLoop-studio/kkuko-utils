@@ -9,6 +9,10 @@ jest.mock('../../../modules/word-moderation', () => ({
     useDocsWordModeration: jest.fn(),
 }));
 
+jest.mock('../../../modules/docs', () => ({
+    useDocsContent: jest.fn(),
+}));
+
 jest.mock('../../../app/words-docs/[id]/use-user-word-request-actions', () => ({
     useUserWordRequestActions: jest.fn(),
 }));
@@ -89,10 +93,10 @@ jest.mock('../../../app/words-docs/[id]/WordsTableBody', () => {
 
 import { createBrowserWordModerationServices } from '../../../modules/word-moderation/infrastructure/browser/browser-word-moderation-services';
 import { useDocsWordModeration } from '../../../modules/word-moderation';
+import { useDocsContent } from '../../../modules/docs';
 import type { DocsWordMutationTarget } from '../../../modules/word-moderation/domain/docs-word-moderation';
 import { err, ok } from '../../../shared/application/result';
 import { SCM } from '../../../app/lib/supabaseClient';
-import { SupabaseClientManager } from '../../../app/lib/supabase/SupabaseClientManager';
 import { loadingReducer, themeReducer, userReducer } from '../../../app/store/slice';
 import DocsDataHome from '../../../app/words-docs/[id]/DocsDataHome';
 import DocsDataPage from '../../../app/words-docs/[id]/DocsDataPage';
@@ -156,6 +160,7 @@ const mockCancelDeleteRequest = jest.fn();
 const mockRequestDelete = jest.fn();
 const mockTargetGet = jest.fn();
 const mockDocsWords = jest.fn();
+const mockUseDocsContent = jest.mocked(useDocsContent);
 
 const createDeferred = <T,>() => {
     let resolve!: (value: T) => void;
@@ -510,6 +515,17 @@ describe('Docs word target enrichment', () => {
     });
 
     it('DocsDataPage는 legacy rows를 target 조회로 보강하고 실패하면 safe ErrorPage를 표시한다', async () => {
+        mockUseDocsContent.mockReturnValue({
+            data: {
+                metadata: { id: 55, title: '테스트 주제', lastUpdatedAt: '2026-08-22T00:00:00.000Z', type: 'theme' },
+                starredUserIds: [],
+                words: [{ word: '가방', status: 'ok' }, { word: '나비', status: 'delete', requesterNickname: 'requester-2' }],
+                isSpecial: false,
+            },
+            error: null,
+            isLoading: false,
+            refetch: jest.fn(),
+        } as never);
         const getManager = {
             docsInfoByDocsId: jest.fn().mockResolvedValue({
                 data: {
@@ -553,213 +569,6 @@ describe('Docs word target enrichment', () => {
         });
     });
 
-    it('id 전환 중 먼저 시작한 enrichment가 늦게 끝나도 새 문서 rows와 loading 완료를 덮어쓰지 않는다', async () => {
-        const firstTargets = createDeferred<ReturnType<typeof ok<{ targets: DocsWordMutationTarget[] }>>>();
-        const secondTargets = createDeferred<ReturnType<typeof ok<{ targets: DocsWordMutationTarget[] }>>>();
-        const docsInfoByDocsId = jest.fn((docsId: number) => Promise.resolve({
-            data: {
-                id: docsId,
-                name: docsId === 55 ? '첫 문서' : '둘 문서',
-                last_update: '2026-08-22T00:00:00.000Z',
-                typez: 'theme' as const,
-                duem: false,
-            },
-            error: null,
-        }));
-        const getManager = {
-            docsInfoByDocsId,
-            docsStar: jest.fn().mockResolvedValue({ data: [], error: null }),
-            themeInfoByThemeName: jest.fn().mockResolvedValue({ data: { id: 13 }, error: null }),
-            docsWords: jest.fn(({ name }: { name: string }) => Promise.resolve({
-                data: {
-                    words: [{ word: name === '첫 문서' ? '가방' : '나비' }],
-                    waitWords: [],
-                },
-                error: null,
-            })),
-        };
-        const docView = jest.fn().mockResolvedValue(undefined);
-        jest.mocked(SCM.get).mockReturnValue(getManager as never);
-        jest.mocked(SCM.update).mockReturnValue({ docView } as never);
-        mockTargetGet.mockImplementation(({ docsId }: { docsId: number }) => (
-            docsId === 55 ? firstTargets.promise : secondTargets.promise
-        ));
-        mockCreateBrowserServices.mockReturnValue({
-            docsWordMutationTargetService: { get: mockTargetGet },
-        } as never);
-
-        const store = configureStore({
-            reducer: { user: userReducer, loading: loadingReducer, theme: themeReducer },
-            preloadedState: {
-                user: { username: undefined, uuid: undefined, role: 'guest' as const },
-                loading: { isLoading: false, progress: 100, currentTask: '완료' },
-                theme: { theme: 'light' as const },
-            },
-        });
-        const dispatchSpy = jest.spyOn(store, 'dispatch');
-        const Wrapper = ({ children }: PropsWithChildren) => <Provider store={store}>{children}</Provider>;
-        const { rerender } = render(<DocsDataPage id={55} />, { wrapper: Wrapper });
-        await waitFor(() => expect(mockTargetGet).toHaveBeenCalledWith(expect.objectContaining({ docsId: 55 })));
-
-        rerender(<DocsDataPage id={56} />);
-        await waitFor(() => expect(mockTargetGet).toHaveBeenCalledWith(expect.objectContaining({ docsId: 56 })));
-        await act(async () => {
-            secondTargets.resolve(ok({ targets: [{ kind: 'registered-word', wordId: 56 }] }));
-            await secondTargets.promise;
-        });
-        expect(await screen.findByText('둘 문서')).toBeInTheDocument();
-        expect(await screen.findByTestId('docs-row-나비')).toBeInTheDocument();
-
-        const completedBeforeStaleResolution = dispatchSpy.mock.calls.filter(([action]) => (
-            typeof action === 'object'
-            && action !== null
-            && 'type' in action
-            && action.type === 'loading/updateLoadingState'
-            && 'payload' in action
-            && (action.payload as { progress?: number }).progress === 100
-        )).length;
-        await act(async () => {
-            firstTargets.resolve(ok({ targets: [{ kind: 'registered-word', wordId: 55 }] }));
-            await firstTargets.promise;
-            await Promise.resolve();
-            await Promise.resolve();
-        });
-
-        expect(screen.getByText('둘 문서')).toBeInTheDocument();
-        expect(screen.getByTestId('docs-row-나비')).toBeInTheDocument();
-        expect(screen.queryByTestId('docs-row-가방')).not.toBeInTheDocument();
-        expect(docView).toHaveBeenCalledTimes(1);
-        expect(dispatchSpy.mock.calls.filter(([action]) => (
-            typeof action === 'object'
-            && action !== null
-            && 'type' in action
-            && action.type === 'loading/updateLoadingState'
-            && 'payload' in action
-            && (action.payload as { progress?: number }).progress === 100
-        ))).toHaveLength(completedBeforeStaleResolution);
-    });
-});
-
-describe('legacy theme docs row composition', () => {
-    it('word_themes_wait 변경을 DocsDataPage가 받을 pending row에 포함한다', async () => {
-        const tableResponses = {
-            word_themes_wait: {
-                data: [{ words: { word: '나비' }, typez: 'add', req_by: 'theme-requester' }],
-                error: null,
-            },
-            wait_word_themes: {
-                data: [{
-                    wait_words: {
-                        word: '가방',
-                        requested_by: 'word-requester',
-                        request_type: 'add',
-                    },
-                }],
-                error: null,
-            },
-        };
-        const fakeSupabase = {
-            from: jest.fn((table: 'themes' | keyof typeof tableResponses) => ({
-                select: jest.fn(() => table === 'themes'
-                    ? {
-                        eq: jest.fn(() => ({
-                            maybeSingle: jest.fn().mockResolvedValue({ data: { id: 13 }, error: null }),
-                        })),
-                    }
-                    : {
-                        eq: jest.fn().mockResolvedValue(tableResponses[table]),
-                    }),
-            })),
-            rpc: jest.fn((name: string) => Promise.resolve(
-                name === 'get_words_by_theme'
-                    ? { data: [{ word: '사과' }], error: null }
-                    : { data: [], error: null },
-            )),
-        };
-        const manager = new SupabaseClientManager(fakeSupabase as never);
-
-        const result = await manager.get().docsWords({
-            name: '동물',
-            duem: false,
-            typez: 'theme',
-        });
-
-        expect(result).toEqual({
-            data: {
-                words: [{ word: '사과' }],
-                waitWords: [
-                    { word: '가방', requested_by: 'word-requester', request_type: 'add' },
-                    { word: '나비', requested_by: 'theme-requester', request_type: 'add' },
-                ],
-            },
-            error: null,
-        });
-    });
-
-    it.each([
-        ['same-type', 'delete' as const],
-        ['differing-type', 'add' as const],
-    ])(
-        'prefers a whole delete request over a %s theme request from another requester',
-        async (_description, themeRequestType) => {
-            const tableResponses = {
-                word_themes_wait: {
-                    data: [{
-                        words: { word: '나비' },
-                        typez: themeRequestType,
-                        req_by: 'theme-requester',
-                    }],
-                    error: null,
-                },
-                wait_word_themes: { data: [], error: null },
-            };
-            const fakeSupabase = {
-                from: jest.fn((table: 'themes' | keyof typeof tableResponses) => ({
-                    select: jest.fn(() => table === 'themes'
-                        ? {
-                            eq: jest.fn(() => ({
-                                maybeSingle: jest.fn().mockResolvedValue({
-                                    data: { id: 13 },
-                                    error: null,
-                                }),
-                            })),
-                        }
-                        : {
-                            eq: jest.fn().mockResolvedValue(tableResponses[table]),
-                        }),
-                })),
-                rpc: jest.fn((name: string) => Promise.resolve(
-                    name === 'get_words_by_theme'
-                        ? { data: [{ word: '나비' }], error: null }
-                        : {
-                            data: [{
-                                word: '나비',
-                                requested_by: 'whole-requester',
-                                request_type: 'delete',
-                            }],
-                            error: null,
-                        },
-                )),
-            };
-            const manager = new SupabaseClientManager(fakeSupabase as never);
-
-            await expect(manager.get().docsWords({
-                name: '동물',
-                duem: false,
-                typez: 'theme',
-            })).resolves.toEqual({
-                data: {
-                    words: [],
-                    waitWords: [{
-                        word: '나비',
-                        requested_by: 'whole-requester',
-                        request_type: 'delete',
-                    }],
-                },
-                error: null,
-            });
-        },
-    );
 });
 
 describe('DocsDataHome row transitions', () => {

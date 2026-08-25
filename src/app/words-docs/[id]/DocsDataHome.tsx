@@ -31,7 +31,6 @@ import {
     DOCS_WORD_TARGET_REFRESH_ERROR_MESSAGE,
     type DocsWordAdminAction,
     type DocsWordData,
-    enrichDocsWordData,
 } from "./docs-word-data";
 
 interface DocsPageProp {
@@ -44,6 +43,7 @@ interface DocsPageProp {
     };
     starCount: string[];
     isSpecial?: boolean;
+    onContentRefresh?: () => Promise<DocsWordData[] | null>;
 }
 
 interface VirtualTocItem {
@@ -86,7 +86,7 @@ const isSameDocsWordRow = (left: DocsWordData, right: DocsWordData) => (
     && isSameMutationTarget(left.mutationTarget, right.mutationTarget)
 );
 
-const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp) => {
+const DocsDataHome = ({ id, data, metaData, starCount, isSpecial, onContentRefresh }: DocsPageProp) => {
     const parentRef = useRef<HTMLDivElement>(null);
     const [tocList, setTocList] = useState<string[]>([]);
     const [wordsData, setWordsData] = useState<DocsWordData[]>(data);
@@ -99,7 +99,6 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
     const [loginNeedModalOpen, setLoginNeedModalOpen] = useState<boolean>(false);
     const [errorModalView, setErrorModalView] = useState<ErrorMessage | null>(null);
     const [isAdminCompleteModalOpen, setIsAdminCompleteModalOpen] = useState(false);
-    const [charLastUpdates, setCharLastUpdates] = useState<Record<number, string | null>>({});
 
     // 유저 즐겨찾기 상태 업데이트
     useEffect(() => {
@@ -182,32 +181,6 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
         return groupWordsBySyllable(filteredData);
     }, [filteredData, activeTab]);
 
-
-    useEffect(() => {
-        if (![208,223,238].includes(id)) return;
-
-        let mounted = true;
-        const fetchUpdates = async () => {
-            const chars = MISSION_CHARS.split('');
-            const results = await Promise.all(chars.map(async (_c, index) => {
-                const docId = id + index + 1;
-                try {
-                    const res = await SCM.get().docsLastUpdate(docId);
-                    return { docId, last: res.data?.last_update ?? null };
-                } catch {
-                    return { docId, last: null };
-                }
-            }));
-
-            if (!mounted) return;
-            const map: Record<number, string | null> = {};
-            results.forEach(r => { map[r.docId] = r.last; });
-            setCharLastUpdates(map);
-        };
-
-        fetchUpdates();
-        return () => { mounted = false; };
-    }, [id]);
 
     const updateToc = (data: DocsWordData[]): string[] => {
         if (activeTab === "mission") {
@@ -330,98 +303,6 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
         });
     };
 
-    const replaceRowsForWord = (word: string, refreshedRows: DocsWordData[]) => {
-        setWordsData((currentRows) => {
-            const insertionIndex = currentRows.findIndex((currentRow) => currentRow.word === word);
-            if (insertionIndex === -1) return currentRows;
-
-            const nextRows = currentRows.filter((currentRow) => currentRow.word !== word);
-            nextRows.splice(insertionIndex, 0, ...refreshedRows);
-            return nextRows;
-        });
-    };
-
-    const applyRefreshFailureFallback = (
-        action: DocsWordAdminAction,
-        row: DocsWordData,
-    ) => {
-        const isTransitionToOk = (action === "approve" && row.status === "add")
-            || (action === "reject" && row.status === "delete");
-
-        setWordsData((currentRows) => isTransitionToOk
-            ? currentRows.map((currentRow) => (
-                isSameDocsWordRow(currentRow, row)
-                    ? {
-                        word: currentRow.word,
-                        status: "ok" as const,
-                        maker: undefined,
-                        mutationTarget: null,
-                    }
-                    : currentRow
-            ))
-            : currentRows.filter((currentRow) => !isSameDocsWordRow(currentRow, row)));
-    };
-
-    const refreshThemeRowsAfterWholeRequest = async (
-        action: DocsWordAdminAction,
-        row: DocsWordData,
-    ): Promise<boolean> => {
-        try {
-            const { data: snapshot, error } = await SCM.get().docsWords({
-                name: metaData.title,
-                duem: false,
-                typez: "theme",
-            });
-            if (error !== null || snapshot === null) {
-                throw new Error("theme docs refresh failed");
-            }
-
-            const pendingRows = snapshot.waitWords
-                .filter(({ word }) => word === row.word)
-                .map(({ word, requested_by, request_type }) => ({
-                    word,
-                    status: request_type,
-                    maker: requested_by ?? undefined,
-                }));
-            const pendingWords = new Set(pendingRows.map(({ word }) => word));
-            const baseRows = [
-                ...snapshot.words
-                    .filter(({ word }) => word === row.word && !pendingWords.has(word))
-                    .map(({ word }) => ({
-                        word,
-                        status: "ok" as const,
-                        maker: undefined,
-                    })),
-                ...pendingRows,
-            ];
-            if (baseRows.length === 0) {
-                replaceRowsForWord(row.word, []);
-                return true;
-            }
-
-            const refreshedResult = await enrichDocsWordData(
-                id,
-                baseRows,
-                createBrowserWordModerationServices().docsWordMutationTargetService,
-            );
-            if (!refreshedResult.ok) {
-                throw new Error("theme docs target refresh failed");
-            }
-
-            replaceRowsForWord(row.word, refreshedResult.value);
-            if (refreshedResult.value.some(({ mutationTarget }) => mutationTarget === null)) {
-                showTargetRefreshError();
-                return false;
-            }
-
-            return true;
-        } catch {
-            applyRefreshFailureFallback(action, row);
-            showTargetRefreshError();
-            return false;
-        }
-    };
-
     const transitionRowToOk = async (row: DocsWordData): Promise<boolean> => {
         let registeredTarget: Extract<DocsWordMutationTarget, { kind: "registered-word" }> | null = null;
 
@@ -465,28 +346,30 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
         action: DocsWordAdminAction,
         row: DocsWordData,
     ): Promise<boolean> => {
-        if (metaData.typez === "theme" && row.mutationTarget?.kind === "word-request") {
-            const didRefresh = await refreshThemeRowsAfterWholeRequest(action, row);
-            if (didRefresh) setIsAdminCompleteModalOpen(true);
-            return didRefresh;
-        }
-
         const isTransitionToOk = (action === "approve" && row.status === "add")
             || (action === "reject" && row.status === "delete");
         if (isTransitionToOk) {
             const didTransition = await transitionRowToOk(row);
-            if (didTransition) setIsAdminCompleteModalOpen(true);
-            return didTransition;
+            if (!didTransition) return false;
+        } else {
+            const shouldRemove = (action === "reject" && row.status === "add")
+                || (action === "approve" && row.status === "delete")
+                || (action === "delete-directly" && row.status === "ok");
+            if (!shouldRemove) return false;
+
+            setWordsData((currentRows) => currentRows.filter(
+                (currentRow) => !isSameDocsWordRow(currentRow, row),
+            ));
         }
 
-        const shouldRemove = (action === "reject" && row.status === "add")
-            || (action === "approve" && row.status === "delete")
-            || (action === "delete-directly" && row.status === "ok");
-        if (!shouldRemove) return false;
-
-        setWordsData((currentRows) => currentRows.filter(
-            (currentRow) => !isSameDocsWordRow(currentRow, row),
-        ));
+        if (onContentRefresh !== undefined) {
+            const refreshedRows = await onContentRefresh();
+            if (refreshedRows === null) {
+                showTargetRefreshError();
+                return false;
+            }
+            setWordsData(refreshedRows);
+        }
         setIsAdminCompleteModalOpen(true);
         return true;
     };
@@ -662,13 +545,6 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
                                     <span className="text-2xl font-bold text-gray-700 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">
                                         {char}
                                     </span>
-                                    <div className="mt-2 text-center">
-                                        {charLastUpdates[id + index + 1] ? (
-                                            <span className="text-xs text-gray-500 dark:text-gray-400">{new Date(charLastUpdates[id + index + 1] as string).toLocaleString(undefined, { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone })}</span>
-                                        ) : (
-                                            <span className="text-xs text-gray-400">업데이트 정보 없음</span>
-                                        )}
-                                    </div>
                                 </Link>
                             ))}
                         </div>
