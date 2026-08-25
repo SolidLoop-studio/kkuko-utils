@@ -46,7 +46,7 @@
 - Next.js Route Handler는 모든 DB 요청의 의무적인 중간 계층이 아니다. 서버 secret 또는 서버 전용 통합이 필요한 경우에만 사용한다.
 - 기존 `SCM`은 한 번에 제거하지 않고, 위험도가 높은 기능부터 strangler 방식으로 축소한다.
 
-첫 세로 슬라이스인 관리자 단어 대량 승인, `admin/del-words`의 재개 가능한 대량 삭제, `admin/request-words`의 개별 승인·반려 mutation, `words-docs/[id]`의 관리자 요청 승인·반려와 직접 삭제, `admin/request-docs`의 승인·반려 mutation과 대기 요청 목록 query, `words-docs/[id]`의 사용자 `RequestDelete`, `CancelAddRequest`, `CancelDeleteRequest` mutation, `word/search/[query]/WordInfo.tsx`의 요청·취소·주제 변경 요청·직접 삭제 mutation, `word/add/WordAddHome.tsx`의 일반 사용자 단일 추가 요청, 그리고 `word/adds/WordsAddHome.tsx`의 대량 추가 요청 mutation이 위 원칙으로 이전되었다. docs 내부 단어 관리는 기존 요청 moderation RPC를 재사용하며, 주제 변경 moderation과 중복 없는 주제 docs 로그 기록도 지원한다. `WordInfo.tsx`에서는 `admin`만 직접 삭제하고 `r4`는 일반 사용자의 삭제 요청 흐름을 따른다. 원자적인 사용자 단어 주제 변경, 단일 추가 요청, 대량 추가 요청 RPC는 로컬 DB integration/concurrency test로 검증되었다. 대량 요청은 300개 단위 원자적·멱등 batch로 실행되어 같은 파일 재제출로 안전하게 재개할 수 있다. `WordAddHome.tsx`의 관리자·`r4` 직접 추가 경로는 사용자 요청 슬라이스 범위 밖이므로 legacy SCM mutation으로 유지한다. `WordsDocsHome.tsx`는 대기 요청 중복 확인 read를 새 query로 이전했고, legacy `letterDocs` read와 `waitDocs` 생성 mutation은 남아 있다. Phase 3 `word-catalog`의 검색·자동완성, 단어 상세 query, 고급 검색 Route Handler, 다운로드, 통계, 랜덤 연결 단어 query는 완료되었다. Phase 4 docs read의 관리자 대기 요청 목록, 공개 docs 목록, docs 로그·정보·본문 projection query가 완료되었으며, docs mutation 또는 DB backend 작업 전에는 Phase 0B를 반드시 완료한다. 관련 migration의 cloud Supabase 반영은 완료로 간주하지 않으며 사용자/운영자가 통제하는 rollout 대기 상태다. 로컬 DB bootstrap은 병행해서 재현 가능하게 만들되, 프로덕션에서 동작 중인 하드코딩 trigger는 당장 변경하지 않고 실제 의미를 기록한 뒤 `docs` context 또는 DB backend를 이전하기 전에 제거한다.
+첫 세로 슬라이스인 관리자 단어 대량 승인, `admin/del-words`의 재개 가능한 대량 삭제, `admin/request-words`의 개별 승인·반려 mutation, `words-docs/[id]`의 관리자 요청 승인·반려와 직접 삭제, `admin/request-docs`의 승인·반려 mutation과 대기 요청 목록 query, `words-docs/[id]`의 사용자 `RequestDelete`, `CancelAddRequest`, `CancelDeleteRequest` mutation, `word/search/[query]/WordInfo.tsx`의 요청·취소·주제 변경 요청·직접 삭제 mutation, `word/add/WordAddHome.tsx`의 일반 사용자 단일 추가 요청, 그리고 `word/adds/WordsAddHome.tsx`의 대량 추가 요청 mutation이 위 원칙으로 이전되었다. docs 내부 단어 관리는 기존 요청 moderation RPC를 재사용하며, 주제 변경 moderation과 중복 없는 주제 docs 로그 기록도 지원한다. `WordInfo.tsx`에서는 `admin`만 직접 삭제하고 `r4`는 일반 사용자의 삭제 요청 흐름을 따른다. 원자적인 사용자 단어 주제 변경, 단일 추가 요청, 대량 추가 요청 RPC는 로컬 DB integration/concurrency test로 검증되었다. 대량 요청은 300개 단위 원자적·멱등 batch로 실행되어 같은 파일 재제출로 안전하게 재개할 수 있다. `WordAddHome.tsx`의 관리자·`r4` 직접 추가 경로는 사용자 요청 슬라이스 범위 밖이므로 legacy SCM mutation으로 유지한다. `WordsDocsHome.tsx`는 대기 요청 중복 확인 read를 새 query로 이전했고, legacy `letterDocs` read와 `waitDocs` 생성 mutation은 남아 있다. Phase 3 `word-catalog`의 검색·자동완성, 단어 상세 query, 고급 검색 Route Handler, 다운로드, 통계, 랜덤 연결 단어 query는 완료되었다. Phase 4 docs read의 관리자 대기 요청 목록, 공개 docs 목록, docs 로그·정보·본문 projection query가 완료되었으며, 미션글자 marker 카드의 하위 문서 갱신 시각을 위한 `SCM.get().docsLastUpdate(id)` 보조 read는 실제 UI 소비처이므로 유지한다. docs mutation 또는 DB backend 작업 전에는 Phase 0B를 반드시 완료한다. 관련 migration의 cloud Supabase 반영은 완료로 간주하지 않으며 사용자/운영자가 통제하는 rollout 대기 상태다. 로컬 DB bootstrap은 병행해서 재현 가능하게 만들되, 프로덕션에서 동작 중인 하드코딩 trigger는 당장 변경하지 않고 실제 의미를 기록한 뒤 `docs` context 또는 DB backend를 이전하기 전에 제거한다.
 
 ## 3. 현재 상태
 
@@ -1025,7 +1025,7 @@ Notifications:
 | 관리자 docs 요청 moderation | 완료 | 승인·반려 mutation은 RPC로 이전했고 대기 요청 목록 query도 Phase 4에서 이전 완료; `WordsDocsHome.tsx`는 대기 요청 중복 확인 read를 새 query로 사용하고 legacy `letterDocs` read·`waitDocs` 생성 mutation을 유지하며 migration cloud rollout은 사용자/운영자 실행 대기 |
 | 사용자 단어 요청 | 부분 완료 | Phase 2 mutation 코드 이전은 완료; 단일·대량 추가 요청을 포함한 관련 cloud migration rollout은 사용자/운영자 실행 대기 |
 | word-catalog 조회 | 완료 | 브라우저 검색·자동완성, 단어 상세 query, 고급 검색 Route Handler, 다운로드, 통계, 랜덤 연결 단어 query 완료 |
-| docs context | 부분 완료 | 관리자 대기 요청 목록, `WordsDocsHome.tsx`의 대기 요청 중복 확인 read, 공개 docs 목록, `words-docs/[id]/logs` 로그·`info` 정보·본문 projection query 이전 완료; 다음 남은 docs read는 `WordsDocsHome.tsx`의 legacy `letterDocs`이며 `waitDocs` 생성 mutation과 함께 Phase 0B 이후 이전한다 |
+| docs context | 부분 완료 | 관리자 대기 요청 목록, `WordsDocsHome.tsx`의 대기 요청 중복 확인 read, 공개 docs 목록, `words-docs/[id]/logs` 로그·`info` 정보·본문 projection query 이전 완료; `words-docs/[id]` 미션글자 marker 카드의 하위 갱신 시각은 실제 UI 소비처이므로 `SCM.get().docsLastUpdate(id)` 보조 read를 유지한다. 다음 남은 docs read는 `WordsDocsHome.tsx`의 legacy `letterDocs`이며 `waitDocs` 생성 mutation과 함께 Phase 0B 이후 이전한다 |
 | identity/profile | 미착수 | Auth와 profile DB 계약 분리 |
 | notifications/storage | 미착수 | query/command/storage port 분리 |
 | SCM 최종 제거 | 대기 | 모든 context 이전 후 실행 |
@@ -1053,7 +1053,7 @@ Notifications:
 
 기능 전환은 다음 순서로 진행한다.
 
-1. `WordsDocsHome.tsx`의 legacy `letterDocs` read와 `waitDocs` 생성 mutation을 포함한 남은 docs context 경계는 Phase 0B docs 의미 키 전환 뒤 이전한다. `admin/request-docs/RequestDocsWrapper.tsx`와 `WordsDocsHome.tsx`의 대기 요청 query, 공개 docs 목록, docs 로그·정보·본문 projection query는 이전 완료다.
+1. `WordsDocsHome.tsx`의 legacy `letterDocs` read와 `waitDocs` 생성 mutation을 포함한 남은 docs context 경계는 Phase 0B docs 의미 키 전환 뒤 이전한다. `admin/request-docs/RequestDocsWrapper.tsx`와 `WordsDocsHome.tsx`의 대기 요청 query, 공개 docs 목록, docs 로그·정보·본문 projection query는 이전 완료이며, 미션글자 marker 카드의 하위 갱신 시각 `SCM.get().docsLastUpdate(id)` 보조 read는 실제 소비처로 유지한다.
 2. docs mutation 또는 DB backend 작업을 시작하기 전에 Phase 0B `docs` 의미 키 전환을 반드시 완료한다.
 3. 각 단계에서 대체된 SCM 메서드와 import를 즉시 제거한다.
 

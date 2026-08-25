@@ -24,50 +24,93 @@ const enrichProjectionWords = async (projection: DocsContentProjection): Promise
     return result.ok ? result.value : null;
 };
 
+interface DocsContentSnapshot {
+    id: number;
+    projection: DocsContentProjection;
+    words: DocsWordData[];
+}
+
+const sortWords = (words: DocsWordData[]): DocsWordData[] => (
+    [...words].sort((left, right) => left.word.localeCompare(right.word, 'ko'))
+);
+
 export default function DocsDataPage({ id }: { id: number }) {
     const { data, error, isLoading, refetch } = useDocsContent(id);
-    const [enrichedWords, setEnrichedWords] = useState<DocsWordData[] | null>(null);
+    const [snapshot, setSnapshot] = useState<DocsContentSnapshot | null>(null);
     const [enrichmentError, setEnrichmentError] = useState<string | null>(null);
     const latestRequestRef = useRef(0);
+    const viewedDocsIdRef = useRef<number | null>(null);
+    const isAdminRefreshRef = useRef(false);
+    const snapshotRef = useRef<DocsContentSnapshot | null>(null);
+    const hasCurrentSnapshot = snapshot?.id === id;
 
     useEffect(() => {
+        if (isAdminRefreshRef.current) return;
+
         const requestId = ++latestRequestRef.current;
-        setEnrichedWords(null);
+        let mounted = true;
         setEnrichmentError(null);
-        if (data === undefined) return;
+        if (data === undefined) return () => { mounted = false; };
 
         void enrichProjectionWords(data).then((words) => {
-            if (latestRequestRef.current !== requestId) return;
+            if (!mounted || latestRequestRef.current !== requestId) return;
             if (words === null) {
-                setEnrichmentError('문서 단어 처리 대상을 불러오는 중 오류가 발생했습니다.');
+                if (snapshotRef.current?.id !== id) {
+                    setEnrichmentError('문서 단어 처리 대상을 불러오는 중 오류가 발생했습니다.');
+                }
                 return;
             }
-            setEnrichedWords(words);
-            void SCM.update().docView(data.metadata.id).catch(() => undefined);
+            const nextSnapshot = { id, projection: data, words: sortWords(words) };
+            snapshotRef.current = nextSnapshot;
+            setSnapshot(nextSnapshot);
+            if (viewedDocsIdRef.current !== id) {
+                viewedDocsIdRef.current = id;
+                void SCM.update().docView(data.metadata.id).catch(() => undefined);
+            }
         }).catch(() => {
-            if (latestRequestRef.current === requestId) {
+            if (mounted && latestRequestRef.current === requestId && snapshotRef.current?.id !== id) {
                 setEnrichmentError('문서 단어 처리 대상을 불러오는 중 오류가 발생했습니다.');
             }
         });
-    }, [data]);
+        return () => { mounted = false; };
+    }, [data, id]);
 
     const refreshContent = useCallback(async (): Promise<DocsWordData[] | null> => {
-        const result = await refetch();
-        if (result.error !== null || result.data === undefined) return null;
-        return enrichProjectionWords(result.data);
-    }, [refetch]);
+        isAdminRefreshRef.current = true;
+        try {
+            const result = await refetch();
+            if (result.error !== null || result.data === undefined) return null;
+            const words = await enrichProjectionWords(result.data);
+            if (words === null) return null;
+            const sortedWords = sortWords(words);
+            const nextSnapshot = { id, projection: result.data, words: sortedWords };
+            snapshotRef.current = nextSnapshot;
+            setSnapshot(nextSnapshot);
+            return sortedWords;
+        } catch {
+            return null;
+        } finally {
+            isAdminRefreshRef.current = false;
+        }
+    }, [id, refetch]);
 
-    if (isLoading) return <LoadingPage title="문서" isForcedVisible />;
-    if (error?.kind === 'not-found') return <NotFound />;
-    if (error) return <ErrorPage message={error.message} />;
-    if (enrichmentError) return <ErrorPage message={enrichmentError} />;
-    if (data !== undefined && enrichedWords !== null) {
+    if (!hasCurrentSnapshot) {
+        if (isLoading || (data !== undefined && enrichmentError === null)) {
+            return <LoadingPage title="문서" isForcedVisible />;
+        }
+        if (error?.kind === 'not-found') return <NotFound />;
+        if (error) return <ErrorPage message={error.message} />;
+        if (enrichmentError) return <ErrorPage message={enrichmentError} />;
+        return <LoadingPage title="문서" isForcedVisible />;
+    }
+
+    if (snapshot !== null) {
         return <DocsDataHome
             id={id}
-            data={[...enrichedWords].sort((left, right) => left.word.localeCompare(right.word, 'ko'))}
-            metaData={{ title: data.metadata.title, lastUpdate: data.metadata.lastUpdatedAt, typez: data.metadata.type }}
-            starCount={data.starredUserIds}
-            isSpecial={data.isSpecial}
+            data={snapshot.words}
+            metaData={{ title: snapshot.projection.metadata.title, lastUpdate: snapshot.projection.metadata.lastUpdatedAt, typez: snapshot.projection.metadata.type }}
+            starCount={snapshot.projection.starredUserIds}
+            isSpecial={snapshot.projection.isSpecial}
             onContentRefresh={refreshContent}
         />;
     }

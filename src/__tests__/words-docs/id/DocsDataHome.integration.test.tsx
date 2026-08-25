@@ -56,7 +56,7 @@ const mockCreateBrowserServices = jest.mocked(createBrowserWordModerationService
 const approve = jest.fn();
 const reject = jest.fn();
 const deleteDirectly = jest.fn();
-const docsWords = jest.fn();
+const docsLastUpdate = jest.fn();
 const targetGet = jest.fn();
 
 const createWrapper = (
@@ -158,13 +158,8 @@ describe('DocsDataHome administrator removal completion integration', () => {
             cancelDeleteRequest: jest.fn(),
             requestDelete: jest.fn(),
         });
-        docsWords.mockResolvedValue({
-            data: { words: [], waitWords: [] },
-            error: null,
-        });
         jest.mocked(SCM.get).mockReturnValue({
-            docsLastUpdate: jest.fn(),
-            docsWords,
+            docsLastUpdate,
         } as never);
         targetGet.mockResolvedValue(ok({ targets: [] }));
         mockCreateBrowserServices.mockReturnValue({
@@ -197,6 +192,31 @@ describe('DocsDataHome administrator removal completion integration', () => {
 
         expect(await screen.findByText('작업이 완료되었습니다!')).toBeInTheDocument();
         await waitFor(() => expect(screen.getByText('단어를 찾을 수 없습니다')).toBeInTheDocument());
+    });
+
+    it('미션글자 marker는 하위 문서의 현지화된 갱신 시각과 없는 경우 안내를 표시한다', async () => {
+        const localizedTime = jest.spyOn(Date.prototype, 'toLocaleString').mockReturnValue('현지화된 시각');
+        docsLastUpdate.mockImplementation(async (docsId: number) => ({
+            data: docsId === 209 ? { last_update: '2026-08-25T04:00:00.000Z' } : null,
+            error: null,
+        }));
+
+        render(
+            <DocsDataHome
+                id={208}
+                data={[]}
+                metaData={{ title: '미션글자', lastUpdate: '2026-08-22T00:00:00.000Z', typez: 'ect' }}
+                starCount={[]}
+            />,
+            { wrapper: createWrapper('guest', undefined) },
+        );
+
+        expect(await screen.findByText('현지화된 시각')).toBeInTheDocument();
+        expect(screen.getAllByText('업데이트 정보 없음')).toHaveLength(13);
+        expect(docsLastUpdate).toHaveBeenCalledTimes(14);
+        expect(docsLastUpdate).toHaveBeenNthCalledWith(1, 209);
+        expect(docsLastUpdate).toHaveBeenNthCalledWith(14, 222);
+        localizedTime.mockRestore();
     });
 
     it('관리자 action 완료 뒤 content snapshot을 다시 받아 표시한다', async () => {

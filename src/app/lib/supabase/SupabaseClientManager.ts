@@ -321,6 +321,9 @@ class GetManager implements IGetManager {
     public async allUser(sortField?: 'contribution' | 'month_contribution' | 'nickname', isAsc?: boolean) {
         return await this.supabase.from('users').select('*').order(sortField ?? 'contribution', { ascending: isAsc ?? false });
     }
+    public async docsLastUpdate(id: number) {
+        return await this.supabase.from('docs').select('last_update').eq('id', id).maybeSingle();
+    }
     async allNotifications() {
         return await this.supabase.from('notification').select('*').order('created_at', { ascending: false });
     }

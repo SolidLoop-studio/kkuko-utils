@@ -99,6 +99,7 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial, onContentRefre
     const [loginNeedModalOpen, setLoginNeedModalOpen] = useState<boolean>(false);
     const [errorModalView, setErrorModalView] = useState<ErrorMessage | null>(null);
     const [isAdminCompleteModalOpen, setIsAdminCompleteModalOpen] = useState(false);
+    const [charLastUpdates, setCharLastUpdates] = useState<Record<number, string | null>>({});
 
     // 유저 즐겨찾기 상태 업데이트
     useEffect(() => {
@@ -106,6 +107,31 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial, onContentRefre
             setIsUserStarreda(starCount.includes(user.uuid))
         }
     }, [user, starCount])
+
+    useEffect(() => {
+        if (![208, 223, 238].includes(id)) return;
+
+        let mounted = true;
+        const fetchUpdates = async () => {
+            const results = await Promise.all(MISSION_CHARS.split('').map(async (_char, index) => {
+                const docId = id + index + 1;
+                try {
+                    const res = await SCM.get().docsLastUpdate(docId);
+                    return { docId, last: res.data?.last_update ?? null };
+                } catch {
+                    return { docId, last: null };
+                }
+            }));
+
+            if (!mounted) return;
+            const updates: Record<number, string | null> = {};
+            results.forEach(({ docId, last }) => { updates[docId] = last; });
+            setCharLastUpdates(updates);
+        };
+
+        void fetchUpdates();
+        return () => { mounted = false; };
+    }, [id]);
 
     // 미션 단어 미리 구하기
     const mission = useMemo(() => {
@@ -346,6 +372,17 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial, onContentRefre
         action: DocsWordAdminAction,
         row: DocsWordData,
     ): Promise<boolean> => {
+        if (onContentRefresh !== undefined) {
+            const refreshedRows = await onContentRefresh();
+            if (refreshedRows === null) {
+                showTargetRefreshError();
+                return false;
+            }
+            setWordsData(refreshedRows);
+            setIsAdminCompleteModalOpen(true);
+            return true;
+        }
+
         const isTransitionToOk = (action === "approve" && row.status === "add")
             || (action === "reject" && row.status === "delete");
         if (isTransitionToOk) {
@@ -362,14 +399,6 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial, onContentRefre
             ));
         }
 
-        if (onContentRefresh !== undefined) {
-            const refreshedRows = await onContentRefresh();
-            if (refreshedRows === null) {
-                showTargetRefreshError();
-                return false;
-            }
-            setWordsData(refreshedRows);
-        }
         setIsAdminCompleteModalOpen(true);
         return true;
     };
@@ -545,6 +574,13 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial, onContentRefre
                                     <span className="text-2xl font-bold text-gray-700 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">
                                         {char}
                                     </span>
+                                    <div className="mt-2 text-center">
+                                        {charLastUpdates[id + index + 1] ? (
+                                            <span className="text-xs text-gray-500 dark:text-gray-400">{new Date(charLastUpdates[id + index + 1] as string).toLocaleString(undefined, { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone })}</span>
+                                        ) : (
+                                            <span className="text-xs text-gray-400">업데이트 정보 없음</span>
+                                        )}
+                                    </div>
                                 </Link>
                             ))}
                         </div>
