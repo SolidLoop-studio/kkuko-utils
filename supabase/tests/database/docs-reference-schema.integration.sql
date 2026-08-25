@@ -163,5 +163,79 @@ select ok(
     'application roles cannot execute the long trigger function'
 );
 
+select alike(
+    (select routine.prosrc from pg_catalog.pg_proc as routine
+      where routine.oid =
+        'public.fn_process_word_docs_update()'::pg_catalog.regprocedure),
+    '%ko.word-chain.mission%',
+    'the mission trigger names the word-chain semantic reference prefix'
+);
+select alike(
+    (select routine.prosrc from pg_catalog.pg_proc as routine
+      where routine.oid =
+        'public.fn_process_word_docs_update()'::pg_catalog.regprocedure),
+    '%ko.reverse-word-chain.mission%',
+    'the mission trigger names the reverse word-chain semantic reference prefix'
+);
+select alike(
+    (select routine.prosrc from pg_catalog.pg_proc as routine
+      where routine.oid =
+        'public.fn_process_word_docs_update()'::pg_catalog.regprocedure),
+    '%ko.kkungkkungtta.mission%',
+    'the mission trigger names the Kkungkkungtta semantic reference prefix'
+);
+select alike(
+    (select routine.prosrc from pg_catalog.pg_proc as routine
+      where routine.oid =
+        'public.fn_process_word_docs_update()'::pg_catalog.regprocedure),
+    '%ARRAY[''가'', ''나'', ''다'', ''라'', ''마'', ''바'', ''사'', ''아'', ''자'', ''차'', ''카'', ''타'', ''파'', ''하'']%',
+    'the mission trigger has the explicit ordered character array'
+);
+select alike(
+    (select routine.prosrc from pg_catalog.pg_proc as routine
+      where routine.oid =
+        'public.fn_process_word_docs_update()'::pg_catalog.regprocedure),
+    '%ARRAY[''ga'', ''na'', ''da'', ''ra'', ''ma'', ''ba'', ''sa'', ''a'', ''ja'', ''cha'', ''ka'', ''ta'', ''pa'', ''ha'']%',
+    'the mission trigger has the explicit ordered semantic-key array'
+);
+select unalike(
+    (select routine.prosrc from pg_catalog.pg_proc as routine
+      where routine.oid =
+        'public.fn_process_word_docs_update()'::pg_catalog.regprocedure),
+    '%209 + i%',
+    'the mission trigger no longer computes word-chain child IDs'
+);
+select unalike(
+    (select routine.prosrc from pg_catalog.pg_proc as routine
+      where routine.oid =
+        'public.fn_process_word_docs_update()'::pg_catalog.regprocedure),
+    '%224 + i%',
+    'the mission trigger no longer computes reverse word-chain child IDs'
+);
+select unalike(
+    (select routine.prosrc from pg_catalog.pg_proc as routine
+      where routine.oid =
+        'public.fn_process_word_docs_update()'::pg_catalog.regprocedure),
+    '%239 + i%',
+    'the mission trigger no longer computes Kkungkkungtta child IDs'
+);
+select is(
+    (select pg_catalog.array_to_string(routine.proconfig, ',')
+       from pg_catalog.pg_proc as routine
+      where routine.oid =
+        'public.fn_process_word_docs_update()'::pg_catalog.regprocedure),
+    'search_path=""',
+    'the mission trigger has an empty search path'
+);
+select ok(
+    not pg_catalog.has_function_privilege(
+        'anon', 'public.fn_process_word_docs_update()', 'EXECUTE')
+    and not pg_catalog.has_function_privilege(
+        'authenticated', 'public.fn_process_word_docs_update()', 'EXECUTE')
+    and not pg_catalog.has_function_privilege(
+        'service_role', 'public.fn_process_word_docs_update()', 'EXECUTE'),
+    'application roles cannot execute the mission trigger function'
+);
+
 select * from finish();
 rollback;
