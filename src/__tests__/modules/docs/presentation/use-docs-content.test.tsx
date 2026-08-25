@@ -78,4 +78,15 @@ describe('useDocsContent', () => {
         await waitFor(() => expect(infrastructureResult.result.current.error).toEqual(infrastructure));
         expect(infrastructureGet).toHaveBeenCalledTimes(4);
     });
+
+    it('exposes a not-found error without retrying', async () => {
+        const notFound: ApplicationError = { kind: 'not-found', message: '문서를 찾을 수 없습니다.' };
+        const get = mockDocsContentQueryService(err(notFound));
+        const { QueryWrapper } = createQueryWrapper();
+        const { result } = renderHook(() => useDocsContent(61), { wrapper: QueryWrapper });
+
+        await waitFor(() => expect(result.current.error).toEqual(notFound));
+
+        expect(get).toHaveBeenCalledTimes(1);
+    });
 });

@@ -10,10 +10,6 @@ export default function DocsLogPage({id}:{id: number}){
 
     if (isLoading) return <LoadingPage title={"문서 로그"} isForcedVisible />;
 
-    if (error?.kind === 'not-found') return <NotFound />;
-
-    if (error) return <ErrorPage message={error.message} />;
-
     if (data) return <DocsLogs id={id} name={data.docsName} Logs={data.entries.map((entry) => ({
         id: entry.id,
         word: entry.word,
@@ -21,6 +17,10 @@ export default function DocsLogPage({id}:{id: number}){
         date: entry.occurredAt,
         type: entry.type,
     }))} />;
+
+    if (error?.kind === 'not-found') return <NotFound />;
+
+    if (error) return <ErrorPage message={error.message} />;
 
     return null;
 }

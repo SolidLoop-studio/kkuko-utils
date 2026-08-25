@@ -11,10 +11,6 @@ export default function DocsInfoPage({ id }: { id: number }) {
 
     if (isLoading) return <LoadingPage title="문서 정보" isForcedVisible />;
 
-    if (error?.kind === 'not-found') return <NotFound />;
-
-    if (error) return <ErrorPage message={error.message} />;
-
     if (data) return <DocsInfo
         metaData={{
             id: data.metadata.id,
@@ -31,6 +27,10 @@ export default function DocsInfoPage({ id }: { id: number }) {
         starCount={data.starCount}
         docsViewRank={data.viewRank}
     />;
+
+    if (error?.kind === 'not-found') return <NotFound />;
+
+    if (error) return <ErrorPage message={error.message} />;
 
     return null;
 }

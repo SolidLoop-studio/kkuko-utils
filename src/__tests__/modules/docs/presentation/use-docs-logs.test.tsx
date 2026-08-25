@@ -147,4 +147,18 @@ describe('useDocsLogs', () => {
 
         expect(get).toHaveBeenCalledTimes(4);
     });
+
+    it('exposes a not-found error without retrying', async () => {
+        const notFoundError: ApplicationError = {
+            kind: 'not-found',
+            message: '문서를 찾을 수 없습니다.',
+        };
+        const get = mockDocsLogsQueryService(err(notFoundError));
+        const { QueryWrapper } = createQueryWrapper();
+        const { result } = renderHook(() => useDocsLogs(41), { wrapper: QueryWrapper });
+
+        await waitFor(() => expect(result.current.error).toEqual(notFoundError));
+
+        expect(get).toHaveBeenCalledTimes(1);
+    });
 });

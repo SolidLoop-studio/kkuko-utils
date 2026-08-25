@@ -36,4 +36,4 @@ export const unwrapDocsQuery = async <T>(operation: () => Promise<Result<T>>): P
 export const retryDocsQuery = (
     failureCount: number,
     error: ApplicationError,
-): boolean => error.kind !== 'validation' && failureCount < 3;
+): boolean => error.kind === 'infrastructure' && failureCount < 3;

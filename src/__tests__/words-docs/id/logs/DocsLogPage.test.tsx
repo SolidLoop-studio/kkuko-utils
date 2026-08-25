@@ -102,6 +102,49 @@ describe('DocsLogPage docs log query orchestration', () => {
         expect(screen.getByText('문서 로그를 불러오는 중 오류가 발생했습니다.')).toBeInTheDocument();
     });
 
+    it('preserves cached docs logs while a background refetch reports an infrastructure error', () => {
+        setDocsLogsQuery({
+            data: projection,
+            error: {
+                kind: 'infrastructure',
+                message: '문서 로그를 불러오는 중 오류가 발생했습니다.',
+            },
+        });
+
+        renderPage();
+
+        expect(mockDocsLogs).toHaveBeenCalledWith({
+            id: 41,
+            name: '나',
+            Logs: [{
+                id: 9,
+                word: '나라',
+                user: undefined,
+                date: '2026-08-25T02:00:00.000Z',
+                type: 'add',
+            }],
+        });
+        expect(screen.queryByText('문서 로그를 불러오는 중 오류가 발생했습니다.')).not.toBeInTheDocument();
+    });
+
+    it('preserves cached docs logs when a background refetch reports not-found', () => {
+        setDocsLogsQuery({
+            data: projection,
+            error: {
+                kind: 'not-found',
+                message: '문서를 찾을 수 없습니다.',
+            },
+        });
+
+        renderPage();
+
+        expect(mockDocsLogs).toHaveBeenCalledWith(expect.objectContaining({
+            id: 41,
+            name: '나',
+        }));
+        expect(screen.queryByRole('heading', { name: '페이지를 찾을 수 없습니다' })).not.toBeInTheDocument();
+    });
+
     it('renders the existing not-found page for a missing docs projection', () => {
         setDocsLogsQuery({
             error: {

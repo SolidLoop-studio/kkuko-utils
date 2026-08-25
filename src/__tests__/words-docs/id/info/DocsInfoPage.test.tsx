@@ -96,6 +96,53 @@ describe('DocsInfoPage docs info query orchestration', () => {
         expect(screen.getByText('문서 정보를 불러오는 중 오류가 발생했습니다.')).toBeInTheDocument();
     });
 
+    it('preserves cached docs info while a background refetch reports an infrastructure error', () => {
+        setDocsInfoQuery({
+            data: projection,
+            error: {
+                kind: 'infrastructure',
+                message: '문서 정보를 불러오는 중 오류가 발생했습니다.',
+            },
+        });
+
+        renderPage();
+
+        expect(mockDocsInfo).toHaveBeenCalledWith({
+            metaData: {
+                id: 51,
+                created_at: '2026-08-01T00:00:00.000Z',
+                name: '다',
+                users: null,
+                typez: 'letter',
+                last_update: '2026-08-25T03:00:00.000Z',
+                views: 120,
+            },
+            wordsCount: 32,
+            starCount: 4,
+            docsViewRank: 2,
+        });
+        expect(screen.queryByText('문서 정보를 불러오는 중 오류가 발생했습니다.')).not.toBeInTheDocument();
+    });
+
+    it('preserves cached docs info when a background refetch reports not-found', () => {
+        setDocsInfoQuery({
+            data: projection,
+            error: {
+                kind: 'not-found',
+                message: '문서를 찾을 수 없습니다.',
+            },
+        });
+
+        renderPage();
+
+        expect(mockDocsInfo).toHaveBeenCalledWith(expect.objectContaining({
+            wordsCount: 32,
+            starCount: 4,
+            docsViewRank: 2,
+        }));
+        expect(screen.queryByRole('heading', { name: '페이지를 찾을 수 없습니다' })).not.toBeInTheDocument();
+    });
+
     it('renders the existing not-found page for a missing docs projection', () => {
         setDocsInfoQuery({
             error: {

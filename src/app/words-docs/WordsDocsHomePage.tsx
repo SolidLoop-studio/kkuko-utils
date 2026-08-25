@@ -9,8 +9,6 @@ export default function WordsDocsHomePage(){
 
     if (isLoading) return <LoadingPage title={"문서 목록"} isForcedVisible />
 
-    if (error) return <ErrorPage message={error.message}/>
-
     if (data) return <WordsDocsHome docs={data.map((docs) => ({
         id: `${docs.id}`,
         name: docs.name,
@@ -20,6 +18,8 @@ export default function WordsDocsHomePage(){
         typez: docs.type,
         created_at: docs.createdAt,
     }))} />
+
+    if (error) return <ErrorPage message={error.message}/>
 
     return null
 }

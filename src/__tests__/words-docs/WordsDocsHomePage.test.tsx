@@ -92,6 +92,21 @@ describe('WordsDocsHomePage docs list query orchestration', () => {
         expect(screen.getByText('문서 목록을 불러오는 중 오류가 발생했습니다.')).toBeInTheDocument();
     });
 
+    it('preserves cached docs while a background refetch reports an infrastructure error', () => {
+        setDocsListQuery({
+            data: [docsSummary],
+            error: {
+                kind: 'infrastructure',
+                message: '문서 목록을 불러오는 중 오류가 발생했습니다.',
+            },
+        });
+
+        renderPage();
+
+        expect(screen.getByRole('link', { name: '가' })).toHaveAttribute('href', '/words-docs/31');
+        expect(screen.queryByText('문서 목록을 불러오는 중 오류가 발생했습니다.')).not.toBeInTheDocument();
+    });
+
     it('renders the real child zero-count sections for an empty docs list', () => {
         setDocsListQuery({ data: [] });
 
