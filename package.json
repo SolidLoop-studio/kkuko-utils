@@ -20,6 +20,8 @@
     "test:user-word-theme-request-db": "supabase test db --local supabase/tests/database/user-word-theme-request.integration.sql supabase/tests/database/user-word-theme-request-concurrency.integration.sql",
     "test:user-word-addition-request-db": "supabase test db --local supabase/tests/database/user-word-addition-request.integration.sql supabase/tests/database/user-word-addition-request-concurrency.integration.sql",
     "test:user-word-addition-batch-db": "supabase test db --local supabase/tests/database/user-word-addition-batch.integration.sql supabase/tests/database/user-word-addition-batch-concurrency.integration.sql",
+    "test:docs-reference-db": "supabase test db --local supabase/tests/database/docs-reference-trigger-characterization.integration.sql supabase/tests/database/docs-reference-schema.integration.sql supabase/tests/database/docs-semantic-reference.integration.sql",
+    "verify:local-db": "node scripts/verify-local-supabase.mjs",
     "test:test": "jest 2>&1 | tee test.txt",
     "test:ci": "jest --ci --coverage --watchAll=false",
     "prepare": "husky"

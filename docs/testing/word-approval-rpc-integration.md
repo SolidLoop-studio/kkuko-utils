@@ -15,25 +15,26 @@ as a substitute.
 Use only a disposable local Supabase database. Never use `--linked`, a production connection
 string, or a database containing data that must be preserved.
 
-The disposable database must contain the current Kkuko Utils base schema and functions, including
-`users`, `themes`, `words`, moderation request/log tables, `increment_contribution`, and
-`update_last_updates`. It must also have both word-approval migrations applied:
-
-- `supabase/migrations/20260820000000_add_word_approval_batch.sql`
-- `supabase/migrations/20260821000000_set_word_approval_batch_search_path.sql`
-
-This repository currently does not contain the earlier production schema migrations or a schema
-fixture, so `supabase db reset` from this checkout alone cannot construct that prerequisite
-database.
-
 Docker Desktop or Podman must be installed and running because the local Supabase CLI uses
 containers. The concurrency test also needs the PostgreSQL `dblink` extension; the test creates it
 in the disposable database if necessary.
 
 ## Run
 
-After restoring the current application schema into the local Supabase database and applying both
-word-approval migrations, run from the repository root:
+For a fresh local bootstrap that runs this suite with every database test and then stops the stack,
+run from the repository root:
+
+```bash
+npm run verify:local-db
+```
+
+To run this suite by itself, start a disposable local stack and reset it with:
+
+```bash
+npx supabase db reset --local
+```
+
+Then run:
 
 ```bash
 npm run test:word-approval-db
