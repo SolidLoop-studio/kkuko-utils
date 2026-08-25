@@ -83,6 +83,7 @@ const isSameMutationTarget = (
 const isSameDocsWordRow = (left: DocsWordData, right: DocsWordData) => (
     left.word === right.word
     && left.status === right.status
+    && left.maker === right.maker
     && isSameMutationTarget(left.mutationTarget, right.mutationTarget)
 );
 
@@ -107,6 +108,15 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial, onContentRefre
             setIsUserStarreda(starCount.includes(user.uuid))
         }
     }, [user, starCount])
+
+    useEffect(() => {
+        setWordsData((currentRows) => (
+            currentRows.length === data.length
+            && currentRows.every((row, index) => isSameDocsWordRow(row, data[index]))
+                ? currentRows
+                : data
+        ));
+    }, [data]);
 
     useEffect(() => {
         if (![208, 223, 238].includes(id)) return;

@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { configureStore } from '@reduxjs/toolkit';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { PropsWithChildren } from 'react';
 import { Provider } from 'react-redux';
@@ -71,6 +71,13 @@ const refreshedProjection = {
     isSpecial: false,
 };
 
+const backgroundProjection = {
+    metadata: { id: 55, title: '백그라운드 갱신 문서', lastUpdatedAt: '2026-08-24T00:00:00.000Z', type: 'theme' as const },
+    starredUserIds: ['background-star'],
+    words: [{ word: '호랑이', status: 'ok' as const }],
+    isSpecial: false,
+};
+
 const createWrapper = () => {
     const store = configureStore({
         reducer: { user: userReducer, loading: loadingReducer, theme: themeReducer },
@@ -81,9 +88,10 @@ const createWrapper = () => {
         },
     });
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-    return function Wrapper({ children }: PropsWithChildren) {
+    const Wrapper = ({ children }: PropsWithChildren) => {
         return <Provider store={store}><QueryClientProvider client={queryClient}>{children}</QueryClientProvider></Provider>;
     };
+    return { queryClient, Wrapper };
 };
 
 describe('DocsDataPage real useDocsContent admin refetch integration', () => {
@@ -105,7 +113,8 @@ describe('DocsDataPage real useDocsContent admin refetch integration', () => {
         jest.mocked(SCM.update).mockReturnValue({ docView } as never);
 
         const user = userEvent.setup();
-        render(<DocsDataPage id={55} />, { wrapper: createWrapper() });
+        const { Wrapper } = createWrapper();
+        render(<DocsDataPage id={55} />, { wrapper: Wrapper });
 
         expect(await screen.findByTestId('row-가방')).toBeInTheDocument();
         await user.click(screen.getByRole('button', { name: 'admin-refresh' }));
@@ -114,5 +123,32 @@ describe('DocsDataPage real useDocsContent admin refetch integration', () => {
         expect(screen.getByText('갱신 문서')).toBeInTheDocument();
         await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
         expect(docView).toHaveBeenCalledTimes(1);
+    });
+
+    it('background query cache updates replace rendered rows as well as page metadata', async () => {
+        const get = jest.fn().mockResolvedValue(ok(initialProjection));
+        jest.mocked(createBrowserDocsServices).mockReturnValue({
+            docsContentQueryService: { get },
+        } as never);
+        jest.mocked(createBrowserWordModerationServices).mockReturnValue({
+            docsWordMutationTargetService: {
+                get: jest.fn().mockImplementation(({ rows }: { rows: unknown[] }) => ok({
+                    targets: rows.map(() => ({ kind: 'registered-word', wordId: 89 })),
+                })),
+            },
+        } as never);
+        jest.mocked(SCM.update).mockReturnValue({ docView: jest.fn().mockResolvedValue(undefined) } as never);
+        const { queryClient, Wrapper } = createWrapper();
+
+        render(<DocsDataPage id={55} />, { wrapper: Wrapper });
+        expect(await screen.findByTestId('row-가방')).toBeInTheDocument();
+
+        await act(async () => {
+            queryClient.setQueryData(['docs', 55, 'content'], backgroundProjection);
+        });
+
+        expect(await screen.findByTestId('row-호랑이')).toBeInTheDocument();
+        expect(screen.getByText('백그라운드 갱신 문서')).toBeInTheDocument();
+        expect(screen.queryByTestId('row-가방')).not.toBeInTheDocument();
     });
 });

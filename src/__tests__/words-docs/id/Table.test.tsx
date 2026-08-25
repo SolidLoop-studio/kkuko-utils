@@ -501,6 +501,10 @@ describe('Table administrator and legacy user actions', () => {
 describe('Docs word target enrichment', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        mockUseDocsContent.mockReset();
+        mockCreateBrowserServices.mockReset();
+        mockTargetGet.mockReset();
+        mockDocView.mockReset();
         mockDocView.mockResolvedValue(undefined);
         jest.mocked(SCM.update).mockReturnValue({ docView: mockDocView } as never);
     });
@@ -650,6 +654,145 @@ describe('Docs word target enrichment', () => {
 
         expect(await screen.findByText('문서 단어 처리 대상을 새로고침하는 중 오류가 발생했습니다.')).toBeInTheDocument();
         expect(screen.getByTestId('docs-row-가방')).toBeInTheDocument();
+        expect(mockDocView).toHaveBeenCalledTimes(1);
+    });
+
+    it('overlapping admin refreshes keep the latest enriched snapshot when an older refresh resolves last', async () => {
+        const olderRefresh = createDeferred<{
+            data: ReturnType<typeof contentProjection>;
+            error: null;
+        }>();
+        const newerRefresh = createDeferred<{
+            data: ReturnType<typeof contentProjection>;
+            error: null;
+        }>();
+        const olderTargets = createDeferred<ReturnType<typeof ok<{ targets: DocsWordMutationTarget[] }>>>();
+        const newerTargets = createDeferred<ReturnType<typeof ok<{ targets: DocsWordMutationTarget[] }>>>();
+        const refetch = jest.fn()
+            .mockReturnValueOnce(olderRefresh.promise)
+            .mockReturnValueOnce(newerRefresh.promise);
+        mockUseDocsContent.mockReturnValue({
+            data: contentProjection({ words: [{ word: '초기단어', status: 'add' }] }),
+            error: null,
+            isLoading: false,
+            refetch,
+        } as never);
+        mockTargetGet
+            .mockResolvedValueOnce(ok({ targets: [{ kind: 'registered-word', wordId: 1 }] }))
+            .mockReturnValueOnce(olderTargets.promise)
+            .mockReturnValueOnce(newerTargets.promise);
+        mockCreateBrowserServices.mockReturnValue({
+            docsWordMutationTargetService: { get: mockTargetGet },
+        } as never);
+
+        const user = userEvent.setup();
+        render(<DocsDataPage id={55} />, { wrapper: createWrapper() });
+        await screen.findByTestId('docs-row-초기단어');
+
+        await user.click(screen.getByRole('button', { name: 'reject-초기단어' }));
+        await act(async () => {
+            olderRefresh.resolve({
+                data: contentProjection({ words: [{ word: '오래된새로고침', status: 'ok' }] }),
+                error: null,
+            });
+            await olderRefresh.promise;
+        });
+        await waitFor(() => expect(mockTargetGet).toHaveBeenCalledTimes(2));
+
+        await user.click(screen.getByRole('button', { name: 'reject-초기단어' }));
+        expect(refetch).toHaveBeenCalledTimes(2);
+        await act(async () => {
+            newerRefresh.resolve({
+                data: contentProjection({ words: [{ word: '최신새로고침', status: 'ok' }] }),
+                error: null,
+            });
+            await newerRefresh.promise;
+        });
+        await waitFor(() => expect(mockTargetGet).toHaveBeenCalledTimes(3));
+        await act(async () => {
+            newerTargets.resolve(ok({ targets: [{ kind: 'registered-word', wordId: 3 }] }));
+            await newerTargets.promise;
+        });
+        expect(await screen.findByTestId('docs-row-최신새로고침')).toBeInTheDocument();
+
+        await act(async () => {
+            olderTargets.resolve(ok({ targets: [{ kind: 'registered-word', wordId: 2 }] }));
+            await olderTargets.promise;
+        });
+        expect(screen.getByTestId('docs-row-최신새로고침')).toBeInTheDocument();
+        expect(screen.queryByTestId('docs-row-오래된새로고침')).not.toBeInTheDocument();
+    });
+
+    it('an admin refresh resolving after an id change cannot replace the newer document snapshot', async () => {
+        const staleRefresh = createDeferred<{
+            data: ReturnType<typeof contentProjection>;
+            error: null;
+        }>();
+        const refetch = jest.fn().mockReturnValue(staleRefresh.promise);
+        mockUseDocsContent.mockImplementation((docsId) => ({
+            data: contentProjection({
+                id: docsId,
+                title: docsId === 55 ? '이전 문서' : '현재 문서',
+                words: [{ word: docsId === 55 ? '이전단어' : '현재단어', status: 'add' }],
+            }),
+            error: null,
+            isLoading: false,
+            refetch,
+        } as never));
+        mockTargetGet.mockResolvedValue(ok({ targets: [{ kind: 'registered-word', wordId: 55 }] }));
+        mockCreateBrowserServices.mockReturnValue({
+            docsWordMutationTargetService: { get: mockTargetGet },
+        } as never);
+
+        const user = userEvent.setup();
+        const { rerender } = render(<DocsDataPage id={55} />, { wrapper: createWrapper() });
+        await screen.findByTestId('docs-row-이전단어');
+        await user.click(screen.getByRole('button', { name: 'reject-이전단어' }));
+        rerender(<DocsDataPage id={56} />);
+        expect(await screen.findByTestId('docs-row-현재단어')).toBeInTheDocument();
+
+        await act(async () => {
+            staleRefresh.resolve({
+                data: contentProjection({ id: 55, words: [{ word: '오래된응답', status: 'ok' }] }),
+                error: null,
+            });
+            await staleRefresh.promise;
+        });
+
+        expect(screen.getByTestId('docs-row-현재단어')).toBeInTheDocument();
+        expect(screen.queryByTestId('docs-row-오래된응답')).not.toBeInTheDocument();
+    });
+
+    it('unmount during an admin refresh ignores its eventual enrichment result', async () => {
+        const refresh = createDeferred<{
+            data: ReturnType<typeof contentProjection>;
+            error: null;
+        }>();
+        mockUseDocsContent.mockReturnValue({
+            data: contentProjection({ words: [{ word: '언마운트단어', status: 'add' }] }),
+            error: null,
+            isLoading: false,
+            refetch: jest.fn().mockReturnValue(refresh.promise),
+        } as never);
+        mockTargetGet.mockResolvedValueOnce(ok({ targets: [{ kind: 'registered-word', wordId: 1 }] }));
+        mockCreateBrowserServices.mockReturnValue({
+            docsWordMutationTargetService: { get: mockTargetGet },
+        } as never);
+
+        const user = userEvent.setup();
+        const { unmount } = render(<DocsDataPage id={55} />, { wrapper: createWrapper() });
+        await screen.findByTestId('docs-row-언마운트단어');
+        await user.click(screen.getByRole('button', { name: 'reject-언마운트단어' }));
+        unmount();
+        await act(async () => {
+            refresh.resolve({
+                data: contentProjection({ words: [{ word: '늦은응답', status: 'ok' }] }),
+                error: null,
+            });
+            await refresh.promise;
+        });
+        expect(mockTargetGet).toHaveBeenCalledTimes(1);
+
         expect(mockDocView).toHaveBeenCalledTimes(1);
     });
 
