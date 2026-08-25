@@ -225,7 +225,8 @@ All pgTAP tests use the disposable local Supabase database, wrap fixture changes
 `supabase/tests/database/docs-reference-trigger-characterization.integration.sql` is added before the semantic migrations. It fixes these existing behaviors:
 
 - production IDs and names for all 47 roles;
-- long-word insert, delete, and eligibility-update log behavior for `201` and `202`;
+- long-word qualifying insert and eligible delete behavior for `201` and `202`;
+- both `false -> true` and `true -> false` eligibility transitions, both unchanged eligibility states producing no log, and update logs taking `word` and `add_by` from `NEW`;
 - mission insert/delete behavior for a three-character word and a non-three-character word;
 - one log per contained mission character, not per occurrence;
 - child `last_update` changes and propagation to parents `208`, `223`, and `238`;
@@ -248,7 +249,7 @@ The same characterization file must remain green after each trigger conversion, 
 
 ### Varying primary keys and missing references
 
-`supabase/tests/database/docs-semantic-reference.integration.sql` backs up the 47 rows inside its transaction, reinserts them with IDs outside `201..252`, and proves long logs, mission logs, and parent timestamps target the new IDs by `reference_code`.
+`supabase/tests/database/docs-semantic-reference.integration.sql` backs up the 47 rows inside its transaction, reinserts them with IDs outside `201..252`, and proves long logs, mission logs, and parent timestamps target the new IDs by `reference_code`. Its successful varying-PK long fixture and missing-reference long fixture use visibly different reserved words. The test clears any history for every reserved word before recording effects, so a missing-reference assertion always compares against an explicit zero-log baseline rather than logs created by the successful fixture.
 
 It then removes, one at a time, a long reference, a mission child, and a mission parent. Each affected word mutation must raise `DOCS_REQUIRED_REFERENCE_MISSING`, leave the word absent or unchanged, create no partial logs, and restore all observed timestamps through rollback. It also proves that an unrelated short word that contains no mission character does not resolve unused references.
 
@@ -312,6 +313,8 @@ export class RequestDocsCreationService {
 The Application service preserves the current one-JavaScript-code-unit name rule and requires a non-empty requester ID. It does not restrict input to Hangul or trim it because that would change current behavior. `SupabaseDocsCreationRequestGateway` performs the existing single-table `docs_wait` insert through the browser client and returns only `Result<void>`. This is an RLS-protected single-table command, so a new RPC and Route Handler are unnecessary for this slice.
 
 `useDocsCreationRequest()` owns the React Query mutation and invalidates `docsQueryKeys.pendingRequests` after success. The component still refreshes pending requests immediately before submission to preserve the current duplicate check.
+
+The mutation resolves with the service's `Result<void>` rather than rejecting for an expected Application error. Its public `error` is therefore hook-local `useState<ApplicationError | null>` state, not React Query's `mutation.error`. Starting every submission clears that state before calling the service; a fulfilled `Result.err` or a caught unexpected throw sets it; a fulfilled `Result.ok` leaves it null and invalidates the pending-request query. `clearError()` sets only that local state to null, and the next submission clears it again even if the caller never invoked `clearError()`.
 
 Its public return contract is:
 

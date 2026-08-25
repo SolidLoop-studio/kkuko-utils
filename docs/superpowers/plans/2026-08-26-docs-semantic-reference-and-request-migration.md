@@ -76,6 +76,30 @@ from letters cross join families;
 Add exact behavioral fixtures and assertions:
 
 ```sql
+insert into auth.users (id) values
+    ('52000000-0000-4000-8000-000000000001'),
+    ('52000000-0000-4000-8000-000000000002');
+insert into public.users (id, nickname, role) values
+    ('52000000-0000-4000-8000-000000000001', 'docs-reference-old', 'r1'),
+    ('52000000-0000-4000-8000-000000000002', 'docs-reference-new', 'r1');
+
+delete from public.words where word in (
+    '힣힣힣힣힣힣힣힣힣',
+    '숲숲숲숲숲숲숲숲숲',
+    '봄봄봄봄봄봄봄봄봄',
+    '별별별별별별별별별',
+    '달달달달달달달달달',
+    '꽃꽃꽃꽃꽃꽃꽃꽃꽃'
+);
+delete from public.docs_logs where word in (
+    '힣힣힣힣힣힣힣힣힣',
+    '숲숲숲숲숲숲숲숲숲',
+    '봄봄봄봄봄봄봄봄봄',
+    '별별별별별별별별별',
+    '달달달달달달달달달',
+    '꽃꽃꽃꽃꽃꽃꽃꽃꽃'
+);
+
 select results_eq(
     $$ select document.id, document.name
        from public.docs as document
@@ -87,26 +111,90 @@ select results_eq(
     'the seed has all 47 legacy semantic roles'
 );
 
-insert into public.words (word, k_canuse)
-values ('힣힣힣힣힣힣힣힣힣', true);
+insert into public.words (word, k_canuse, added_by)
+values (
+    '힣힣힣힣힣힣힣힣힣', true,
+    '52000000-0000-4000-8000-000000000001'
+);
 select is(
     (select count(*)::integer from public.docs_logs
-      where word = '힣힣힣힣힣힣힣힣힣' and docs_id in (201, 202) and type = 'add'),
+      where word = '힣힣힣힣힣힣힣힣힣'
+        and docs_id in (201, 202)
+        and add_by = '52000000-0000-4000-8000-000000000001'
+        and type = 'add'),
     2,
     'a qualifying insert records both long-word docs'
 );
 
-update public.words set k_canuse = false
-where word = '힣힣힣힣힣힣힣힣힣';
+delete from public.words where word = '힣힣힣힣힣힣힣힣힣';
 select is(
     (select count(*)::integer from public.docs_logs
-      where word = '힣힣힣힣힣힣힣힣힣' and docs_id in (201, 202) and type = 'delete'),
+      where word = '힣힣힣힣힣힣힣힣힣'
+        and docs_id in (201, 202)
+        and add_by = '52000000-0000-4000-8000-000000000001'
+        and type = 'delete'),
     2,
-    'leaving long-word eligibility records both delete logs'
+    'an eligible delete records both long-word docs from OLD'
+);
+
+insert into public.words (word, k_canuse, added_by) values (
+    '숲숲숲숲숲숲숲숲숲', false,
+    '52000000-0000-4000-8000-000000000001'
+);
+update public.words
+   set word = '봄봄봄봄봄봄봄봄봄',
+       added_by = '52000000-0000-4000-8000-000000000002'
+ where word = '숲숲숲숲숲숲숲숲숲';
+select is(
+    (select count(*)::integer from public.docs_logs
+      where word in ('숲숲숲숲숲숲숲숲숲', '봄봄봄봄봄봄봄봄봄')
+        and docs_id in (201, 202)),
+    0,
+    'false-to-false eligibility produces no long-word log'
+);
+
+update public.words
+   set word = '별별별별별별별별별',
+       k_canuse = true,
+       added_by = '52000000-0000-4000-8000-000000000001'
+ where word = '봄봄봄봄봄봄봄봄봄';
+select is(
+    (select count(*)::integer from public.docs_logs
+      where word = '별별별별별별별별별'
+        and docs_id in (201, 202)
+        and add_by = '52000000-0000-4000-8000-000000000001'
+        and type = 'add'),
+    2,
+    'false-to-true uses NEW word and NEW added_by'
+);
+
+update public.words
+   set word = '달달달달달달달달달'
+ where word = '별별별별별별별별별';
+select is(
+    (select count(*)::integer from public.docs_logs
+      where word = '달달달달달달달달달' and docs_id in (201, 202)),
+    0,
+    'true-to-true eligibility produces no long-word log'
+);
+
+update public.words
+   set word = '꽃꽃꽃꽃꽃꽃꽃꽃꽃',
+       k_canuse = false,
+       added_by = '52000000-0000-4000-8000-000000000002'
+ where word = '달달달달달달달달달';
+select is(
+    (select count(*)::integer from public.docs_logs
+      where word = '꽃꽃꽃꽃꽃꽃꽃꽃꽃'
+        and docs_id in (201, 202)
+        and add_by = '52000000-0000-4000-8000-000000000002'
+        and type = 'delete'),
+    2,
+    'true-to-false uses NEW word and NEW added_by'
 );
 ```
 
-Use `가가힣` to prove repeated `가` produces one log each at `209`, `224`, and `239`; use `가나힣` to prove a length-three word produces six mission logs; use `가나힣힣` to prove a non-three-character word produces four word-chain/reverse logs and zero Kkungkkungtta logs. Delete the words and assert matching `delete` logs. Set child and parent timestamps to `2000-01-01`, insert `가나힣`, and assert the touched child and all three parent timestamps are newer. Delete one copied legacy child, use the two-argument `throws_ok(sql, description)` form to assert that insertion fails without fixing the legacy SQLSTATE, and assert the word/log rows did not commit. This rollback-only assertion remains valid after Task 4 introduces the stable resolver error; Task 8 owns the exact new error-token contract.
+These assertions explicitly cover qualifying INSERT, eligible DELETE, `false -> true`, `true -> false`, `false -> false`, `true -> true`, and UPDATE provenance from `NEW.word`/`NEW.added_by`. After completing them, use `가가힣` to prove repeated `가` produces one log each at `209`, `224`, and `239`; use `가나힣` to prove a length-three word produces six mission logs; use `가나힣힣` to prove a non-three-character word produces four word-chain/reverse logs and zero Kkungkkungtta logs. Delete each mission fixture and assert its matching `delete` logs. Set child and parent timestamps to `2000-01-01`, insert `가나힣`, and assert the touched child and all three parent timestamps are newer. Delete one copied legacy child, use the two-argument `throws_ok(sql, description)` form to assert that insertion fails without fixing the legacy SQLSTATE, and assert the word/log rows did not commit. This rollback-only assertion remains valid after Task 4 introduces the stable resolver error; Task 8 owns the exact new error-token contract.
 
 - [ ] **Step 2: Run the local stack command and record RED**
 
@@ -838,7 +926,26 @@ Expected: nonzero exit because the required integration test path does not exist
 
 - [ ] **Step 2: Build a varying-PK fixture inside one transaction**
 
-Create the test with `begin`, `no_plan`, cleanup of reserved word names, and a temporary full backup:
+Create the test with `begin`, `no_plan`, and a temporary full backup. Before recording any effects, clear the reserved word rows and then their trigger-created log history in this order:
+
+```sql
+delete from public.words where word in (
+    '힣힣힣힣힣힣힣힣힣',
+    '가나힣',
+    '봄봄봄봄봄봄봄봄봄',
+    '옴옴',
+    '가힣힣'
+);
+delete from public.docs_logs where word in (
+    '힣힣힣힣힣힣힣힣힣',
+    '가나힣',
+    '봄봄봄봄봄봄봄봄봄',
+    '옴옴',
+    '가힣힣'
+);
+```
+
+Deleting words first deliberately permits any eligible DELETE trigger to run; deleting their logs second establishes a zero-history baseline. Then create the backup:
 
 ```sql
 create temporary table original_semantic_docs on commit drop as
@@ -876,7 +983,7 @@ Assert all 47 IDs are now greater than `900000` and none equals an original ID.
 
 - [ ] **Step 3: Prove long, mission, and parent effects use the new IDs**
 
-Insert reserved words `힣힣힣힣힣힣힣힣힣` and `가나힣`. Assert:
+Insert the successful varying-PK reserved words `힣힣힣힣힣힣힣힣힣` and `가나힣`. Assert:
 
 - exactly two long `add` logs join to `ko.word-chain.long` and `ko.reverse-word-chain.long`;
 - exactly six length-three mission logs join to the `ga` and `na` child codes across all three families;
@@ -890,19 +997,31 @@ Use joins on `reference_code` for every expected result; do not reconstruct a ta
 
 For each case, copy the target docs row to a temporary one-row table, delete it, call `throws_ok`, assert no partial word/log/timestamp effect, and restore the row before the next case.
 
-Long reference case:
+Long reference case: copy `ko.word-chain.long` to its one-row temporary restore table, delete that reference, and then run:
 
 ```sql
+select is(
+    (select count(*)::integer from public.docs_logs
+      where word = '봄봄봄봄봄봄봄봄봄'),
+    0,
+    'the distinct missing-long fixture starts with no log history'
+);
 select throws_ok(
     $$ insert into public.words (word, k_canuse)
-       values ('힣힣힣힣힣힣힣힣홓', true) $$,
+       values ('봄봄봄봄봄봄봄봄봄', true) $$,
     'P0001',
     'DOCS_REQUIRED_REFERENCE_MISSING',
     'a missing long reference aborts the word insert'
 );
+select is(
+    (select count(*)::integer from public.docs_logs
+      where word = '봄봄봄봄봄봄봄봄봄'),
+    0,
+    'the failed missing-long insert leaves no log for either long reference'
+);
 ```
 
-Delete `ko.word-chain.long` and assert the word and all its docs logs remain absent. While that reference is missing, `lives_ok` an unrelated short word `힣힣` to prove unused references are resolved lazily.
+Also assert `봄봄봄봄봄봄봄봄봄` is absent from `public.words`. This word is deliberately distinct from Step 3's successful `힣힣힣힣힣힣힣힣힣` fixture, and the two zero-count assertions prevent its result from being confused with historical logs or cascade effects. While the reference is still missing, `lives_ok` the unrelated short word `옴옴` to prove unused references are resolved lazily. Restore the copied long reference before starting the mission-child case.
 
 Mission child case: delete `ko.word-chain.mission.ga`, attempt to insert `가힣힣`, expect the same stable error, and assert the word, all mission logs, and observed child/parent timestamps remain at their baselines.
 
@@ -1072,7 +1191,7 @@ git commit -m "test: automate local database bootstrap"
 - Produces: `RequestDocsCreationService.request(command): Promise<Result<void>>`.
 - Produces: `useLetterDocsDuplicate(docsName)` at `docsQueryKeys.letterDuplicate(docsName)`, disabled until submit-time `refetch()`.
 - Produces: `useLetterDocsDuplicate(docsName): UseQueryResult<boolean, ApplicationError>`.
-- Produces: `useDocsCreationRequest()` returning `{ request(command): Promise<Result<void>>; isPending: boolean; error: ApplicationError | null; clearError(): void }` and invalidating `docsQueryKeys.pendingRequests` after success.
+- Produces: `useDocsCreationRequest()` returning `{ request(command): Promise<Result<void>>; isPending: boolean; error: ApplicationError | null; clearError(): void }`. Its `error` is hook-local state: every submission and `clearError()` reset it to null, a fulfilled `Result.err` or caught throw sets it, and only `Result.ok` invalidates `docsQueryKeys.pendingRequests`.
 - Consumes: existing `usePendingDocsRequests().refetch()`, `browserSupabaseClient`, `Result`, `ApplicationError`, `retryDocsQuery`, and `unwrapDocsQuery`.
 - Removes: `SCM` import from `WordsDocsHome`, `IGetManager.letterDocs`, `SupabaseGetManager.letterDocs`, `IAddManager.waitDocs`, and `SupabaseAddManager.waitDocs` only after zero-consumer checks.
 
@@ -1141,7 +1260,11 @@ Add `docsQueryKeys.letterDuplicate = (docsName: string) => ['docs', 'letter', 'd
 - the duplicate service is not called on initial render;
 - `refetch()` calls `check('가')` and caches the boolean under the exact key;
 - validation errors are not retried and infrastructure errors use `retryDocsQuery`;
-- the command hook returns the service `Result`, exposes pending/error state, and invalidates `['docs','requests','pending']` only after `ok`.
+- the command hook returns a fulfilled service `Result` without relying on React Query rejection state;
+- a fulfilled `Result.err` and a caught unexpected throw both set the hook-local `error`;
+- `clearError()` sets the local error to null, and starting the next submission clears an earlier error before that submission settles;
+- a fulfilled `Result.ok` leaves the local error null and invalidates `['docs','requests','pending']`, while `Result.err` does not invalidate it;
+- `isPending` is true while the service promise is unresolved.
 
 Extend `browser-docs-services.test.ts` to require fresh `CheckLetterDocsDuplicateService` and `RequestDocsCreationService` instances wired to their corresponding adapters.
 
@@ -1164,7 +1287,52 @@ letterDocsDuplicateQueryService: CheckLetterDocsDuplicateService;
 docsCreationRequestService: RequestDocsCreationService;
 ```
 
-Construct a new adapter/service pair on each `createBrowserDocsServices()` call, matching current docs composition behavior. `useLetterDocsDuplicate(docsName)` uses `useQuery` with `enabled: false`, `unwrapDocsQuery`, and `retryDocsQuery`. `useDocsCreationRequest()` uses `useMutation`, converts unexpected throws to the stable request error, and calls `queryClient.invalidateQueries({ queryKey: docsQueryKeys.pendingRequests })` only for an `ok` result. Export the command type and both hooks from `src/modules/docs/index.ts`.
+Construct a new adapter/service pair on each `createBrowserDocsServices()` call, matching current docs composition behavior. `useLetterDocsDuplicate(docsName)` uses `useQuery` with `enabled: false`, `unwrapDocsQuery`, and `retryDocsQuery`.
+
+Implement `useDocsCreationRequest()` with the same fulfilled-`Result` state model as the existing moderation hook:
+
+```ts
+const requestInfrastructureError = (): ApplicationError => ({
+    kind: 'infrastructure',
+    message: '문서 추가 요청에 실패했습니다. 잠시 후 다시 시도해주세요.',
+});
+
+const queryClient = useQueryClient();
+const [error, setError] = useState<ApplicationError | null>(null);
+const [resolvedService] = useState(
+    () => createBrowserDocsServices().docsCreationRequestService,
+);
+const mutation = useMutation<Result<void>, never, DocsCreationRequestCommand>({
+    mutationFn: async (command) => {
+        try {
+            return await resolvedService.request(command);
+        } catch {
+            return err(requestInfrastructureError());
+        }
+    },
+    onMutate: () => {
+        setError(null);
+    },
+    onSuccess: async (requestResult) => {
+        if (!requestResult.ok) {
+            setError(requestResult.error);
+            return;
+        }
+        await queryClient.invalidateQueries({
+            queryKey: docsQueryKeys.pendingRequests,
+        });
+    },
+});
+
+return {
+    request: (command) => mutation.mutateAsync(command),
+    isPending: mutation.isPending,
+    error,
+    clearError: () => setError(null),
+};
+```
+
+`requestInfrastructureError()` returns the exact stable Korean infrastructure error asserted in Step 1. `onMutate` is the single new-submission reset point, React Query's `mutation.error` is intentionally unused because the mutation catches throws and fulfills with `Result`, and `clearError()` does not reset cache or mutation state. Export the command type and both hooks from `src/modules/docs/index.ts`.
 
 - [ ] **Step 8: Run hook/composition tests and verify GREEN**
 
