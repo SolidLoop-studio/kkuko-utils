@@ -134,7 +134,7 @@ describe('SupabaseDocsLogQueryGateway', () => {
         ]);
     });
 
-    it('maps a delete log and a nullable joined user nickname', async () => {
+    it('maps a delete log and a joined user nickname', async () => {
         const { client } = createClient({
             docsResult: docsResponse,
             logsResult: {
@@ -143,7 +143,7 @@ describe('SupabaseDocsLogQueryGateway', () => {
                     word: '나무',
                     date: '2026-08-25T03:00:00.000Z',
                     type: 'delete',
-                    users: { nickname: null },
+                    users: { nickname: '기록자' },
                 }],
                 error: null,
             },
@@ -155,7 +155,7 @@ describe('SupabaseDocsLogQueryGateway', () => {
             entries: [{
                 id: 10,
                 word: '나무',
-                userNickname: null,
+                userNickname: '기록자',
                 occurredAt: '2026-08-25T03:00:00.000Z',
                 type: 'delete',
             }],

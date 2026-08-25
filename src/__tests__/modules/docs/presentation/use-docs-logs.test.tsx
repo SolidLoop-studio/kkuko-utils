@@ -25,6 +25,12 @@ const projection: DocsLogProjection = {
     }],
 };
 
+const otherProjection: DocsLogProjection = {
+    docsId: 42,
+    docsName: '다',
+    entries: [],
+};
+
 const createQueryWrapper = () => {
     const queryClient = new QueryClient({
         defaultOptions: {
@@ -66,6 +72,27 @@ describe('useDocsLogs', () => {
 
         expect(queryClient.getQueryData(['docs', 41, 'logs'])).toEqual(projection);
         expect(get).toHaveBeenCalledWith(41);
+    });
+
+    it('refetches a fresh projection at a separate key when the docs id changes', async () => {
+        const get = mockDocsLogsQueryService(ok(projection));
+        get.mockResolvedValueOnce(ok(projection)).mockResolvedValueOnce(ok(otherProjection));
+        const { queryClient, QueryWrapper } = createQueryWrapper();
+        const { result, rerender } = renderHook(({ docsId }: { docsId: number }) => useDocsLogs(docsId), {
+            initialProps: { docsId: 41 },
+            wrapper: QueryWrapper,
+        });
+
+        await waitFor(() => expect(result.current.data).toEqual(projection));
+
+        rerender({ docsId: 42 });
+
+        await waitFor(() => expect(result.current.data).toEqual(otherProjection));
+
+        expect(queryClient.getQueryData(['docs', 41, 'logs'])).toEqual(projection);
+        expect(queryClient.getQueryData(['docs', 42, 'logs'])).toEqual(otherProjection);
+        expect(get).toHaveBeenNthCalledWith(1, 41);
+        expect(get).toHaveBeenNthCalledWith(2, 42);
     });
 
     it('exposes a validation error without retrying', async () => {

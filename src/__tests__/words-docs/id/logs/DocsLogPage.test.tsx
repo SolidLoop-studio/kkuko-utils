@@ -80,6 +80,15 @@ describe('DocsLogPage docs log query orchestration', () => {
         expect(screen.getByRole('heading', { name: '문서 로그 로딩 중' })).toBeInTheDocument();
     });
 
+    it('renders query loading while the Redux startup loading state is already complete', () => {
+        setDocsLogsQuery({ isLoading: true });
+
+        renderPage();
+
+        expect(screen.getByRole('heading', { name: '문서 로그 로딩 중' })).toBeInTheDocument();
+        expect(screen.getByText('로딩 중...')).toBeInTheDocument();
+    });
+
     it('renders only the stable docs logs query error message', () => {
         setDocsLogsQuery({
             error: {
@@ -124,6 +133,29 @@ describe('DocsLogPage docs log query orchestration', () => {
                 id: 9,
                 word: '나라',
                 user: undefined,
+                date: '2026-08-25T02:00:00.000Z',
+                type: 'add',
+            }],
+        });
+    });
+
+    it('maps a user nickname to the existing component props', () => {
+        setDocsLogsQuery({
+            data: {
+                ...projection,
+                entries: [{ ...projection.entries[0], userNickname: '기록자' }],
+            },
+        });
+
+        renderPage();
+
+        expect(mockDocsLogs).toHaveBeenCalledWith({
+            id: 41,
+            name: '나',
+            Logs: [{
+                id: 9,
+                word: '나라',
+                user: '기록자',
                 date: '2026-08-25T02:00:00.000Z',
                 type: 'add',
             }],

@@ -7,7 +7,7 @@ import { useDocsList } from '@/src/modules/docs';
 export default function WordsDocsHomePage(){
     const { data, error, isLoading } = useDocsList();
 
-    if (isLoading) return <LoadingPage title={"문서 목록"} />
+    if (isLoading) return <LoadingPage title={"문서 목록"} forceVisible />
 
     if (error) return <ErrorPage message={error.message}/>
 
