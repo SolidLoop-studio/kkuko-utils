@@ -14,7 +14,6 @@ jest.mock('../../app/lib/supabaseClient', () => ({
     SCM: {
         get: () => ({
             letterDocs: legacyLetterDocs,
-            addWaitDocs: jest.fn().mockResolvedValue({ data: [], error: null }),
         }),
         add: () => ({ waitDocs: legacyWaitDocs }),
     },
