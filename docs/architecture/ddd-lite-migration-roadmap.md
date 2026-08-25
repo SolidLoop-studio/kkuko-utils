@@ -246,45 +246,52 @@ browser singleton SCM을 Route Handler에서 import하거나 Server Component가
 - adapter는 공개 code를 `ApplicationError.kind`로 변환한다.
 - 예상 가능한 업무 오류와 예상하지 못한 infrastructure 오류를 구분한다.
 
-### 4.8 숫자 PK가 업무 규칙으로 하드코딩되어 있다
+### 4.8 숫자 PK 업무 규칙은 로컬 migration에서 의미 키로 전환되었다
 
-현재 word trigger는 특정 docs를 의미하기 위해 `201`, `202`, `209 + i`, `224 + i`, `239 + i` 형태의 숫자 ID를 사용한다. 프로덕션 데이터를 복제하면 동작하지만 빈 로컬 DB나 다른 환경에서는 같은 ID가 존재한다는 보장이 없다.
+기존 word trigger는 특정 docs를 의미하기 위해 `201`, `202`, `209 + i`, `224 + i`,
+`239 + i` 형태의 숫자 ID를 사용했다. 이 구조는 환경별 seed 순서에 따라 FK 오류를
+일으키고 docs 생성 순서를 업무 동작의 전제 조건으로 만들었다.
 
-영향:
+현재 로컬 구현·검증 상태:
 
-- 환경별 seed 상태가 다르면 FK 오류가 발생한다.
-- ID가 무엇을 의미하는지 SQL만 보고 알기 어렵다.
-- docs 생성 순서가 업무 동작의 전제 조건이 된다.
-- Supabase를 교체하지 않더라도 테스트와 로컬 개발이 불안정하다.
+- `docs.id`는 surrogate key로 유지하고, 47개 system docs는 불변 `reference_code`로 식별한다.
+- private fail-fast resolver가 의미 키를 실제 ID로 변환하며, 필수 reference가 없으면
+  `DOCS_REQUIRED_REFERENCE_MISSING`으로 transaction 전체를 실패시킨다.
+- long-word, mission-word, mission-parent trigger는 forward migration에서 의미 키 기반으로
+  전환되었고 runtime 숫자 docs ID 계산과 범위를 사용하지 않는다.
+- pgTAP characterization은 기존 프로덕션 ID와 의도적으로 다른 PK에서 같은 업무 효과를
+  검증하고, 필수 reference 누락 시 로그를 포함한 전체 rollback도 검증한다.
+- 의미 매핑은 versioned migration과 seed에 고정되어 숫자 범위에서 이름을 추측하지 않는다.
 
-해결:
+배포 경계:
 
-- `docs.id`는 참조용 surrogate key로만 사용한다.
-- 업무 규칙은 `code`, `slug`, `kind + key` 같은 불변의 의미 키를 사용한다.
-- trigger 또는 RPC가 의미 키로 실제 ID를 resolve한다.
-- 필수 reference docs가 없으면 명시적인 오류 code로 실패한다.
-- 필수 reference data는 versioned seed 또는 migration으로 재현한다.
-- 정확한 의미 키 설계는 실제 프로덕션 docs의 의미를 확인한 뒤 확정한다. 현재 숫자 범위만 보고 이름을 추측하지 않는다.
+- 위 완료 상태는 repository와 disposable local DB에 한정된다.
+- 관련 forward migration은 cloud Supabase에 아직 적용하지 않았다. 원격 trigger는
+  사용자/운영자가 rollout하기 전까지 기존 상태일 수 있으며, cloud 완료로 표시하지 않는다.
+- cloud migration 적용과 전후 검증은 사용자/운영자가 별도로 통제한다.
 
-현재 결정:
+### 4.9 migration 체인의 fresh local bootstrap 경로가 재현 가능하다
 
-- 프로덕션에 필요한 reference docs가 존재하고 현재 동작이 안정적이므로 trigger를 즉시 변경하지 않는다.
-- 로컬 개발은 당분간 프로덕션과 동일한 reference docs fixture를 사용한다.
-- 다만 이 방식은 임시 호환책이며, `docs` context 이전 또는 Supabase 교체를 시작하기 전에는 의미 키 기반으로 전환한다.
-- 향후 변경 전에 현재 trigger 동작과 실제 ID 의미를 integration test 및 매핑 문서로 먼저 고정한다.
+원격 schema dump의 timestamp와 선행 기능 migration 순서 때문에 plain migration 실행이
+불명확했던 문제는 기존 migration을 rename하거나 삭제하지 않는 local bootstrap으로 해결했다.
 
-### 4.9 migration 체인의 fresh bootstrap이 아직 불명확하다
+현재 로컬 구현·검증 상태:
 
-현재 저장소에는 원격 schema dump와 단어 승인 migration이 모두 존재한다. 원격 dump 파일의 timestamp가 기능 migration 뒤에 있고 dump 안에도 동일한 승인 object가 포함되어 있어, 새 DB에서 migration을 시간순으로 실행할 때 선행 schema 누락 또는 중복 정의가 발생할 가능성이 있다. 기존 RPC 테스트 문서에는 base schema가 저장소에 없다고 적혀 있어 현재 상태와도 어긋난다.
+- `npm run verify:local-db`는 cloud와 분리된 `55320..55329` remapped port에서 disposable
+  Supabase stack을 시작한다.
+- untouched baseline, 모든 기존·신규 forward migration, versioned seed를 fresh reset으로
+  적용한 뒤 전체 DB integration test를 실행한다.
+- 성공과 실패 모두에서 local stack을 중지하며, 문서화된 한 명령으로 같은 경로를 재현한다.
+- 관련 테스트 문서는 저장소의 baseline과 `npm run verify:local-db` 전제를 반영한다.
+- local verification은 `--linked`, `db push`, migration repair, remote connection string을
+  사용하지 않는다.
 
-해결:
+운영 경계:
 
-- 프로덕션에 이미 적용된 migration history를 먼저 확인한다.
-- 적용된 migration ID를 임의로 rename하거나 삭제하지 않는다.
-- fresh local bootstrap과 기존 remote upgrade 경로를 각각 검증한다.
-- 기준 schema, 후속 migration, reference seed의 순서를 하나로 정한다.
-- `supabase db reset` 후 DB integration test가 통과하는 경로를 CI 또는 개발 문서에 고정한다.
-- 정리 후 `docs/testing/word-approval-rpc-integration.md`의 전제 조건을 갱신한다.
+- 재현 가능한 fresh local bootstrap은 remote migration history 검증이나 cloud rollout 완료를
+  의미하지 않는다.
+- 기존 migration ID는 계속 보존하며, cloud 적용 순서와 전후 확인은 사용자/운영자가 별도로
+  계획하고 실행한다.
 
 ## 5. 목표 아키텍처
 

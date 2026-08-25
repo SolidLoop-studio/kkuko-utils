@@ -20,10 +20,15 @@ const validationError = {
 };
 
 describe('RequestDocsCreationService', () => {
-    it('passes the valid command to the gateway unchanged', async () => {
+    it.each([
+        ['non-Hangul docs name', { docsName: 'A', requesterId: 'user-7' }],
+        ['precomposed Hangul docs name', { docsName: '가', requesterId: 'user-7' }],
+        ['whitespace docs name', { docsName: ' ', requesterId: 'user-7' }],
+        ['normalization-sensitive docs name', { docsName: 'Å', requesterId: 'user-7' }],
+        ['whitespace requester ID', { docsName: '가', requesterId: ' ' }],
+    ])('passes a valid command with %s unchanged', async (_description, command) => {
         const gateway = new FakeDocsCreationRequestGateway();
         const service = new RequestDocsCreationService(gateway);
-        const command = { docsName: '가', requesterId: 'user-7' };
 
         await expect(service.request(command)).resolves.toEqual(ok(undefined));
         expect(gateway.commands).toEqual([command]);

@@ -50,12 +50,18 @@ export class SupabaseLetterDocsDuplicateQueryGateway implements LetterDocsDuplic
 
         if (!isRecord(response)
             || response.error !== null
-            || !Array.isArray(response.data)
-            || response.data.length > 1
-            || !response.data.every(isDocsIdRow)) {
+            || !Array.isArray(response.data)) {
             return err(infrastructureError());
         }
 
-        return ok(response.data.length === 1);
+        if (response.data.length === 0) {
+            return ok(false);
+        }
+
+        if (response.data.length !== 1 || !isDocsIdRow(response.data[0])) {
+            return err(infrastructureError());
+        }
+
+        return ok(true);
     }
 }

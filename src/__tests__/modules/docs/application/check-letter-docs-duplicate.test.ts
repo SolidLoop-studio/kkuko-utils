@@ -19,13 +19,18 @@ const validationError = {
 };
 
 describe('CheckLetterDocsDuplicateService', () => {
-    it('passes an exact one-code-unit docs name to the gateway unchanged', async () => {
+    it.each([
+        ['non-Hangul', 'A'],
+        ['precomposed Hangul', '가'],
+        ['whitespace', ' '],
+        ['normalization-sensitive', 'Å'],
+    ])('passes a one-code-unit %s docs name unchanged', async (_description, docsName) => {
         const gateway = new FakeLetterDocsDuplicateQueryGateway();
         gateway.result = ok(true);
         const service = new CheckLetterDocsDuplicateService(gateway);
 
-        await expect(service.check('가')).resolves.toEqual(ok(true));
-        expect(gateway.docsNames).toEqual(['가']);
+        await expect(service.check(docsName)).resolves.toEqual(ok(true));
+        expect(gateway.docsNames).toEqual([docsName]);
     });
 
     it.each(['', '가나', '😀'])(

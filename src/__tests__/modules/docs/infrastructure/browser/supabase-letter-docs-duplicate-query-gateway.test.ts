@@ -85,4 +85,13 @@ describe('SupabaseLetterDocsDuplicateQueryGateway', () => {
         await expect(new SupabaseLetterDocsDuplicateQueryGateway(client).existsByName('가'))
             .resolves.toEqual(err(infrastructureError));
     });
+
+    it('rejects a sparse one-slot response array', async () => {
+        const sparseData: unknown[] = [];
+        sparseData.length = 1;
+        const { client } = createClient({ data: sparseData, error: null });
+
+        await expect(new SupabaseLetterDocsDuplicateQueryGateway(client).existsByName('가'))
+            .resolves.toEqual(err(infrastructureError));
+    });
 });
