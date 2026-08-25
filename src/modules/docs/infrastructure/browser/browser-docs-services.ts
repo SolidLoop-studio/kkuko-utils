@@ -1,12 +1,15 @@
 import { GetDocsListService } from '../../application/get-docs-list';
+import { GetDocsLogsService } from '../../application/get-docs-logs';
 import { GetPendingDocsRequestsService } from '../../application/get-pending-docs-requests';
 import { ModerateDocsRequestsService } from '../../application/moderate-docs-requests';
 import { SupabaseDocsListQueryGateway } from './supabase-docs-list-query-gateway';
+import { SupabaseDocsLogQueryGateway } from './supabase-docs-log-query-gateway';
 import { SupabaseDocsRequestModerationGateway } from './supabase-docs-request-moderation-gateway';
 import { SupabaseDocsRequestQueryGateway } from './supabase-docs-request-query-gateway';
 
 export interface BrowserDocsServices {
     docsListQueryService: GetDocsListService;
+    docsLogsQueryService: GetDocsLogsService;
     docsRequestModerationService: ModerateDocsRequestsService;
     docsRequestQueryService: GetPendingDocsRequestsService;
 }
@@ -15,6 +18,9 @@ export interface BrowserDocsServices {
 export const createBrowserDocsServices = (): BrowserDocsServices => ({
     docsListQueryService: new GetDocsListService(
         new SupabaseDocsListQueryGateway(),
+    ),
+    docsLogsQueryService: new GetDocsLogsService(
+        new SupabaseDocsLogQueryGateway(),
     ),
     docsRequestModerationService: new ModerateDocsRequestsService(
         new SupabaseDocsRequestModerationGateway(),

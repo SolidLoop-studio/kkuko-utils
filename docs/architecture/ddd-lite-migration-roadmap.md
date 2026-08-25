@@ -1025,7 +1025,7 @@ Notifications:
 | 관리자 docs 요청 moderation | 완료 | 승인·반려 mutation은 RPC로 이전했고 대기 요청 목록 query도 Phase 4에서 이전 완료; `WordsDocsHome.tsx`는 대기 요청 중복 확인 read를 새 query로 사용하고 legacy `letterDocs` read·`waitDocs` 생성 mutation을 유지하며 migration cloud rollout은 사용자/운영자 실행 대기 |
 | 사용자 단어 요청 | 부분 완료 | Phase 2 mutation 코드 이전은 완료; 단일·대량 추가 요청을 포함한 관련 cloud migration rollout은 사용자/운영자 실행 대기 |
 | word-catalog 조회 | 완료 | 브라우저 검색·자동완성, 단어 상세 query, 고급 검색 Route Handler, 다운로드, 통계, 랜덤 연결 단어 query 완료 |
-| docs context | 진행 중 | 관리자 대기 요청 목록, `WordsDocsHome.tsx`의 대기 요청 중복 확인 read, 공개 docs 목록 query 이전 완료; legacy `letterDocs` read와 `waitDocs` 생성 mutation을 포함한 나머지 경계가 남음 |
+| docs context | 진행 중 | 관리자 대기 요청 목록, `WordsDocsHome.tsx`의 대기 요청 중복 확인 read, 공개 docs 목록 및 `words-docs/[id]/logs` 로그 projection query 이전 완료; legacy `letterDocs` read와 `waitDocs` 생성 mutation을 포함한 나머지 경계가 남음 |
 | identity/profile | 미착수 | Auth와 profile DB 계약 분리 |
 | notifications/storage | 미착수 | query/command/storage port 분리 |
 | SCM 최종 제거 | 대기 | 모든 context 이전 후 실행 |

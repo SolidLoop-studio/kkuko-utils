@@ -134,9 +134,6 @@ class GetManager implements IGetManager {
         const { data, error } = await this.supabase.from('user_star_docs').select('*').eq('docs_id', id);
         return { data: data?.length ?? 0, error };
     }
-    public async docsLogs(id: number) {
-        return await this.supabase.from("docs_logs").select("*, users(*)").eq("docs_id", id).order("date", { ascending: false });
-    }
     public async docsStar(id: number) {
         return await this.supabase.from('user_star_docs').select('user_id').eq('docs_id', id);
     }

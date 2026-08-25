@@ -44,7 +44,6 @@ export interface IGetManager{
     allThemes(): Promise<PostgrestSingleResponse<theme[]>>
     themeInfoByThemeName(name: string): Promise<{ data: theme | null; error: PostgrestError | null;}>
     docsStarCount(id: number): Promise<{ data: number; error: PostgrestError | null;}>
-    docsLogs(id:number): Promise<PostgrestSingleResponse<(docs_log & {users: user | null})[]>>
     docsStar(id: number): Promise<PostgrestSingleResponse<{user_id: string;}[]>>;
     docsWords({ name, duem, typez }: { name: string; duem: boolean; typez: "letter" | "theme";} | {name: number; duem: boolean; typez: "ect";}): Promise<{data: null, error: PostgrestError} | {data: {words: okWord[], waitWords: ({ word: string; request_type: "add" | "delete"; requested_by: string | null; })[]}, error: null}>
     allWaitWords(c?:"add" | "delete"): Promise<PostgrestSingleResponse<(wait_word & {words: word | null; users: user | null})[]>>;
