@@ -4,7 +4,12 @@ export type {
     DocsRequestModerationResult,
     RejectDocsRequestsCommand,
 } from './application/docs-request-moderation-types';
+export type { DocsSummary, DocsType } from './application/docs-list-query-types';
 export type { PendingDocsRequest } from './application/docs-request-query-types';
+export {
+    useDocsList,
+    type DocsListQueryService,
+} from './presentation/use-docs-list';
 export {
     useDocsRequestModeration,
     type DocsRequestModerationService,
