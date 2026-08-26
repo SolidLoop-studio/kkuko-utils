@@ -52,7 +52,7 @@ const isRpcError = (value: unknown): value is RpcError => (
 const mapError = (error: RpcError): ApplicationError => {
     const publicError = publicErrors[error.message as keyof typeof publicErrors];
     if (publicError !== undefined) {
-        return { ...publicError, code: error.code ?? undefined };
+        return { ...publicError };
     }
     return infrastructureError();
 };

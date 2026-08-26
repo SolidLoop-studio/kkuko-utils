@@ -62,9 +62,13 @@ select ok(
     'authenticated users can execute the docs favorite RPC'
 );
 select ok(
-    not pg_catalog.has_function_privilege(
+    pg_catalog.has_function_privilege(
         'anon', 'public.set_docs_favorite(bigint,boolean)', 'EXECUTE'
-    ) and not exists (
+    ),
+    'anonymous browser callers can reach the RPC authentication check'
+);
+select ok(
+    not exists (
         select 1
         from pg_catalog.pg_proc as routine
         cross join lateral pg_catalog.aclexplode(
@@ -78,25 +82,59 @@ select ok(
           and privilege.grantee = 0
           and privilege.privilege_type = 'EXECUTE'
     ),
-    'anon and public cannot execute the docs favorite RPC'
+    'public does not receive docs favorite RPC execution'
 );
 select ok(
-    not pg_catalog.has_table_privilege(
-        'authenticated', 'public.user_star_docs', 'INSERT'
-    ) and not pg_catalog.has_table_privilege(
-        'authenticated', 'public.user_star_docs', 'DELETE'
-    ),
-    'authenticated browser clients cannot bypass the favorite RPC with table mutations'
+    pg_catalog.has_table_privilege('anon', 'public.user_star_docs', 'SELECT')
+    and not pg_catalog.has_table_privilege('anon', 'public.user_star_docs', 'INSERT')
+    and not pg_catalog.has_table_privilege('anon', 'public.user_star_docs', 'UPDATE')
+    and not pg_catalog.has_table_privilege('anon', 'public.user_star_docs', 'DELETE')
+    and not pg_catalog.has_table_privilege('anon', 'public.user_star_docs', 'TRUNCATE')
+    and not pg_catalog.has_table_privilege('anon', 'public.user_star_docs', 'REFERENCES')
+    and not pg_catalog.has_table_privilege('anon', 'public.user_star_docs', 'TRIGGER'),
+    'anon retains only required SELECT access on user_star_docs'
+);
+select ok(
+    pg_catalog.has_table_privilege('authenticated', 'public.user_star_docs', 'SELECT')
+    and not pg_catalog.has_table_privilege('authenticated', 'public.user_star_docs', 'INSERT')
+    and not pg_catalog.has_table_privilege('authenticated', 'public.user_star_docs', 'UPDATE')
+    and not pg_catalog.has_table_privilege('authenticated', 'public.user_star_docs', 'DELETE')
+    and not pg_catalog.has_table_privilege('authenticated', 'public.user_star_docs', 'TRUNCATE')
+    and not pg_catalog.has_table_privilege('authenticated', 'public.user_star_docs', 'REFERENCES')
+    and not pg_catalog.has_table_privilege('authenticated', 'public.user_star_docs', 'TRIGGER'),
+    'authenticated retains only required SELECT access on user_star_docs'
+);
+select ok(
+    not pg_catalog.has_sequence_privilege('anon', 'public.user_start_docs_id_seq', 'USAGE')
+    and not pg_catalog.has_sequence_privilege('anon', 'public.user_start_docs_id_seq', 'SELECT')
+    and not pg_catalog.has_sequence_privilege('anon', 'public.user_start_docs_id_seq', 'UPDATE')
+    and not pg_catalog.has_sequence_privilege('authenticated', 'public.user_start_docs_id_seq', 'USAGE')
+    and not pg_catalog.has_sequence_privilege('authenticated', 'public.user_start_docs_id_seq', 'SELECT')
+    and not pg_catalog.has_sequence_privilege('authenticated', 'public.user_start_docs_id_seq', 'UPDATE'),
+    'browser roles have no privilege on the user_star_docs identity sequence'
 );
 
 select pg_temp.set_docs_favorite_actor(null);
+set local role anon;
 select throws_ok(
     $$select public.set_docs_favorite(
         (select id from public.docs where name = 'docs-favorite-existing'),
         true
     )$$,
     'P0001', 'DOCS_FAVORITE_UNAUTHORIZED',
-    'the command rejects an unauthenticated caller'
+    'the anon RPC call reaches and fails the authentication check'
+);
+reset role;
+select is(
+    (
+        select count(*)::integer
+        from public.user_star_docs
+        where docs_id = (
+            select id from public.docs where name = 'docs-favorite-existing'
+        )
+    ),
+    0,
+    'the rejected anon RPC call creates no favorite row'
 );
 
 select pg_temp.set_docs_favorite_actor(
@@ -196,6 +234,8 @@ select is(
     'unstarring deletes only the authenticated caller row'
 );
 
+reset role;
+
 create function pg_temp.fail_docs_favorite_insert()
 returns trigger
 language plpgsql
@@ -213,6 +253,10 @@ create trigger docs_favorite_test_fail_insert
 before insert on public.user_star_docs
 for each row execute function pg_temp.fail_docs_favorite_insert();
 
+select pg_temp.set_docs_favorite_actor(
+    '48000000-0000-4000-8000-000000000001'
+);
+set local role authenticated;
 select throws_ok(
     $$select public.set_docs_favorite(
         (select id from public.docs where name = 'docs-favorite-failure'),

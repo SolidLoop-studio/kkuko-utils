@@ -62,9 +62,14 @@ $function$;
 revoke all on function public.set_docs_favorite(bigint, boolean)
     from public, anon, authenticated;
 grant execute on function public.set_docs_favorite(bigint, boolean)
-    to authenticated;
+    to anon, authenticated;
 
-revoke insert, delete on table public.user_star_docs
+revoke all privileges on table public.user_star_docs
+    from anon, authenticated;
+grant select on table public.user_star_docs
+    to anon, authenticated;
+
+revoke all privileges on sequence public.user_start_docs_id_seq
     from anon, authenticated;
 
 commit;

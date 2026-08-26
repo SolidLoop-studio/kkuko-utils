@@ -342,7 +342,7 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial, onContentRefre
         setErrorModalView({
             ErrName: 'DocsFavoriteError',
             ErrMessage: error.message,
-            ErrStackRace: error.code ?? null,
+            ErrStackRace: null,
             inputValue: null
         });
     };

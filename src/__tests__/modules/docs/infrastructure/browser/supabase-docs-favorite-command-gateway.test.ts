@@ -46,11 +46,11 @@ describe('SupabaseDocsFavoriteCommandGateway', () => {
     it.each([
         [
             'DOCS_FAVORITE_UNAUTHORIZED',
-            { kind: 'unauthorized', message: '인증이 필요합니다.', code: 'P0001' },
+            { kind: 'unauthorized', message: '인증이 필요합니다.' },
         ],
         [
             'DOCS_FAVORITE_NOT_FOUND',
-            { kind: 'not-found', message: '문서를 찾을 수 없습니다.', code: 'P0001' },
+            { kind: 'not-found', message: '문서를 찾을 수 없습니다.' },
         ],
     ] as const)('maps public RPC error %s for UI handling', async (message, expectedError) => {
         // Break caught: collapsing actionable authentication/not-found failures into raw or generic errors.

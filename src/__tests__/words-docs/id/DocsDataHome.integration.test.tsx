@@ -17,6 +17,15 @@ jest.mock('../../../modules/docs', () => ({
     useDocsFavorite: jest.fn(),
 }));
 
+jest.mock('../../../app/components/ErrModal', () => ({
+    __esModule: true,
+    default: ({ error }: { error: ErrorMessage }) => (
+        <div role="alert" data-stack={error.ErrStackRace ?? ''}>
+            {error.ErrMessage}
+        </div>
+    ),
+}));
+
 jest.mock('../../../app/words-docs/[id]/use-user-word-request-actions', () => ({
     useUserWordRequestActions: jest.fn(),
 }));
@@ -237,7 +246,11 @@ describe('DocsDataHome administrator removal completion integration', () => {
         // Break caught: flipping favorite UI on failure or leaking raw database errors outside the existing Modal.
         setFavorite.mockResolvedValue({
             ok: false,
-            error: { kind: 'not-found', message: '문서를 찾을 수 없습니다.' },
+            error: {
+                kind: 'not-found',
+                message: '문서를 찾을 수 없습니다.',
+                code: 'P0001',
+            },
         });
         const user = userEvent.setup();
         render(
@@ -252,8 +265,10 @@ describe('DocsDataHome administrator removal completion integration', () => {
 
         await user.click(screen.getByRole('button', { name: '0' }));
 
-        expect(await screen.findByText('문서를 찾을 수 없습니다.')).toBeInTheDocument();
+        const errorModal = await screen.findByRole('alert');
+        expect(errorModal).toHaveTextContent('문서를 찾을 수 없습니다.');
         expect(screen.getByRole('button', { name: '0' })).toBeInTheDocument();
+        expect(errorModal).toHaveAttribute('data-stack', '');
     });
 
     it('uses the login-required Modal for a stale authenticated session failure', async () => {
