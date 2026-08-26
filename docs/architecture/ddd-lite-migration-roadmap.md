@@ -946,8 +946,9 @@ marker의 semantic bulk query다. 본문 projection은 같은 세 상위 `refere
 `letterDocs`·`waitDocs`·`docView`·`starDocs`·`startDocs`와 read-side `docsLastUpdate(id)`는 제거되었다.
 아직 검사하지 않은 다음 docs 경계를 추측하지 않는다.
 
-후속 슬라이스에서는 mission child ID 입력의 양의 safe integer 범위를 Application 경계에서
-검증한다. 이 검증은 기존 marker slice 이후 발견된 별도 범위이며 현재 완료 범위에는 포함하지 않는다.
+후속 슬라이스에서는 `supabase-docs-content-query-gateway.ts`가 mission child의 `isSpecial`을
+하드코딩된 숫자 PK 범위로 분류하는 기존 의존성을 semantic `reference_code` 기반 분류로 이전하고,
+varying-PK child page coverage를 추가한다. 이 부채는 현재 완료 범위에는 포함하지 않는다.
 
 ### Phase 5. Identity, Profile, Notifications 이전
 
