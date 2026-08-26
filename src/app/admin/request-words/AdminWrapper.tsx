@@ -6,17 +6,17 @@ import ErrorPage from '../../components/ErrorPage';
 import AdminHome from './AdminRequestHome';
 
 export default function AdminHomeWrapper() {
-    const { data: requests = [], error, isLoading, refetch } = usePendingWordModerationRequests();
+    const { data: requests, error, isLoading, refetch } = usePendingWordModerationRequests();
 
     if (isLoading) {
         return <LoadingPage title="관리자 페이지" isForcedVisible />;
     }
 
-    if (error) {
+    if (error && requests === undefined) {
         return <ErrorPage message={error.message} />;
     }
 
-    const requestData = requests.map((request) => ({
+    const requestData = (requests ?? []).map((request) => ({
         id: request.id,
         word: request.word,
         request_type: request.requestType,

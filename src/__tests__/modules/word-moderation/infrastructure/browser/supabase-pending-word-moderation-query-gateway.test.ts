@@ -161,6 +161,86 @@ describe('SupabasePendingWordModerationQueryGateway', () => {
         expect(calls).toContain('in:wait_word_id:301');
     });
 
+    it('skips the wait-word-theme query when there are no addition requests', async () => {
+        const { client, calls } = createClient({
+            word_themes_wait: [success([])],
+            wait_words: [success([{
+                id: 8,
+                word: '삭제어',
+                request_type: 'delete',
+                requested_at: '2026-08-26T05:00:00.000Z',
+                requested_by: null,
+                users: null,
+                words: { id: 80 },
+            }])],
+            wait_word_themes: [],
+        });
+
+        await expect(new SupabasePendingWordModerationQueryGateway(client).loadPending())
+            .resolves.toEqual(ok([{
+                id: 8,
+                word: '삭제어',
+                requestType: 'delete',
+                requestedAt: '2026-08-26T05:00:00.000Z',
+                requesterNickname: 'unknown',
+                wordId: 80,
+            }]));
+        expect(calls).toEqual([
+            'from:word_themes_wait',
+            'select:word_id, theme_id, typez, req_at, req_by, words(id, word), themes(id, name, code), users(nickname)',
+            'from:wait_words',
+            'select:id, word, request_type, requested_at, requested_by, words(id), users(nickname)',
+            'order:requested_at:true',
+        ]);
+    });
+
+    it.each([
+        ['returned error', { data: [], error: { message: 'private wait-word detail' } }],
+        ['malformed row', success([{ id: 'invalid' }])],
+    ])('stops after a wait_words %s and returns the stable error', async (_label, failure) => {
+        const { client, calls } = createClient({
+            word_themes_wait: [success([])],
+            wait_words: [failure],
+            wait_word_themes: [],
+        });
+
+        await expect(new SupabasePendingWordModerationQueryGateway(client).loadPending())
+            .resolves.toEqual(err(infrastructureError));
+        expect(calls).toEqual([
+            'from:word_themes_wait',
+            'select:word_id, theme_id, typez, req_at, req_by, words(id, word), themes(id, name, code), users(nickname)',
+            'from:wait_words',
+            'select:id, word, request_type, requested_at, requested_by, words(id), users(nickname)',
+            'order:requested_at:true',
+        ]);
+    });
+
+    it('maps a thrown failure in a later wait-word-theme chunk after preserving query order', async () => {
+        const waitWords = Array.from({ length: 301 }, (_, index) => ({
+            id: index + 1,
+            word: `word-${index + 1}`,
+            request_type: 'add',
+            requested_at: '2026-08-26T00:00:00.000Z',
+            requested_by: null,
+            users: null,
+            words: null,
+        }));
+        const { client, calls } = createClient({
+            word_themes_wait: [success([])],
+            wait_words: [success(waitWords)],
+            wait_word_themes: [success([]), new Error('private second chunk detail')],
+        });
+
+        await expect(new SupabasePendingWordModerationQueryGateway(client).loadPending())
+            .resolves.toEqual(err(infrastructureError));
+        expect(calls.filter((call) => call === 'from:wait_word_themes')).toHaveLength(2);
+        expect(calls.filter((call) => call.startsWith('in:wait_word_id:'))).toEqual([
+            `in:wait_word_id:${Array.from({ length: 300 }, (_, index) => index + 1).join(',')}`,
+            'in:wait_word_id:301',
+        ]);
+        expect(calls.at(-1)).toBe('in:wait_word_id:301');
+    });
+
     it.each([
         ['returned database failure', { data: [], error: { message: 'private database detail' } }],
         ['thrown database failure', new Error('private connection detail')],
