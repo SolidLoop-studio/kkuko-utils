@@ -112,6 +112,33 @@ describe('SupabaseDocsMarkerQueryGateway', () => {
     });
 
     it.each([
+        [
+            'duplicate child reference code',
+            [...childRows, { ...childRows[0], id: 1_234 }],
+        ],
+        [
+            'unknown child reference code',
+            [...childRows, {
+                id: 1_234,
+                reference_code: 'ko.word-chain.mission.unknown',
+                last_update: null,
+            }],
+        ],
+    ])('returns a stable error for an invalid child query result: %s', async (_description, rows) => {
+        // Break caught: accepting malformed bulk results rather than preserving stable failure behavior.
+        const { client } = createClient(
+            { data: { reference_code: 'ko.word-chain.mission' }, error: null },
+            { data: rows, error: null },
+        );
+
+        await expect(new SupabaseDocsMarkerQueryGateway(client).loadByParentDocsId(7_301))
+            .resolves.toEqual(err({
+                kind: 'infrastructure',
+                message: '미션 글자 업데이트 정보를 불러오는 중 오류가 발생했습니다.',
+            }));
+    });
+
+    it.each([
         'ko.word-chain.long',
         'ko.word-chain.mission.ga',
         'ko.custom.mission',

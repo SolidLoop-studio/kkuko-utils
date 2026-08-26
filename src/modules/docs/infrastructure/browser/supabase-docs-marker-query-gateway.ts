@@ -3,6 +3,10 @@ import { err, ok, type Result } from '@/src/shared/application/result';
 import { browserSupabaseClient } from '@/src/shared/infrastructure/supabase/browser-client';
 import type { DocsMarkerQueryGateway } from '../../application/docs-marker-query-ports';
 import {
+    MISSION_CHARACTERS,
+    missionChildReferenceCodes,
+} from '../../application/docs-reference-types';
+import {
     isMissionParentReferenceCode,
     type DocsMarker,
     type DocsMarkerSlot,
@@ -24,8 +28,6 @@ interface DocsMarkerQueryClient {
     from(table: 'docs'): DocsMarkerQueryBuilder;
 }
 
-const missionCharacters = ['가', '나', '다', '라', '마', '바', '사', '아', '자', '차', '카', '타', '파', '하'] as const;
-const missionKeys = ['ga', 'na', 'da', 'ra', 'ma', 'ba', 'sa', 'a', 'ja', 'cha', 'ka', 'ta', 'pa', 'ha'] as const;
 const infrastructureError = (): ApplicationError => ({
     kind: 'infrastructure',
     message: '미션 글자 업데이트 정보를 불러오는 중 오류가 발생했습니다.',
@@ -76,7 +78,7 @@ const parseMarkers = (
 
         const index = childReferenceCodes.indexOf(row.reference_code);
         markersByReferenceCode.set(row.reference_code, {
-            character: missionCharacters[index],
+            character: MISSION_CHARACTERS[index],
             docsId: row.id,
             lastUpdatedAt: row.last_update,
         });
@@ -109,7 +111,8 @@ export class SupabaseDocsMarkerQueryGateway implements DocsMarkerQueryGateway {
                 return err(nonParentError());
             }
 
-            const childReferenceCodes = missionKeys.map((key) => `${parentReferenceCode}.${key}`);
+            const childReferenceCodes = missionChildReferenceCodes(parentReferenceCode);
+            if (childReferenceCodes === null) return err(nonParentError());
             const childrenResponse = await this.client
                 .from('docs')
                 .select('id, reference_code, last_update')
