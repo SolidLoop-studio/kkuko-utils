@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Info } from "lucide-react";
 import Image from "next/image";
 import MarkdownViewer from "./MarkdownViewer";
+import { persistHiddenNoticeId } from "@/src/modules/notifications/presentation/notice-dismissal-storage";
 
 interface NoticeData {
     id: number;
@@ -27,12 +28,7 @@ export default function NoticeModal({ open, onClose, notice }: NoticeModalProps)
 
     const handleClose = () => {
         if (hideNext) {
-            // 로컬 스토리지에 숨겨진 공지 ID 저장
-            const hiddenNotices = JSON.parse(localStorage.getItem('hiddenNotices') || '[]');
-            if (!hiddenNotices.includes(notice.id)) {
-                hiddenNotices.push(notice.id);
-                localStorage.setItem('hiddenNotices', JSON.stringify(hiddenNotices));
-            }
+            persistHiddenNoticeId(notice.id);
         }
         onClose();
     };

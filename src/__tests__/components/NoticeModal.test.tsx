@@ -77,6 +77,10 @@ describe("NoticeModal", () => {
         localStorage.clear();
     });
 
+    afterEach(() => {
+        jest.restoreAllMocks();
+    });
+
     it("renders when open is true", () => {
         render(
             <NoticeModal open={true} onClose={mockOnClose} notice={mockNotice} />
@@ -148,6 +152,41 @@ describe("NoticeModal", () => {
         expect(hiddenNotices).toContain(mockNotice.id);
     });
 
+    it.each([
+        ["malformed JSON", "{", [1]],
+        ["a non-array value", "{}", [1]],
+        ["mixed and duplicate ids", JSON.stringify([2, "bad", 2, -1, 3.5]), [2, 1]],
+    ])("normalizes %s and still closes exactly once", async (_case, storedValue, expectedIds) => {
+        const user = userEvent.setup();
+        localStorage.setItem("hiddenNotices", storedValue);
+        render(
+            <NoticeModal open={true} onClose={mockOnClose} notice={mockNotice} />
+        );
+
+        await user.click(screen.getByTestId("button"));
+
+        expect(mockOnClose).toHaveBeenCalledTimes(1);
+        expect(JSON.parse(localStorage.getItem("hiddenNotices") || "[]")).toEqual(expectedIds);
+    });
+
+    it.each(["getItem", "setItem"] as const)(
+        "closes even when localStorage.%s throws",
+        async (method) => {
+            const user = userEvent.setup();
+            const storageSpy = jest.spyOn(Storage.prototype, method).mockImplementation(() => {
+                throw new Error("private storage detail");
+            });
+            render(
+                <NoticeModal open={true} onClose={mockOnClose} notice={mockNotice} />
+            );
+
+            await user.click(screen.getByTestId("button"));
+
+            expect(mockOnClose).toHaveBeenCalledTimes(1);
+            storageSpy.mockRestore();
+        },
+    );
+
     it("does not save notice id when hideNext is unchecked", async () => {
         const user = userEvent.setup();
         render(
@@ -165,6 +204,20 @@ describe("NoticeModal", () => {
             localStorage.getItem("hiddenNotices") || "[]"
         );
         expect(hiddenNotices).not.toContain(mockNotice.id);
+    });
+
+    it("does not inspect malformed storage when hideNext is unchecked", async () => {
+        const user = userEvent.setup();
+        localStorage.setItem("hiddenNotices", "{");
+        render(
+            <NoticeModal open={true} onClose={mockOnClose} notice={mockNotice} />
+        );
+
+        await user.click(screen.getByTestId("checkbox"));
+        await user.click(screen.getByTestId("button"));
+
+        expect(mockOnClose).toHaveBeenCalledTimes(1);
+        expect(localStorage.getItem("hiddenNotices")).toBe("{");
     });
 
     it("displays formatted date", () => {

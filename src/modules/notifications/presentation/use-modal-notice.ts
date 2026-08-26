@@ -11,6 +11,7 @@ import {
     NOTIFICATION_STALE_TIME_MS,
     notificationQueryKeys,
 } from './notification-query-keys';
+import { readHiddenNoticeIds } from './notice-dismissal-storage';
 
 export { NOTIFICATION_STALE_TIME_MS, notificationQueryKeys } from './notification-query-keys';
 
@@ -42,17 +43,6 @@ const unwrapQuery = async (
         return result.value;
     } catch (error) {
         throw isApplicationError(error) ? error : infrastructureError();
-    }
-};
-
-const readHiddenNoticeIds = (): number[] => {
-    try {
-        const value: unknown = JSON.parse(localStorage.getItem('hiddenNotices') || '[]');
-        return Array.isArray(value)
-            ? value.filter((id): id is number => Number.isSafeInteger(id) && id > 0)
-            : [];
-    } catch {
-        return [];
     }
 };
 
