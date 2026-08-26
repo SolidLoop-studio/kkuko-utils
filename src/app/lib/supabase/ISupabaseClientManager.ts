@@ -58,7 +58,6 @@ export interface IDeleteManager{
     waitWordsByWords(words: string[]): Promise<PostgrestSingleResponse<null>>;
     logsByIds(ids: number[]): Promise<PostgrestSingleResponse<null>>;
     docsLogsByIds(ids: number[]): Promise<PostgrestSingleResponse<null>>;
-    notificationById(id: number): Promise<PostgrestSingleResponse<null>>;
 }
 
 // update 관련 타입

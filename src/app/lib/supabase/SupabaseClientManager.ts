@@ -301,9 +301,6 @@ class DeleteManager implements IDeleteManager {
     public async docsLogsByIds(ids: number[]) {
         return await this.supabase.from('docs_logs').delete().in('id', ids);
     }
-    public async notificationById(id: number) {
-        return await this.supabase.from('notification').delete().eq('id', id);
-    }
 }
 
 class UpdateManager implements IUpdateManager {

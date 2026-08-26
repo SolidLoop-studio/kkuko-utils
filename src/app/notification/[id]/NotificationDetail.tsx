@@ -6,14 +6,13 @@ import { Button } from "@/src/app/components/ui/button";
 import { Calendar, ChevronLeft, Pin, Edit, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
-import type { NotificationDetailProjection } from "@/src/modules/notifications";
+import { useDeleteNotification, type NotificationDetailProjection } from "@/src/modules/notifications";
 import Image from "next/image";
 import Link from "next/link";
 import { Separator } from "@/src/app/components/ui/separator";
 import ReactMarkdown from "react-markdown";
 import { useSelector } from "react-redux";
 import type { RootState } from "../../store/store";
-import { SCM } from "@/src/app/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import ErrorModal from "@/src/app/components/ErrModal";
@@ -36,33 +35,29 @@ export default function NotificationDetail({ notification }: NotificationDetailP
     const router = useRouter();
     const [error, setError] = useState<ErrorMessage | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [isDeleting, setIsDeleting] = useState(false);
     const [completeStatus, setCompleteStatus] = useState<{title: string; description: string;} | null>(null);
+    const { deleteNotification, isPending } = useDeleteNotification();
 
     const handleDelete = async () => {
-        try {
-            setIsDeleting(true);
-            const { error } = await SCM.delete().notificationById(notification.id);
-            
-            if (error) throw error;
-            
-            setCompleteStatus({
-                title: "공지사항이 삭제되었습니다.",
-                description: "공지사항이 성공적으로 삭제되었습니다. 목록으로 돌아갑니다."
-            });
-        } catch (error) {
-            console.error("Delete failed:", error);
+        if (isPending) return;
+
+        const result = await deleteNotification(notification.id);
+        setIsDeleteModalOpen(false);
+        if (!result.ok) {
             setError({
-                ErrName: "Delete Error",
-                ErrMessage: "공지사항 삭제에 실패했습니다.",
+                ErrName: "Notification Delete Error",
+                ErrMessage: result.error.message,
                 ErrStackRace: null,
                 inputValue: `Delete ID: ${notification.id}`,
                 location: "NotificationDetail"
             });
-        } finally {
-            setIsDeleting(false);
-            setIsDeleteModalOpen(false);
+            return;
         }
+
+        setCompleteStatus({
+            title: "공지사항이 삭제되었습니다.",
+            description: "공지사항이 성공적으로 삭제되었습니다. 목록으로 돌아갑니다."
+        });
     };
 
     const handleCloseCompleteModal = () => {
@@ -113,7 +108,7 @@ export default function NotificationDetail({ notification }: NotificationDetailP
                             size="sm" 
                             className="gap-2"
                             onClick={() => setIsDeleteModalOpen(true)}
-                            disabled={isDeleting}
+                            disabled={isPending}
                         >
                             <Trash2 className="w-4 h-4" />
                             삭제
