@@ -22,6 +22,31 @@ const renderAutoLogin = (restore: () => Promise<Result<{
 };
 
 describe('AutoLogin', () => {
+    test('reuses one restore request across Strict Mode effect replay', async () => {
+        // Break caught: Strict Mode issuing duplicate session/profile requests during initial mount.
+        const restore = jest.fn().mockResolvedValue(ok({
+            isAuthenticated: true,
+            profile: { id: 'strict-user', nickname: '엄격', role: 'r3' },
+        }));
+        jest.mocked(useAuthSession).mockReturnValue({
+            restore,
+        } as unknown as ReturnType<typeof useAuthSession>);
+        const store = configureStore({ reducer: { user: userReducer } });
+        const matchingDispatches: string[] = [];
+        store.subscribe(() => {
+            if (store.getState().user.uuid === 'strict-user') matchingDispatches.push('profile');
+        });
+
+        render(
+            <Provider store={store}><AutoLogin /></Provider>,
+            { reactStrictMode: true },
+        );
+
+        await waitFor(() => expect(store.getState().user.uuid).toBe('strict-user'));
+        expect(restore).toHaveBeenCalledTimes(1);
+        expect(matchingDispatches).toEqual(['profile']);
+    });
+
     test('restores the projected profile into Redux exactly once across rerenders', async () => {
         // Break caught: repeating session/profile requests on every render or dropping the projected UUID.
         const restore = jest.fn().mockResolvedValue(ok({

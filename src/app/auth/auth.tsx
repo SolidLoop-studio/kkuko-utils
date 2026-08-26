@@ -43,6 +43,7 @@ const AuthPage = () => {
                 return;
             }
             if (!result.value.isAuthenticated) {
+                setIsNewUser(false);
                 setLoading(false);
                 return;
             }
@@ -51,6 +52,7 @@ const AuthPage = () => {
                 setIsNewUser(true);
                 setLoading(false);
             } else {
+                setIsNewUser(false);
                 dispatch(userAction.setInfo({
                     username: profile.nickname,
                     role: profile.role,

@@ -146,4 +146,24 @@ describe('useAuthSession', () => {
         expect(observer).not.toHaveBeenCalled();
     });
 
+    test('delivers listener results after Strict Mode replay and unsubscribes once', async () => {
+        // Break caught: Strict Mode cleanup permanently marking the live hook as unmounted.
+        const { authListener, unsubscribe } = arrangeServices();
+        const { result, unmount } = renderHook(() => useAuthSession(), {
+            reactStrictMode: true,
+        });
+        const observer = jest.fn();
+        const subscription = result.current.listen(observer);
+
+        act(() => authListener()?.(null));
+
+        await waitFor(() => expect(observer).toHaveBeenCalledWith(ok({
+            isAuthenticated: false,
+            profile: null,
+        })));
+        if (subscription.ok) subscription.value.unsubscribe();
+        unmount();
+        expect(unsubscribe).toHaveBeenCalledTimes(1);
+    });
+
 });

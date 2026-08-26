@@ -68,6 +68,33 @@ describe('Auth', () => {
         expect(screen.getByPlaceholderText('닉네임을 입력하세요')).toBeEnabled();
     });
 
+    test('returns from nickname registration to Google login after a signed-out event', async () => {
+        // Break caught: retaining the new-user form after the authenticated session disappears.
+        const { listener } = arrange();
+        act(() => listener()?.(ok({ isAuthenticated: true, profile: null })));
+        expect(await screen.findByPlaceholderText('닉네임을 입력하세요')).toBeInTheDocument();
+
+        act(() => listener()?.(ok({ isAuthenticated: false, profile: null })));
+
+        expect(await screen.findByRole('button', { name: 'Google로 계속하기' })).toBeEnabled();
+        expect(screen.queryByPlaceholderText('닉네임을 입력하세요')).not.toBeInTheDocument();
+    });
+
+    test('clears the stale new-user form when a later event has a profile', async () => {
+        // Break caught: leaving nickname registration visible while navigating an existing user.
+        const { listener } = arrange();
+        act(() => listener()?.(ok({ isAuthenticated: true, profile: null })));
+        expect(await screen.findByPlaceholderText('닉네임을 입력하세요')).toBeInTheDocument();
+
+        act(() => listener()?.(ok({
+            isAuthenticated: true,
+            profile: { id: 'user-1', nickname: '테스터', role: 'r2' },
+        })));
+
+        await waitFor(() => expect(routerPush).toHaveBeenCalledWith('/profile/테스터'));
+        expect(screen.queryByPlaceholderText('닉네임을 입력하세요')).not.toBeInTheDocument();
+    });
+
     test.each([
         ['admin users', 'admin' as const, '/admin'],
         ['regular users', 'r2' as const, '/profile/테스터'],

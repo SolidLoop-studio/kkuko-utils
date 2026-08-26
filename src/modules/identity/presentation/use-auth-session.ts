@@ -27,11 +27,14 @@ export const useAuthSession = () => {
     const activeSubscriptions = useRef(new Set<() => void>());
     const isMounted = useRef(true);
 
-    useEffect(() => () => {
-        isMounted.current = false;
-        const subscriptions = Array.from(activeSubscriptions.current);
-        subscriptions.forEach((unsubscribe) => unsubscribe());
-        activeSubscriptions.current.clear();
+    useEffect(() => {
+        isMounted.current = true;
+        return () => {
+            isMounted.current = false;
+            const subscriptions = Array.from(activeSubscriptions.current);
+            subscriptions.forEach((unsubscribe) => unsubscribe());
+            activeSubscriptions.current.clear();
+        };
     }, []);
 
     const resolveSession = useCallback(async (
