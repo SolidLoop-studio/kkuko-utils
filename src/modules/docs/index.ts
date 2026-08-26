@@ -36,3 +36,7 @@ export {
 } from './presentation/use-pending-docs-requests';
 export { useLetterDocsDuplicate } from './presentation/use-letter-docs-duplicate';
 export { useDocsCreationRequest } from './presentation/use-docs-creation-request';
+export {
+    useRecordDocsView,
+    type DocsViewCommandService,
+} from './presentation/use-record-docs-view';

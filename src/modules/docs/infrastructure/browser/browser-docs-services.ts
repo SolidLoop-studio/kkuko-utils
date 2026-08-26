@@ -6,6 +6,7 @@ import { GetPendingDocsRequestsService } from '../../application/get-pending-doc
 import { ModerateDocsRequestsService } from '../../application/moderate-docs-requests';
 import { CheckLetterDocsDuplicateService } from '../../application/check-letter-docs-duplicate';
 import { RequestDocsCreationService } from '../../application/request-docs-creation';
+import { RecordDocsViewService } from '../../application/record-docs-view';
 import { SupabaseDocsListQueryGateway } from './supabase-docs-list-query-gateway';
 import { SupabaseDocsLogQueryGateway } from './supabase-docs-log-query-gateway';
 import { SupabaseDocsInfoQueryGateway } from './supabase-docs-info-query-gateway';
@@ -14,6 +15,7 @@ import { SupabaseDocsRequestModerationGateway } from './supabase-docs-request-mo
 import { SupabaseDocsRequestQueryGateway } from './supabase-docs-request-query-gateway';
 import { SupabaseLetterDocsDuplicateQueryGateway } from './supabase-letter-docs-duplicate-query-gateway';
 import { SupabaseDocsCreationRequestGateway } from './supabase-docs-creation-request-gateway';
+import { SupabaseDocsViewCommandGateway } from './supabase-docs-view-command-gateway';
 
 export interface BrowserDocsServices {
     docsListQueryService: GetDocsListService;
@@ -24,6 +26,7 @@ export interface BrowserDocsServices {
     docsRequestQueryService: GetPendingDocsRequestsService;
     letterDocsDuplicateQueryService: CheckLetterDocsDuplicateService;
     docsCreationRequestService: RequestDocsCreationService;
+    docsViewCommandService: RecordDocsViewService;
 }
 
 /** 브라우저 문서 기능에서 사용할 애플리케이션 서비스를 조합한다. */
@@ -51,5 +54,8 @@ export const createBrowserDocsServices = (): BrowserDocsServices => ({
     ),
     docsCreationRequestService: new RequestDocsCreationService(
         new SupabaseDocsCreationRequestGateway(),
+    ),
+    docsViewCommandService: new RecordDocsViewService(
+        new SupabaseDocsViewCommandGateway(),
     ),
 });

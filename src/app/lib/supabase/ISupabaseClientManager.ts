@@ -85,7 +85,6 @@ export interface IDeleteManager{
 export interface IUpdateManager{
     userContribution({ userId, amount }: { userId: string, amount?: number }): Promise<PostgrestSingleResponse<undefined>>;
     docsLastUpdate(docs_ids: number[]): Promise<void>;
-    docView(id: number): Promise<void>;
     notification(id: number, data: { title?: string; body?: string; img?: string | null; end_at?: string | null; is_important?: boolean; is_modal?: boolean }): Promise<PostgrestSingleResponse<notification>>;
 }
 

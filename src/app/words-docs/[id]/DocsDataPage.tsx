@@ -5,8 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import ErrorPage from '@/src/app/components/ErrorPage';
 import LoadingPage from '@/src/app/components/LoadingPage';
 import NotFound from '@/src/app/not-found-client';
-import { SCM } from '@/src/app/lib/supabaseClient';
-import { useDocsContent, type DocsContentProjection } from '@/src/modules/docs';
+import { useDocsContent, useRecordDocsView, type DocsContentProjection } from '@/src/modules/docs';
 import { createBrowserWordModerationServices } from '@/src/modules/word-moderation/infrastructure/browser/browser-word-moderation-services';
 import DocsDataHome from './DocsDataHome';
 import { enrichDocsWordData, type DocsWordData } from './docs-word-data';
@@ -52,6 +51,7 @@ const isSameProjection = (left: DocsContentProjection, right: DocsContentProject
 
 export default function DocsDataPage({ id }: { id: number }) {
     const { data, error, isLoading, refetch } = useDocsContent(id);
+    const { record: recordDocsView } = useRecordDocsView();
     const [snapshot, setSnapshot] = useState<DocsContentSnapshot | null>(null);
     const [enrichmentError, setEnrichmentError] = useState<string | null>(null);
     const latestRequestRef = useRef(0);
@@ -105,7 +105,7 @@ export default function DocsDataPage({ id }: { id: number }) {
             setSnapshot(nextSnapshot);
             if (viewedDocsIdRef.current !== id) {
                 viewedDocsIdRef.current = id;
-                void SCM.update().docView(data.metadata.id).catch(() => undefined);
+                void recordDocsView(data.metadata.id);
             }
         }).catch(() => {
             if (canApply() && snapshotRef.current?.id !== id) {
@@ -113,7 +113,7 @@ export default function DocsDataPage({ id }: { id: number }) {
             }
         });
         return () => { active = false; };
-    }, [data, id]);
+    }, [data, id, recordDocsView]);
 
     const refreshContent = useCallback(async (): Promise<DocsWordData[] | null> => {
         const requestId = ++latestRequestRef.current;

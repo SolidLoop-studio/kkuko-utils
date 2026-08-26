@@ -384,9 +384,6 @@ class UpdateManager implements IUpdateManager {
     public async docsLastUpdate(docs_ids: number[]) {
         await this.supabase.rpc('update_last_updates', { docs_ids });
     }
-    public async docView(id: number): Promise<void> {
-        await this.supabase.rpc('increment_doc_views', { doc_id: id })
-    }
     public async notification(id: number, data: { title?: string; body?: string; img?: string | null; end_at: string, is_important?: boolean; is_modal?: boolean }) {
         return await this.supabase.from('notification').update(data).eq('id', id).select('*').single();
     }

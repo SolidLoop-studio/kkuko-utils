@@ -11,6 +11,7 @@ jest.mock('../../../modules/word-moderation', () => ({
 
 jest.mock('../../../modules/docs', () => ({
     useDocsContent: jest.fn(),
+    useRecordDocsView: jest.fn(),
 }));
 
 jest.mock('next/navigation', () => ({
@@ -97,10 +98,9 @@ jest.mock('../../../app/words-docs/[id]/WordsTableBody', () => {
 
 import { createBrowserWordModerationServices } from '../../../modules/word-moderation/infrastructure/browser/browser-word-moderation-services';
 import { useDocsWordModeration } from '../../../modules/word-moderation';
-import { useDocsContent } from '../../../modules/docs';
+import { useDocsContent, useRecordDocsView } from '../../../modules/docs';
 import type { DocsWordMutationTarget } from '../../../modules/word-moderation/domain/docs-word-moderation';
 import { err, ok } from '../../../shared/application/result';
-import { SCM } from '../../../app/lib/supabaseClient';
 import { loadingReducer, themeReducer, userReducer } from '../../../app/store/slice';
 import DocsDataHome from '../../../app/words-docs/[id]/DocsDataHome';
 import DocsDataPage from '../../../app/words-docs/[id]/DocsDataPage';
@@ -164,7 +164,8 @@ const mockCancelDeleteRequest = jest.fn();
 const mockRequestDelete = jest.fn();
 const mockTargetGet = jest.fn();
 const mockUseDocsContent = jest.mocked(useDocsContent);
-const mockDocView = jest.fn();
+const mockUseRecordDocsView = jest.mocked(useRecordDocsView);
+const mockRecordDocsView = jest.fn();
 
 const contentProjection = (overrides: Partial<{
     id: number;
@@ -502,11 +503,12 @@ describe('Docs word target enrichment', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockUseDocsContent.mockReset();
+        mockUseRecordDocsView.mockReset();
         mockCreateBrowserServices.mockReset();
         mockTargetGet.mockReset();
-        mockDocView.mockReset();
-        mockDocView.mockResolvedValue(undefined);
-        jest.mocked(SCM.update).mockReturnValue({ docView: mockDocView } as never);
+        mockRecordDocsView.mockReset();
+        mockRecordDocsView.mockResolvedValue(undefined);
+        mockUseRecordDocsView.mockReturnValue({ record: mockRecordDocsView });
     });
 
     it('query success 동안 target enrichment이 pending이면 강제 표시 LoadingPage를 유지한다', async () => {
@@ -553,7 +555,7 @@ describe('Docs word target enrichment', () => {
         expect(screen.getByText('안전한 오류')).toBeInTheDocument();
     });
 
-    it('initial success renders Korean-sorted rows and records docView once', async () => {
+    it('initial success renders Korean-sorted rows and records the view command once', async () => {
         mockUseDocsContent.mockReturnValue({
             data: contentProjection({ words: [{ word: '하마', status: 'ok' }, { word: '가방', status: 'ok' }] }),
             error: null,
@@ -574,31 +576,11 @@ describe('Docs word target enrichment', () => {
 
         const renderedRows = await screen.findAllByTestId(/docs-row-/);
         expect(renderedRows.map((row) => row.dataset.testid)).toEqual(['docs-row-가방', 'docs-row-하마']);
-        expect(mockDocView).toHaveBeenCalledTimes(1);
-        expect(mockDocView).toHaveBeenCalledWith(55);
+        expect(mockRecordDocsView).toHaveBeenCalledTimes(1);
+        expect(mockRecordDocsView).toHaveBeenCalledWith(55);
     });
 
-    it('docView rejection is best-effort and does not replace a successful page', async () => {
-        mockUseDocsContent.mockReturnValue({
-            data: contentProjection(),
-            error: null,
-            isLoading: false,
-            refetch: jest.fn(),
-        } as never);
-        mockTargetGet.mockResolvedValue(ok({ targets: [{ kind: 'registered-word', wordId: 55 }] }));
-        mockCreateBrowserServices.mockReturnValue({
-            docsWordMutationTargetService: { get: mockTargetGet },
-        } as never);
-        mockDocView.mockRejectedValue(new Error('private doc view failure'));
-
-        render(<DocsDataPage id={55} />, { wrapper: createWrapper('guest', undefined) });
-
-        expect(await screen.findByTestId('docs-row-나비')).toBeInTheDocument();
-        expect(mockDocView).toHaveBeenCalledTimes(1);
-        expect(screen.queryByText('private doc view failure')).not.toBeInTheDocument();
-    });
-
-    it('unmount before enrichment resolves never starts docView', async () => {
+    it('unmount before enrichment resolves never starts the view command', async () => {
         const targetLoad = createDeferred<ReturnType<typeof ok<{ targets: DocsWordMutationTarget[] }>>>();
         mockUseDocsContent.mockReturnValue({
             data: contentProjection(),
@@ -618,10 +600,10 @@ describe('Docs word target enrichment', () => {
             await targetLoad.promise;
         });
 
-        expect(mockDocView).not.toHaveBeenCalled();
+        expect(mockRecordDocsView).not.toHaveBeenCalled();
     });
 
-    it('admin refetch preserves the snapshot on failure and never records a second docView', async () => {
+    it('admin refetch preserves the snapshot on failure and never records a second view command', async () => {
         let refreshPage: () => void = () => {};
         const refetch = jest.fn(async () => ({
             data: undefined,
@@ -654,7 +636,7 @@ describe('Docs word target enrichment', () => {
 
         expect(await screen.findByText('문서 단어 처리 대상을 새로고침하는 중 오류가 발생했습니다.')).toBeInTheDocument();
         expect(screen.getByTestId('docs-row-가방')).toBeInTheDocument();
-        expect(mockDocView).toHaveBeenCalledTimes(1);
+        expect(mockRecordDocsView).toHaveBeenCalledTimes(1);
     });
 
     it('overlapping admin refreshes keep the latest enriched snapshot when an older refresh resolves last', async () => {
@@ -793,10 +775,10 @@ describe('Docs word target enrichment', () => {
         });
         expect(mockTargetGet).toHaveBeenCalledTimes(1);
 
-        expect(mockDocView).toHaveBeenCalledTimes(1);
+        expect(mockRecordDocsView).toHaveBeenCalledTimes(1);
     });
 
-    it('unmount and id change discard a stale enrichment result without recording docView', async () => {
+    it('unmount and id change discard a stale enrichment result without recording the view command', async () => {
         const firstLoad = createDeferred<ReturnType<typeof ok<{ targets: DocsWordMutationTarget[] }>>>();
         const secondLoad = createDeferred<ReturnType<typeof ok<{ targets: DocsWordMutationTarget[] }>>>();
         mockUseDocsContent.mockImplementation((docsId) => ({
@@ -821,8 +803,8 @@ describe('Docs word target enrichment', () => {
         expect(await screen.findByTestId('docs-row-새단어')).toBeInTheDocument();
         expect(screen.queryByTestId('docs-row-오래된단어')).not.toBeInTheDocument();
         unmount();
-        expect(mockDocView).toHaveBeenCalledTimes(1);
-        expect(mockDocView).toHaveBeenCalledWith(56);
+        expect(mockRecordDocsView).toHaveBeenCalledTimes(1);
+        expect(mockRecordDocsView).toHaveBeenCalledWith(56);
     });
 
     it('base rows를 한 번 조회하고 반환된 target을 입력 순서대로 보강한다', async () => {

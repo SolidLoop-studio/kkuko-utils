@@ -96,11 +96,19 @@ const createWrapper = () => {
 
 describe('DocsDataPage real useDocsContent admin refetch integration', () => {
     it('replaces the rendered page snapshot with the latest real hook projection after an admin refresh', async () => {
+        // Break caught: recording the view before enrichment, more than once, or through the removed SCM boundary.
         const get = jest.fn()
             .mockResolvedValueOnce(ok(initialProjection))
             .mockResolvedValueOnce(ok(refreshedProjection));
+        const recordedDocsIds: number[] = [];
         jest.mocked(createBrowserDocsServices).mockReturnValue({
             docsContentQueryService: { get },
+            docsViewCommandService: {
+                record: async (docsId: number) => {
+                    recordedDocsIds.push(docsId);
+                    return ok(undefined);
+                },
+            },
         } as never);
         jest.mocked(createBrowserWordModerationServices).mockReturnValue({
             docsWordMutationTargetService: {
@@ -109,9 +117,6 @@ describe('DocsDataPage real useDocsContent admin refetch integration', () => {
                 })),
             },
         } as never);
-        const docView = jest.fn().mockResolvedValue(undefined);
-        jest.mocked(SCM.update).mockReturnValue({ docView } as never);
-
         const user = userEvent.setup();
         const { Wrapper } = createWrapper();
         render(<DocsDataPage id={55} />, { wrapper: Wrapper });
@@ -122,13 +127,21 @@ describe('DocsDataPage real useDocsContent admin refetch integration', () => {
         expect(await screen.findByTestId('row-하마')).toBeInTheDocument();
         expect(screen.getByText('갱신 문서')).toBeInTheDocument();
         await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
-        expect(docView).toHaveBeenCalledTimes(1);
+        expect(recordedDocsIds).toEqual([55]);
     });
 
     it('background query cache updates replace rendered rows as well as page metadata', async () => {
+        // Break caught: losing the existing content snapshot update behavior while moving the independent view command.
         const get = jest.fn().mockResolvedValue(ok(initialProjection));
+        const recordedDocsIds: number[] = [];
         jest.mocked(createBrowserDocsServices).mockReturnValue({
             docsContentQueryService: { get },
+            docsViewCommandService: {
+                record: async (docsId: number) => {
+                    recordedDocsIds.push(docsId);
+                    return ok(undefined);
+                },
+            },
         } as never);
         jest.mocked(createBrowserWordModerationServices).mockReturnValue({
             docsWordMutationTargetService: {
@@ -137,7 +150,6 @@ describe('DocsDataPage real useDocsContent admin refetch integration', () => {
                 })),
             },
         } as never);
-        jest.mocked(SCM.update).mockReturnValue({ docView: jest.fn().mockResolvedValue(undefined) } as never);
         const { queryClient, Wrapper } = createWrapper();
 
         render(<DocsDataPage id={55} />, { wrapper: Wrapper });
@@ -150,5 +162,6 @@ describe('DocsDataPage real useDocsContent admin refetch integration', () => {
         expect(await screen.findByTestId('row-호랑이')).toBeInTheDocument();
         expect(screen.getByText('백그라운드 갱신 문서')).toBeInTheDocument();
         expect(screen.queryByTestId('row-가방')).not.toBeInTheDocument();
+        expect(recordedDocsIds).toEqual([55]);
     });
 });
