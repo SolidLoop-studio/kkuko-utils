@@ -6,7 +6,7 @@ import { Button } from "@/src/app/components/ui/button";
 import { Calendar, ChevronLeft, Pin, Edit, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
-import type { Database } from "@/src/app/types/database.types";
+import type { NotificationDetailProjection } from "@/src/modules/notifications";
 import Image from "next/image";
 import Link from "next/link";
 import { Separator } from "@/src/app/components/ui/separator";
@@ -19,13 +19,10 @@ import { useState } from "react";
 import ErrorModal from "@/src/app/components/ErrModal";
 import type { ErrorMessage } from "@/src/app/types/type";
 import ConfirmModal from "@/src/app/components/ConfirmModal";
-import { PostgrestError } from "@supabase/supabase-js";
 import CompleteModal from "@/src/app/components/CompleteModal";
 
-type NotificationType = Database['public']['Tables']['notification']['Row'];
-
 interface NotificationDetailProps {
-    notification: NotificationType;
+    notification: NotificationDetailProjection;
 }
 
 /**
@@ -55,11 +52,10 @@ export default function NotificationDetail({ notification }: NotificationDetailP
             });
         } catch (error) {
             console.error("Delete failed:", error);
-            const pgError = error as PostgrestError;
             setError({
-                ErrName: pgError.code || "Delete Error",
-                ErrMessage: pgError.message || "공지사항 삭제에 실패했습니다.",
-                ErrStackRace: pgError.details,
+                ErrName: "Delete Error",
+                ErrMessage: "공지사항 삭제에 실패했습니다.",
+                ErrStackRace: null,
                 inputValue: `Delete ID: ${notification.id}`,
                 location: "NotificationDetail"
             });
@@ -130,13 +126,13 @@ export default function NotificationDetail({ notification }: NotificationDetailP
                 <CardHeader className="space-y-4">
                     <div className="space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
-                            {notification.is_important && (
+                            {notification.isImportant && (
                                 <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 gap-1">
                                     <Pin className="w-3 h-3 fill-primary" />
                                     필독
                                 </Badge>
                             )}
-                            {notification.is_modal && (
+                            {notification.isModal && (
                                 <Badge variant="outline" className="text-muted-foreground">
                                     팝업 공지
                                 </Badge>
@@ -147,7 +143,7 @@ export default function NotificationDetail({ notification }: NotificationDetailP
                     
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Calendar className="w-4 h-4" />
-                        <span>{format(new Date(notification.created_at), "yyyy년 M월 d일 a h:mm", { locale: ko })}</span>
+                        <span>{format(new Date(notification.createdAt), "yyyy년 M월 d일 a h:mm", { locale: ko })}</span>
                     </div>
                 </CardHeader>
                 
@@ -158,11 +154,11 @@ export default function NotificationDetail({ notification }: NotificationDetailP
                         <ReactMarkdown>{notification.body}</ReactMarkdown>
                     </div>
                     
-                    {notification.img && (
+                    {notification.imageUrl && (
                         <div className="mt-8 rounded-lg overflow-hidden border bg-muted/50">
                             <div className="relative w-full aspect-video max-w-2xl mx-auto">
                                 <Image 
-                                    src={notification.img} 
+                                    src={notification.imageUrl}
                                     alt={notification.title} 
                                     className="object-contain" 
                                     fill 

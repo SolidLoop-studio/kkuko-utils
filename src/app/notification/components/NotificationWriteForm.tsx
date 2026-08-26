@@ -1,4 +1,4 @@
-import type { Database } from '@/src/app/types/database.types';
+import type { NotificationDetailProjection } from '@/src/modules/notifications';
 import { useEffect, useRef, useState } from 'react';
 import { format } from "date-fns";
 import { SCM } from '@/src/app/lib/supabaseClient';
@@ -17,10 +17,8 @@ import Image from 'next/image';
 import { Textarea } from '@/src/app/components/ui/textarea';
 import CompleteModal from '@/src/app/components/CompleteModal';
 
-type NotificationType = Database['public']['Tables']['notification']['Row'];
-
 interface NotificationWriteProps {
-    notification?: NotificationType;
+    notification?: NotificationDetailProjection;
     onError?: (error: PostgrestError) => void;
 }
 
@@ -35,12 +33,12 @@ export default function NotificationWriteForm({ notification, onError }: Notific
     const [title, setTitle] = useState(notification?.title || "");
     const [body, setBody] = useState(notification?.body || "");
     const [endDate, setEndDate] = useState(
-        notification ? format(new Date(notification.end_at), "yyyy-MM-dd") : ""
+        notification ? format(new Date(notification.endsAt), "yyyy-MM-dd") : ""
     );
-    const [isImportant, setIsImportant] = useState(notification?.is_important || false);
-    const [isModal, setIsModal] = useState(notification?.is_modal || false);
+    const [isImportant, setIsImportant] = useState(notification?.isImportant || false);
+    const [isModal, setIsModal] = useState(notification?.isModal || false);
     const [uploading, setUploading] = useState(false);
-    const [imageUrl, setImageUrl] = useState<string | null>(notification?.img || null);
+    const [imageUrl, setImageUrl] = useState<string | null>(notification?.imageUrl || null);
     const [fileName, setFileName] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [completeState, setCompleteState] = useState<{title: string; description: string} | null>(null)
@@ -49,10 +47,10 @@ export default function NotificationWriteForm({ notification, onError }: Notific
         if (notification) {
             setTitle(notification.title);
             setBody(notification.body);
-            setEndDate(format(new Date(notification.end_at), "yyyy-MM-dd"));
-            setIsImportant(notification.is_important || false);
-            setIsModal(notification.is_modal || false);
-            setImageUrl(notification.img);
+            setEndDate(format(new Date(notification.endsAt), "yyyy-MM-dd"));
+            setIsImportant(notification.isImportant || false);
+            setIsModal(notification.isModal || false);
+            setImageUrl(notification.imageUrl);
         }
     }, [notification]);
 

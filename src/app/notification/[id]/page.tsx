@@ -1,4 +1,5 @@
-import { createSupabaseServerClient } from "@/src/app/lib/supabaseServer";
+import ErrorPage from "@/src/app/components/ErrorPage";
+import { getServerNotificationDetail } from "@/src/modules/notifications/infrastructure/server/server-notification-services";
 import NotificationDetail from "./NotificationDetail";
 import { notFound } from "next/navigation";
 import { type Metadata } from "next";
@@ -9,23 +10,23 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
     const { id } = await params;
-    const supabase = await createSupabaseServerClient();
-    
-    const { data: notification } = await supabase
-        .from('notification')
-        .select('title')
-        .eq('id', parseInt(id))
-        .single();
-        
-    if (!notification) {
+    const result = await getServerNotificationDetail(Number(id));
+
+    if (!result.ok) {
+        if (result.error.kind === 'infrastructure') {
+            return {
+                title: "공지사항 - 끄코 유틸",
+                description: "끄코 유틸의 공지사항입니다.",
+            };
+        }
         return {
             title: "공지사항을 찾을 수 없습니다",
         };
     }
 
     return {
-        title: `${notification.title} - 공지사항`,
-        description: `끄코 유틸 공지사항: ${notification.title}`,
+        title: `${result.value.title} - 공지사항`,
+        description: `끄코 유틸 공지사항: ${result.value.title}`,
     };
 }
 
@@ -34,30 +35,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
  */
 export default async function NotificationDetailPage({ params }: PageProps) {
     const { id } = await params;
-    
-    // ID 유효성 검사 (숫자인지 확인)
-    const notificationId = parseInt(id);
-    if (isNaN(notificationId)) {
-        notFound();
-    }
+    const result = await getServerNotificationDetail(Number(id));
 
-    const supabase = await createSupabaseServerClient();
-    
-    // 직접 쿼리하여 데이터 가져오기 (SupabaseClientManager에는 getById가 없으므로)
-    const { data: notification, error } = await supabase
-        .from('notification')
-        .select('*')
-        .eq('id', notificationId)
-        .single();
-
-    if (error || !notification) {
-        if (error) console.error("Error fetching notification:", error);
-        notFound();
+    if (!result.ok) {
+        if (result.error.kind === 'validation' || result.error.kind === 'not-found') notFound();
+        console.error(result.error.message);
+        return <ErrorPage message={result.error.message} />;
     }
 
     return (
         <main className="container mx-auto py-8">
-            <NotificationDetail notification={notification} />
+            <NotificationDetail notification={result.value} />
         </main>
     );
 }

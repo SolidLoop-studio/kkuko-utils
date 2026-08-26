@@ -257,10 +257,6 @@ class GetManager implements IGetManager {
     public async allUser(sortField?: 'contribution' | 'month_contribution' | 'nickname', isAsc?: boolean) {
         return await this.supabase.from('users').select('*').order(sortField ?? 'contribution', { ascending: isAsc ?? false });
     }
-    async notificationById(id: number) {
-        return await this.supabase.from('notification').select('*').eq('id', id).maybeSingle();
-    }
-
 }
 
 class DeleteManager implements IDeleteManager {

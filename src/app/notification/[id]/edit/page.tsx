@@ -1,7 +1,8 @@
+import ErrorPage from "@/src/app/components/ErrorPage";
+import { getServerNotificationDetail } from "@/src/modules/notifications/infrastructure/server/server-notification-services";
 import NotificationWrite from "../../write/NotificationWrite";
 import { notFound } from "next/navigation";
 import { type Metadata } from "next";
-import { SCM } from "@/src/app/lib/supabaseClient";
 
 interface PageProps {
     params: Promise<{ id: string }>;
@@ -13,22 +14,17 @@ export const metadata: Metadata = {
 
 export default async function NotificationEditPage({ params }: PageProps) {
     const { id } = await params;
-    const notificationId = parseInt(id);
-    
-    if (isNaN(notificationId)) {
-        notFound();
-    }
-    
-    const { data: notification, error } = await SCM.get().notificationById(notificationId);
+    const result = await getServerNotificationDetail(Number(id));
 
-    if (error || !notification) {
-        if (error) console.error("Error fetching notification for edit:", error);
-        notFound();
+    if (!result.ok) {
+        if (result.error.kind === 'validation' || result.error.kind === 'not-found') notFound();
+        console.error(result.error.message);
+        return <ErrorPage message={result.error.message} />;
     }
 
     return (
         <main className="container mx-auto py-8 px-4">
-            <NotificationWrite notification={notification} />
+            <NotificationWrite notification={result.value} />
         </main>
     );
 }
