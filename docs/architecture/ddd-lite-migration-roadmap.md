@@ -942,13 +942,15 @@ marker의 semantic bulk query다. 본문 projection은 같은 세 상위 `refere
 `isMissionParent`로 분류해 page와 component에 전달하므로 remapped PK에서도 marker 화면과 query가
 활성화되고, presentation은 더 이상 기존 상위 문서 ID 목록을 소유하지 않는다. marker query는 세 `*.mission` 상위 reference만 허용하고
 14개 하위 reference를 canonical 순서로 한 번에 조회하며, 누락 행은 `null`로 보존하고 실패는
-본문 렌더링과 분리한다. 각 컴포넌트는 feature hook을 사용하며 대체된
-`letterDocs`·`waitDocs`·`docView`·`starDocs`·`startDocs`와 read-side `docsLastUpdate(id)`는 제거되었다.
-아직 검사하지 않은 다음 docs 경계를 추측하지 않는다.
+본문 렌더링과 분리한다. immutable mission reference catalog는 하위 문서의 `isSpecial`, mission family별
+RPC 선택, 대상 글자와 글자 위치를 결정하며, remapped PK child page coverage까지 이를 검증한다.
+각 컴포넌트는 feature hook을 사용하며 대체된 `letterDocs`·`waitDocs`·`docView`·`starDocs`·`startDocs`와
+read-side `docsLastUpdate(id)`는 제거되었다. `AdminLogsWrapper`가 사용하는 live
+`SCM.get().allDocs`는 별도 admin-logs projection 슬라이스에서 이전할 때까지 유지한다. 아직 검사하지 않은
+다음 docs 경계를 추측하지 않는다.
 
-후속 슬라이스에서는 `supabase-docs-content-query-gateway.ts`가 mission child의 `isSpecial`을
-하드코딩된 숫자 PK 범위로 분류하는 기존 의존성을 semantic `reference_code` 기반 분류로 이전하고,
-varying-PK child page coverage를 추가한다. 이 부채는 현재 완료 범위에는 포함하지 않는다.
+이 범위는 docs context 전체 완료나 Phase 0B cloud rollout 완료를 의미하지 않는다. cloud migration rollout은
+계속 사용자/운영자가 별도로 통제하고 실행한다.
 
 ### Phase 5. Identity, Profile, Notifications 이전
 
@@ -1083,7 +1085,7 @@ Notifications:
 | 관리자 docs 요청 moderation | 완료 | 승인·반려 mutation과 대기 요청 목록 query 이전 완료; migration cloud rollout은 사용자/운영자 실행 대기 |
 | 사용자 단어 요청 | 부분 완료 | Phase 2 mutation 코드 이전은 완료; 단일·대량 추가 요청을 포함한 관련 cloud migration rollout은 사용자/운영자 실행 대기 |
 | word-catalog 조회 | 완료 | 브라우저 검색·자동완성, 단어 상세 query, 고급 검색 Route Handler, 다운로드, 통계, 랜덤 연결 단어 query 완료 |
-| docs context | 부분 완료 | 공개 목록·로그·정보·본문, 관리자 대기 요청 목록/moderation, `WordsDocsHome` 중복 조회·생성 요청, `DocsDataPage` best-effort 조회 수 기록, `DocsDataHome` 멱등 즐겨찾기와 semantic marker bulk query 이전 완료; 본문 projection의 immutable `reference_code` 분류가 remapped parent marker 화면까지 이어지고 presentation의 legacy parent ID gating 제거; `letterDocs`·`waitDocs`·`docView`·`starDocs`·`startDocs` 및 read-side `docsLastUpdate(id)` 제거. 다음 경계는 실제 소비자 검사 후 지정 |
+| docs context | 부분 완료 | 공개 목록·로그·정보·본문, 관리자 대기 요청 목록/moderation, `WordsDocsHome` 중복 조회·생성 요청, `DocsDataPage` best-effort 조회 수 기록, `DocsDataHome` 멱등 즐겨찾기와 semantic marker bulk query 이전 완료; immutable mission reference catalog가 mission child의 `isSpecial`, family별 RPC, 대상 글자와 remapped-PK child page coverage를 소유하고 presentation의 legacy parent ID gating을 제거함; `letterDocs`·`waitDocs`·`docView`·`starDocs`·`startDocs` 및 read-side `docsLastUpdate(id)` 제거. `AdminLogsWrapper`의 live `SCM.get().allDocs`는 별도 admin-logs projection 슬라이스에서 이전할 때까지 유지; Phase 0B cloud rollout은 사용자/운영자 통제 대기 상태. 다음 경계는 실제 소비자 검사 후 지정 |
 | identity/profile | 부분 완료 | Auth session·Google login·상태 listener·logout, 현재 사용자 공개 profile query, nickname availability/registration 경계 완료; 다음 경계는 profile 화면 projection이며 profile 편집의 legacy `usersByNickname`도 그 소비자 이전까지 유지 |
 | notifications/storage | 부분 완료 | 활성 목록·최신 모달 query와 browser/server adapter, React Query cache/dismissal 정책 및 server-safe 상세·metadata·편집 query 완료; 다음 경계는 관리자 command와 이미지 Storage port 분리 |
 | SCM 최종 제거 | 대기 | 모든 context 이전 후 실행 |
