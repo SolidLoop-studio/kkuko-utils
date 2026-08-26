@@ -33,7 +33,7 @@ export interface NotificationImageStorageClient {
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
-    typeof value === 'object' && value !== null;
+    typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const uploadInfrastructureError = (): ApplicationError => ({
     kind: 'infrastructure',
@@ -45,8 +45,13 @@ const cleanupInfrastructureError = (): ApplicationError => ({
     message: '공지사항 이미지를 정리하지 못했습니다.',
 });
 
-const hasSuccessfulUploadResponse = (value: unknown): boolean =>
-    isRecord(value) && value.error === null && isRecord(value.data);
+const hasSuccessfulUploadResponse = (value: unknown, expectedPath: string): boolean =>
+    isRecord(value)
+    && value.error === null
+    && isRecord(value.data)
+    && typeof value.data.path === 'string'
+    && value.data.path.trim().length > 0
+    && value.data.path === expectedPath;
 
 const hasSuccessfulRemoveResponse = (value: unknown): boolean =>
     isRecord(value) && value.error === null && Array.isArray(value.data);
@@ -93,9 +98,13 @@ const rawPathnameFromAbsoluteUrl = (publicUrl: string): string | null => {
     return match?.[1] ?? null;
 };
 
-const originFromUrl = (url: string): string | null => {
+const httpUrlFromString = (url: string): URL | null => {
     try {
-        return new URL(url).origin;
+        const parsed = new URL(url);
+
+        return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+            ? parsed
+            : null;
     } catch {
         return null;
     }
@@ -122,7 +131,7 @@ export class SupabaseNotificationImageStorage implements NotificationImageStorag
                 upsert: false,
             });
 
-            if (!hasSuccessfulUploadResponse(uploadResponse)) {
+            if (!hasSuccessfulUploadResponse(uploadResponse, path)) {
                 return err(uploadInfrastructureError());
             }
 
@@ -161,9 +170,11 @@ export class SupabaseNotificationImageStorage implements NotificationImageStorag
     }
 
     managedPathFromPublicUrl(publicUrl: string): string | null {
-        const configuredOrigin = originFromUrl(this.supabaseUrl);
-        const candidateOrigin = originFromUrl(publicUrl);
-        if (configuredOrigin === null || candidateOrigin !== configuredOrigin) return null;
+        if (publicUrl.includes('\\')) return null;
+
+        const configuredUrl = httpUrlFromString(this.supabaseUrl);
+        const candidateUrl = httpUrlFromString(publicUrl);
+        if (configuredUrl === null || candidateUrl?.origin !== configuredUrl.origin) return null;
 
         const rawPathname = rawPathnameFromAbsoluteUrl(publicUrl);
         if (rawPathname === null || !rawPathname.startsWith(PUBLIC_PATH_PREFIX)) return null;

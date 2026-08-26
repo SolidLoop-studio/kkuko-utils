@@ -45,7 +45,7 @@ interface StorageResponses {
 }
 
 const createClient = ({
-    upload = { data: { path: 'ignored-by-gateway' }, error: null },
+    upload,
     publicUrl: mappedPublicUrl = { data: { publicUrl }, error: null },
     remove = { data: [], error: null },
     uploadThrows = false,
@@ -56,9 +56,17 @@ const createClient = ({
     const bucket: NotificationImageStorageBucket = {
         upload(path, body, options) {
             calls.push(['upload', path, body, options]);
+            const uploadResponse = upload ?? {
+                data: {
+                    path,
+                    id: 'upload-id',
+                    fullPath: `public_img/${path}`,
+                },
+                error: null,
+            };
             return uploadThrows
-                ? Promise.reject(upload)
-                : Promise.resolve(upload);
+                ? Promise.reject(uploadResponse)
+                : Promise.resolve(uploadResponse);
         },
         getPublicUrl(path) {
             calls.push(['getPublicUrl', path]);
@@ -166,6 +174,11 @@ describe('SupabaseNotificationImageStorage upload and removal', () => {
     it.each([
         ['returned upload error', { data: null, error: { message: 'private upload detail' } }, false],
         ['null upload data', { data: null, error: null }, false],
+        ['array upload data', { data: [], error: null }, false],
+        ['empty upload data', { data: {}, error: null }, false],
+        ['a non-string upload path', { data: { path: 42 }, error: null }, false],
+        ['a blank upload path', { data: { path: '   ' }, error: null }, false],
+        ['a mismatched upload path', { data: { path: 'notifications/another.png' }, error: null }, false],
         ['malformed upload response', { data: { path: 'unexpected' } }, false],
         ['thrown upload error', new Error('private upload rejection'), true],
     ] as const)('maps a %s to the stable upload error', async (_label, upload, uploadThrows) => {
@@ -288,6 +301,7 @@ describe('SupabaseNotificationImageStorage managed URL parsing', () => {
     it.each([
         ['another origin', 'https://attacker.example/storage/v1/object/public/public_img/notifications/image.png'],
         ['another port', 'https://project.supabase.co:444/storage/v1/object/public/public_img/notifications/image.png'],
+        ['a raw backslash that changes the parsed pathname', 'https://project.supabase.co\\evil/storage/v1/object/public/public_img/notifications/image.png'],
         ['another bucket', `${supabaseUrl}/storage/v1/object/public/private_img/notifications/image.png`],
         ['a bucket with the managed bucket as a prefix', `${supabaseUrl}/storage/v1/object/public/public_img_backup/notifications/image.png`],
         ['another object prefix', `${supabaseUrl}/storage/v1/object/public/public_img/avatars/image.png`],
@@ -313,5 +327,31 @@ describe('SupabaseNotificationImageStorage managed URL parsing', () => {
         );
 
         expect(invalidConfiguration.managedPathFromPublicUrl(publicUrl)).toBeNull();
+    });
+
+    it.each([
+        [
+            'custom opaque schemes',
+            'foo://configured',
+            'foo://attacker/storage/v1/object/public/public_img/notifications/image.png',
+        ],
+        [
+            'file URLs',
+            'file:///configured',
+            'file:///storage/v1/object/public/public_img/notifications/image.png',
+        ],
+    ])('returns null when configured and candidate %s both have an opaque origin', (
+        _label,
+        configuredUrl,
+        candidateUrl,
+    ) => {
+        // Break caught: treating the opaque string origin "null" as proof of shared HTTP authority.
+        const opaqueConfiguration = new SupabaseNotificationImageStorage(
+            client,
+            () => 1_777_777_777_777,
+            configuredUrl,
+        );
+
+        expect(opaqueConfiguration.managedPathFromPublicUrl(candidateUrl)).toBeNull();
     });
 });
