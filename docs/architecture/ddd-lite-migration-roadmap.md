@@ -46,7 +46,7 @@
 - Next.js Route Handler는 모든 DB 요청의 의무적인 중간 계층이 아니다. 서버 secret 또는 서버 전용 통합이 필요한 경우에만 사용한다.
 - 기존 `SCM`은 한 번에 제거하지 않고, 위험도가 높은 기능부터 strangler 방식으로 축소한다.
 
-관리자 단어 대량 승인·삭제, 요청 moderation, 사용자 단어 요청, `word-catalog` 조회와 주요 docs 경계가 위 원칙으로 이전되었다. `WordAddHome.tsx`의 일반 사용자 요청뿐 아니라 관리자·`r4` 직접 추가도 feature hook과 원자적 RPC를 사용한다. 직접 추가 RPC는 actor/role을 DB에서 결정하고 단어·주제 관계·단어 로그·중복 없는 docs 로그·최근 수정 효과를 한 transaction으로 처리하며, behavior/concurrency pgTAP으로 검증되었다. Auth session 복원·상태 구독·Google 로그인·로그아웃은 작은 identity gateway로, 현재 사용자 공개 프로필 조회는 별도 query 계약으로 분리되었다. Phase 0B의 47개 의미 reference와 disposable local DB 검증도 완료되었다. 관련 cloud Supabase migration은 사용자/운영자가 통제하는 rollout 대기 상태이며, 아직 검사하지 않은 다음 경계를 추측하지 않는다.
+관리자 단어 대량 승인·삭제, 요청 moderation, 사용자 단어 요청, `word-catalog` 조회와 주요 docs 경계가 위 원칙으로 이전되었다. `WordAddHome.tsx`의 일반 사용자 요청뿐 아니라 관리자·`r4` 직접 추가도 feature hook과 원자적 RPC를 사용한다. 직접 추가 RPC는 actor/role을 DB에서 결정하고 단어·주제 관계·단어 로그·중복 없는 docs 로그·최근 수정 효과를 한 transaction으로 처리하며, behavior/concurrency pgTAP으로 검증되었다. Auth session 복원·상태 구독·Google 로그인·로그아웃은 작은 identity gateway로, 현재 사용자 공개 프로필 조회는 별도 query 계약으로 분리되었다. 신규 사용자 nickname 확인·등록도 nickname-only Application command와 분리된 query/command gateway로 이전되었고, 최종 중복 판정은 기존 unique constraint가 담당한다. Phase 0B의 47개 의미 reference와 disposable local DB 검증도 완료되었다. 관련 cloud Supabase migration은 사용자/운영자가 통제하는 rollout 대기 상태이며, 아직 검사하지 않은 다음 경계를 추측하지 않는다.
 
 ## 3. 현재 상태
 
@@ -956,7 +956,13 @@ Identity/Profile:
   - `AutoLogin`, `auth/auth.tsx`, `header.tsx`는 lifecycle-safe `useAuthSession`을 사용하며, 최신 auth event만 profile 결과를 반영한다.
   - Google OAuth callback은 browser origin에서 `/api/auth/callback`을 구성하고 기존 server callback 동작은 유지한다.
   - 로그아웃 성공 뒤에만 Redux를 비우고 홈으로 이동하며 실패 시 기존 상태·경로를 유지하고 안정적인 Modal 오류를 표시한다.
-- nickname 등록을 명시적인 use case로 이동
+- nickname 등록을 명시적인 use case로 이동 (완료)
+  - 기존 가입 화면과 같은 양끝 공백 제거 및 빈 값 거부 규칙을 Application service가 소유한다.
+  - availability query와 authenticated registration command를 분리하고 UI command는 nickname만 받는다.
+  - 등록 actor ID는 기존 server auth 경계가 `getUser()`로 결정하며 browser payload에서 UUID나 role을 받지 않는다.
+  - 사전 availability 확인 뒤에도 `users_nickname_key` unique constraint를 최종 권위로 사용하고 동시 중복은 안정적인 `conflict`로 변환한다.
+  - `auth/auth.tsx`는 겹치는 제출을 합치고 성공 projection을 Redux에 저장한 뒤 기존처럼 홈으로 이동한다.
+  - 가입에서 대체된 `add().nickname`은 제거했지만 profile nickname 편집이 아직 사용하는 `usersByNickname`은 유지한다.
 - header/logout이 SCM 전체를 의존하지 않도록 Auth port 축소 (완료)
 - profile 화면용 projection DTO 정의
 
@@ -1061,7 +1067,7 @@ Notifications:
 | 사용자 단어 요청 | 부분 완료 | Phase 2 mutation 코드 이전은 완료; 단일·대량 추가 요청을 포함한 관련 cloud migration rollout은 사용자/운영자 실행 대기 |
 | word-catalog 조회 | 완료 | 브라우저 검색·자동완성, 단어 상세 query, 고급 검색 Route Handler, 다운로드, 통계, 랜덤 연결 단어 query 완료 |
 | docs context | 부분 완료 | 공개 목록·로그·정보·본문, 관리자 대기 요청 목록/moderation, `WordsDocsHome` 중복 조회·생성 요청, `DocsDataPage` best-effort 조회 수 기록, `DocsDataHome` 멱등 즐겨찾기와 semantic marker bulk query 이전 완료; 본문 projection의 immutable `reference_code` 분류가 remapped parent marker 화면까지 이어지고 presentation의 legacy parent ID gating 제거; `letterDocs`·`waitDocs`·`docView`·`starDocs`·`startDocs` 및 read-side `docsLastUpdate(id)` 제거. 다음 경계는 실제 소비자 검사 후 지정 |
-| identity/profile | 부분 완료 | Auth session·Google login·상태 listener·logout과 현재 사용자 공개 profile query 분리 완료; 다음 경계는 nickname 등록 use case이며 이후 profile 화면 projection을 이전 |
+| identity/profile | 부분 완료 | Auth session·Google login·상태 listener·logout, 현재 사용자 공개 profile query, nickname availability/registration 경계 완료; 다음 경계는 profile 화면 projection이며 profile 편집의 legacy `usersByNickname`도 그 소비자 이전까지 유지 |
 | notifications/storage | 미착수 | query/command/storage port 분리 |
 | SCM 최종 제거 | 대기 | 모든 context 이전 후 실행 |
 

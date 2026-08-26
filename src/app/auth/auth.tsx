@@ -13,9 +13,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src
 import { Alert, AlertDescription } from "@/src/app/components/ui/alert";
 import ErrorModal from '../components/ErrModal';
 import type { ErrorMessage } from "@/src/app/types/type";
-import { SCM } from "@/src/app/lib/supabaseClient";
 import type { ApplicationError } from "@/src/shared/application/application-error";
-import { useAuthSession } from "@/src/modules/identity";
+import { useAuthSession, useNicknameRegistration } from "@/src/modules/identity";
 
 const toErrorMessage = (error: ApplicationError): ErrorMessage => ({
     ErrName: "인증 오류",
@@ -32,7 +31,9 @@ const AuthPage = () => {
     const [nicknameError, setNicknameError] = useState("");
     const dispatch = useDispatch<AppDispatch>();
     const [errorModalView, setErrorModalView] = useState<ErrorMessage | null>(null);
-    const { getSession, listen, signInWithGoogle: startGoogleLogin } = useAuthSession();
+    const { listen, signInWithGoogle: startGoogleLogin } = useAuthSession();
+    const { registerNickname, isPending: isRegisteringNickname } = useNicknameRegistration();
+    const isLoading = loading || isRegisteringNickname;
 
     useEffect(() => {
         setLoading(true);
@@ -84,59 +85,23 @@ const AuthPage = () => {
     };
 
     const completeSignup = async () => {
-        setLoading(true);
         setNicknameError("");
 
-        const sessionResult = await getSession();
-        if (!sessionResult.ok) {
-            setErrorModalView(toErrorMessage(sessionResult.error));
-            setLoading(false);
-            return;
-        }
-        if (!sessionResult.value) {
-            setLoading(false);
-            return;
-        }
-
-        // 닉네임 중복 확인
-        const { data: checkData, error: checkErr } = await SCM.get().usersByNickname(nickname);
-        if (checkErr) {
-            setErrorModalView({
-                ErrName: checkErr.name,
-                ErrMessage: checkErr.message,
-                ErrStackRace: checkErr.stack,
-                inputValue: null
-            });
-
-            setLoading(false);
-            return;
-        }
-        if (checkData.length > 0) {
-            setNicknameError("이미 사용 중인 닉네임입니다.");
-            setLoading(false);
-            return;
-        }
-
-        // 닉네임 등록
-        const { data, error:err } = await SCM.add().nickname(nickname)
-
-        if (err) {
-            setErrorModalView({
-                ErrName: err.name,
-                ErrMessage: err.message,
-                ErrStackRace: err.stack,
-                inputValue: null
-            });
-            
-            setLoading(false);
+        const result = await registerNickname(nickname);
+        if (!result.ok) {
+            if (result.error.kind === 'validation' || result.error.kind === 'conflict') {
+                setNicknameError(result.error.message);
+            } else {
+                setErrorModalView(toErrorMessage(result.error));
+            }
             return;
         }
 
         dispatch(
             userAction.setInfo({
-                username: data.nickname,
-                role: data.role ?? "guest",
-                uuid: data.id,
+                username: result.value.nickname,
+                role: result.value.role,
+                uuid: result.value.id,
             })
         );
         router.push("/");
@@ -177,7 +142,7 @@ const AuthPage = () => {
                                             value={nickname}
                                             onChange={(e) => setNickname(e.target.value)}
                                             className="pl-10 h-12 bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            disabled={loading}
+                                            disabled={isLoading}
                                         />
                                     </div>
                                     {nicknameError && (
@@ -192,10 +157,10 @@ const AuthPage = () => {
                                 
                                 <Button
                                     onClick={completeSignup}
-                                    disabled={!nickname.trim() || loading}
+                                    disabled={!nickname.trim() || isLoading}
                                     className="w-full h-12 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {loading ? (
+                                    {isLoading ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                             가입 중...
@@ -233,7 +198,7 @@ const AuthPage = () => {
                         ) : (
                             <Button
                                 onClick={signInWithGoogle}
-                                disabled={loading}
+                                disabled={isLoading}
                                 className="w-full h-12 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 hover:border-slate-400 font-medium transition-all duration-200 shadow-sm"
                                 variant="outline"
                             >
@@ -244,7 +209,7 @@ const AuthPage = () => {
                 </Card>
 
                 {/* 로딩 오버레이 */}
-                {loading && (
+                {isLoading && (
                     <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
                         <Card className="p-6">
                             <div className="flex items-center space-x-3">

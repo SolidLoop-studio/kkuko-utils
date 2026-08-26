@@ -2,7 +2,6 @@ import { ISupabaseClientManager, IAddManager, IGetManager, IDeleteManager, IUpda
 import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/src/app/types/database.types';
 import { StorageError } from '@supabase/storage-js';
-import axios from 'axios';
 
 const CACHE_DURATION = 10 * 60 * 1000;
 
@@ -25,10 +24,6 @@ class AddManager implements IAddManager {
     }
     public async waitWordThemes(insertWaitWordThemeData: { wait_word_id: number, theme_id: number }[]) {
         return await this.supabase.from('wait_word_themes').insert(insertWaitWordThemeData);
-    }
-    public async nickname(nick: string) {
-        const res = await axios.post('/api/auth/set_nickname', { nickname: nick.trim() });
-        return res.data;
     }
     public async wordThemesReq(q: { word_id: number; theme_id: number; typez: 'add' | 'delete'; req_by: string | null; }[]) {
         return await this.supabase.from('word_themes_wait').upsert(q, { onConflict: "word_id,theme_id", ignoreDuplicates: true }).select('themes(name), typez');

@@ -18,7 +18,6 @@ type delete_word_themes_bulk = Database['public']['Functions']['delete_word_them
 export interface IAddManager {
     waitWord(insertWaitWordData: { word: string, requested_by: string | null, request_type: "delete"; word_id: number; } | {word: string, requested_by: string | null, request_type: "add"}): Promise<PostgrestSingleResponse<wait_word | null>>;
     waitWordThemes(insertWaitWordThemeData: { wait_word_id: number; theme_id: number; }[]): Promise<PostgrestSingleResponse<null>>
-    nickname(nick: string): Promise<PostgrestSingleResponse<user>>;
     wordThemesReq(q: {word_id: number, theme_id: number, typez: "add" | "delete", req_by: string | null}[]): Promise<PostgrestSingleResponse<{typez: "add" | "delete"; themes:{name: string}}[]>>
     waitWords(q: {word: string, requested_by: string | null, request_type: "add"}[]): Promise<PostgrestSingleResponse<(wait_word)[]>>;
     notification(data: { title: string; body: string; img?: string | null; end_at: string; is_important?: boolean; is_modal?: boolean }): Promise<PostgrestSingleResponse<notification>>;

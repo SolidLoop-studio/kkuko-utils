@@ -7,7 +7,10 @@ import type { ReactNode } from 'react';
 const routerPush = jest.fn();
 const router = { push: routerPush };
 jest.mock('next/navigation', () => ({ useRouter: () => router }));
-jest.mock('../../modules/identity', () => ({ useAuthSession: jest.fn() }));
+jest.mock('../../modules/identity', () => ({
+    useAuthSession: jest.fn(),
+    useNicknameRegistration: jest.fn(),
+}));
 jest.mock('../../app/components/ui/card', () => ({
     Card: ({ children }: { children: ReactNode }) => <div>{children}</div>,
     CardContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -15,23 +18,28 @@ jest.mock('../../app/components/ui/card', () => ({
     CardHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
     CardTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
 }));
-jest.mock('../../app/lib/supabaseClient', () => ({
-    SCM: {
-        add: () => ({ nickname: jest.fn() }),
-        get: () => ({ usersByNickname: jest.fn() }),
-    },
-}));
-
 import Auth from '@/src/app/auth/auth';
 import { userReducer } from '@/src/app/store/slice';
-import type { AuthSessionState, useAuthSession } from '@/src/modules/identity';
-import { useAuthSession as useAuthSessionMockTarget } from '@/src/modules/identity';
+import type {
+    AuthSessionState,
+    useAuthSession,
+    useNicknameRegistration,
+} from '@/src/modules/identity';
+import {
+    useAuthSession as useAuthSessionMockTarget,
+    useNicknameRegistration as useNicknameRegistrationMockTarget,
+} from '@/src/modules/identity';
 import { err, ok, type Result } from '@/src/shared/application/result';
 
 const arrange = () => {
     let listener: ((result: Result<AuthSessionState>) => void) | undefined;
     const unsubscribe = jest.fn();
     const signInWithGoogle = jest.fn().mockResolvedValue(ok(undefined));
+    const registerNickname = jest.fn().mockResolvedValue(ok({
+        id: 'new-user-1',
+        nickname: '신규사용자',
+        role: 'guest',
+    }));
     jest.mocked(useAuthSessionMockTarget).mockReturnValue({
         getSession: jest.fn().mockResolvedValue(ok(null)),
         listen: jest.fn((nextListener) => {
@@ -42,12 +50,29 @@ const arrange = () => {
         signInWithGoogle,
         signOut: jest.fn(),
     } as ReturnType<typeof useAuthSession>);
+    jest.mocked(useNicknameRegistrationMockTarget).mockReturnValue({
+        registerNickname,
+        isPending: false,
+        error: null,
+        clearError: jest.fn(),
+    } as ReturnType<typeof useNicknameRegistration>);
     const store = configureStore({ reducer: { user: userReducer } });
     const view = render(<Provider store={store}><Auth /></Provider>);
-    return { ...view, listener: () => listener, signInWithGoogle, store, unsubscribe };
+    return {
+        ...view,
+        listener: () => listener,
+        registerNickname,
+        signInWithGoogle,
+        store,
+        unsubscribe,
+    };
 };
 
 describe('Auth', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
     test('stops loading for a signed-out auth event and unsubscribes on unmount', async () => {
         // Break caught: leaving the login screen blocked or leaking its auth listener.
         const { listener, unmount, unsubscribe } = arrange();
@@ -137,5 +162,67 @@ describe('Auth', () => {
 
         expect(await screen.findByText('Google 로그인을 시작하는 중 오류가 발생했습니다.')).toBeInTheDocument();
         expect(screen.queryByText('private provider details')).not.toBeInTheDocument();
+    });
+
+    test('registers with a nickname-only command, stores the projected profile, and navigates home', async () => {
+        // Break caught: retaining SCM/getSession orchestration or losing successful Redux/navigation semantics.
+        const user = userEvent.setup();
+        const { listener, registerNickname, store } = arrange();
+        registerNickname.mockResolvedValue(ok({
+            id: 'new-user-1',
+            nickname: '테스터',
+            role: 'r2',
+        }));
+        act(() => listener()?.(ok({ isAuthenticated: true, profile: null })));
+
+        await user.type(await screen.findByPlaceholderText('닉네임을 입력하세요'), '  테스터  ');
+        await user.click(screen.getByRole('button', { name: '회원가입 완료' }));
+
+        expect(registerNickname).toHaveBeenCalledWith('  테스터  ');
+        await waitFor(() => expect(store.getState().user).toEqual({
+            username: '테스터',
+            uuid: 'new-user-1',
+            role: 'r2',
+        }));
+        expect(routerPush).toHaveBeenCalledWith('/');
+    });
+
+    test('shows an unavailable nickname inline and does not navigate', async () => {
+        // Break caught: opening a raw database modal for the expected duplicate nickname case.
+        const user = userEvent.setup();
+        const { listener, registerNickname } = arrange();
+        registerNickname.mockResolvedValue(err({
+            kind: 'conflict',
+            message: '이미 사용 중인 닉네임입니다.',
+            code: 'NICKNAME_CONFLICT',
+        }));
+        act(() => listener()?.(ok({ isAuthenticated: true, profile: null })));
+
+        await user.type(await screen.findByPlaceholderText('닉네임을 입력하세요'), '테스터');
+        await user.click(screen.getByRole('button', { name: '회원가입 완료' }));
+
+        expect(await screen.findByText('이미 사용 중인 닉네임입니다.')).toBeInTheDocument();
+        expect(routerPush).not.toHaveBeenCalled();
+    });
+
+    test('renders only the stable registration error in the existing Modal', async () => {
+        // Break caught: showing raw auth/database causes or codes in the registration Modal.
+        const user = userEvent.setup();
+        const { listener, registerNickname } = arrange();
+        registerNickname.mockResolvedValue(err({
+            kind: 'infrastructure',
+            message: '닉네임 등록 중 오류가 발생했습니다.',
+            cause: new Error('private database detail'),
+            code: 'XX999',
+        }));
+        act(() => listener()?.(ok({ isAuthenticated: true, profile: null })));
+
+        await user.type(await screen.findByPlaceholderText('닉네임을 입력하세요'), '테스터');
+        await user.click(screen.getByRole('button', { name: '회원가입 완료' }));
+
+        expect(await screen.findByText('닉네임 등록 중 오류가 발생했습니다.')).toBeInTheDocument();
+        expect(screen.queryByText('private database detail')).not.toBeInTheDocument();
+        expect(screen.queryByText('XX999')).not.toBeInTheDocument();
+        expect(routerPush).not.toHaveBeenCalled();
     });
 });
