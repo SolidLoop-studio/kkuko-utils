@@ -10,6 +10,7 @@ export type PendingWordModerationTheme = {
 
 /** 관리자 단어 요청 목록에 필요한 안정적인 조회 프로젝션입니다. */
 export type PendingWordModerationRequest = {
+    requestKey: string;
     id: number;
     word: string;
     requestType: PendingWordModerationRequestType;

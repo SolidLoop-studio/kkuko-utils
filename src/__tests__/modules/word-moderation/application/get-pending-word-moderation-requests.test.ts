@@ -3,6 +3,7 @@ import { GetPendingWordModerationRequestsService } from '@/src/modules/word-mode
 import type { PendingWordModerationRequest } from '@/src/modules/word-moderation/application/pending-word-moderation-query-types';
 
 const requests: PendingWordModerationRequest[] = [{
+    requestKey: 'word-request:11',
     id: 11,
     word: '가나',
     requestType: 'add',

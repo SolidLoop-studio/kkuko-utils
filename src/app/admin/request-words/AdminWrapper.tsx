@@ -17,6 +17,7 @@ export default function AdminHomeWrapper() {
     }
 
     const requestData = (requests ?? []).map((request) => ({
+        request_key: request.requestKey,
         id: request.id,
         word: request.word,
         request_type: request.requestType,

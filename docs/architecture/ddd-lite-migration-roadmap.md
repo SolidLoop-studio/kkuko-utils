@@ -122,9 +122,8 @@ git grep -n -E "\bSCM\." -- "src/**/*.ts" "src/**/*.tsx"
 
 | 기능군 | 대표 파일 | 현재 위험 |
 | --- | --- | --- |
-| 관리자 요청 단어 조회 | `admin/request-words/AdminWrapper.tsx` | 대기 요청 목록의 DB Row와 query shape가 presentation에 노출. `ThemeSelectModal.tsx`의 주제 조회는 word-catalog cache를 재사용 |
-| 인증·프로필 | `AutoLogin.tsx`, `auth/auth.tsx`, `profile/**` | Auth SDK 상태와 사용자 DB profile 조회가 SCM에 결합 |
-| 공지 | `notification/**`, `hooks/useNotice.ts` | 조회·작성·Storage 업로드가 하나의 manager에 결합 |
+| 인증·프로필 | `profile/ProfileHome.tsx`, `profile/[username]/ProfilePage.tsx` | 프로필 검색·상세 집계와 프로필 nickname 편집이 아직 SCM에 결합 |
+| 공지 | `notification/[id]/NotificationDetail.tsx`, `notification/components/NotificationWriteForm.tsx` | 관리자 삭제·생성·수정 command와 이미지 Storage 업로드·공개 URL 조회가 아직 SCM에 결합 |
 
 ## 4. 현재 문제점과 해결 방향
 
@@ -829,7 +828,9 @@ stack을 fresh reset하고 모든 DB 테스트를 실행한 뒤 항상 중지한
 세로 슬라이스로 `PendingDocsRequest` query gateway와 React Query hook으로 이전되었다.
 `AdminWrapper`의 추가·삭제·주제 변경 대기 목록도 `PendingWordModerationRequest` query service와
 React Query hook으로 이전했다. Infrastructure가 세 조회, 300개 chunk, 행 검증, 주제 변경 그룹과
-기존 그룹 ID 생성을 소유하며, UI에는 안정적인 Application 오류만 전달한다.
+결정적 정렬을 소유한다. 그룹은 word ID로 결합하고 최신 요청 시각과 명시적인 동률 해소 규칙으로
+metadata를 선택한다. 충돌 없는 업무 요청 key가 refetch 순서와 숫자 ID 충돌에도 UI 선택 상태를
+같은 요청에 유지하며, UI에는 안정적인 Application 오류만 전달한다.
 `WordsDocsHome.tsx`는 대기 요청과 기존 글자 문서 중복 조회, 생성 요청 command를 docs module로
 이전했고, 해당 SCM import와 `letterDocs`·`waitDocs` manager 메서드는 제거했다. docs 요청 moderation migration은 로컬 pgTAP behavior/concurrency test로 검증되었고, cloud 반영은
 사용자/운영자가 통제하는 rollout을 기다린다.
@@ -944,6 +945,9 @@ marker의 semantic bulk query다. 본문 projection은 같은 세 상위 `refere
 본문 렌더링과 분리한다. 각 컴포넌트는 feature hook을 사용하며 대체된
 `letterDocs`·`waitDocs`·`docView`·`starDocs`·`startDocs`와 read-side `docsLastUpdate(id)`는 제거되었다.
 아직 검사하지 않은 다음 docs 경계를 추측하지 않는다.
+
+후속 슬라이스에서는 mission child ID 입력의 양의 safe integer 범위를 Application 경계에서
+검증한다. 이 검증은 기존 marker slice 이후 발견된 별도 범위이며 현재 완료 범위에는 포함하지 않는다.
 
 ### Phase 5. Identity, Profile, Notifications 이전
 
@@ -1072,7 +1076,7 @@ Notifications:
 | local base schema | 완료 | `55320..55329` remapped port의 disposable local bootstrap과 versioned seed 검증 완료 |
 | docs 의미 키 | 완료 | 47개 reference와 varying-PK/누락-reference/rollback 검증 완료; cloud rollout은 사용자/운영자 대기 |
 | 관리자 단어 삭제 (`admin/del-words`) | 완료 | cloud Supabase migration은 사용자/운영자 실행 대기, 운영 지표 관찰 |
-| 관리자 요청 단어/개별 승인 | 완료 | 개별 승인·반려 mutation, 주제 선택 조회, 대기 요청 목록 query를 `word-moderation` 서비스와 React Query hook으로 이전하고 `allWordWaitTheme`·`waitWordsThemes` legacy getter를 제거함 |
+| 관리자 요청 단어/개별 승인 | 완료 | 개별 승인·반려 mutation, 주제 선택 조회, 대기 요청 목록 query를 `word-moderation` 서비스와 React Query hook으로 이전함. 그룹은 stable business key·word ID와 결정적 metadata/theme 정렬을 사용하며 `allWordWaitTheme`·`waitWordsThemes` legacy getter를 제거함 |
 | 관리자·`r4` 단어 직접 추가 | 완료 | DB 권한 판정과 단일 transaction RPC 이전, local behavior/concurrency 32 assertions 완료; cloud rollout은 사용자/운영자 대기 |
 | docs 내부 관리자 단어 moderation | 완료 | 기존 요청 moderation RPC 재사용; 직접 삭제 cloud migration은 사용자/운영자 통제 rollout 대기 |
 | 관리자 docs 요청 moderation | 완료 | 승인·반려 mutation과 대기 요청 목록 query 이전 완료; migration cloud rollout은 사용자/운영자 실행 대기 |

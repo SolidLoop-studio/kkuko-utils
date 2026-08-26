@@ -13,6 +13,7 @@ import { createBrowserWordModerationServices } from '@/src/modules/word-moderati
 import { usePendingWordModerationRequests } from '@/src/modules/word-moderation/presentation/use-pending-word-moderation-requests';
 
 const request: PendingWordModerationRequest = {
+    requestKey: 'word-request:11',
     id: 11,
     word: '가나',
     requestType: 'delete',

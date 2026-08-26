@@ -51,6 +51,7 @@ describe('AdminWrapper', () => {
     it('passes the stable projection to the moderation screen using its existing prop shape', () => {
         mockUsePendingRequests.mockReturnValue({
             data: [{
+                requestKey: 'theme-change:7',
                 id: 100_000_000,
                 word: '가나',
                 requestType: 'theme_change',

@@ -49,6 +49,7 @@ type Theme = {
 }
 
 type WordRequest = {
+    request_key: string;
     id: number;
     word: string;
     request_type: "add" | "delete" | "theme_change";
@@ -93,14 +94,14 @@ const getThemeChangeType = (type: Theme['typez']): 'add' | 'delete' => {
 
 export default function AdminHome({ requestData: requestData, refreshFn }: { requestData: WordRequest[], refreshFn: () => Promise<void> }) {
     const [selectedTab, setSelectedTab] = useState<string>("all");
-    const [selectedRequests, setSelectedRequests] = useState<Set<number>>(new Set());
-    const [selectedThemes, setSelectedThemes] = useState<Record<number, Set<number>>>({});
+    const [selectedRequests, setSelectedRequests] = useState<Set<string>>(new Set());
+    const [selectedThemes, setSelectedThemes] = useState<Record<string, Set<number>>>({});
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [allSelected, setAllSelected] = useState<boolean>(false);
     const [errorModalView, setErrorModalView] = useState<ErrorMessage | null>(null);
     const [themeModalOpen, setThemeModalOpen] = useState<boolean>(false);
     const [selectedRequestForModal, setSelectedRequestForModal] = useState<WordRequest | null>(null);
-    const [selectedThemeDetails, setSelectedThemeDetails] = useState<Record<number, Theme[]>>({});
+    const [selectedThemeDetails, setSelectedThemeDetails] = useState<Record<string, Theme[]>>({});
     const {
         approve,
         reject,
@@ -134,21 +135,21 @@ export default function AdminHome({ requestData: requestData, refreshFn }: { req
             setSelectedRequests(new Set());
             setAllSelected(false);
         } else {
-            const newSelected = new Set<number>();
-            currentRequests.forEach(req => newSelected.add(req.id));
+            const newSelected = new Set<string>();
+            currentRequests.forEach(req => newSelected.add(req.request_key));
             setSelectedRequests(newSelected);
             setAllSelected(true);
         }
     };
 
     // 개별 요청 선택 토글
-    const toggleRequest = (id: number) => {
+    const toggleRequest = (requestKey: string) => {
         const newSelected = new Set(selectedRequests);
-        if (newSelected.has(id)) {
-            newSelected.delete(id);
+        if (newSelected.has(requestKey)) {
+            newSelected.delete(requestKey);
             setAllSelected(false);
         } else {
-            newSelected.add(id);
+            newSelected.add(requestKey);
             if (newSelected.size === currentRequests.length) {
                 setAllSelected(true);
             }
@@ -168,18 +169,18 @@ export default function AdminHome({ requestData: requestData, refreshFn }: { req
 
         const newSelectedThemes = { ...selectedThemes };
         const themeIds = new Set(selectedThemesList.map(t => t.theme_id));
-        newSelectedThemes[selectedRequestForModal.id] = themeIds;
+        newSelectedThemes[selectedRequestForModal.request_key] = themeIds;
         setSelectedThemes(newSelectedThemes);
         setSelectedThemeDetails({
             ...selectedThemeDetails,
-            [selectedRequestForModal.id]: selectedThemesList,
+            [selectedRequestForModal.request_key]: selectedThemesList,
         });
 
         // 주제가 선택되면 해당 요청도 자동으로 선택
         if (themeIds.size > 0) {
             const newSelected = new Set(selectedRequests);
-            if (!newSelected.has(selectedRequestForModal.id)) {
-                newSelected.add(selectedRequestForModal.id);
+            if (!newSelected.has(selectedRequestForModal.request_key)) {
+                newSelected.add(selectedRequestForModal.request_key);
                 if (newSelected.size === currentRequests.length) {
                     setAllSelected(true);
                 }
@@ -189,9 +190,9 @@ export default function AdminHome({ requestData: requestData, refreshFn }: { req
     };
 
     const createModerationCommand = (): ModerateWordRequestsCommand => ({
-        selections: [...selectedRequests].map((requestId): WordRequestModerationSelection => {
-            const request = requestData.find(item => item.id === requestId);
-            const selectedThemeIds = selectedThemes[requestId] ?? new Set<number>();
+        selections: [...selectedRequests].map((requestKey): WordRequestModerationSelection => {
+            const request = requestData.find(item => item.request_key === requestKey);
+            const selectedThemeIds = selectedThemes[requestKey] ?? new Set<number>();
 
             if (request?.request_type === 'theme_change') {
                 const wordId = typeof request.word_id === 'number'
@@ -213,7 +214,7 @@ export default function AdminHome({ requestData: requestData, refreshFn }: { req
 
             return {
                 kind: 'word-request',
-                requestId,
+                requestId: request?.id ?? Number.NaN,
                 selectedThemeIds: [...selectedThemeIds],
             };
         }),
@@ -390,11 +391,11 @@ export default function AdminHome({ requestData: requestData, refreshFn }: { req
                                                 </TableRow>
                                             ) : (
                                                 currentRequests.map((request) => (
-                                                    <TableRow key={`r-${request.id}`} className="hover:bg-gray-50 dark:hover:bg-gray-900">
+                                                    <TableRow key={request.request_key} className="hover:bg-gray-50 dark:hover:bg-gray-900">
                                                         <TableCell>
                                                             <Checkbox
-                                                                checked={selectedRequests.has(request.id)}
-                                                                onCheckedChange={() => toggleRequest(request.id)}
+                                                                checked={selectedRequests.has(request.request_key)}
+                                                                onCheckedChange={() => toggleRequest(request.request_key)}
                                                                 aria-label={`${request.word} 선택`}
                                                             />
                                                         </TableCell>
@@ -412,12 +413,12 @@ export default function AdminHome({ requestData: requestData, refreshFn }: { req
                                                                         onClick={() => handleThemeSelectClick(request)}
                                                                         className="w-full"
                                                                     >
-                                                                        주제 선택 ({selectedThemes[request.id]?.size || 0})
+                                                                        주제 선택 ({selectedThemes[request.request_key]?.size || 0})
                                                                     </Button>
-                                                                    {selectedThemes[request.id] && selectedThemes[request.id].size > 0 && (
+                                                                    {selectedThemes[request.request_key] && selectedThemes[request.request_key].size > 0 && (
                                                                         <div className="flex flex-wrap gap-1">
-                                                                            {(selectedThemeDetails[request.id] ?? [])
-                                                                                .filter(theme => selectedThemes[request.id]?.has(theme.theme_id))
+                                                                            {(selectedThemeDetails[request.request_key] ?? [])
+                                                                                .filter(theme => selectedThemes[request.request_key]?.has(theme.theme_id))
                                                                                 .map((theme, index) => (
                                                                                     <Badge key={`badge-${theme.theme_id}-${index}`} variant="secondary" className="text-xs">
                                                                                         {theme.theme_name}
@@ -429,34 +430,34 @@ export default function AdminHome({ requestData: requestData, refreshFn }: { req
                                                             ) : request.wait_themes ? (
                                                                 <div className="flex flex-col gap-2">
                                                                     {request.wait_themes.map((theme, index) => (
-                                                                        <div key={`t-${theme.theme_id}-${request.id}-${index ^ 10110}`} className="flex items-center gap-2">
+                                                                        <div key={`t-${theme.theme_id}-${request.request_key}-${index ^ 10110}`} className="flex items-center gap-2">
                                                                             <Checkbox
-                                                                                id={`theme-${request.id}-${theme.theme_id}`}
-                                                                                checked={selectedThemes[request.id]?.has(theme.theme_id) || false}
+                                                                                id={`theme-${request.request_key}-${theme.theme_id}`}
+                                                                                checked={selectedThemes[request.request_key]?.has(theme.theme_id) || false}
                                                                                 onCheckedChange={() => {
-                                                                                    const currentThemes = selectedThemes[request.id] || new Set<number>();
+                                                                                    const currentThemes = selectedThemes[request.request_key] || new Set<number>();
                                                                                     const newSelectedThemes = { ...selectedThemes };
                                                                                     if (currentThemes.has(theme.theme_id)) {
                                                                                         currentThemes.delete(theme.theme_id);
                                                                                         if (currentThemes.size === 0) {
-                                                                                            toggleRequest(request.id);
+                                                                                            toggleRequest(request.request_key);
                                                                                         }
                                                                                     } else {
                                                                                         currentThemes.add(theme.theme_id);
                                                                                         const newSelected = new Set(selectedRequests);
-                                                                                        if (!newSelected.has(request.id)) {
-                                                                                            newSelected.add(request.id);
+                                                                                        if (!newSelected.has(request.request_key)) {
+                                                                                            newSelected.add(request.request_key);
                                                                                             if (newSelected.size === currentRequests.length) {
                                                                                                 setAllSelected(true);
                                                                                             }
                                                                                             setSelectedRequests(newSelected);
                                                                                         }
                                                                                     }
-                                                                                    newSelectedThemes[request.id] = currentThemes;
+                                                                                    newSelectedThemes[request.request_key] = currentThemes;
                                                                                     setSelectedThemes(newSelectedThemes);
                                                                                 }}
                                                                             />
-                                                                            <label htmlFor={`theme-${request.id}-${theme.theme_id}`} className="text-sm flex items-center text-gray-700 dark:text-gray-200">
+                                                                            <label htmlFor={`theme-${request.request_key}-${theme.theme_id}`} className="text-sm flex items-center text-gray-700 dark:text-gray-200">
                                                                                 {theme.theme_name}
                                                                                 {theme.typez && (
                                                                                     <span className={`ml-1 text-xs px-1 rounded ${theme.typez === 'add' ? 'text-green-600 bg-green-50 dark:bg-green-900' : 'text-red-600 bg-red-50 dark:bg-red-900'
@@ -546,7 +547,7 @@ export default function AdminHome({ requestData: requestData, refreshFn }: { req
                         }}
                         word={selectedRequestForModal.word}
                         initialSelectedThemes={selectedRequestForModal.wait_themes || []}
-                        initialSelectedThemeIds={selectedThemes[selectedRequestForModal.id]}
+                        initialSelectedThemeIds={selectedThemes[selectedRequestForModal.request_key]}
                         onConfirm={handleThemeModalConfirm}
                     />
                 )}

@@ -39,6 +39,7 @@ const successfulResult = {
 };
 
 const addRequest = {
+    request_key: 'word-request:11',
     id: 11,
     word: '나비',
     request_type: 'add' as const,
@@ -47,6 +48,7 @@ const addRequest = {
 };
 
 const themeChangeRequest = {
+    request_key: 'theme-change:102',
     id: 22,
     word: '사과',
     request_type: 'theme_change' as const,
@@ -60,6 +62,7 @@ const themeChangeRequest = {
 };
 
 const malformedThemeChangeRequest = {
+    request_key: 'theme-change:invalid',
     id: 23,
     word: '손상단어',
     request_type: 'theme_change' as const,

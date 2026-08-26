@@ -51,7 +51,6 @@ type WaitWordThemeRow = {
 };
 
 const QUERY_CHUNK_SIZE = 300;
-const GROUPED_REQUEST_ID_BASE = 100_000_000;
 
 const infrastructureError = (): ApplicationError => ({
     kind: 'infrastructure',
@@ -160,6 +159,24 @@ const optionalRequesterId = (requesterId: string | null): { requesterId?: string
     requesterId === null ? {} : { requesterId }
 );
 
+const compareThemeChangeMetadata = (first: ThemeChangeRow, second: ThemeChangeRow): number => (
+    second.requestedAt.localeCompare(first.requestedAt)
+    || second.themeId - first.themeId
+    || first.type.localeCompare(second.type)
+    || first.word.localeCompare(second.word, 'ko-KR')
+    || (first.requesterId ?? '').localeCompare(second.requesterId ?? '')
+    || (first.requesterNickname ?? '').localeCompare(second.requesterNickname ?? '', 'ko-KR')
+    || first.themeCode.localeCompare(second.themeCode)
+    || first.themeName.localeCompare(second.themeName, 'ko-KR')
+);
+
+const compareThemes = (first: PendingWordModerationTheme, second: PendingWordModerationTheme): number => (
+    first.id - second.id
+    || (first.type ?? '').localeCompare(second.type ?? '')
+    || first.code.localeCompare(second.code)
+    || first.name.localeCompare(second.name, 'ko-KR')
+);
+
 /** Supabase 행과 관계 데이터를 관리자 moderation 프로젝션으로 조합합니다. */
 export class SupabasePendingWordModerationQueryGateway implements PendingWordModerationQueryGateway {
     constructor(
@@ -204,26 +221,41 @@ export class SupabasePendingWordModerationQueryGateway implements PendingWordMod
     }
 
     private groupThemeChanges(rows: ThemeChangeRow[]): PendingWordModerationRequest[] {
-        const requests = new Map<string, Omit<PendingWordModerationRequest, 'themes'>>();
-        const themes = new Map<string, PendingWordModerationTheme[]>();
-        rows.forEach((row, index) => {
-            requests.set(row.word, {
-                id: GROUPED_REQUEST_ID_BASE + index,
-                word: row.word,
-                requestType: 'theme_change',
-                requestedAt: row.requestedAt,
-                ...optionalRequesterId(row.requesterId),
-                requesterNickname: row.requesterNickname ?? 'unknow',
-                wordId: row.wordId,
-            });
-            const wordThemes = themes.get(row.word) ?? [];
-            wordThemes.push({ id: row.themeId, name: row.themeName, code: row.themeCode, type: row.type });
-            themes.set(row.word, wordThemes);
-        });
+        const rowsByWordId = new Map<number, ThemeChangeRow[]>();
+        for (const row of rows) {
+            const wordRows = rowsByWordId.get(row.wordId) ?? [];
+            wordRows.push(row);
+            rowsByWordId.set(row.wordId, wordRows);
+        }
 
-        return [...themes.entries()]
-            .sort(([firstWord], [secondWord]) => firstWord.localeCompare(secondWord, 'ko-KR'))
-            .map(([word, wordThemes]) => ({ ...requests.get(word)!, themes: wordThemes }));
+        return [...rowsByWordId.entries()]
+            .map(([wordId, wordRows]) => {
+                const metadata = [...wordRows].sort(compareThemeChangeMetadata)[0];
+                const themes = wordRows
+                    .map((row) => ({
+                        id: row.themeId,
+                        name: row.themeName,
+                        code: row.themeCode,
+                        type: row.type,
+                    }))
+                    .sort(compareThemes);
+
+                return {
+                    requestKey: `theme-change:${wordId}`,
+                    id: wordId,
+                    word: metadata.word,
+                    requestType: 'theme_change' as const,
+                    requestedAt: metadata.requestedAt,
+                    ...optionalRequesterId(metadata.requesterId),
+                    requesterNickname: metadata.requesterNickname ?? 'unknow',
+                    wordId,
+                    themes,
+                };
+            })
+            .sort((first, second) => (
+                first.word.localeCompare(second.word, 'ko-KR')
+                || first.wordId - second.wordId
+            ));
     }
 
     private mapWaitWords(rows: WaitWordRow[], themeRows: WaitWordThemeRow[]): PendingWordModerationRequest[] {
@@ -235,13 +267,16 @@ export class SupabasePendingWordModerationQueryGateway implements PendingWordMod
         }
 
         return rows.map((row) => ({
+            requestKey: `word-request:${row.id}`,
             id: row.id,
             word: row.word,
             requestType: row.requestType,
             requestedAt: row.requestedAt,
             ...optionalRequesterId(row.requesterId),
             requesterNickname: row.requesterNickname ?? 'unknown',
-            ...(row.requestType === 'add' ? { themes: themesByRequestId.get(row.id) ?? [] } : {}),
+            ...(row.requestType === 'add'
+                ? { themes: [...(themesByRequestId.get(row.id) ?? [])].sort(compareThemes) }
+                : {}),
             ...(row.wordId === null ? {} : { wordId: row.wordId }),
         }));
     }

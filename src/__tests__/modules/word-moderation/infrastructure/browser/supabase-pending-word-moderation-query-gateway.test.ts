@@ -64,8 +64,76 @@ const infrastructureError = {
 };
 
 describe('SupabasePendingWordModerationQueryGateway', () => {
-    it('preserves grouped-theme ordering, legacy grouped IDs, request ordering, and fallbacks', async () => {
-        // Break caught: changing the queue order/ID semantics while moving assembly out of AdminWrapper.
+    it('projects stable business keys and identical grouped requests when database rows are permuted', async () => {
+        // Break caught: deriving grouped request identity or metadata from the unordered response index.
+        const themeRows = [
+            {
+                word_id: 10, theme_id: 3, typez: 'delete', req_at: '2026-08-26T01:00:00.000Z', req_by: 'older-user',
+                words: { id: 10, word: '가' }, themes: { id: 3, name: '셋', code: 'three' }, users: { nickname: '이전 요청자' },
+            },
+            {
+                word_id: 10, theme_id: 1, typez: 'delete', req_at: '2026-08-26T02:00:00.000Z', req_by: 'tie-user-1',
+                words: { id: 10, word: '가' }, themes: { id: 1, name: '하나', code: 'one' }, users: { nickname: '동시 요청자 1' },
+            },
+            {
+                word_id: 10, theme_id: 2, typez: 'add', req_at: '2026-08-26T02:00:00.000Z', req_by: 'tie-user-2',
+                words: { id: 10, word: '가' }, themes: { id: 2, name: '둘', code: 'two' }, users: { nickname: '동시 요청자 2' },
+            },
+            {
+                word_id: 20, theme_id: 4, typez: 'add', req_at: '2026-08-26T03:00:00.000Z', req_by: null,
+                words: { id: 20, word: '가' }, themes: { id: 4, name: '넷', code: 'four' }, users: null,
+            },
+        ];
+        const waitRows = [{
+            id: 10, word: '나', request_type: 'delete', requested_at: '2026-08-26T04:00:00.000Z', requested_by: null,
+            users: null, words: { id: 30 },
+        }];
+        const first = createClient({
+            word_themes_wait: [success(themeRows)],
+            wait_words: [success(waitRows)],
+            wait_word_themes: [],
+        });
+        const second = createClient({
+            word_themes_wait: [success([themeRows[2], themeRows[3], themeRows[0], themeRows[1]])],
+            wait_words: [success(waitRows)],
+            wait_word_themes: [],
+        });
+
+        const firstResult = await new SupabasePendingWordModerationQueryGateway(first.client).loadPending();
+        const secondResult = await new SupabasePendingWordModerationQueryGateway(second.client).loadPending();
+        const expected = ok([
+            {
+                requestKey: 'theme-change:10',
+                id: 10,
+                word: '가', requestType: 'theme_change', requestedAt: '2026-08-26T02:00:00.000Z',
+                requesterId: 'tie-user-2', requesterNickname: '동시 요청자 2', wordId: 10,
+                themes: [
+                    { id: 1, name: '하나', code: 'one', type: 'delete' },
+                    { id: 2, name: '둘', code: 'two', type: 'add' },
+                    { id: 3, name: '셋', code: 'three', type: 'delete' },
+                ],
+            },
+            {
+                requestKey: 'theme-change:20',
+                id: 20,
+                word: '가', requestType: 'theme_change', requestedAt: '2026-08-26T03:00:00.000Z',
+                requesterNickname: 'unknow', wordId: 20,
+                themes: [{ id: 4, name: '넷', code: 'four', type: 'add' }],
+            },
+            {
+                requestKey: 'word-request:10',
+                id: 10,
+                word: '나', requestType: 'delete', requestedAt: '2026-08-26T04:00:00.000Z',
+                requesterNickname: 'unknown', wordId: 30,
+            },
+        ]);
+
+        expect(firstResult).toEqual(expected);
+        expect(secondResult).toEqual(expected);
+    });
+
+    it('preserves deterministic grouped-theme ordering, request ordering, and fallbacks', async () => {
+        // Break caught: changing the queue order or fallback semantics while assembling the projection.
         const { client, calls } = createClient({
             word_themes_wait: [success([
                 {
@@ -99,27 +167,31 @@ describe('SupabasePendingWordModerationQueryGateway', () => {
         await expect(new SupabasePendingWordModerationQueryGateway(client).loadPending())
             .resolves.toEqual(ok([
                 {
-                    id: 100_000_002,
+                    requestKey: 'theme-change:10',
+                    id: 10,
                     word: '가', requestType: 'theme_change', requestedAt: '2026-08-26T02:00:00.000Z',
                     requesterId: 'user-2', requesterNickname: 'unknow', wordId: 10,
                     themes: [
-                        { id: 2, name: '둘', code: 'two', type: 'add' },
                         { id: 1, name: '하나', code: 'one', type: 'delete' },
+                        { id: 2, name: '둘', code: 'two', type: 'add' },
                     ],
                 },
                 {
-                    id: 100_000_000,
+                    requestKey: 'theme-change:20',
+                    id: 20,
                     word: '나', requestType: 'theme_change', requestedAt: '2026-08-26T03:00:00.000Z',
                     requesterNickname: 'unknow', wordId: 20,
                     themes: [{ id: 3, name: '나 주제', code: 'na', type: 'delete' }],
                 },
                 {
+                    requestKey: 'word-request:7',
                     id: 7,
                     word: '다', requestType: 'add', requestedAt: '2026-08-26T04:00:00.000Z',
                     requesterNickname: 'unknown',
                     themes: [{ id: 4, name: '넷', code: 'four', type: 'add' }],
                 },
                 {
+                    requestKey: 'word-request:8',
                     id: 8,
                     word: '라', requestType: 'delete', requestedAt: '2026-08-26T05:00:00.000Z',
                     requesterId: 'user-8', requesterNickname: '삭제자', wordId: 80,
@@ -178,6 +250,7 @@ describe('SupabasePendingWordModerationQueryGateway', () => {
 
         await expect(new SupabasePendingWordModerationQueryGateway(client).loadPending())
             .resolves.toEqual(ok([{
+                requestKey: 'word-request:8',
                 id: 8,
                 word: '삭제어',
                 requestType: 'delete',
