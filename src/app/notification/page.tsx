@@ -1,5 +1,4 @@
-import { createSupabaseServerClient } from "@/src/app/lib/supabaseServer";
-import { SupabaseClientManager } from "@/src/app/lib/supabase/SupabaseClientManager";
+import { createServerNotificationServices } from "@/src/modules/notifications/infrastructure/server/server-notification-services";
 import Notification from "./Notification";
 import { type Metadata } from "next";
 
@@ -15,17 +14,16 @@ export const revalidate = 60;
  * 서버 사이드에서 데이터를 가져와 Notification 클라이언트 컴포넌트에 전달합니다.
  */
 export default async function NotificationPage() {
-    const supabase = await createSupabaseServerClient();
-    const scm = new SupabaseClientManager(supabase);
-    const { data: notifications, error } = await scm.get().allNotifications();
+    const { notificationListQueryService } = await createServerNotificationServices();
+    const result = await notificationListQueryService.get();
 
-    if (error) {
-        console.error("Failed to fetch notifications:", error);
+    if (!result.ok) {
+        console.error(result.error.message);
     }
 
     return (
         <main className="container mx-auto py-8">
-            <Notification notifications={notifications || []} />
+            <Notification notifications={result.ok ? result.value.notifications : []} />
         </main>
     );
 }

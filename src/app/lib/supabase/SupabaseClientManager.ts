@@ -251,21 +251,12 @@ class GetManager implements IGetManager {
 
         return await query;
     }
-    public async notice() {
-        const today = new Date();
-        today.setHours(23, 59, 59, 999);
-        return await this.supabase.from('notification').select('*').gte('end_at', today.toISOString()).eq('is_modal', true).order('created_at', { ascending: false }).limit(1).maybeSingle();
-    }
     public async wordsThemesByWordId(wordIds: number[]) {
         return await this.supabase.from('word_themes').select('word_id, themes(*)').in('word_id', wordIds);
     }
     public async allUser(sortField?: 'contribution' | 'month_contribution' | 'nickname', isAsc?: boolean) {
         return await this.supabase.from('users').select('*').order(sortField ?? 'contribution', { ascending: isAsc ?? false });
     }
-    async allNotifications() {
-        return await this.supabase.from('notification').select('*').order('created_at', { ascending: false });
-    }
-
     async notificationById(id: number) {
         return await this.supabase.from('notification').select('*').eq('id', id).maybeSingle();
     }

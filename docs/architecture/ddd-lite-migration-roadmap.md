@@ -969,10 +969,15 @@ Identity/Profile:
 
 Notifications:
 
-- 공지 query와 관리자 command 분리
+- 활성 공지 목록·전역 모달 read slice 분리 (완료)
+  - 목록과 모달이 `NotificationListProjection` Application 계약을 공유하며 DB Row를 UI에 노출하지 않는다.
+  - browser/server adapter는 실행 환경 timezone과 무관한 한국 시간 당일 말 cutoff로 active-only 조회를 수행한다.
+  - 목록은 중요도, 생성일, ID 순으로 결정적으로 정렬하고 모달은 활성 modal 중 생성일·ID가 최신인 1건만 선택한다.
+  - 전역 모달은 `['notifications', 'active-list']` key와 1분 stale time을 사용하며, background refetch 실패에도 cache를 유지하고 `hiddenNotices` 및 현재 mount의 dismissal을 보존한다.
+  - 목록 page의 legacy `allNotifications`와 전역 hook의 `notice` SCM getter를 제거했다.
+- 공지 상세 query와 관리자 command 분리
 - 이미지 Storage gateway 분리
 - DB 저장 실패 시 업로드 파일 정리 정책 정의
-- modal 공지 cache 정책 명시
 
 ### Phase 6. 기타 외부 연동 분리
 
@@ -1069,7 +1074,7 @@ Notifications:
 | word-catalog 조회 | 완료 | 브라우저 검색·자동완성, 단어 상세 query, 고급 검색 Route Handler, 다운로드, 통계, 랜덤 연결 단어 query 완료 |
 | docs context | 부분 완료 | 공개 목록·로그·정보·본문, 관리자 대기 요청 목록/moderation, `WordsDocsHome` 중복 조회·생성 요청, `DocsDataPage` best-effort 조회 수 기록, `DocsDataHome` 멱등 즐겨찾기와 semantic marker bulk query 이전 완료; 본문 projection의 immutable `reference_code` 분류가 remapped parent marker 화면까지 이어지고 presentation의 legacy parent ID gating 제거; `letterDocs`·`waitDocs`·`docView`·`starDocs`·`startDocs` 및 read-side `docsLastUpdate(id)` 제거. 다음 경계는 실제 소비자 검사 후 지정 |
 | identity/profile | 부분 완료 | Auth session·Google login·상태 listener·logout, 현재 사용자 공개 profile query, nickname availability/registration 경계 완료; 다음 경계는 profile 화면 projection이며 profile 편집의 legacy `usersByNickname`도 그 소비자 이전까지 유지 |
-| notifications/storage | 미착수 | query/command/storage port 분리 |
+| notifications/storage | 부분 완료 | 활성 목록·최신 모달 query와 browser/server adapter, React Query cache/dismissal 정책 완료; 다음 경계는 상세 query와 관리자 command, 이미지 Storage port 분리 |
 | SCM 최종 제거 | 대기 | 모든 context 이전 후 실행 |
 
 상태 값은 `미착수`, `설계 중`, `구현 중`, `부분 완료`, `완료`로 관리한다. 기능 일부만 새 구조를 사용하면 완료로 표시하지 않는다.
