@@ -234,6 +234,43 @@ describe('NotificationWriteForm', () => {
         }));
     });
 
+    it('revokes the owned preview once when changed edit props restore a new remote image', async () => {
+        const user = userEvent.setup();
+        const file = new File(['local'], 'local.png', { type: 'image/png' });
+        const nextNotification: NotificationDetailProjection = {
+            ...notification,
+            id: 18,
+            imageUrl: 'https://example.com/next-notice.png',
+        };
+        const rendered = render(<NotificationWriteForm notification={notification} />);
+
+        await user.upload(getFileInput(rendered.container), file);
+        rendered.rerender(<NotificationWriteForm notification={nextNotification} />);
+
+        expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1);
+        expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:notification-preview');
+        expect(URL.revokeObjectURL).not.toHaveBeenCalledWith(notification.imageUrl);
+        expect(URL.revokeObjectURL).not.toHaveBeenCalledWith(nextNotification.imageUrl);
+        expect(screen.getByRole('img', { name: 'Preview' })).toHaveAttribute(
+            'src',
+            nextNotification.imageUrl,
+        );
+    });
+
+    it('revokes an active local preview once when it is removed without revoking the remote image', async () => {
+        const user = userEvent.setup();
+        const file = new File(['local'], 'local.png', { type: 'image/png' });
+        const rendered = render(<NotificationWriteForm notification={notification} />);
+
+        await user.upload(getFileInput(rendered.container), file);
+        await user.click(screen.getByRole('button', { name: '이미지 제거' }));
+
+        expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1);
+        expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:notification-preview');
+        expect(URL.revokeObjectURL).not.toHaveBeenCalledWith(notification.imageUrl);
+        expect(screen.queryByRole('img', { name: 'Preview' })).not.toBeInTheDocument();
+    });
+
     it('revokes the active component-owned preview on unmount but never revokes a remote preview', async () => {
         const user = userEvent.setup();
         const file = new File(['image'], 'notice.png', { type: 'image/png' });
