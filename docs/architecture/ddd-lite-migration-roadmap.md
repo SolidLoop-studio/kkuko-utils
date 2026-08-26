@@ -988,9 +988,12 @@ Notifications:
   - 상세 page와 metadata는 공식 React 요청 단위 `cache` loader를 공유해 같은 요청의 중복 조회를 제거하며 전역 cross-request cache나 `unstable_cache`, 별도 `revalidate` 정책은 추가하지 않는다. 테스트는 연속된 두 요청에서 같은 ID도 새 server client/query와 새 결과를 사용함을 검증한다.
   - 현재 상세 조회 소비자는 모두 Server Component이므로 미사용 browser adapter는 만들지 않았다. 같은 Application port는 실제 browser 소비자가 생길 때 browser client adapter로 재사용할 수 있다.
   - edit page의 마지막 read-side `SCM.get().notificationById` 소비자를 이전하고 해당 getter를 제거했다. not-found는 기존 `notFound()` 흐름을 유지하고 infrastructure 오류는 안전한 오류 화면으로 구분한다.
-- 공지 관리자 command 분리
-- 이미지 Storage gateway 분리
-- DB 저장 실패 시 업로드 파일 정리 정책 정의
+- 공지 관리자 row-delete command 분리 (완료)
+  - Application service가 양의 safe integer ID를 검증하고, validation 및 adapter의 반환·throw 실패를 안정적인 공개 `Result` 오류로 변환한다.
+  - RLS가 적용된 browser Supabase adapter가 단일 `notification` row delete를 수행하며, 성공한 경우에만 활성 공지 목록 React Query cache를 무효화한다.
+  - 관리자 확인·완료 Modal, 목록 이동과 refresh 동작은 유지하고 대체된 legacy `notificationById` delete method를 제거했다.
+  - 이 단일 row delete에는 schema·RPC·service-role 경계가 필요하지 않았으며 cloud rollout은 수행하지 않았다.
+- 다음 write/Storage plan: 공지 생성·수정 command와 이미지 Storage gateway를 분리하고, update/remove/delete의 managed-image lifecycle 및 DB 저장 실패 시 업로드 파일 정리 정책을 정의한다. 이 범위가 완료되기 전에는 `notifications/storage`를 완료로 표시하지 않는다.
 
 ### Phase 6. 기타 외부 연동 분리
 
@@ -1087,7 +1090,7 @@ Notifications:
 | word-catalog 조회 | 완료 | 브라우저 검색·자동완성, 단어 상세 query, 고급 검색 Route Handler, 다운로드, 통계, 랜덤 연결 단어 query 완료 |
 | docs context | 부분 완료 | 공개 목록·로그·정보·본문, 관리자 대기 요청 목록/moderation, `WordsDocsHome` 중복 조회·생성 요청, `DocsDataPage` best-effort 조회 수 기록, `DocsDataHome` 멱등 즐겨찾기와 semantic marker bulk query 이전 완료; immutable mission reference catalog가 mission child의 `isSpecial`, family별 RPC, 대상 글자와 remapped-PK child page coverage를 소유하고 presentation의 legacy parent ID gating을 제거함; `letterDocs`·`waitDocs`·`docView`·`starDocs`·`startDocs` 및 read-side `docsLastUpdate(id)` 제거. `AdminLogsWrapper`의 live `SCM.get().allDocs`는 별도 admin-logs projection 슬라이스에서 이전할 때까지 유지; Phase 0B cloud rollout은 사용자/운영자 통제 대기 상태. 다음 경계는 실제 소비자 검사 후 지정 |
 | identity/profile | 부분 완료 | Auth session·Google login·상태 listener·logout, 현재 사용자 공개 profile query, nickname availability/registration 경계 완료; 다음 경계는 profile 화면 projection이며 profile 편집의 legacy `usersByNickname`도 그 소비자 이전까지 유지 |
-| notifications/storage | 부분 완료 | 활성 목록·최신 모달 query와 browser/server adapter, React Query cache/dismissal 정책 및 server-safe 상세·metadata·편집 query 완료; 다음 경계는 관리자 command와 이미지 Storage port 분리 |
+| notifications/storage | 부분 완료 | 활성 목록·최신 모달 query와 browser/server adapter, React Query cache/dismissal 정책 및 server-safe 상세·metadata·편집 query, 관리자 notification row-delete command 완료. row-delete는 양의 safe integer ID validation, 안정적 오류 mapping, RLS-protected browser adapter, 성공 시에만 active-list cache invalidation, 기존 확인·완료 Modal 동작과 `notificationById` 제거를 포함하며 cloud rollout은 수행하지 않았다. 다음 write/Storage plan은 생성·수정 command, 이미지 Storage port, update/remove/delete managed-image lifecycle과 DB 저장 실패 시 업로드 파일 정리 정책을 소유한다. |
 | SCM 최종 제거 | 대기 | 모든 context 이전 후 실행 |
 
 상태 값은 `미착수`, `설계 중`, `구현 중`, `부분 완료`, `완료`로 관리한다. 기능 일부만 새 구조를 사용하면 완료로 표시하지 않는다.
