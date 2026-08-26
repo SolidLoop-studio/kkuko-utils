@@ -14,8 +14,9 @@
 
 - Scope includes only the profile card/main summary, monthly contribution rank, and recent-five-month chart on `/profile/[username]`.
 - Treat the ten slices in `docs/superpowers/plans/2026-08-26-ddd-lite-next-ten-slices.md` and the profile nickname-search plan as completed prerequisites; extend the same identity module.
+- Serial merge position: **5 of 5**. Start only after the docs-child, notification-delete, notification-write/Storage, and profile-search plans are implemented and merged. These five plans are intentionally serial and must not be independently cherry-picked from the planning base; run final greps against that merged predecessor state.
 - Do not migrate or refactor favorite docs, request history, processed history, nickname availability/edit, Redux nickname update, or `/api/auth/update_nickname`; `starredDocsById`, `requestsListById`, `logsListById`, and `usersByNickname` remain.
-- Preserve the existing user fields and role/progress/admin-dashboard behavior; the projection uses `IdentityRole` and maps nullable role to `guest` consistently with identity.
+- Preserve the existing user fields and non-guest role/progress/admin-dashboard behavior. The projection uses `IdentityRole`, maps nullable role to `guest` consistently with profile search, and renders guest explicitly as label `게스트`, gray badge `bg-gray-100 text-gray-800`, with no role-progress/max-level/admin-level panel.
 - Historical query selects the latest four stored months with `.order('month', { ascending: false }).limit(4)`; the current `users.month_contribution` value is authoritative for the current month.
 - Return exactly five ascending `YYYY-MM` points from current month minus four through current month, fill missing months with `0`, ignore stored months outside that window, and overwrite any stored current-month row with the current user value.
 - Domain/Application must not import Supabase, React, Next.js, Recharts, or generated DB types. Infrastructure narrows `unknown` and presentation sees only stable DTOs/errors.
@@ -156,7 +157,7 @@ Export the source/projection/month DTOs, gateway port, `GetProfileSummaryService
 
 - [ ] **Step 7: Write the failing focused `ProfilePage` test**
 
-Mock `useProfileSummary` and keep a narrow SCM mock only for the explicitly excluded activity tabs/nickname edit. Cover loading overlay, stable summary error Modal, all card fields/rank/chart points/admin dashboard behavior from the projection, and that successful summary triggers the existing three activity loaders once with the projection ID. Assert the component never calls legacy `userByNickname`, `monthlyConRankByUserId`, or `monthlyContributionsByUserId`. Keep nickname-edit interactions out of this test.
+Mock `useProfileSummary` and keep a narrow SCM mock only for the explicitly excluded activity tabs/nickname edit. Cover loading overlay, stable summary error Modal, all card fields/rank/chart points/admin dashboard behavior from the projection, and that successful summary triggers the existing three activity loaders once with the projection ID. Add a `role: 'guest'` projection case that asserts the `게스트` label, `bg-gray-100 text-gray-800` badge class, and absence of the next-role progress, max-level, and admin-level panels. Assert the component never calls legacy `userByNickname`, `monthlyConRankByUserId`, or `monthlyContributionsByUserId`. Keep nickname-edit interactions out of this test.
 
 Run: `npx jest src/__tests__/profile/id/ProfilePage.test.tsx --runInBand`
 
@@ -164,7 +165,9 @@ Expected: FAIL because the mount effect still performs the three summary SCM cal
 
 - [ ] **Step 8: Replace only the main-summary portion of the mount effect**
 
-Consume `useProfileSummary(userName)`. Replace the local `role` alias with the imported `IdentityRole`, then map successful projection fields into the existing local `user`, `monthlyContributions`, `newNickname`, and `isAdmin` states so the existing markup/progress/chart stays unchanged; existing default branches handle `guest`. Use a `useRef<string | null>` guard keyed by projection user ID before calling the unchanged `loadTabsData(id)` once. Derive the initial loading overlay from `summaryQuery.isPending`; map `summaryQuery.error.message` to the existing `ErrorModal` without raw codes.
+Consume `useProfileSummary(userName)`. Replace the local `role` alias and every role-bearing local state/helper parameter with imported `IdentityRole`, then map successful projection fields into the existing local `user`, `monthlyContributions`, `newNickname`, and `isAdmin` states. Type both lookup tables as `Record<IdentityRole, string>` and include `guest: '게스트'` in `roleNames` plus `guest: 'bg-gray-100 text-gray-800'` in `roleColors`; `getRoleName(role: IdentityRole)` and `getRoleColor(role: IdentityRole)` must therefore be exhaustive and type-checkable.
+
+Add an explicit `case 'guest'` to `getRoleProgress(role: IdentityRole, contribution)` returning `{ current: contribution, target: contribution, nextRole: null, nextRoleName: null, showProgress: false, maxLevel: false, adminLevel: false }`. Preserve every existing `r1`/`r2`/`r3`/`r4`/`admin` branch unchanged. This intentionally renders no progress/status panel for a guest instead of relying on an untyped default fallback. Use a `useRef<string | null>` guard keyed by projection user ID before calling the unchanged `loadTabsData(id)` once. Derive the initial loading overlay from `summaryQuery.isPending`; map `summaryQuery.error.message` to the existing `ErrorModal` without raw codes.
 
 Do not edit `loadTabsData`, `updateNickname`, `handleNicknameUpdate`, the three tab renderers, their state types, or their SCM calls except for type fallout directly caused by the projection.
 

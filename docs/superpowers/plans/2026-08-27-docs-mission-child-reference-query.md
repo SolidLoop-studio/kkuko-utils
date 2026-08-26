@@ -14,6 +14,7 @@
 
 - Preserve the existing mission characters and canonical order: `가나다라마바사아자차카타파하`, with suffixes `ga`, `na`, `da`, `ra`, `ma`, `ba`, `sa`, `a`, `ja`, `cha`, `ka`, `ta`, `pa`, `ha`.
 - Treat the ten slices in `docs/superpowers/plans/2026-08-26-ddd-lite-next-ten-slices.md` as completed prerequisites; do not recreate their marker/content/query work.
+- Serial merge position: **1 of 5**. Implement and merge this plan first; the notification-delete plan starts from this merged commit. These five plans are intentionally serial and must not be implemented as independent cherry-picks from the planning base.
 - Accept only children of `ko.word-chain.mission`, `ko.reverse-word-chain.mission`, and `ko.kkungkkungtta.mission`; parent codes, unknown suffixes, and lookalike prefixes are not mission children.
 - Word-chain children use `get_mission_words` and first-character grouping; reverse-word-chain children use `get_mission_words` and last-character grouping; Kkungkkungtta children use `get_mission_len3_words` and first-character grouping.
 - `isSpecial` is true exactly for the 42 canonical mission-child references and never because a numeric `docs.id` falls in a range.
@@ -38,8 +39,6 @@ Modify:
 - `src/modules/docs/infrastructure/browser/supabase-docs-marker-query-gateway.ts` — build child codes from the shared catalog instead of private duplicate arrays.
 - `src/modules/docs/infrastructure/browser/supabase-docs-content-query-gateway.ts` — replace mission-child numeric ranges with semantic descriptors.
 - `src/modules/docs/index.ts` — export only the stable reference types/helpers needed outside the module, if a consumer test needs them.
-- `src/app/lib/supabase/SupabaseClientManager.ts` — remove the zero-consumer legacy `GetManager.allDocs` method after verifying no caller remains.
-- `src/app/lib/supabase/ISupabaseClientManager.ts` — remove the matching `IGetManager.allDocs` signature.
 - `docs/architecture/ddd-lite-migration-roadmap.md` — mark mission-child content classification/query routing and varying-PK page coverage complete without claiming cloud rollout.
 - `src/__tests__/modules/docs/infrastructure/browser/supabase-docs-marker-query-gateway.test.ts` — guard shared-catalog ordering and missing slots.
 - `src/__tests__/modules/docs/infrastructure/browser/supabase-docs-content-query-gateway.test.ts` — cover remapped child PKs and exact RPC selection.
@@ -150,15 +149,15 @@ git commit -m "refactor: define semantic mission child references"
 - Consumes: `MISSION_CHARACTERS` and `missionChildReferenceCodes(parentReferenceCode)` from Task 1.
 - Produces: unchanged `DocsMarkerQueryGateway.loadByParentDocsId(parentDocsId: number): Promise<Result<DocsMarkerSlot[] | null>>` behavior.
 
-- [ ] **Step 1: Add a failing shared-order characterization**
+- [ ] **Step 1: Confirm the existing green shared-order characterization**
 
-Return remapped child rows in reverse/random order and assert the result is still fourteen canonical slots with `가` first and `하` last. Keep assertions that a missing child is `null`, a duplicate/unknown child is an infrastructure error, and a non-parent is validation.
+The existing adapter test already returns remapped child rows in reverse order, asserts fourteen canonical slots, and covers a missing `null` slot. Add any missing duplicate/unknown-child and non-parent assertions as preserved-behavior characterization only; do not couple the test to imports or private arrays.
 
-- [ ] **Step 2: Run the marker adapter test and verify RED**
+- [ ] **Step 2: Run the marker adapter test and record the existing GREEN baseline**
 
 Run: `npx jest src/__tests__/modules/docs/infrastructure/browser/supabase-docs-marker-query-gateway.test.ts --runInBand`
 
-Expected: FAIL until the test expects the shared catalog to be used and the gateway is updated.
+Expected: PASS before the refactor. This test proves observable ordering/error behavior remains stable; Task 1's missing pure catalog and Task 3's remapped child content tests provide the actual RED evidence.
 
 - [ ] **Step 3: Replace private arrays with the shared helper**
 
@@ -289,7 +288,7 @@ git commit -m "refactor: route mission child docs semantically"
 - Consumes: existing `useDocsContent` projection and `DocsDataHome` `isSpecial` prop.
 - Produces: no new runtime API; adds a page-level regression test.
 
-- [ ] **Step 1: Make the table test double expose special-mode input**
+- [ ] **Step 1: Make the table test double expose special-mode input as characterization coverage**
 
 Extend the existing `WordsTableBody` fake with the real optional prop shape and render it:
 
@@ -299,15 +298,15 @@ isSp?: { m: string };
 <output data-testid="special-mission">{isSp?.m ?? 'ordinary'}</output>
 ```
 
-- [ ] **Step 2: Add a failing remapped child page test**
+- [ ] **Step 2: Add an existing-green remapped child presentation test**
 
-Return a content projection with `metadata.id: 9_101`, title ending in `가`, `type: 'ect'`, `isSpecial: true`, and `isMissionParent: false`. Assert that the word row renders, the marker-parent grid does not render, and `special-mission` contains `가`.
+Return a mocked content projection with `metadata.id: 9_101`, title ending in `가`, `type: 'ect'`, `isSpecial: true`, and `isMissionParent: false`. Assert that the word row renders, the marker-parent grid does not render, and `special-mission` contains `가`. This proves only that presentation forwards the existing projection field; it does not execute or prove the Supabase semantic classifier.
 
-- [ ] **Step 3: Run the page integration test and verify RED/GREEN behavior**
+- [ ] **Step 3: Run the page integration test and record GREEN characterization**
 
 Run: `npx jest src/__tests__/words-docs/id/DocsDataPage.integration.test.tsx --runInBand`
 
-Expected before the semantic adapter fixture is wired: FAIL on the special-mode assertion. Expected after Tasks 1–3 and the fixture update: PASS without a production presentation change.
+Expected before and after Tasks 1–3: PASS because the test mocks `createBrowserDocsServices`. Rely on Task 3's adapter test for the genuine pre-change RED regression.
 
 - [ ] **Step 4: Commit the page regression**
 
@@ -318,30 +317,28 @@ git commit -m "test: cover remapped mission child docs page"
 
 ---
 
-### Task 5: Retire the Remaining Zero-Consumer Docs Getter and Update the Roadmap
+### Task 5: Preserve the Live Admin-Logs Getter, Update the Roadmap, and Verify
 
 **Files:**
-- Modify: `src/app/lib/supabase/SupabaseClientManager.ts`
-- Modify: `src/app/lib/supabase/ISupabaseClientManager.ts`
 - Modify: `docs/architecture/ddd-lite-migration-roadmap.md`
 
 **Interfaces:**
-- Consumes: the completed docs list/content module paths.
-- Produces: no `GetManager.allDocs` legacy surface and an accurate roadmap status.
+- Consumes: the completed docs mission-child content path and the observed admin-logs consumer.
+- Produces: an accurate roadmap status while retaining the still-live `GetManager.allDocs` legacy surface for a later admin-logs query slice.
 
-- [ ] **Step 1: Verify the legacy getter has no consumer**
+- [ ] **Step 1: Verify and record the live legacy consumer**
 
-Run: `git grep -n -E "allDocs\(|\.allDocs\(" -- "src/**/*.ts" "src/**/*.tsx"`
+Run: `git grep -n "SCM.get().allDocs" -- ":(literal)src/app/admin/logs/AdminLogsWrapper.tsx"`
 
-Expected: only the `IGetManager.allDocs` signature and `GetManager.allDocs` implementation; no application consumer.
+Expected: the live call at `AdminLogsWrapper.tsx`; therefore this mission-child slice must not remove `allDocs`.
 
-- [ ] **Step 2: Remove the legacy method pair**
+- [ ] **Step 2: Leave `allDocs` intact and bound its later owner**
 
-Delete only `IGetManager.allDocs` and `GetManager.allDocs`. Keep `starredDocsById`, `docsLogsByFilter`, and `docsLogsByIds` because profile/admin consumers remain outside this slice.
+Do not edit `SupabaseClientManager.ts` or `ISupabaseClientManager.ts`. Record `SCM.get().allDocs` under a named future admin-logs projection slice together with `AdminLogsWrapper`; do not expand this plan to migrate that unrelated user action.
 
 - [ ] **Step 3: Update the binding roadmap**
 
-In Phase 4 and the progress table, record that mission-child `isSpecial`, mission family/RPC selection, target character, and varying-PK child page coverage now come from the immutable reference catalog. Keep `docs context` as `부분 완료`, name only actually observed remaining boundaries, and retain the statement that Phase 0B cloud rollout is operator-controlled and not completed here.
+In Phase 4 and the progress table, record that mission-child `isSpecial`, mission family/RPC selection, target character, and varying-PK child page coverage now come from the immutable reference catalog. Keep `docs context` as `부분 완료`, explicitly retain the live admin-logs `allDocs` consumer for its own projection slice, and retain the statement that Phase 0B cloud rollout is operator-controlled and not completed here.
 
 - [ ] **Step 4: Run architecture grep checks**
 
@@ -349,12 +346,14 @@ Run each command separately:
 
 ```bash
 git grep -n -E "209 <=|224 <=|239 <=|metadata\.id -|isSpecialMissionDocsId" -- "src/modules/docs/**/*.ts"
-git grep -n -E "SCM|@supabase/supabase-js|\.from\(|\.rpc\(" -- "src/app/words-docs/[id]/**/*.ts" "src/app/words-docs/[id]/**/*.tsx"
+git grep -n "export default function DocsDataPage" -- ":(literal)src/app/words-docs/[id]/DocsDataPage.tsx"
+git grep -n "export default DocsDataHome" -- ":(literal)src/app/words-docs/[id]/DocsDataHome.tsx"
+git grep -n -E "SCM|@supabase/supabase-js|\.from\(|\.rpc\(" -- ":(literal)src/app/words-docs/[id]/DocsDataPage.tsx" ":(literal)src/app/words-docs/[id]/DocsDataHome.tsx"
 git grep -n -E "@supabase|database\.types|next/|react" -- "src/modules/docs/application/*.ts"
-git grep -n -E "allDocs\(|\.allDocs\(" -- "src/**/*.ts" "src/**/*.tsx"
+git grep -n "SCM.get().allDocs" -- ":(literal)src/app/admin/logs/AdminLogsWrapper.tsx"
 ```
 
-Expected: no output. The Infrastructure content adapter may contain `.rpc(` and is intentionally excluded from the presentation check.
+Expected: the two positive sanity commands each print their direct literal target, the presentation forbidden-import command prints no output, the Application dependency command prints no output, and the final command still prints the intentionally deferred admin-logs consumer. The Infrastructure content adapter may contain `.rpc(` and is intentionally excluded from the presentation check.
 
 - [ ] **Step 5: Run focused and project verification**
 
@@ -374,6 +373,6 @@ Expected: every command exits 0; status contains only the files named by this pl
 - [ ] **Step 6: Commit cleanup and roadmap status**
 
 ```bash
-git add src/app/lib/supabase/SupabaseClientManager.ts src/app/lib/supabase/ISupabaseClientManager.ts docs/architecture/ddd-lite-migration-roadmap.md
+git add docs/architecture/ddd-lite-migration-roadmap.md
 git commit -m "refactor: complete semantic mission child docs query"
 ```

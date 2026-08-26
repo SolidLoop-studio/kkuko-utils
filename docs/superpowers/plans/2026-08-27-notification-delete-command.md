@@ -14,8 +14,9 @@
 
 - Preserve the existing user action: only the visible administrator control opens confirmation, successful deletion shows the completion Modal, and closing it navigates to `/notification` then refreshes.
 - Treat the ten slices in `docs/superpowers/plans/2026-08-26-ddd-lite-next-ten-slices.md` as completed prerequisites; reuse their notification list/detail contracts instead of duplicating them.
+- Serial merge position: **2 of 5**. Start only after `2026-08-27-docs-mission-child-reference-query.md` is implemented and merged; merge this slice before notification write/Storage. These five plans are intentionally serial and must not be independently cherry-picked from the planning base.
 - Keep the current database/RLS transaction boundary: this is one `notification` table delete, so no new RPC, Route Handler, migration, service-role client, or cloud rollout is added.
-- This slice deletes only the notification row. Notification image lifecycle belongs to the separate notification write/storage slice and is not added to this command.
+- This slice deletes only the notification row as an explicit interim state. `2026-08-27-notification-write-and-image-storage.md`, immediately next in the required merge order, must extend this command with database-returned prior-image evidence, remaining-reference checks, and post-row-delete best-effort managed-image cleanup.
 - The service accepts only a positive safe integer ID and returns stable `validation` or `infrastructure` errors through `Result<void>`.
 - Presentation must not import `SCM`, Supabase SDK types, table names, or query builders and must not show raw PostgREST details.
 - Do not change the existing edit/detail server query, notification list ordering, modal dismissal semantics, or create/update form.
@@ -381,7 +382,7 @@ git commit -m "refactor: migrate notification delete command"
 
 - [ ] **Step 1: Update roadmap completion text**
 
-Record the notification delete command as complete: positive-ID validation, stable error mapping, RLS-protected browser adapter, success-only active-list invalidation, confirmation/completion behavior, and removal of `notificationById`. Keep `notifications/storage` as `부분 완료`; explicitly name create/update plus image cleanup as the next boundary and state that no cloud rollout occurred.
+Record the notification row-delete command as complete: positive-ID validation, stable error mapping, RLS-protected browser adapter, success-only active-list invalidation, confirmation/completion behavior, and removal of `notificationById`. Keep `notifications/storage` as `부분 완료`; explicitly name the immediately following write/Storage plan's update/remove/delete managed-image lifecycle as required before that boundary can be called complete, and state that no cloud rollout occurred.
 
 - [ ] **Step 2: Run architecture checks**
 

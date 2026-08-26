@@ -14,6 +14,7 @@
 
 - Limit the slice to `/profile` nickname search; do not change profile detail, activity tabs, nickname editing, auth registration, ranking rules, or routes.
 - Treat the ten slices in `docs/superpowers/plans/2026-08-26-ddd-lite-next-ten-slices.md` as completed prerequisites; extend the existing identity module rather than recreating auth/nickname-registration work.
+- Serial merge position: **4 of 5**. Start only after the docs-child, notification-delete, and notification-write/Storage plans are implemented and merged; merge this plan before profile summary. These five plans are intentionally serial and must not be independently cherry-picked from the planning base. Run the final greps only at this serial point so shared composition/index/roadmap edits include all merged predecessors.
 - Normalize the submitted query with `trim()` and reject an empty result with `{ kind: 'validation', field: 'nickname', message: '검색할 닉네임을 입력해주세요.' }` instead of querying every user.
 - Preserve case-insensitive contains matching by calling `.ilike('nickname', `%${query}%`)` and preserve the adapter's returned order; do not add ranking, pagination, result limits, or fuzzy search.
 - The projection exposes only `id`, `nickname`, `role`, `totalContribution`, and `monthlyContribution`; full generated `users` rows never leave Infrastructure.
