@@ -189,6 +189,7 @@ const contentProjection = (overrides: Partial<{
     },
     starredUserIds: [],
     words: overrides.words ?? [{ word: '나비', status: 'ok' as const }],
+    missionCharacter: null,
     isSpecial: false,
     isMissionParent: false,
 });
@@ -858,6 +859,7 @@ describe('Docs word target enrichment', () => {
                 metadata: { id: 55, title: '테스트 주제', lastUpdatedAt: '2026-08-22T00:00:00.000Z', type: 'theme' },
                 starredUserIds: [],
                 words: [{ word: '가방', status: 'ok' }, { word: '나비', status: 'delete', requesterNickname: 'requester-2' }],
+                missionCharacter: null,
                 isSpecial: false,
                 isMissionParent: false,
             },

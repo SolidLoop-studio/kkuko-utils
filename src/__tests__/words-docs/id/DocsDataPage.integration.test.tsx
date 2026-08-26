@@ -62,6 +62,7 @@ const initialProjection = {
     metadata: { id: 55, title: '초기 문서', lastUpdatedAt: '2026-08-22T00:00:00.000Z', type: 'theme' as const },
     starredUserIds: [],
     words: [{ word: '가방', status: 'add' as const, requesterNickname: '요청자' }],
+    missionCharacter: null,
     isSpecial: false,
     isMissionParent: false,
 };
@@ -70,6 +71,7 @@ const refreshedProjection = {
     metadata: { id: 55, title: '갱신 문서', lastUpdatedAt: '2026-08-23T00:00:00.000Z', type: 'theme' as const },
     starredUserIds: ['starred-user'],
     words: [{ word: '하마', status: 'ok' as const }],
+    missionCharacter: null,
     isSpecial: false,
     isMissionParent: false,
 };
@@ -78,6 +80,7 @@ const backgroundProjection = {
     metadata: { id: 55, title: '백그라운드 갱신 문서', lastUpdatedAt: '2026-08-24T00:00:00.000Z', type: 'theme' as const },
     starredUserIds: ['background-star'],
     words: [{ word: '호랑이', status: 'ok' as const }],
+    missionCharacter: null,
     isSpecial: false,
     isMissionParent: false,
 };
@@ -91,6 +94,7 @@ const remappedMissionParentProjection = {
     },
     starredUserIds: [],
     words: [],
+    missionCharacter: null,
     isSpecial: false,
     isMissionParent: true,
 };
@@ -217,12 +221,13 @@ describe('DocsDataPage real useDocsContent admin refetch integration', () => {
         const getContent = jest.fn().mockResolvedValue(ok({
             metadata: {
                 id: 9_101,
-                title: '리매핑된 미션가',
+                title: '이름이 바뀐 미션',
                 lastUpdatedAt: '2026-08-25T00:00:00.000Z',
                 type: 'ect' as const,
             },
             starredUserIds: [],
             words: [{ word: '가방', status: 'ok' as const }],
+            missionCharacter: '가',
             isSpecial: true,
             isMissionParent: false,
         }));

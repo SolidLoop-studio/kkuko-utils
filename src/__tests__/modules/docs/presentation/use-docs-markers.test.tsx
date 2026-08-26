@@ -27,6 +27,7 @@ const missionParentProjection: DocsContentProjection = {
     },
     starredUserIds: [],
     words: [],
+    missionCharacter: null,
     isSpecial: false,
     isMissionParent: true,
 };

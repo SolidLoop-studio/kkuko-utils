@@ -43,7 +43,7 @@ interface DocsPageProp {
         typez: "letter" | "theme" | "ect"
     };
     starCount: string[];
-    isSpecial?: boolean;
+    missionCharacter?: string | null;
     onContentRefresh?: () => Promise<DocsWordData[] | null>;
 }
 
@@ -94,7 +94,7 @@ const DocsDataHome = ({
     data,
     metaData,
     starCount,
-    isSpecial,
+    missionCharacter = null,
     onContentRefresh,
 }: DocsPageProp) => {
     const parentRef = useRef<HTMLDivElement>(null);
@@ -680,7 +680,7 @@ const DocsDataHome = ({
                                                         initialData={item.data || []}
                                                         isMission={activeTab === "mission"}
                                                         isLong={activeTab === "long" || metaData.title.includes("긴단어")}
-                                                        isSp={isSpecial ? { m: metaData.title[metaData.title.length - 1] } : undefined}
+                                                        isSp={missionCharacter === null ? undefined : { m: missionCharacter }}
                                                         onAdminActionComplete={handleAdminActionComplete}
                                                     />
                                                 </div>

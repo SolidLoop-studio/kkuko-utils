@@ -32,6 +32,7 @@ describe('GetDocsContentService', () => {
             metadata: { id: 61, title: '라', lastUpdatedAt: '2026-08-25T04:00:00.000Z', type: 'letter' as const },
             starredUserIds: ['user-1'],
             words: [{ word: '라디오', status: 'ok' as const }],
+            missionCharacter: null,
             isSpecial: false,
             isMissionParent: true,
         };

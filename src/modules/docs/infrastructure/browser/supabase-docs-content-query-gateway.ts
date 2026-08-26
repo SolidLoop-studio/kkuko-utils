@@ -207,6 +207,7 @@ export class SupabaseDocsContentQueryGateway implements DocsContentQueryGateway 
                 metadata: projectionMetadata,
                 starredUserIds,
                 words,
+                missionCharacter: metadata.missionChild?.character ?? null,
                 isSpecial: metadata.missionChild !== null,
                 isMissionParent,
             });
@@ -273,6 +274,23 @@ export class SupabaseDocsContentQueryGateway implements DocsContentQueryGateway 
     }
 
     private async loadEctWords(metadata: DocsMetadata): Promise<DocsContentWord[] | null | undefined> {
+        const missionChild = metadata.missionChild;
+        if (missionChild !== null) {
+            const functionName = missionChild.family === 'kkungkkungtta'
+                ? 'get_mission_len3_words'
+                : 'get_mission_words';
+            const response = await this.client.rpc(functionName, {
+                target_mask: 1 << missionChild.characterIndex,
+            });
+            const words = parseWords(response);
+            return words === null ? undefined : selectMissionWords(
+                words,
+                missionChild.character,
+                missionChild.usesLastCharacter,
+            )
+                .map((word) => ({ word, status: 'ok' }));
+        }
+
         if (metadata.id === 201 || metadata.id === 202) {
             const [wordsResponse, pendingResponse] = await Promise.all([
                 this.client.from('words').select('word').eq('k_canuse', true).gt('length', 8),
@@ -283,21 +301,6 @@ export class SupabaseDocsContentQueryGateway implements DocsContentQueryGateway 
             return approvedWords === null || pendingWords === null ? undefined : toContentWords(approvedWords, pendingWords);
         }
 
-        const missionChild = metadata.missionChild;
-        if (missionChild === null) return null;
-
-        const functionName = missionChild.family === 'kkungkkungtta'
-            ? 'get_mission_len3_words'
-            : 'get_mission_words';
-        const response = await this.client.rpc(functionName, {
-            target_mask: 1 << missionChild.characterIndex,
-        });
-        const words = parseWords(response);
-        return words === null ? undefined : selectMissionWords(
-            words,
-            missionChild.character,
-            missionChild.usesLastCharacter,
-        )
-            .map((word) => ({ word, status: 'ok' }));
+        return null;
     }
 }

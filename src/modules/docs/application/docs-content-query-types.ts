@@ -1,3 +1,5 @@
+import type { MissionChildReference } from './docs-reference-types';
+
 export type DocsContentType = 'letter' | 'theme' | 'ect';
 
 export interface DocsContentWord {
@@ -15,6 +17,7 @@ export interface DocsContentProjection {
     };
     starredUserIds: string[];
     words: DocsContentWord[];
+    missionCharacter: MissionChildReference['character'] | null;
     isSpecial: boolean;
     isMissionParent: boolean;
 }
