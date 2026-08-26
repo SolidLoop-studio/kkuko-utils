@@ -9,6 +9,7 @@ import NotificationWriteForm from "../components/NotificationWriteForm";
 import ErrorModal from "@/src/app/components/ErrModal";
 import type { ErrorMessage } from "@/src/app/types/type";
 import type { NotificationDetailProjection } from "@/src/modules/notifications";
+import type { ApplicationError } from "@/src/shared/application/application-error";
 
 interface NotificationWriteProps {
     notification?: NotificationDetailProjection;
@@ -16,7 +17,14 @@ interface NotificationWriteProps {
 
 export default function NotificationWrite({ notification }: NotificationWriteProps) {
     const user = useSelector((state: RootState) => state.user);
-    const [error, setError] = useState<ErrorMessage | null>(null);
+    const [error, setError] = useState<ApplicationError | null>(null);
+    const modalError: ErrorMessage | null = error === null ? null : {
+        ErrName: "Notification Error",
+        ErrMessage: error.message,
+        ErrStackRace: null,
+        inputValue: notification?.title ?? "",
+        location: "NotificationWrite",
+    };
 
     // 관리자 권한 체크
     if (user.role !== "admin") {
@@ -32,21 +40,10 @@ export default function NotificationWrite({ notification }: NotificationWritePro
 
     return (
         <div className="max-w-4xl mx-auto space-y-6">
-            {error && <ErrorModal error={error} onClose={() => setError(null)} />}
+            {modalError && <ErrorModal error={modalError} onClose={() => setError(null)} />}
             <NotificationWriteForm
                 notification={notification}
-                onError={(err) => {
-                    const supabaseError = err;
-                    const errCode = supabaseError?.['code'];
-                    setError({
-                        ErrName: errCode || "Notification Error",
-                        ErrMessage: errCode === "23P01" ? "모달 공지가 겹쳤습니다 (동일 기간에 모달 공지는 하나만 가능합니다)" : (supabaseError?.message || "공지사항 처리에 실패했습니다."),
-                        ErrStackRace: supabaseError?.details || null,
-                        inputValue: notification?.title || "",
-                        HTTPStatus: errCode,
-                        location: "NotificationWrite"
-                    });
-                }}
+                onError={setError}
             />
         </div>
     );
