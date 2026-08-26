@@ -102,25 +102,55 @@ create temporary table direct_addition_overlap (
     second_session_blocked boolean not null
 );
 do $synchronize$
-declare first_wait_count integer := 0; second_wait_count integer := 0;
+declare first_pause_wait_count integer := 0; second_word_wait_count integer := 0;
 begin
     for attempt in 1..100 loop
-        select pg_catalog.count(*)::integer into first_wait_count from pg_catalog.pg_locks
-        where pid = (select pid from direct_addition_pids where connection_name = 'direct_addition_a')
-          and not granted;
-        exit when first_wait_count > 0;
+        select pg_catalog.count(*)::integer into first_pause_wait_count
+          from pg_catalog.pg_locks as held_lock
+         where held_lock.pid = (
+                   select pid from direct_addition_pids
+                    where connection_name = 'direct_addition_a'
+               )
+           and held_lock.locktype = 'advisory'
+           and held_lock.classid = 947021::oid
+           and held_lock.objid = 1::oid
+           and held_lock.objsubid = 2
+           and held_lock.mode = 'ExclusiveLock'
+           and not held_lock.granted;
+        exit when first_pause_wait_count > 0;
         perform pg_catalog.pg_sleep(0.05);
     end loop;
     perform extensions.dblink_send_query('direct_addition_b',
         $$select public.direct_addition_concurrency_call('raceЖ')$$);
     for attempt in 1..100 loop
-        select pg_catalog.count(*)::integer into second_wait_count from pg_catalog.pg_locks
-        where pid = (select pid from direct_addition_pids where connection_name = 'direct_addition_b')
-          and not granted;
-        exit when second_wait_count > 0;
+        select pg_catalog.count(*)::integer into second_word_wait_count
+          from pg_catalog.pg_locks as held_lock
+          cross join lateral (
+              select pg_catalog.hashtextextended(
+                  'direct-word-addition:raceЖ', 0
+              )::bigint as value
+          ) as expected_key
+         where held_lock.pid = (
+                   select pid from direct_addition_pids
+                    where connection_name = 'direct_addition_b'
+               )
+           and held_lock.locktype = 'advisory'
+           and held_lock.classid = (
+               ((expected_key.value >> 32) & 4294967295::bigint)::oid
+           )
+           and held_lock.objid = (
+               (expected_key.value & 4294967295::bigint)::oid
+           )
+           and held_lock.objsubid = 1
+           and held_lock.mode = 'ExclusiveLock'
+           and not held_lock.granted;
+        exit when second_word_wait_count > 0;
         perform pg_catalog.pg_sleep(0.05);
     end loop;
-    insert into direct_addition_overlap values (first_wait_count > 0, second_wait_count > 0);
+    insert into direct_addition_overlap values (
+        first_pause_wait_count > 0,
+        second_word_wait_count > 0
+    );
     perform extensions.dblink_exec('direct_addition_setup',
         'do $unlock$ begin perform pg_catalog.pg_advisory_unlock(947021, 1); end $unlock$;');
 end;

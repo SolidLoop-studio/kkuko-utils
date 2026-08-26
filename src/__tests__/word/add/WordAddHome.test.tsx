@@ -135,15 +135,18 @@ describe('WordAddHome direct administrator addition', () => {
         addDirectly.mockResolvedValue(err({
             kind: 'infrastructure',
             message: '단어 추가 처리 중 오류가 발생했습니다.',
-            code: 'P0001',
+            code: 'XX999',
         }));
         render(<WordAddHome />);
 
         fireEvent.click(screen.getByRole('button', { name: '테스트 저장' }));
 
-        expect(await screen.findByRole('alert')).toHaveTextContent(
-            'ApplicationError:infrastructure|단어 추가 처리 중 오류가 발생했습니다.|P0001',
+        const alert = await screen.findByRole('alert');
+        expect(alert).toHaveTextContent(
+            'ApplicationError:infrastructure|단어 추가 처리 중 오류가 발생했습니다.|',
         );
+        expect(alert).not.toHaveTextContent('XX999');
+        expect(alert).not.toHaveTextContent('P0001');
     });
 });
 
@@ -185,8 +188,10 @@ describe('WordAddHome user addition request', () => {
 
         fireEvent.click(screen.getByRole('button', { name: '테스트 저장' }));
 
-        expect(await screen.findByRole('alert')).toHaveTextContent(
-            'ApplicationError:infrastructure|데이터 처리 중 오류가 발생했습니다.|P0001',
+        const alert = await screen.findByRole('alert');
+        expect(alert).toHaveTextContent(
+            'ApplicationError:infrastructure|데이터 처리 중 오류가 발생했습니다.|',
         );
+        expect(alert).not.toHaveTextContent('P0001');
     });
 });

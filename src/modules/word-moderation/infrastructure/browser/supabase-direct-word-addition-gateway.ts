@@ -14,30 +14,29 @@ interface DirectWordAdditionRpcClient {
     rpc(functionName: string, args: Record<string, unknown>): Promise<RpcResponse>;
 }
 
-const infrastructureError = (code?: string): ApplicationError => ({
+const infrastructureError = (): ApplicationError => ({
     kind: 'infrastructure',
     message: '단어 추가 처리 중 오류가 발생했습니다.',
-    ...(code === undefined ? {} : { code }),
 });
 
 const publicErrors = {
     DIRECT_WORD_ADDITION_UNAUTHORIZED: {
-        kind: 'unauthorized', message: '인증이 필요합니다.',
+        kind: 'unauthorized', message: '인증이 필요합니다.', code: 'DIRECT_WORD_ADDITION_UNAUTHORIZED',
     },
     DIRECT_WORD_ADDITION_FORBIDDEN: {
-        kind: 'forbidden', message: '권한이 없습니다.',
+        kind: 'forbidden', message: '권한이 없습니다.', code: 'DIRECT_WORD_ADDITION_FORBIDDEN',
     },
     DIRECT_WORD_ADDITION_INVALID_INPUT: {
-        kind: 'validation', message: '입력값이 올바르지 않습니다.',
+        kind: 'validation', message: '입력값이 올바르지 않습니다.', code: 'DIRECT_WORD_ADDITION_INVALID_INPUT',
     },
     DIRECT_WORD_ADDITION_INVALID_THEME: {
-        kind: 'validation', message: '선택한 주제 정보를 확인해 주세요.',
+        kind: 'validation', message: '선택한 주제 정보를 확인해 주세요.', code: 'DIRECT_WORD_ADDITION_INVALID_THEME',
     },
     DIRECT_WORD_ADDITION_DUPLICATE: {
-        kind: 'conflict', message: '이미 존재하는 단어입니다.',
+        kind: 'conflict', message: '이미 존재하는 단어입니다.', code: 'DIRECT_WORD_ADDITION_DUPLICATE',
     },
     DIRECT_WORD_ADDITION_INTERNAL_ERROR: {
-        kind: 'infrastructure', message: '단어 추가 처리 중 오류가 발생했습니다.',
+        kind: 'infrastructure', message: '단어 추가 처리 중 오류가 발생했습니다.', code: 'DIRECT_WORD_ADDITION_INTERNAL_ERROR',
     },
 } as const;
 
@@ -56,8 +55,8 @@ const isSortedUniquePositiveIntegers = (value: unknown): value is number[] => (
 const mapError = (error: RpcError): ApplicationError => {
     const mapped = publicErrors[error.message as keyof typeof publicErrors];
     return mapped
-        ? { ...mapped, code: error.code ?? undefined }
-        : infrastructureError(error.code ?? undefined);
+        ? { ...mapped }
+        : infrastructureError();
 };
 
 const parseResult = (

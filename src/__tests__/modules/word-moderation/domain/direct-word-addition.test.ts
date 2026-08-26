@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import { normalizeDirectWordAdditionCommand } from '@/src/modules/word-moderation/domain/direct-word-addition';
 
 describe('normalizeDirectWordAdditionCommand', () => {
@@ -34,6 +35,52 @@ describe('normalizeDirectWordAdditionCommand', () => {
         expect(normalizeDirectWordAdditionCommand(command, () => false)).toMatchObject({
             ok: false,
             error: { kind: 'validation', field },
+        });
+    });
+
+    it('accepts exact word character and UTF-8 byte boundaries', () => {
+        const koreanBoundaryWord = '가'.repeat(100);
+
+        expect(Buffer.byteLength(koreanBoundaryWord, 'utf8')).toBe(300);
+        expect(normalizeDirectWordAdditionCommand({
+            word: koreanBoundaryWord,
+            themeCodes: [],
+        }, () => false)).toMatchObject({ ok: true });
+    });
+
+    it.each([
+        ['word character limit', '1'.repeat(101)],
+        ['word UTF-8 byte limit', '😀'.repeat(76)],
+    ])('rejects input over the %s', (_description, word) => {
+        expect(normalizeDirectWordAdditionCommand({
+            word,
+            themeCodes: [],
+        }, () => false)).toMatchObject({
+            ok: false,
+            error: { kind: 'validation', field: 'word' },
+        });
+    });
+
+    it('accepts exact theme-code character and UTF-8 byte boundaries', () => {
+        const koreanBoundaryCode = '가'.repeat(64);
+
+        expect(Buffer.byteLength(koreanBoundaryCode, 'utf8')).toBe(192);
+        expect(normalizeDirectWordAdditionCommand({
+            word: '사과',
+            themeCodes: [koreanBoundaryCode],
+        }, () => false)).toMatchObject({ ok: true });
+    });
+
+    it.each([
+        ['theme-code character limit', 'x'.repeat(65)],
+        ['theme-code UTF-8 byte limit', '😀'.repeat(49)],
+    ])('rejects input over the %s', (_description, themeCode) => {
+        expect(normalizeDirectWordAdditionCommand({
+            word: '사과',
+            themeCodes: [themeCode],
+        }, () => false)).toMatchObject({
+            ok: false,
+            error: { kind: 'validation', field: 'themeCodes' },
         });
     });
 });

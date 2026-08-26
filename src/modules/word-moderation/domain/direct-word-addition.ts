@@ -2,6 +2,10 @@ import { err, ok, type Result } from '@/src/shared/application/result';
 import type { DirectWordAdditionCommand } from '../application/direct-word-addition-types';
 
 export const MAX_DIRECT_WORD_ADDITION_THEMES = 100;
+export const MAX_DIRECT_WORD_ADDITION_WORD_CHARACTERS = 100;
+export const MAX_DIRECT_WORD_ADDITION_WORD_UTF8_BYTES = 300;
+export const MAX_DIRECT_WORD_ADDITION_THEME_CODE_CHARACTERS = 64;
+export const MAX_DIRECT_WORD_ADDITION_THEME_CODE_UTF8_BYTES = 192;
 
 export type DirectWordAdditionNoInjungPolicy = (themeCodes: readonly string[]) => boolean;
 
@@ -19,6 +23,20 @@ const isRecord = (value: unknown): value is Record<string, unknown> => (
     typeof value === 'object' && value !== null && !Array.isArray(value)
 );
 
+const characterLength = (value: string) => Array.from(value).length;
+
+const utf8ByteLength = (value: string) => {
+    let length = 0;
+    for (const character of value) {
+        const codePoint = character.codePointAt(0) ?? 0;
+        if (codePoint <= 0x7f) length += 1;
+        else if (codePoint <= 0x7ff) length += 2;
+        else if (codePoint <= 0xffff) length += 3;
+        else length += 4;
+    }
+    return length;
+};
+
 /** 관리자 직접 단어 추가 명령을 정규화하고 순수 어인정 규칙으로 파생값을 계산합니다. */
 export function normalizeDirectWordAdditionCommand(
     command: unknown,
@@ -26,6 +44,11 @@ export function normalizeDirectWordAdditionCommand(
 ): Result<NormalizedDirectWordAdditionCommand> {
     if (!isRecord(command) || typeof command.word !== 'string' || command.word.trim() === '') {
         return validationError('word', '단어를 입력해 주세요.');
+    }
+    const word = command.word.trim();
+    if (characterLength(word) > MAX_DIRECT_WORD_ADDITION_WORD_CHARACTERS
+        || utf8ByteLength(word) > MAX_DIRECT_WORD_ADDITION_WORD_UTF8_BYTES) {
+        return validationError('word', '단어는 100자 이하로 입력해 주세요.');
     }
     if (!Array.isArray(command.themeCodes)
         || command.themeCodes.length > MAX_DIRECT_WORD_ADDITION_THEMES) {
@@ -39,6 +62,10 @@ export function normalizeDirectWordAdditionCommand(
             return validationError('themeCodes', '선택한 주제 정보가 올바르지 않습니다.');
         }
         const themeCode = rawThemeCode.trim();
+        if (characterLength(themeCode) > MAX_DIRECT_WORD_ADDITION_THEME_CODE_CHARACTERS
+            || utf8ByteLength(themeCode) > MAX_DIRECT_WORD_ADDITION_THEME_CODE_UTF8_BYTES) {
+            return validationError('themeCodes', '선택한 주제 정보가 올바르지 않습니다.');
+        }
         if (seenThemeCodes.has(themeCode)) {
             return validationError('themeCodes', '같은 주제는 한 번만 선택할 수 있습니다.');
         }
@@ -48,7 +75,7 @@ export function normalizeDirectWordAdditionCommand(
     themeCodes.sort();
 
     return ok({
-        word: command.word.trim(),
+        word,
         themeCodes,
         noinCanUse: isNoin(themeCodes),
     });

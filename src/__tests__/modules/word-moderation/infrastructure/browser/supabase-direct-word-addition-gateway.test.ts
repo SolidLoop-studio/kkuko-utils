@@ -51,7 +51,7 @@ describe('SupabaseDirectWordAdditionGateway', () => {
 
         const result = await gateway.add({ word: '사과', themeCodes: [] });
 
-        expect(result).toMatchObject({ ok: false, error: { kind, code: 'P0001' } });
+        expect(result).toMatchObject({ ok: false, error: { kind, code: message } });
         if (!result.ok) expect(result.error.message).not.toBe(message);
     });
 
@@ -66,9 +66,12 @@ describe('SupabaseDirectWordAdditionGateway', () => {
         const returned = await gateway.add({ word: '사과', themeCodes: [] });
         const thrown = await gateway.add({ word: '사과', themeCodes: [] });
 
-        expect(returned).toMatchObject({ ok: false, error: { kind: 'infrastructure', code: 'XX999' } });
+        expect(returned).toMatchObject({ ok: false, error: { kind: 'infrastructure' } });
         expect(thrown).toMatchObject({ ok: false, error: { kind: 'infrastructure' } });
-        if (!returned.ok) expect(returned.error.message).not.toContain('sensitive');
+        if (!returned.ok) {
+            expect(returned.error).not.toHaveProperty('code');
+            expect(returned.error.message).not.toContain('sensitive');
+        }
         if (!thrown.ok) expect(thrown.error.message).not.toContain('sensitive');
     });
 

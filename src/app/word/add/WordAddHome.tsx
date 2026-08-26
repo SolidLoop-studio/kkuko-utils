@@ -51,7 +51,7 @@ export default function WordAddHome(){
         setError({
             ErrName: `ApplicationError:${applicationError.kind}`,
             ErrMessage: applicationError.message,
-            ErrStackRace: applicationError.code ?? "",
+            ErrStackRace: "",
             inputValue: "/word/add",
         });
     };

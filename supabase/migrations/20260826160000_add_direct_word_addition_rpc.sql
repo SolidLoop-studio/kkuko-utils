@@ -1,5 +1,30 @@
 begin;
 
+revoke create on schema public from public, anon, authenticated, service_role;
+
+do $security_invariant$
+begin
+    if exists (
+        select 1
+        from pg_catalog.pg_namespace as namespace
+        cross join lateral pg_catalog.aclexplode(
+            coalesce(
+                namespace.nspacl,
+                pg_catalog.acldefault('n', namespace.nspowner)
+            )
+        ) as schema_acl
+        where namespace.nspname = 'public'
+          and schema_acl.grantee = 0
+          and schema_acl.privilege_type = 'CREATE'
+    )
+       or pg_catalog.has_schema_privilege('anon', 'public', 'create')
+       or pg_catalog.has_schema_privilege('authenticated', 'public', 'create')
+       or pg_catalog.has_schema_privilege('service_role', 'public', 'create') then
+        raise exception 'DIRECT_WORD_ADDITION_SECURITY_INVARIANT';
+    end if;
+end;
+$security_invariant$;
+
 create or replace function public.add_word_directly(
     p_word text,
     p_theme_codes text[]
@@ -35,7 +60,11 @@ begin
             message = 'DIRECT_WORD_ADDITION_FORBIDDEN';
     end if;
 
-    if normalized_word is null or normalized_word = '' or p_theme_codes is null then
+    if normalized_word is null
+       or normalized_word = ''
+       or pg_catalog.char_length(normalized_word) > 100
+       or pg_catalog.octet_length(normalized_word) > 300
+       or p_theme_codes is null then
         raise exception using errcode = 'P0001',
             message = 'DIRECT_WORD_ADDITION_INVALID_INPUT';
     end if;
@@ -47,6 +76,8 @@ begin
             where requested_theme.code is null
                or requested_theme.code = ''
                or requested_theme.code <> pg_catalog.btrim(requested_theme.code)
+               or pg_catalog.char_length(requested_theme.code) > 64
+               or pg_catalog.octet_length(requested_theme.code) > 192
        )
        or (
             select pg_catalog.count(*)
@@ -97,11 +128,13 @@ begin
     -- Legacy word-side triggers resolve helper functions from public. Keep the
     -- RPC's persisted search_path empty, expose pg_catalog first, and scope the
     -- compatibility path to this transaction only.
-    perform pg_catalog.set_config('search_path', 'pg_catalog, public', true);
+    perform pg_catalog.set_config('search_path', 'pg_catalog, public, pg_temp', true);
 
     insert into public.words (word, added_by, noin_canuse)
     values (normalized_word, actor, noin_can_use)
     returning * into inserted_word;
+
+    perform pg_catalog.set_config('search_path', '', true);
 
     insert into public.word_themes (word_id, theme_id)
     select inserted_word.id, selected_theme.id
@@ -145,8 +178,6 @@ begin
         perform public.update_last_updates(docs_ids => affected_docs_ids);
     end if;
 
-    perform pg_catalog.set_config('search_path', '', true);
-
     return pg_catalog.jsonb_build_object(
         'wordId', inserted_word.id,
         'word', inserted_word.word,
@@ -181,6 +212,8 @@ exception
             message = 'DIRECT_WORD_ADDITION_INTERNAL_ERROR';
 end;
 $function$;
+
+alter function public.add_word_directly(text, text[]) owner to postgres;
 
 comment on function public.add_word_directly(text, text[])
     is 'Atomically adds one administrator-approved word and all related effects using auth.uid().';
