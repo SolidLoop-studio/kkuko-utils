@@ -1,6 +1,8 @@
+export { DeleteNotificationService } from './application/delete-notification';
 export { GetNotificationDetailService } from './application/get-notification-detail';
 export { GetNotificationListService } from './application/get-notification-list';
 export { parseNotificationRouteId } from './application/parse-notification-route-id';
+export type { NotificationDeleteCommandGateway } from './application/notification-delete-command-ports';
 export type { NotificationDetailQueryGateway } from './application/notification-detail-query-ports';
 export type { NotificationDetailProjection } from './application/notification-detail-query-types';
 export type { NotificationListQueryGateway } from './application/notification-list-query-ports';
@@ -14,3 +16,4 @@ export {
     notificationQueryKeys,
     useModalNotice,
 } from './presentation/use-modal-notice';
+export { useDeleteNotification } from './presentation/use-delete-notification';
