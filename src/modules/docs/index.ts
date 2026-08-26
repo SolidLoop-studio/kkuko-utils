@@ -11,6 +11,7 @@ export type { DocsContentProjection, DocsContentType, DocsContentWord } from './
 export type { PendingDocsRequest } from './application/docs-request-query-types';
 export type { DocsCreationRequestCommand } from './application/docs-creation-request-types';
 export type { SetDocsFavoriteCommand } from './application/docs-favorite-command-ports';
+export type { DocsMarker, DocsMarkerSlot } from './application/docs-marker-query-types';
 export {
     useDocsList,
     type DocsListQueryService,
@@ -45,3 +46,7 @@ export {
     useDocsFavorite,
     type DocsFavoriteCommandService,
 } from './presentation/use-docs-favorite';
+export {
+    useDocsMarkers,
+    type DocsMarkerQueryService,
+} from './presentation/use-docs-markers';

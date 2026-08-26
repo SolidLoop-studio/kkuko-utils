@@ -15,6 +15,7 @@ jest.mock('../../../modules/word-moderation', () => ({
 
 jest.mock('../../../modules/docs', () => ({
     useDocsFavorite: jest.fn(),
+    useDocsMarkers: jest.fn(),
 }));
 
 jest.mock('../../../app/components/ErrModal', () => ({
@@ -35,15 +36,6 @@ jest.mock(
     () => ({ createBrowserWordModerationServices: jest.fn() }),
 );
 
-jest.mock('../../../app/lib/supabaseClient', () => ({
-    SCM: {
-        get: jest.fn(() => ({ docsLastUpdate: jest.fn() })),
-        add: jest.fn(),
-        delete: jest.fn(),
-        update: jest.fn(),
-    },
-}));
-
 jest.mock('@tanstack/react-virtual', () => ({
     useVirtualizer: ({ count }: { count: number }) => ({
         getTotalSize: () => count * 240,
@@ -59,10 +51,9 @@ jest.mock('@tanstack/react-virtual', () => ({
 }));
 
 import { useDocsWordModeration } from '../../../modules/word-moderation';
-import { useDocsFavorite } from '../../../modules/docs';
+import { useDocsFavorite, useDocsMarkers } from '../../../modules/docs';
 import { createBrowserWordModerationServices } from '../../../modules/word-moderation/infrastructure/browser/browser-word-moderation-services';
 import { ok } from '../../../shared/application/result';
-import { SCM } from '../../../app/lib/supabaseClient';
 import { loadingReducer, themeReducer, userReducer } from '../../../app/store/slice';
 import DocsDataHome from '../../../app/words-docs/[id]/DocsDataHome';
 import { useUserWordRequestActions } from '../../../app/words-docs/[id]/use-user-word-request-actions';
@@ -70,12 +61,12 @@ import type { DocsWordData } from '../../../app/words-docs/[id]/docs-word-data';
 
 const mockUseDocsWordModeration = jest.mocked(useDocsWordModeration);
 const mockUseDocsFavorite = jest.mocked(useDocsFavorite);
+const mockUseDocsMarkers = jest.mocked(useDocsMarkers);
 const mockUseUserWordRequestActions = jest.mocked(useUserWordRequestActions);
 const mockCreateBrowserServices = jest.mocked(createBrowserWordModerationServices);
 const approve = jest.fn();
 const reject = jest.fn();
 const deleteDirectly = jest.fn();
-const docsLastUpdate = jest.fn();
 const targetGet = jest.fn();
 const setFavorite = jest.fn();
 
@@ -186,14 +177,16 @@ describe('DocsDataHome administrator removal completion integration', () => {
             setFavorite,
             isPending: false,
         });
+        mockUseDocsMarkers.mockReturnValue({
+            data: undefined,
+            error: null,
+            isLoading: false,
+        } as ReturnType<typeof useDocsMarkers>);
         mockUseUserWordRequestActions.mockReturnValue({
             cancelAddRequest: jest.fn(),
             cancelDeleteRequest: jest.fn(),
             requestDelete: jest.fn(),
         });
-        jest.mocked(SCM.get).mockReturnValue({
-            docsLastUpdate,
-        } as never);
         targetGet.mockResolvedValue(ok({ targets: [] }));
         mockCreateBrowserServices.mockReturnValue({
             docsWordMutationTargetService: { get: targetGet },
@@ -358,10 +351,14 @@ describe('DocsDataHome administrator removal completion integration', () => {
 
     it('미션글자 marker는 하위 문서의 현지화된 갱신 시각과 없는 경우 안내를 표시한다', async () => {
         const localizedTime = jest.spyOn(Date.prototype, 'toLocaleString').mockReturnValue('현지화된 시각');
-        docsLastUpdate.mockImplementation(async (docsId: number) => ({
-            data: docsId === 209 ? { last_update: '2026-08-25T04:00:00.000Z' } : null,
+        mockUseDocsMarkers.mockReturnValue({
+            data: [
+                { character: '가', docsId: 9_001, lastUpdatedAt: '2026-08-25T04:00:00.000Z' },
+                ...Array.from({ length: 13 }, () => null),
+            ],
             error: null,
-        }));
+            isLoading: false,
+        } as ReturnType<typeof useDocsMarkers>);
 
         render(
             <DocsDataHome
@@ -375,10 +372,35 @@ describe('DocsDataHome administrator removal completion integration', () => {
 
         expect(await screen.findByText('현지화된 시각')).toBeInTheDocument();
         expect(screen.getAllByText('업데이트 정보 없음')).toHaveLength(13);
-        expect(docsLastUpdate).toHaveBeenCalledTimes(14);
-        expect(docsLastUpdate).toHaveBeenNthCalledWith(1, 209);
-        expect(docsLastUpdate).toHaveBeenNthCalledWith(14, 222);
+        expect(screen.getByRole('link', { name: /가 현지화된 시각/ }))
+            .toHaveAttribute('href', '/words-docs/9001');
+        expect(mockUseDocsMarkers).toHaveBeenCalledWith(208, true);
         localizedTime.mockRestore();
+    });
+
+    it('미션 marker 조회 실패가 메인 문서 페이지를 깨뜨리지 않는다', () => {
+        // Break caught: promoting an auxiliary marker query failure to a page-level error.
+        mockUseDocsMarkers.mockReturnValue({
+            data: undefined,
+            error: {
+                kind: 'infrastructure',
+                message: '미션 글자 업데이트 정보를 불러오는 중 오류가 발생했습니다.',
+            },
+            isLoading: false,
+        } as ReturnType<typeof useDocsMarkers>);
+
+        render(
+            <DocsDataHome
+                id={208}
+                data={[]}
+                metaData={{ title: '미션글자', lastUpdate: '2026-08-22T00:00:00.000Z', typez: 'ect' }}
+                starCount={[]}
+            />,
+            { wrapper: createWrapper('guest', undefined) },
+        );
+
+        expect(screen.getByRole('heading', { name: '미션글자', level: 1 })).toBeInTheDocument();
+        expect(screen.getAllByText('업데이트 정보 없음')).toHaveLength(14);
     });
 
     it('관리자 action 완료 뒤 content snapshot을 다시 받아 표시한다', async () => {

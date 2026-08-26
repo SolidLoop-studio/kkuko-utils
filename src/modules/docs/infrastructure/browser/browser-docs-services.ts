@@ -8,6 +8,7 @@ import { CheckLetterDocsDuplicateService } from '../../application/check-letter-
 import { RequestDocsCreationService } from '../../application/request-docs-creation';
 import { RecordDocsViewService } from '../../application/record-docs-view';
 import { SetDocsFavoriteService } from '../../application/set-docs-favorite';
+import { GetDocsMarkersService } from '../../application/get-docs-markers';
 import { SupabaseDocsListQueryGateway } from './supabase-docs-list-query-gateway';
 import { SupabaseDocsLogQueryGateway } from './supabase-docs-log-query-gateway';
 import { SupabaseDocsInfoQueryGateway } from './supabase-docs-info-query-gateway';
@@ -18,6 +19,7 @@ import { SupabaseLetterDocsDuplicateQueryGateway } from './supabase-letter-docs-
 import { SupabaseDocsCreationRequestGateway } from './supabase-docs-creation-request-gateway';
 import { SupabaseDocsViewCommandGateway } from './supabase-docs-view-command-gateway';
 import { SupabaseDocsFavoriteCommandGateway } from './supabase-docs-favorite-command-gateway';
+import { SupabaseDocsMarkerQueryGateway } from './supabase-docs-marker-query-gateway';
 
 export interface BrowserDocsServices {
     docsListQueryService: GetDocsListService;
@@ -30,6 +32,7 @@ export interface BrowserDocsServices {
     docsCreationRequestService: RequestDocsCreationService;
     docsViewCommandService: RecordDocsViewService;
     docsFavoriteCommandService: SetDocsFavoriteService;
+    docsMarkerQueryService: GetDocsMarkersService;
 }
 
 /** 브라우저 문서 기능에서 사용할 애플리케이션 서비스를 조합한다. */
@@ -63,5 +66,8 @@ export const createBrowserDocsServices = (): BrowserDocsServices => ({
     ),
     docsFavoriteCommandService: new SetDocsFavoriteService(
         new SupabaseDocsFavoriteCommandGateway(),
+    ),
+    docsMarkerQueryService: new GetDocsMarkersService(
+        new SupabaseDocsMarkerQueryGateway(),
     ),
 });

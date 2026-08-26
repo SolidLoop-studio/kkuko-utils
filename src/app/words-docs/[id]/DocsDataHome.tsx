@@ -17,7 +17,6 @@ import {
     Loader2,
     Calendar,
 } from "lucide-react";
-import { SCM } from "@/src/app/lib/supabaseClient";
 import { useSelector } from "react-redux";
 import { RootState } from "@/src/app/store/store";
 import LoginRequiredModal from "@/src/app/components/LoginRequiredModal";
@@ -26,7 +25,7 @@ import CompleteModal from "@/src/app/components/CompleteModal";
 import ToC from "./TableOfContents";
 import { createBrowserWordModerationServices } from "@/src/modules/word-moderation/infrastructure/browser/browser-word-moderation-services";
 import type { DocsWordMutationTarget } from "@/src/modules/word-moderation";
-import { useDocsFavorite } from "@/src/modules/docs";
+import { useDocsFavorite, useDocsMarkers } from "@/src/modules/docs";
 import type { ApplicationError } from "@/src/shared/application/application-error";
 import {
     DOCS_WORD_TARGET_REFRESH_ERROR_MESSAGE,
@@ -102,11 +101,12 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial, onContentRefre
     const [loginNeedModalOpen, setLoginNeedModalOpen] = useState<boolean>(false);
     const [errorModalView, setErrorModalView] = useState<ErrorMessage | null>(null);
     const [isAdminCompleteModalOpen, setIsAdminCompleteModalOpen] = useState(false);
-    const [charLastUpdates, setCharLastUpdates] = useState<Record<number, string | null>>({});
+    const isMissionParent = specialIds.includes(id);
     const {
         setFavorite,
         isPending: isFavoritePending,
     } = useDocsFavorite();
+    const { data: docsMarkers } = useDocsMarkers(id, isMissionParent);
 
     // 유저 즐겨찾기 상태 업데이트
     useEffect(() => {
@@ -123,31 +123,6 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial, onContentRefre
                 : data
         ));
     }, [data]);
-
-    useEffect(() => {
-        if (![208, 223, 238].includes(id)) return;
-
-        let mounted = true;
-        const fetchUpdates = async () => {
-            const results = await Promise.all(MISSION_CHARS.split('').map(async (_char, index) => {
-                const docId = id + index + 1;
-                try {
-                    const res = await SCM.get().docsLastUpdate(docId);
-                    return { docId, last: res.data?.last_update ?? null };
-                } catch {
-                    return { docId, last: null };
-                }
-            }));
-
-            if (!mounted) return;
-            const updates: Record<number, string | null> = {};
-            results.forEach(({ docId, last }) => { updates[docId] = last; });
-            setCharLastUpdates(updates);
-        };
-
-        void fetchUpdates();
-        return () => { mounted = false; };
-    }, [id]);
 
     // 미션 단어 미리 구하기
     const mission = useMemo(() => {
@@ -593,24 +568,32 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial, onContentRefre
                     <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg border-0 p-8">
                         <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">미션글자</h2>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                            {["가", "나", "다", "라", "마", "바", "사", "아", "자", "차", "카", "타", "파", "하"].map((char, index) => (
-                                <Link
-                                    key={char}
-                                    href={`/words-docs/${id + index + 1}`}
-                                    className="flex items-center justify-center p-6 bg-gray-50 dark:bg-gray-800 rounded-xl hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors duration-200 group"
-                                >
-                                    <span className="text-2xl font-bold text-gray-700 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">
-                                        {char}
-                                    </span>
-                                    <div className="mt-2 text-center">
-                                        {charLastUpdates[id + index + 1] ? (
-                                            <span className="text-xs text-gray-500 dark:text-gray-400">{new Date(charLastUpdates[id + index + 1] as string).toLocaleString(undefined, { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone })}</span>
-                                        ) : (
-                                            <span className="text-xs text-gray-400">업데이트 정보 없음</span>
-                                        )}
-                                    </div>
-                                </Link>
-                            ))}
+                            {MISSION_CHARS.split('').map((char, index) => {
+                                const marker = docsMarkers?.[index] ?? null;
+                                const cardContent = (
+                                    <>
+                                        <span className="text-2xl font-bold text-gray-700 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                                            {char}
+                                        </span>
+                                        <div className="mt-2 text-center">
+                                            {marker?.lastUpdatedAt ? (
+                                                <span className="text-xs text-gray-500 dark:text-gray-400">{new Date(marker.lastUpdatedAt).toLocaleString(undefined, { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone })}</span>
+                                            ) : (
+                                                <span className="text-xs text-gray-400">업데이트 정보 없음</span>
+                                            )}
+                                        </div>
+                                    </>
+                                );
+                                const cardClassName = "flex items-center justify-center p-6 bg-gray-50 dark:bg-gray-800 rounded-xl hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors duration-200 group";
+
+                                return marker === null ? (
+                                    <div key={char} className={cardClassName}>{cardContent}</div>
+                                ) : (
+                                    <Link key={char} href={`/words-docs/${marker.docsId}`} className={cardClassName}>
+                                        {cardContent}
+                                    </Link>
+                                );
+                            })}
                         </div>
                     </div>
                 ) : (

@@ -16,6 +16,11 @@ jest.mock('../../../modules/docs', () => ({
         setFavorite: jest.fn().mockResolvedValue({ ok: true, value: undefined }),
         isPending: false,
     })),
+    useDocsMarkers: jest.fn(() => ({
+        data: undefined,
+        error: null,
+        isLoading: false,
+    })),
 }));
 
 jest.mock('next/navigation', () => ({
