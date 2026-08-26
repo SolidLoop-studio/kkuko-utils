@@ -7,13 +7,4 @@ export interface DocsMarker {
 
 export type DocsMarkerSlot = DocsMarker | null;
 
-const missionParentReferenceCodes = [
-    'ko.word-chain.mission',
-    'ko.reverse-word-chain.mission',
-    'ko.kkungkkungtta.mission',
-] as const;
-
-/** 불변 reference code가 지원하는 미션 글자 상위 문서인지 판별합니다. */
-export const isMissionParentReferenceCode = (referenceCode: string): boolean => (
-    missionParentReferenceCodes.some((candidate) => candidate === referenceCode)
-);
+export { isMissionParentReferenceCode } from '@/src/modules/docs/application/docs-reference-types';
