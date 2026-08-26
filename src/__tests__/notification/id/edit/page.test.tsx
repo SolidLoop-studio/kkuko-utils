@@ -55,23 +55,26 @@ describe('NotificationEditPage', () => {
         expect(mockNotificationWrite).toHaveBeenCalledWith({ notification: projection });
     });
 
-    it('uses not-found for invalid or missing notifications', async () => {
-        mockGetServerNotificationDetail.mockResolvedValueOnce(err({
-            kind: 'validation',
-            message: '유효한 공지사항 ID가 필요합니다.',
-            field: 'id',
-        })).mockResolvedValueOnce(err({
+    it.each(['01', '1e2', '0x10', '+1', ' 1', '1 ', String(Number.MAX_SAFE_INTEGER + 1)])(
+        'rejects invalid edit route id %s before loading notification data',
+        async (id) => {
+            await expect(NotificationEditPage({ params: Promise.resolve({ id }) })).rejects.toThrow(
+                'NEXT_HTTP_ERROR_FALLBACK;404',
+            );
+            expect(mockGetServerNotificationDetail).not.toHaveBeenCalled();
+        },
+    );
+
+    it('uses not-found for a missing notification', async () => {
+        mockGetServerNotificationDetail.mockResolvedValue(err({
             kind: 'not-found',
             message: '공지사항을 찾을 수 없습니다.',
         }));
-
-        await expect(NotificationEditPage({ params: Promise.resolve({ id: '12abc' }) })).rejects.toThrow(
-            'NEXT_HTTP_ERROR_FALLBACK;404',
-        );
         await expect(NotificationEditPage({ params: Promise.resolve({ id: '404' }) })).rejects.toThrow(
             'NEXT_HTTP_ERROR_FALLBACK;404',
         );
-        expect(mockNotFound).toHaveBeenCalledTimes(2);
+        expect(mockNotFound).toHaveBeenCalledTimes(1);
+        expect(mockGetServerNotificationDetail).toHaveBeenCalledWith(404);
     });
 
     it('renders the stable infrastructure error without using not-found', async () => {

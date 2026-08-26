@@ -977,8 +977,8 @@ Notifications:
   - 목록 page의 legacy `allNotifications`와 전역 hook의 `notice` SCM getter를 제거했다.
 - 공지 상세 query 분리 (완료)
   - 상세·metadata·편집 page는 camelCase `NotificationDetailProjection`과 같은 server composition을 사용하며 browser SCM/생성 DB Row/PostgREST 응답을 받지 않는다.
-  - Application service가 양의 safe integer ID를 검증하고 validation·not-found·infrastructure를 안정적인 `Result`로 구분한다. 서버 adapter의 반환·throw 오류 원문은 presentation에 노출하지 않는다.
-  - 상세 page와 metadata는 React 요청 단위 `cache` loader를 공유해 같은 요청의 중복 조회를 제거하며 전역 cross-request cache나 별도 `revalidate` 정책은 추가하지 않는다.
+  - 공유 route parser는 leading zero, 지수·16진수·부호·소수·공백 형식을 거부하고 canonical positive safe decimal만 조회 ID로 허용한다. Application service도 양의 safe integer ID를 다시 검증하고 validation·not-found·infrastructure를 안정적인 `Result`로 구분한다. 서버 adapter의 반환·throw 오류 원문은 presentation에 노출하지 않는다.
+  - 상세 page와 metadata는 공식 React 요청 단위 `cache` loader를 공유해 같은 요청의 중복 조회를 제거하며 전역 cross-request cache나 `unstable_cache`, 별도 `revalidate` 정책은 추가하지 않는다. 테스트는 연속된 두 요청에서 같은 ID도 새 server client/query와 새 결과를 사용함을 검증한다.
   - 현재 상세 조회 소비자는 모두 Server Component이므로 미사용 browser adapter는 만들지 않았다. 같은 Application port는 실제 browser 소비자가 생길 때 browser client adapter로 재사용할 수 있다.
   - edit page의 마지막 read-side `SCM.get().notificationById` 소비자를 이전하고 해당 getter를 제거했다. not-found는 기존 `notFound()` 흐름을 유지하고 infrastructure 오류는 안전한 오류 화면으로 구분한다.
 - 공지 관리자 command 분리

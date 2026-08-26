@@ -1,4 +1,5 @@
 import ErrorPage from "@/src/app/components/ErrorPage";
+import { parseNotificationRouteId } from "@/src/modules/notifications/application/parse-notification-route-id";
 import { getServerNotificationDetail } from "@/src/modules/notifications/infrastructure/server/server-notification-services";
 import NotificationDetail from "./NotificationDetail";
 import { notFound } from "next/navigation";
@@ -10,7 +11,13 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
     const { id } = await params;
-    const result = await getServerNotificationDetail(Number(id));
+    const notificationId = parseNotificationRouteId(id);
+    if (notificationId === null) {
+        return {
+            title: "공지사항을 찾을 수 없습니다",
+        };
+    }
+    const result = await getServerNotificationDetail(notificationId);
 
     if (!result.ok) {
         if (result.error.kind === 'infrastructure') {
@@ -35,7 +42,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
  */
 export default async function NotificationDetailPage({ params }: PageProps) {
     const { id } = await params;
-    const result = await getServerNotificationDetail(Number(id));
+    const notificationId = parseNotificationRouteId(id);
+    if (notificationId === null) notFound();
+    const result = await getServerNotificationDetail(notificationId);
 
     if (!result.ok) {
         if (result.error.kind === 'validation' || result.error.kind === 'not-found') notFound();

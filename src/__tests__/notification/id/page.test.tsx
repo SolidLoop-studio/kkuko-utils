@@ -57,17 +57,25 @@ describe('NotificationDetailPage', () => {
         expect(mockNotificationDetail).toHaveBeenCalledWith({ notification: projection });
     });
 
-    it.each(['0', '-1', '1.5', '12abc'])('uses the not-found boundary for invalid id %s', async (id) => {
-        mockGetServerNotificationDetail.mockResolvedValue(err({
-            kind: 'validation',
-            message: '유효한 공지사항 ID가 필요합니다.',
-            field: 'id',
-        }));
-
+    it.each([
+        '0',
+        '-1',
+        '01',
+        '1.0',
+        '1.5',
+        '1e2',
+        '0x10',
+        '+1',
+        ' 1',
+        '1 ',
+        '12abc',
+        String(Number.MAX_SAFE_INTEGER + 1),
+    ])('rejects invalid route id %s before loading notification data', async (id) => {
         await expect(NotificationDetailPage({ params: Promise.resolve({ id }) })).rejects.toThrow(
             'NEXT_HTTP_ERROR_FALLBACK;404',
         );
         expect(mockNotFound).toHaveBeenCalledTimes(1);
+        expect(mockGetServerNotificationDetail).not.toHaveBeenCalled();
     });
 
     it('uses the not-found boundary only for a missing notification', async () => {
@@ -119,4 +127,14 @@ describe('NotificationDetailPage', () => {
             description: '끄코 유틸의 공지사항입니다.',
         });
     });
+
+    it.each(['0', '01', '1e2', '0x10', '+1', ' 1', '1 ', String(Number.MAX_SAFE_INTEGER + 1)])(
+        'returns missing metadata for invalid route id %s without loading notification data',
+        async (id) => {
+            await expect(generateMetadata({ params: Promise.resolve({ id }) })).resolves.toEqual({
+                title: '공지사항을 찾을 수 없습니다',
+            });
+            expect(mockGetServerNotificationDetail).not.toHaveBeenCalled();
+        },
+    );
 });
