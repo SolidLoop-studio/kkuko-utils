@@ -12,6 +12,10 @@ jest.mock('../../../modules/word-moderation', () => ({
 jest.mock('../../../modules/docs', () => ({
     useDocsContent: jest.fn(),
     useRecordDocsView: jest.fn(),
+    useDocsFavorite: jest.fn(() => ({
+        setFavorite: jest.fn().mockResolvedValue({ ok: true, value: undefined }),
+        isPending: false,
+    })),
 }));
 
 jest.mock('next/navigation', () => ({

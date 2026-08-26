@@ -21,12 +21,13 @@ import { SCM } from "@/src/app/lib/supabaseClient";
 import { useSelector } from "react-redux";
 import { RootState } from "@/src/app/store/store";
 import LoginRequiredModal from "@/src/app/components/LoginRequiredModal";
-import type { PostgrestError } from "@supabase/supabase-js";
 import ErrorModal from "@/src/app/components/ErrModal";
 import CompleteModal from "@/src/app/components/CompleteModal";
 import ToC from "./TableOfContents";
 import { createBrowserWordModerationServices } from "@/src/modules/word-moderation/infrastructure/browser/browser-word-moderation-services";
 import type { DocsWordMutationTarget } from "@/src/modules/word-moderation";
+import { useDocsFavorite } from "@/src/modules/docs";
+import type { ApplicationError } from "@/src/shared/application/application-error";
 import {
     DOCS_WORD_TARGET_REFRESH_ERROR_MESSAGE,
     type DocsWordAdminAction,
@@ -89,6 +90,7 @@ const isSameDocsWordRow = (left: DocsWordData, right: DocsWordData) => (
 
 const DocsDataHome = ({ id, data, metaData, starCount, isSpecial, onContentRefresh }: DocsPageProp) => {
     const parentRef = useRef<HTMLDivElement>(null);
+    const isFavoriteSubmissionPendingRef = useRef(false);
     const [tocList, setTocList] = useState<string[]>([]);
     const [wordsData, setWordsData] = useState<DocsWordData[]>(data);
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -101,6 +103,10 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial, onContentRefre
     const [errorModalView, setErrorModalView] = useState<ErrorMessage | null>(null);
     const [isAdminCompleteModalOpen, setIsAdminCompleteModalOpen] = useState(false);
     const [charLastUpdates, setCharLastUpdates] = useState<Record<number, string | null>>({});
+    const {
+        setFavorite,
+        isPending: isFavoritePending,
+    } = useDocsFavorite();
 
     // 유저 즐겨찾기 상태 업데이트
     useEffect(() => {
@@ -310,22 +316,33 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial, onContentRefre
         if (!user.uuid) {
             return setLoginNeedModalOpen(true);
         }
-        if (isUserStarreda) {
-            const { error } = await SCM.delete().startDocs({ docsId: id, userId: user.uuid });
-            if (error) return makeError(error)
-        } else {
-            const { error } = await SCM.add().starDocs({ docsId: id, userId: user.uuid });
-            if (error) return makeError(error);
+        if (isFavoritePending || isFavoriteSubmissionPendingRef.current) {
+            return;
         }
 
-        setIsUserStarreda(!isUserStarreda)
-    }
+        const nextIsStarred = !isUserStarreda;
+        isFavoriteSubmissionPendingRef.current = true;
+        try {
+            const result = await setFavorite({ docsId: id, isStarred: nextIsStarred });
+            if (!result.ok) {
+                if (result.error.kind === 'unauthorized') {
+                    setLoginNeedModalOpen(true);
+                } else {
+                    showFavoriteError(result.error);
+                }
+                return;
+            }
+            setIsUserStarreda(nextIsStarred);
+        } finally {
+            isFavoriteSubmissionPendingRef.current = false;
+        }
+    };
 
-    const makeError = (error: PostgrestError) => {
+    const showFavoriteError = (error: ApplicationError) => {
         setErrorModalView({
-            ErrName: error.name,
+            ErrName: 'DocsFavoriteError',
             ErrMessage: error.message,
-            ErrStackRace: error.stack,
+            ErrStackRace: error.code ?? null,
             inputValue: null
         });
     };
@@ -481,8 +498,9 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial, onContentRefre
                                     className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 ${isUserStarreda
                                             ? "bg-yellow-400 text-yellow-900 hover:bg-yellow-300"
                                             : "bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm"
-                                        }`}
+                                    }`}
                                     onClick={handleDocsStar}
+                                    disabled={isFavoritePending}
                                 >
                                     <Star
                                         className="w-5 h-5"

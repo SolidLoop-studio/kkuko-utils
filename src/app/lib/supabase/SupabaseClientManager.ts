@@ -1,5 +1,5 @@
 import { ISupabaseClientManager, IAddManager, IGetManager, IDeleteManager, IUpdateManager } from './ISupabaseClientManager';
-import type { PostgrestError, PostgrestSingleResponse, Session, SupabaseClient } from '@supabase/supabase-js';
+import type { PostgrestError, Session, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/src/app/types/database.types';
 import type { addWordQueryType, addWordThemeQueryType, DocsLogData, WordLogData } from '@/src/app/types/type';
 import { chunk } from 'es-toolkit';
@@ -36,9 +36,6 @@ class AddManager implements IAddManager {
     }
     public async waitWord(insertWaitWordData: { word: string, requested_by: string | null, request_type: "delete", word_id: number } | { word: string, requested_by: string | null, request_type: "add" }) {
         return await this.supabase.from('wait_words').insert(insertWaitWordData).select('*').maybeSingle();
-    }
-    public async starDocs({ docsId, userId }: { docsId: number; userId: string; }): Promise<PostgrestSingleResponse<null>> {
-        return await this.supabase.from('user_star_docs').insert({ docs_id: docsId, user_id: userId })
     }
     public async waitWordThemes(insertWaitWordThemeData: { wait_word_id: number, theme_id: number }[]) {
         return await this.supabase.from('wait_word_themes').insert(insertWaitWordThemeData);
@@ -357,9 +354,6 @@ class DeleteManager implements IDeleteManager {
             };
         }
         return await this.supabase.rpc('delete_word_themes_wait_bulk', { pairs: query });
-    }
-    public async startDocs({ docsId, userId }: { docsId: number, userId: string }) {
-        return await this.supabase.from('user_star_docs').delete().eq('docs_id', docsId).eq('user_id', userId);
     }
     public async waitWordsByWords(words: string[]) {
         return await this.supabase.from('wait_words').delete().in('word', words);

@@ -98,6 +98,15 @@ jest.mock(
     }),
 );
 
+jest.mock(
+    '../../../../../modules/docs/infrastructure/browser/supabase-docs-favorite-command-gateway',
+    () => ({
+        SupabaseDocsFavoriteCommandGateway: jest.fn().mockImplementation(() => ({
+            set: jest.fn().mockResolvedValue({ ok: true, value: undefined }),
+        })),
+    }),
+);
+
 import { GetDocsContentService } from '@/src/modules/docs/application/get-docs-content';
 import { GetDocsInfoService } from '@/src/modules/docs/application/get-docs-info';
 import { GetDocsListService } from '@/src/modules/docs/application/get-docs-list';
@@ -105,6 +114,7 @@ import { GetDocsLogsService } from '@/src/modules/docs/application/get-docs-logs
 import { CheckLetterDocsDuplicateService } from '@/src/modules/docs/application/check-letter-docs-duplicate';
 import { ModerateDocsRequestsService } from '@/src/modules/docs/application/moderate-docs-requests';
 import { RequestDocsCreationService } from '@/src/modules/docs/application/request-docs-creation';
+import { SetDocsFavoriteService } from '@/src/modules/docs/application/set-docs-favorite';
 import { createBrowserDocsServices } from '@/src/modules/docs/infrastructure/browser/browser-docs-services';
 import { SupabaseDocsContentQueryGateway } from '@/src/modules/docs/infrastructure/browser/supabase-docs-content-query-gateway';
 import { SupabaseDocsInfoQueryGateway } from '@/src/modules/docs/infrastructure/browser/supabase-docs-info-query-gateway';
@@ -217,5 +227,16 @@ describe('browser docs services', () => {
             docsName: '가',
             requesterId: 'user-7',
         })).resolves.toEqual({ ok: true, value: undefined });
+    });
+
+    it('creates a fresh docs favorite command service wired to its adapter', async () => {
+        // Break caught: omitting or sharing the favorite command service in browser composition.
+        const first = createBrowserDocsServices();
+        const second = createBrowserDocsServices();
+
+        expect(first.docsFavoriteCommandService).toBeInstanceOf(SetDocsFavoriteService);
+        expect(first.docsFavoriteCommandService).not.toBe(second.docsFavoriteCommandService);
+        await expect(first.docsFavoriteCommandService.set({ docsId: 55, isStarred: true }))
+            .resolves.toEqual({ ok: true, value: undefined });
     });
 });

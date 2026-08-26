@@ -46,7 +46,7 @@
 - Next.js Route Handler는 모든 DB 요청의 의무적인 중간 계층이 아니다. 서버 secret 또는 서버 전용 통합이 필요한 경우에만 사용한다.
 - 기존 `SCM`은 한 번에 제거하지 않고, 위험도가 높은 기능부터 strangler 방식으로 축소한다.
 
-첫 세로 슬라이스인 관리자 단어 대량 승인, `admin/del-words`의 재개 가능한 대량 삭제, `admin/request-words`의 개별 승인·반려 mutation, `words-docs/[id]`의 관리자 요청 승인·반려와 직접 삭제, `admin/request-docs`의 승인·반려 mutation과 대기 요청 목록 query, `words-docs/[id]`의 사용자 `RequestDelete`, `CancelAddRequest`, `CancelDeleteRequest` mutation, `word/search/[query]/WordInfo.tsx`의 요청·취소·주제 변경 요청·직접 삭제 mutation, `word/add/WordAddHome.tsx`의 일반 사용자 단일 추가 요청, 그리고 `word/adds/WordsAddHome.tsx`의 대량 추가 요청 mutation이 위 원칙으로 이전되었다. docs 내부 단어 관리는 기존 요청 moderation RPC를 재사용하며, 주제 변경 moderation과 중복 없는 주제 docs 로그 기록도 지원한다. `WordInfo.tsx`에서는 `admin`만 직접 삭제하고 `r4`는 일반 사용자의 삭제 요청 흐름을 따른다. 원자적인 사용자 단어 주제 변경, 단일 추가 요청, 대량 추가 요청 RPC는 로컬 DB integration/concurrency test로 검증되었다. 대량 요청은 300개 단위 원자적·멱등 batch로 실행되어 같은 파일 재제출로 안전하게 재개할 수 있다. `WordAddHome.tsx`의 관리자·`r4` 직접 추가 경로는 사용자 요청 슬라이스 범위 밖이므로 legacy SCM mutation으로 유지한다. `WordsDocsHome.tsx`의 글자 문서 중복 조회와 생성 요청은 docs module의 query/command hook으로 이전되었고, 컴포넌트의 SCM import와 대체된 `letterDocs`·`waitDocs` manager 메서드는 제거되었다. `DocsDataPage.tsx`의 best-effort 조회 수 기록도 docs module command hook으로 이전되어, 성공적으로 단어를 보강한 mounted 문서마다 한 번만 기록하고 대체된 `docView` manager 메서드는 제거되었다. Phase 3 `word-catalog`의 검색·자동완성, 단어 상세 query, 고급 검색 Route Handler, 다운로드, 통계, 랜덤 연결 단어 query는 완료되었다. Phase 4 docs read의 관리자 대기 요청 목록, 공개 docs 목록, docs 로그·정보·본문 projection query도 완료되었다. Phase 0B의 47개 의미 reference, semantic resolver, trigger 전환, 서로 다른 PK 검증과 누락 reference 원자적 실패 검증은 로컬에서 완료되었고, `55320..55329` remapped port의 disposable bootstrap은 `npm run verify:local-db`로 재현된다. 관련 migration의 cloud Supabase 반영은 완료로 간주하지 않으며 사용자/운영자가 통제하는 rollout 대기 상태다. 남은 docs 경계는 `starDocs`/`startDocs` 즐겨찾기 mutation과 미션글자 marker 카드의 `docsLastUpdate(id)` 보조 read이며, 아직 검사하지 않은 다음 경계를 추측하지 않는다.
+첫 세로 슬라이스인 관리자 단어 대량 승인, `admin/del-words`의 재개 가능한 대량 삭제, `admin/request-words`의 개별 승인·반려 mutation, `words-docs/[id]`의 관리자 요청 승인·반려와 직접 삭제, `admin/request-docs`의 승인·반려 mutation과 대기 요청 목록 query, `words-docs/[id]`의 사용자 `RequestDelete`, `CancelAddRequest`, `CancelDeleteRequest` mutation, `word/search/[query]/WordInfo.tsx`의 요청·취소·주제 변경 요청·직접 삭제 mutation, `word/add/WordAddHome.tsx`의 일반 사용자 단일 추가 요청, 그리고 `word/adds/WordsAddHome.tsx`의 대량 추가 요청 mutation이 위 원칙으로 이전되었다. docs 내부 단어 관리는 기존 요청 moderation RPC를 재사용하며, 주제 변경 moderation과 중복 없는 주제 docs 로그 기록도 지원한다. `WordInfo.tsx`에서는 `admin`만 직접 삭제하고 `r4`는 일반 사용자의 삭제 요청 흐름을 따른다. 원자적인 사용자 단어 주제 변경, 단일 추가 요청, 대량 추가 요청 RPC는 로컬 DB integration/concurrency test로 검증되었다. 대량 요청은 300개 단위 원자적·멱등 batch로 실행되어 같은 파일 재제출로 안전하게 재개할 수 있다. `WordAddHome.tsx`의 관리자·`r4` 직접 추가 경로는 사용자 요청 슬라이스 범위 밖이므로 legacy SCM mutation으로 유지한다. `WordsDocsHome.tsx`의 글자 문서 중복 조회와 생성 요청은 docs module의 query/command hook으로 이전되었고, 컴포넌트의 SCM import와 대체된 `letterDocs`·`waitDocs` manager 메서드는 제거되었다. `DocsDataPage.tsx`의 best-effort 조회 수 기록도 docs module command hook으로 이전되어, 성공적으로 단어를 보강한 mounted 문서마다 한 번만 기록하고 대체된 `docView` manager 메서드는 제거되었다. `DocsDataHome.tsx`의 즐겨찾기는 `auth.uid()` 기반 desired-state RPC와 docs command hook으로 이전되어 반복 설정이 멱등적이며, 성공한 `Result` 뒤에만 UI 상태를 바꾸고 대체된 `starDocs`·`startDocs` manager 메서드는 제거되었다. Phase 3 `word-catalog`의 검색·자동완성, 단어 상세 query, 고급 검색 Route Handler, 다운로드, 통계, 랜덤 연결 단어 query는 완료되었다. Phase 4 docs read의 관리자 대기 요청 목록, 공개 docs 목록, docs 로그·정보·본문 projection query도 완료되었다. Phase 0B의 47개 의미 reference, semantic resolver, trigger 전환, 서로 다른 PK 검증과 누락 reference 원자적 실패 검증은 로컬에서 완료되었고, `55320..55329` remapped port의 disposable bootstrap은 `npm run verify:local-db`로 재현된다. 관련 migration의 cloud Supabase 반영은 완료로 간주하지 않으며 사용자/운영자가 통제하는 rollout 대기 상태다. 남은 docs 경계는 미션글자 marker 카드의 `docsLastUpdate(id)` 보조 read이며, 아직 검사하지 않은 다음 경계를 추측하지 않는다.
 
 ## 3. 현재 상태
 
@@ -931,10 +931,10 @@ stack을 fresh reset하고 모든 DB 테스트를 실행한 뒤 항상 중지한
 - word-moderation과의 결합은 UI의 다중 호출이 아니라 명시적인 port/RPC로 처리
 
 현재 완료 범위는 공개 목록·로그·정보·본문 projection, 관리자 대기 요청 목록과 moderation,
-`WordsDocsHome`의 기존 글자 문서/대기 요청 중복 조회와 생성 요청 command, 그리고 `DocsDataPage`의
-best-effort 조회 수 기록이다. 각 컴포넌트는 feature hook만 사용하며 대체된 SCM import와
-`letterDocs`·`waitDocs`·`docView`는 제거되었다. 남은 docs 경계는 `starDocs`/`startDocs` 즐겨찾기
-mutation과 미션글자 marker 카드의 `docsLastUpdate(id)` 보조 read다. 아직 검사하지 않은 경계를 다음 작업으로 추측하지 않는다.
+`WordsDocsHome`의 기존 글자 문서/대기 요청 중복 조회와 생성 요청 command, `DocsDataPage`의
+best-effort 조회 수 기록, 그리고 `DocsDataHome`의 인증된 멱등 즐겨찾기 command다. 각 컴포넌트는
+feature hook을 사용하며 대체된 `letterDocs`·`waitDocs`·`docView`·`starDocs`·`startDocs`는 제거되었다.
+남은 docs 경계는 미션글자 marker 카드의 `docsLastUpdate(id)` 보조 read다. 아직 검사하지 않은 경계를 다음 작업으로 추측하지 않는다.
 
 ### Phase 5. Identity, Profile, Notifications 이전
 
@@ -1046,7 +1046,7 @@ Notifications:
 | 관리자 docs 요청 moderation | 완료 | 승인·반려 mutation과 대기 요청 목록 query 이전 완료; migration cloud rollout은 사용자/운영자 실행 대기 |
 | 사용자 단어 요청 | 부분 완료 | Phase 2 mutation 코드 이전은 완료; 단일·대량 추가 요청을 포함한 관련 cloud migration rollout은 사용자/운영자 실행 대기 |
 | word-catalog 조회 | 완료 | 브라우저 검색·자동완성, 단어 상세 query, 고급 검색 Route Handler, 다운로드, 통계, 랜덤 연결 단어 query 완료 |
-| docs context | 부분 완료 | 공개 목록·로그·정보·본문, 관리자 대기 요청 목록/moderation, `WordsDocsHome` 중복 조회·생성 요청과 `DocsDataPage` best-effort 조회 수 기록 이전 완료; SCM import와 `letterDocs`·`waitDocs`·`docView` 제거. 남은 경계는 `starDocs`/`startDocs`, marker-card `docsLastUpdate(id)` |
+| docs context | 부분 완료 | 공개 목록·로그·정보·본문, 관리자 대기 요청 목록/moderation, `WordsDocsHome` 중복 조회·생성 요청, `DocsDataPage` best-effort 조회 수 기록과 `DocsDataHome` 멱등 즐겨찾기 이전 완료; `letterDocs`·`waitDocs`·`docView`·`starDocs`·`startDocs` 제거. 남은 경계는 marker-card `docsLastUpdate(id)` |
 | identity/profile | 미착수 | Auth와 profile DB 계약 분리 |
 | notifications/storage | 미착수 | query/command/storage port 분리 |
 | SCM 최종 제거 | 대기 | 모든 context 이전 후 실행 |
@@ -1074,7 +1074,7 @@ Notifications:
 
 기능 전환은 다음 순서로 진행한다.
 
-1. 남은 docs 경계인 `starDocs`/`startDocs` 즐겨찾기 mutation과 미션글자 marker 카드의 `docsLastUpdate(id)` 보조 read를 실제 소비자와 요구사항부터 검사한다.
+1. 남은 docs 경계인 미션글자 marker 카드의 `docsLastUpdate(id)` 보조 read를 실제 소비자와 요구사항부터 검사한다.
 2. 검사하지 않은 경계를 다음 작업으로 추측하지 않고, 한 사용자 행동씩 Application port·Infrastructure adapter·feature hook으로 이전한다.
 3. 각 단계에서 대체된 SCM 메서드와 import를 즉시 제거한다.
 

@@ -10,6 +10,7 @@ export type { DocsInfoProjection, DocsInfoType } from './application/docs-info-q
 export type { DocsContentProjection, DocsContentType, DocsContentWord } from './application/docs-content-query-types';
 export type { PendingDocsRequest } from './application/docs-request-query-types';
 export type { DocsCreationRequestCommand } from './application/docs-creation-request-types';
+export type { SetDocsFavoriteCommand } from './application/docs-favorite-command-ports';
 export {
     useDocsList,
     type DocsListQueryService,
@@ -40,3 +41,7 @@ export {
     useRecordDocsView,
     type DocsViewCommandService,
 } from './presentation/use-record-docs-view';
+export {
+    useDocsFavorite,
+    type DocsFavoriteCommandService,
+} from './presentation/use-docs-favorite';

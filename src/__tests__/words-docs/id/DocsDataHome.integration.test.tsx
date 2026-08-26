@@ -1,12 +1,20 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { configureStore } from '@reduxjs/toolkit';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { PropsWithChildren } from 'react';
 import { Provider } from 'react-redux';
 
+jest.mock('next/navigation', () => ({
+    useRouter: () => ({ push: jest.fn() }),
+}));
+
 jest.mock('../../../modules/word-moderation', () => ({
     useDocsWordModeration: jest.fn(),
+}));
+
+jest.mock('../../../modules/docs', () => ({
+    useDocsFavorite: jest.fn(),
 }));
 
 jest.mock('../../../app/words-docs/[id]/use-user-word-request-actions', () => ({
@@ -42,6 +50,7 @@ jest.mock('@tanstack/react-virtual', () => ({
 }));
 
 import { useDocsWordModeration } from '../../../modules/word-moderation';
+import { useDocsFavorite } from '../../../modules/docs';
 import { createBrowserWordModerationServices } from '../../../modules/word-moderation/infrastructure/browser/browser-word-moderation-services';
 import { ok } from '../../../shared/application/result';
 import { SCM } from '../../../app/lib/supabaseClient';
@@ -51,6 +60,7 @@ import { useUserWordRequestActions } from '../../../app/words-docs/[id]/use-user
 import type { DocsWordData } from '../../../app/words-docs/[id]/docs-word-data';
 
 const mockUseDocsWordModeration = jest.mocked(useDocsWordModeration);
+const mockUseDocsFavorite = jest.mocked(useDocsFavorite);
 const mockUseUserWordRequestActions = jest.mocked(useUserWordRequestActions);
 const mockCreateBrowserServices = jest.mocked(createBrowserWordModerationServices);
 const approve = jest.fn();
@@ -58,6 +68,15 @@ const reject = jest.fn();
 const deleteDirectly = jest.fn();
 const docsLastUpdate = jest.fn();
 const targetGet = jest.fn();
+const setFavorite = jest.fn();
+
+const createDeferred = <T,>() => {
+    let resolve!: (value: T) => void;
+    const promise = new Promise<T>((nextResolve) => {
+        resolve = nextResolve;
+    });
+    return { promise, resolve };
+};
 
 const createWrapper = (
     role: 'guest' | 'r1' | 'r4' | 'admin' = 'admin',
@@ -153,6 +172,11 @@ describe('DocsDataHome administrator removal completion integration', () => {
             error: null,
             clearError: jest.fn(),
         });
+        setFavorite.mockResolvedValue(ok(undefined));
+        mockUseDocsFavorite.mockReturnValue({
+            setFavorite,
+            isPending: false,
+        });
         mockUseUserWordRequestActions.mockReturnValue({
             cancelAddRequest: jest.fn(),
             cancelDeleteRequest: jest.fn(),
@@ -165,6 +189,129 @@ describe('DocsDataHome administrator removal completion integration', () => {
         mockCreateBrowserServices.mockReturnValue({
             docsWordMutationTargetService: { get: targetGet },
         } as never);
+    });
+
+    it('opens the existing login-required Modal without submitting for a guest', async () => {
+        // Break caught: calling the authenticated favorite command for a guest or removing the existing login prompt.
+        const user = userEvent.setup();
+        render(
+            <DocsDataHome
+                id={55}
+                data={[]}
+                metaData={{ title: '테스트 문서', lastUpdate: '2026-08-22T00:00:00.000Z', typez: 'theme' }}
+                starCount={[]}
+            />,
+            { wrapper: createWrapper('guest', '') },
+        );
+
+        await user.click(screen.getByRole('button', { name: '0' }));
+
+        expect(await screen.findByText('로그인이 필요합니다')).toBeInTheDocument();
+        expect(setFavorite).not.toHaveBeenCalled();
+    });
+
+    it('changes the favorite count only after a successful desired-state Result', async () => {
+        // Break caught: optimistically flipping before the command commits or sending a user UUID to the boundary.
+        const deferred = createDeferred<ReturnType<typeof ok<void>>>();
+        setFavorite.mockReturnValue(deferred.promise);
+        const user = userEvent.setup();
+        render(
+            <DocsDataHome
+                id={55}
+                data={[]}
+                metaData={{ title: '테스트 문서', lastUpdate: '2026-08-22T00:00:00.000Z', typez: 'theme' }}
+                starCount={[]}
+            />,
+            { wrapper: createWrapper('r1', 'user-1') },
+        );
+
+        await user.click(screen.getByRole('button', { name: '0' }));
+
+        expect(setFavorite).toHaveBeenCalledWith({ docsId: 55, isStarred: true });
+        expect(screen.getByRole('button', { name: '0' })).toBeInTheDocument();
+        deferred.resolve(ok(undefined));
+        await waitFor(() => expect(screen.getByRole('button', { name: '1' })).toBeInTheDocument());
+    });
+
+    it('keeps the favorite state and shows the existing ErrorModal when the command fails', async () => {
+        // Break caught: flipping favorite UI on failure or leaking raw database errors outside the existing Modal.
+        setFavorite.mockResolvedValue({
+            ok: false,
+            error: { kind: 'not-found', message: '문서를 찾을 수 없습니다.' },
+        });
+        const user = userEvent.setup();
+        render(
+            <DocsDataHome
+                id={55}
+                data={[]}
+                metaData={{ title: '테스트 문서', lastUpdate: '2026-08-22T00:00:00.000Z', typez: 'theme' }}
+                starCount={[]}
+            />,
+            { wrapper: createWrapper('r1', 'user-1') },
+        );
+
+        await user.click(screen.getByRole('button', { name: '0' }));
+
+        expect(await screen.findByText('문서를 찾을 수 없습니다.')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '0' })).toBeInTheDocument();
+    });
+
+    it('uses the login-required Modal for a stale authenticated session failure', async () => {
+        // Break caught: showing an unauthenticated RPC result as an opaque database error.
+        setFavorite.mockResolvedValue({
+            ok: false,
+            error: { kind: 'unauthorized', message: '인증이 필요합니다.' },
+        });
+        const user = userEvent.setup();
+        render(
+            <DocsDataHome
+                id={55}
+                data={[]}
+                metaData={{ title: '테스트 문서', lastUpdate: '2026-08-22T00:00:00.000Z', typez: 'theme' }}
+                starCount={[]}
+            />,
+            { wrapper: createWrapper('r1', 'user-1') },
+        );
+
+        await user.click(screen.getByRole('button', { name: '0' }));
+
+        expect(await screen.findByText('로그인이 필요합니다')).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: '닫기' }));
+        expect(screen.getByRole('button', { name: '0' })).toBeInTheDocument();
+    });
+
+    it('prevents a concurrent double submission and disables the button while pending', async () => {
+        // Break caught: dispatching the same desired-state mutation twice before the first result settles.
+        const deferred = createDeferred<ReturnType<typeof ok<void>>>();
+        setFavorite.mockReturnValue(deferred.promise);
+        const { rerender } = render(
+            <DocsDataHome
+                id={55}
+                data={[]}
+                metaData={{ title: '테스트 문서', lastUpdate: '2026-08-22T00:00:00.000Z', typez: 'theme' }}
+                starCount={[]}
+            />,
+            { wrapper: createWrapper('r1', 'user-1') },
+        );
+
+        const favoriteButton = screen.getByRole('button', { name: '0' });
+        fireEvent.click(favoriteButton);
+        fireEvent.click(favoriteButton);
+        expect(setFavorite).toHaveBeenCalledTimes(1);
+
+        mockUseDocsFavorite.mockReturnValue({ setFavorite, isPending: true });
+        rerender(
+            <DocsDataHome
+                id={55}
+                data={[]}
+                metaData={{ title: '테스트 문서', lastUpdate: '2026-08-22T00:00:00.000Z', typez: 'theme' }}
+                starCount={[]}
+            />,
+        );
+        expect(screen.getByRole('button', { name: '0' })).toBeDisabled();
+
+        deferred.resolve(ok(undefined));
+        await waitFor(() => expect(screen.getByRole('button', { name: '1' })).toBeInTheDocument());
     });
 
     it.each(cases)('$name으로 마지막 행을 제거해도 완료 Modal이 유지된다', async ({ row, actionText }) => {
