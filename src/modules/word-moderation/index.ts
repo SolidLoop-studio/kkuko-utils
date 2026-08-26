@@ -13,6 +13,12 @@ export {
 export {
     GetPendingWordModerationRequestsService,
 } from './application/get-pending-word-moderation-requests';
+export { AddWordDirectlyService } from './application/add-word-directly';
+export type { DirectWordAdditionGateway } from './application/direct-word-addition-ports';
+export type {
+    DirectWordAdditionCommand,
+    DirectWordAdditionResult,
+} from './application/direct-word-addition-types';
 export type {
     WordApprovalJobStore,
     WordApprovalOperationGateway,
@@ -81,6 +87,10 @@ export {
     useWordRequestModeration,
     type WordRequestModerationService,
 } from './presentation/use-word-request-moderation';
+export {
+    useDirectWordAddition,
+    type DirectWordAdditionService,
+} from './presentation/use-direct-word-addition';
 export {
     useDocsWordModeration,
     type DirectWordDeletionService,

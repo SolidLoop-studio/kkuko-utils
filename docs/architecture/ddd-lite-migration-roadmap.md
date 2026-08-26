@@ -2,7 +2,7 @@
 
 > 상태: 전환 진행 중
 >
-> 기준일: 2026-08-23
+> 기준일: 2026-08-26
 >
 > 적용 범위: Kkuko Utils의 Supabase 데이터 접근, 인증, DB mutation, 조회 상태 관리
 
@@ -46,7 +46,7 @@
 - Next.js Route Handler는 모든 DB 요청의 의무적인 중간 계층이 아니다. 서버 secret 또는 서버 전용 통합이 필요한 경우에만 사용한다.
 - 기존 `SCM`은 한 번에 제거하지 않고, 위험도가 높은 기능부터 strangler 방식으로 축소한다.
 
-첫 세로 슬라이스인 관리자 단어 대량 승인, `admin/del-words`의 재개 가능한 대량 삭제, `admin/request-words`의 개별 승인·반려 mutation, `words-docs/[id]`의 관리자 요청 승인·반려와 직접 삭제, `admin/request-docs`의 승인·반려 mutation과 대기 요청 목록 query, `words-docs/[id]`의 사용자 `RequestDelete`, `CancelAddRequest`, `CancelDeleteRequest` mutation, `word/search/[query]/WordInfo.tsx`의 요청·취소·주제 변경 요청·직접 삭제 mutation, `word/add/WordAddHome.tsx`의 일반 사용자 단일 추가 요청, 그리고 `word/adds/WordsAddHome.tsx`의 대량 추가 요청 mutation이 위 원칙으로 이전되었다. docs 내부 단어 관리는 기존 요청 moderation RPC를 재사용하며, 주제 변경 moderation과 중복 없는 주제 docs 로그 기록도 지원한다. `WordInfo.tsx`에서는 `admin`만 직접 삭제하고 `r4`는 일반 사용자의 삭제 요청 흐름을 따른다. 원자적인 사용자 단어 주제 변경, 단일 추가 요청, 대량 추가 요청 RPC는 로컬 DB integration/concurrency test로 검증되었다. 대량 요청은 300개 단위 원자적·멱등 batch로 실행되어 같은 파일 재제출로 안전하게 재개할 수 있다. `WordAddHome.tsx`의 관리자·`r4` 직접 추가 경로는 사용자 요청 슬라이스 범위 밖이므로 legacy SCM mutation으로 유지한다. `WordsDocsHome.tsx`의 글자 문서 중복 조회와 생성 요청은 docs module의 query/command hook으로 이전되었고, 컴포넌트의 SCM import와 대체된 `letterDocs`·`waitDocs` manager 메서드는 제거되었다. `DocsDataPage.tsx`의 best-effort 조회 수 기록도 docs module command hook으로 이전되어, 성공적으로 단어를 보강한 mounted 문서마다 한 번만 기록하고 대체된 `docView` manager 메서드는 제거되었다. `DocsDataHome.tsx`의 즐겨찾기는 `auth.uid()` 기반 desired-state RPC와 docs command hook으로 이전되어 반복 설정이 멱등적이며, 성공한 `Result` 뒤에만 UI 상태를 바꾸고 대체된 `starDocs`·`startDocs` manager 메서드는 제거되었다. 미션글자 marker 카드는 상위 문서의 불변 `reference_code`를 확인하고 14개 하위 reference를 한 번에 조회하는 docs query hook으로 이전되어, 실제 하위 PK를 사용하고 누락 문서는 `null` marker로 유지하며 조회 실패는 본문 렌더링과 분리한다. 대체된 read-side `docsLastUpdate(id)` manager 메서드도 제거되었다. Phase 3 `word-catalog`의 검색·자동완성, 단어 상세 query, 고급 검색 Route Handler, 다운로드, 통계, 랜덤 연결 단어 query는 완료되었다. Phase 4 docs read의 관리자 대기 요청 목록, 공개 docs 목록, docs 로그·정보·본문 projection query도 완료되었다. Phase 0B의 47개 의미 reference, semantic resolver, trigger 전환, 서로 다른 PK 검증과 누락 reference 원자적 실패 검증은 로컬에서 완료되었고, `55320..55329` remapped port의 disposable bootstrap은 `npm run verify:local-db`로 재현된다. 관련 migration의 cloud Supabase 반영은 완료로 간주하지 않으며 사용자/운영자가 통제하는 rollout 대기 상태다. 아직 검사하지 않은 다음 docs 경계를 추측하지 않는다.
+관리자 단어 대량 승인·삭제, 요청 moderation, 사용자 단어 요청, `word-catalog` 조회와 주요 docs 경계가 위 원칙으로 이전되었다. `WordAddHome.tsx`의 일반 사용자 요청뿐 아니라 관리자·`r4` 직접 추가도 feature hook과 원자적 RPC를 사용한다. 직접 추가 RPC는 actor/role을 DB에서 결정하고 단어·주제 관계·단어 로그·중복 없는 docs 로그·최근 수정 효과를 한 transaction으로 처리하며, behavior/concurrency pgTAP으로 검증되었다. Phase 0B의 47개 의미 reference와 disposable local DB 검증도 완료되었다. 관련 cloud Supabase migration은 사용자/운영자가 통제하는 rollout 대기 상태이며, 아직 검사하지 않은 다음 경계를 추측하지 않는다.
 
 ## 3. 현재 상태
 
@@ -123,7 +123,6 @@ git grep -n -E "\bSCM\." -- "src/**/*.ts" "src/**/*.tsx"
 | 기능군 | 대표 파일 | 현재 위험 |
 | --- | --- | --- |
 | 관리자 요청 단어 조회 | `admin/request-words/AdminWrapper.tsx` | 대기 요청 목록의 DB Row와 query shape가 presentation에 노출. `ThemeSelectModal.tsx`의 주제 조회는 word-catalog cache를 재사용 |
-| 관리자 단어 직접 추가 | `word/add/WordAddHome.tsx` | 관리자·`r4` 직접 추가의 다중 mutation과 docs 갱신 순서가 legacy SCM에 남음 |
 | 인증·프로필 | `AutoLogin.tsx`, `auth/auth.tsx`, `profile/**` | Auth SDK 상태와 사용자 DB profile 조회가 SCM에 결합 |
 | 공지 | `notification/**`, `hooks/useNotice.ts` | 조회·작성·Storage 업로드가 하나의 manager에 결합 |
 
@@ -864,7 +863,8 @@ React Query hook으로 이전했다. Infrastructure가 세 조회, 300개 chunk,
   - 요청자 ID는 `auth.uid()`에서 결정한다.
   - 요청과 주제 관계는 하나의 원자적 RPC transaction으로 생성한다.
   - 로컬 pgTAP behavior/concurrency test 25 assertions로 검증되었다.
-  - 관리자·`r4` 직접 추가 경로는 이번 사용자 요청 슬라이스 범위 밖이므로 legacy SCM mutation을 유지한다.
+  - 관리자·`r4` 직접 추가도 actor/role을 DB에서 결정하고 단어·주제 관계·단어 로그·중복 없는 docs 로그·최근 수정 효과를 하나의 RPC transaction으로 처리한다.
+  - 직접 추가 경로는 로컬 pgTAP behavior/concurrency test 32 assertions로 권한, rollback, 중복과 동시 실행을 검증했다.
   - cloud Supabase 적용은 사용자/운영자가 통제하는 rollout 대기 상태다.
 - `word/adds/WordsAddHome.tsx` (완료)
   - 새 요청 생성, 기존 대기 요청 보강, 등록 단어 주제 추가 요청을 하나의 RPC 경계로 이전했다.
@@ -894,7 +894,7 @@ React Query hook으로 이전했다. Infrastructure가 세 조회, 300개 chunk,
    - `src/modules/word-catalog/presentation`의 검색, 자동완성, 주제 query hook과 React Query key를 사용한다.
 2. 단어 상세 (완료)
    - `src/app/word/search/[query]/WordInfoPage.tsx`의 상세, 연관 단어, docs 조회를 `word-catalog` query service와 React Query hook으로 이전했다.
-   - `word/add/WordAddHome.tsx`의 관리자·`r4` 직접 추가 경로는 중복 단어 존재 확인에 `wordInfoByWord`를 계속 사용한다. 이 경로는 단어 상세 조회 슬라이스 밖이므로 해당 legacy getter는 유지한다.
+   - `word/add/WordAddHome.tsx`의 관리자·`r4` 직접 추가는 DB transaction 내부에서 중복을 검사하므로 legacy `wordInfoByWord` getter를 제거했다.
 3. 고급 검색 Route Handler (완료)
 4. 다운로드 (완료)
    - `src/app/word/words-download/WordsDownloadHome.tsx`를 `word-catalog` 다운로드 query service와 React Query hook으로 이전했다.
@@ -1050,7 +1050,8 @@ Notifications:
 | local base schema | 완료 | `55320..55329` remapped port의 disposable local bootstrap과 versioned seed 검증 완료 |
 | docs 의미 키 | 완료 | 47개 reference와 varying-PK/누락-reference/rollback 검증 완료; cloud rollout은 사용자/운영자 대기 |
 | 관리자 단어 삭제 (`admin/del-words`) | 완료 | cloud Supabase migration은 사용자/운영자 실행 대기, 운영 지표 관찰 |
-| 관리자 요청 단어/개별 승인 | 완료 | 개별 승인·반려 mutation, 주제 선택 조회, 대기 요청 목록 query를 `word-moderation` 서비스와 React Query hook으로 이전하고 `allWordWaitTheme`·`waitWordsThemes` legacy getter를 제거함; 다음 별도 경계는 관리자·`r4` 직접 단어 추가 transaction |
+| 관리자 요청 단어/개별 승인 | 완료 | 개별 승인·반려 mutation, 주제 선택 조회, 대기 요청 목록 query를 `word-moderation` 서비스와 React Query hook으로 이전하고 `allWordWaitTheme`·`waitWordsThemes` legacy getter를 제거함 |
+| 관리자·`r4` 단어 직접 추가 | 완료 | DB 권한 판정과 단일 transaction RPC 이전, local behavior/concurrency 32 assertions 완료; cloud rollout은 사용자/운영자 대기 |
 | docs 내부 관리자 단어 moderation | 완료 | 기존 요청 moderation RPC 재사용; 직접 삭제 cloud migration은 사용자/운영자 통제 rollout 대기 |
 | 관리자 docs 요청 moderation | 완료 | 승인·반려 mutation과 대기 요청 목록 query 이전 완료; migration cloud rollout은 사용자/운영자 실행 대기 |
 | 사용자 단어 요청 | 부분 완료 | Phase 2 mutation 코드 이전은 완료; 단일·대량 추가 요청을 포함한 관련 cloud migration rollout은 사용자/운영자 실행 대기 |

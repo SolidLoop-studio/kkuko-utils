@@ -1,7 +1,6 @@
 import { ISupabaseClientManager, IAddManager, IGetManager, IDeleteManager, IUpdateManager } from './ISupabaseClientManager';
 import type { PostgrestError, Session, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/src/app/types/database.types';
-import type { addWordQueryType, addWordThemeQueryType, DocsLogData, WordLogData } from '@/src/app/types/type';
 import { StorageError } from '@supabase/storage-js';
 import axios from 'axios';
 
@@ -21,18 +20,6 @@ function storageErrorToPostgresError(storageError: StorageError): PostgrestError
 class AddManager implements IAddManager {
     constructor(private readonly supabase: SupabaseClient<Database>) { }
 
-    public async docsLog(logsData: DocsLogData[]) {
-        return await this.supabase.from('docs_logs').insert(logsData);
-    }
-    public async wordLog(logsData: WordLogData[]) {
-        return await this.supabase.from('logs').insert(logsData);
-    }
-    public async word(insertWordData: addWordQueryType[]) {
-        return await this.supabase.from('words').insert(insertWordData).select('*');
-    }
-    public async wordThemes(insertWordThemesData: addWordThemeQueryType[]) {
-        return await this.supabase.from('word_themes').upsert(insertWordThemesData, { ignoreDuplicates: true, onConflict: "word_id,theme_id" }).select('words(*),themes(*)');
-    }
     public async waitWord(insertWaitWordData: { word: string, requested_by: string | null, request_type: "delete", word_id: number } | { word: string, requested_by: string | null, request_type: "add" }) {
         return await this.supabase.from('wait_words').insert(insertWaitWordData).select('*').maybeSingle();
     }
@@ -69,9 +56,6 @@ class GetManager implements IGetManager {
     private wordLastLetterCountsCache: Record<string, { count: number, k_count: number, n_count: number }> = {};
     private wordLetterCountsCacheTime: number = 0;
 
-    public async wordInfoByWord(word: string) {
-        return await this.supabase.from('words').select('*,users(nickname)').eq('word', word).maybeSingle();
-    }
     public async allDocs() {
         let q = this.supabase.from('docs').select('*, users(*)');
         if (process.env.NODE_ENV === 'production') {
@@ -351,9 +335,6 @@ class UpdateManager implements IUpdateManager {
 
     public async userContribution({ userId, amount = 1 }: { userId: string, amount?: number }) {
         return await this.supabase.rpc('increment_contribution', { target_id: userId, inc_amount: amount });
-    }
-    public async docsLastUpdate(docs_ids: number[]) {
-        await this.supabase.rpc('update_last_updates', { docs_ids });
     }
     public async notification(id: number, data: { title?: string; body?: string; img?: string | null; end_at: string, is_important?: boolean; is_modal?: boolean }) {
         return await this.supabase.from('notification').update(data).eq('id', id).select('*').single();

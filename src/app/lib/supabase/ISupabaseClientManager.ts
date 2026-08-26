@@ -1,11 +1,9 @@
-import type { addWordQueryType, addWordThemeQueryType, DocsLogData, WordLogData } from '@/src/app/types/type';
 import { AuthError, OAuthResponse, PostgrestError, PostgrestSingleResponse, Session, Subscription } from '@supabase/supabase-js';
 import type { Database } from '@/src/app/types/database.types'
 
 type wait_word = Database['public']['Tables']['wait_words']['Row']
 type theme = Database['public']['Tables']['themes']['Row']
 type word = Database['public']['Tables']['words']['Row']
-type word_theme = {words: word, themes: theme }
 type docs = Database['public']['Tables']['docs']['Row']
 type user = Database['public']['Tables']['users']['Row'];
 type docs_log = Database['public']['Tables']['docs_logs']['Row'];
@@ -18,10 +16,6 @@ type delete_word_themes_bulk = Database['public']['Functions']['delete_word_them
 
 // add 관련 타입
 export interface IAddManager {
-    docsLog(logsData: DocsLogData[]): Promise<PostgrestSingleResponse<null>>;
-    wordLog(logsData: WordLogData[]): Promise<PostgrestSingleResponse<null>>;
-    word(insertWordData: addWordQueryType[]): Promise<PostgrestSingleResponse<word[]>>;
-    wordThemes(insertWordThemesData: addWordThemeQueryType[]): Promise<PostgrestSingleResponse<word_theme[]>>;
     waitWord(insertWaitWordData: { word: string, requested_by: string | null, request_type: "delete"; word_id: number; } | {word: string, requested_by: string | null, request_type: "add"}): Promise<PostgrestSingleResponse<wait_word | null>>;
     waitWordThemes(insertWaitWordThemeData: { wait_word_id: number; theme_id: number; }[]): Promise<PostgrestSingleResponse<null>>
     nickname(nick: string): Promise<PostgrestSingleResponse<user>>;
@@ -32,7 +26,6 @@ export interface IAddManager {
 
 // get 관련 타입
 export interface IGetManager{
-    wordInfoByWord(word: string): Promise<PostgrestSingleResponse<word & {users: {nickname: string} | null} | null>>;
     allDocs(): Promise<PostgrestSingleResponse<(docs & { users: user | null })[]>>;
     allThemes(): Promise<PostgrestSingleResponse<theme[]>>
     allWaitWords(c?:"add" | "delete"): Promise<PostgrestSingleResponse<(wait_word & {words: word | null; users: user | null})[]>>;
@@ -77,7 +70,6 @@ export interface IDeleteManager{
 // update 관련 타입
 export interface IUpdateManager{
     userContribution({ userId, amount }: { userId: string, amount?: number }): Promise<PostgrestSingleResponse<undefined>>;
-    docsLastUpdate(docs_ids: number[]): Promise<void>;
     notification(id: number, data: { title?: string; body?: string; img?: string | null; end_at?: string | null; is_important?: boolean; is_modal?: boolean }): Promise<PostgrestSingleResponse<notification>>;
 }
 

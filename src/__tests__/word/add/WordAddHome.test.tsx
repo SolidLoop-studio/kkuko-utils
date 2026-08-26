@@ -1,18 +1,21 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { useSelector } from 'react-redux';
-import useSWR from 'swr';
 
 import WordAddHome from '../../../app/word/add/WordAddHome';
+import { useWordThemes } from '../../../modules/word-catalog';
+import { useDirectWordAddition } from '../../../modules/word-moderation';
 import { useUserWordRequests } from '../../../modules/word-requests';
 import { err, ok } from '../../../shared/application/result';
 
 const legacyWaitWord = jest.fn();
 const legacyWaitWordThemes = jest.fn();
 const requestAddition = jest.fn();
+const addDirectly = jest.fn();
 
 jest.mock('react-redux', () => ({ useSelector: jest.fn() }));
-jest.mock('swr', () => ({ __esModule: true, default: jest.fn() }));
+jest.mock('../../../modules/word-catalog', () => ({ useWordThemes: jest.fn() }));
+jest.mock('../../../modules/word-moderation', () => ({ useDirectWordAddition: jest.fn() }));
 jest.mock('../../../modules/word-requests', () => ({ useUserWordRequests: jest.fn() }));
 jest.mock('../../../app/lib/supabaseClient', () => ({
     SCM: {
@@ -54,12 +57,18 @@ beforeEach(() => {
     jest.mocked(useSelector).mockImplementation((selector) => selector({
         user: { uuid: 'user-1', role: 'r1' },
     } as never));
-    jest.mocked(useSWR).mockReturnValue({
+    jest.mocked(useWordThemes).mockReturnValue({
         data: [
             { id: 1, code: 'animal', name: '동물' },
             { id: 2, code: 'place', name: '지명' },
         ],
-    } as ReturnType<typeof useSWR>);
+    } as ReturnType<typeof useWordThemes>);
+    jest.mocked(useDirectWordAddition).mockReturnValue({
+        addDirectly,
+        isPending: false,
+        error: null,
+        clearError: jest.fn(),
+    });
     jest.mocked(useUserWordRequests).mockReturnValue({
         requestAddition,
         requestAdditions: jest.fn(),
@@ -78,6 +87,64 @@ beforeEach(() => {
             { themeCode: 'place', themeName: '지명' },
         ],
     }));
+    addDirectly.mockResolvedValue(ok({
+        wordId: 31,
+        word: '가방',
+        noinCanUse: false,
+        themeIds: [1, 2],
+        affectedDocsIds: [10, 20],
+    }));
+});
+
+describe('WordAddHome direct administrator addition', () => {
+    it.each(['admin', 'r4'])('routes %s additions through the atomic feature hook', async (role) => {
+        jest.mocked(useSelector).mockImplementation((selector) => selector({
+            user: { uuid: 'admin-user', role },
+        } as never));
+        render(<WordAddHome />);
+
+        fireEvent.click(screen.getByRole('button', { name: '테스트 저장' }));
+
+        await waitFor(() => expect(addDirectly).toHaveBeenCalledWith({
+            word: '가방',
+            themeCodes: ['animal', 'place'],
+        }));
+        expect(requestAddition).not.toHaveBeenCalled();
+        expect(await screen.findByRole('dialog')).toHaveTextContent('동물, 지명');
+    });
+
+    it('shows duplicate additions in the existing failure modal', async () => {
+        jest.mocked(useSelector).mockImplementation((selector) => selector({
+            user: { uuid: 'admin-user', role: 'admin' },
+        } as never));
+        addDirectly.mockResolvedValue(err({
+            kind: 'conflict',
+            message: '이미 존재하는 단어입니다.',
+        }));
+        render(<WordAddHome />);
+
+        fireEvent.click(screen.getByRole('button', { name: '테스트 저장' }));
+
+        expect(await screen.findByRole('status')).toHaveTextContent('이미 존재하는 단어입니다.');
+    });
+
+    it('shows stable direct-addition application errors without raw database text', async () => {
+        jest.mocked(useSelector).mockImplementation((selector) => selector({
+            user: { uuid: 'admin-user', role: 'r4' },
+        } as never));
+        addDirectly.mockResolvedValue(err({
+            kind: 'infrastructure',
+            message: '단어 추가 처리 중 오류가 발생했습니다.',
+            code: 'P0001',
+        }));
+        render(<WordAddHome />);
+
+        fireEvent.click(screen.getByRole('button', { name: '테스트 저장' }));
+
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'ApplicationError:infrastructure|단어 추가 처리 중 오류가 발생했습니다.|P0001',
+        );
+    });
 });
 
 describe('WordAddHome user addition request', () => {

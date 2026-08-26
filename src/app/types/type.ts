@@ -27,29 +27,3 @@ export interface LoadingState {
     progress: number;
     currentTask: string;
 }
-
-export interface DocsLogData {
-    readonly word: string;
-    readonly docs_id: number;
-    readonly add_by: string | null;
-    readonly type: "add" | "delete";
-}
-
-export interface WordLogData {
-    readonly word: string;
-    readonly make_by: string | null;
-    readonly processed_by: string | null;
-    readonly r_type: "add" | "delete";
-    readonly state: "approved" | "rejected";
-}
-
-export type addWordQueryType = {
-    word: string;
-    noin_canuse: boolean;
-    added_by: string | null;
-}
-
-export type addWordThemeQueryType = {
-    word_id: number;
-    theme_id: number;
-}

@@ -4,6 +4,8 @@ import { ModerateWordRequestsService } from '../../application/moderate-word-req
 import { GetDocsWordMutationTargetsService } from '../../application/get-docs-word-mutation-targets';
 import { DeleteWordDirectlyService } from '../../application/delete-word-directly';
 import { GetPendingWordModerationRequestsService } from '../../application/get-pending-word-moderation-requests';
+import { AddWordDirectlyService } from '../../application/add-word-directly';
+import { isNoInjungTheme } from '../../domain/word-approval';
 import { IndexedDbWordApprovalJobStore } from './word-approval-job-db';
 import { IndexedDbWordDeletionJobStore } from './word-deletion-job-db';
 import { SupabaseDocsWordModerationGateway } from './supabase-docs-word-moderation-gateway';
@@ -11,6 +13,7 @@ import { SupabaseWordDeletionGateway } from './supabase-word-deletion-gateway';
 import { SupabaseWordModerationGateway } from './supabase-word-moderation-gateway';
 import { SupabaseWordRequestModerationGateway } from './supabase-word-request-moderation-gateway';
 import { SupabasePendingWordModerationQueryGateway } from './supabase-pending-word-moderation-query-gateway';
+import { SupabaseDirectWordAdditionGateway } from './supabase-direct-word-addition-gateway';
 
 export interface BrowserWordModerationServices {
     wordApprovalService: RunWordApprovalService;
@@ -19,6 +22,7 @@ export interface BrowserWordModerationServices {
     docsWordMutationTargetService: GetDocsWordMutationTargetsService;
     directWordDeletionService: DeleteWordDirectlyService;
     pendingWordModerationQueryService: GetPendingWordModerationRequestsService;
+    directWordAdditionService: AddWordDirectlyService;
 }
 
 let browserWordModerationServices: BrowserWordModerationServices | null = null;
@@ -43,6 +47,10 @@ export const createBrowserWordModerationServices = (): BrowserWordModerationServ
             directWordDeletionService: new DeleteWordDirectlyService(docsGateway),
             pendingWordModerationQueryService: new GetPendingWordModerationRequestsService(
                 new SupabasePendingWordModerationQueryGateway(),
+            ),
+            directWordAdditionService: new AddWordDirectlyService(
+                new SupabaseDirectWordAdditionGateway(),
+                isNoInjungTheme,
             ),
         };
     }
