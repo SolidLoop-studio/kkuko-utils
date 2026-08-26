@@ -1,5 +1,4 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { ReactNode } from 'react';
 import { useSelector } from 'react-redux';
 import {
     useDeleteNotification,
@@ -180,6 +179,16 @@ describe('NotificationDetail', () => {
             expect(mockDeleteNotification).toHaveBeenCalledTimes(1);
         });
         expect(mockDeleteNotification).toHaveBeenCalledWith(17);
+    });
+
+    it('closes confirmation without deleting when the administrator cancels', () => {
+        render(<NotificationDetail notification={notification} />);
+        openDeleteConfirmation();
+
+        fireEvent.click(screen.getByRole('button', { name: '취소' }));
+
+        expect(screen.queryByRole('dialog', { name: 'delete confirmation' })).not.toBeInTheDocument();
+        expect(mockDeleteNotification).not.toHaveBeenCalled();
     });
 
     it('disables delete and guards confirmation while a deletion is pending', () => {
