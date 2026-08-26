@@ -59,7 +59,7 @@ const createClient = (responses: Partial<Record<string, QueryResult>> = {}) => {
     };
     const client = {
         from: jest.fn((table: keyof typeof queries) => { calls.push(`from:${table}`); return queries[table]; }),
-        rpc: jest.fn((name: string) => {
+        rpc: jest.fn((name: string, _parameters?: Record<string, unknown>) => {
             calls.push(`rpc:${name}`);
             const key = name === 'get_words_by_theme' ? 'themeWords'
                 : name === 'get_delete_requests_by_themeid' ? 'themeDeleteWords'
@@ -114,17 +114,72 @@ describe('SupabaseDocsContentQueryGateway', () => {
         })));
     });
 
-    it('maps ect content and preserves the special mission range flag', async () => {
-        const { client, calls } = createClient({
-            docs: { data: docsRow({ id: 209, name: '미션', typez: 'ect' }), error: null },
-            missionWords: { data: [{ word: '가나다' }, { word: '가나가' }], error: null },
+    it.each([
+        [
+            9_101,
+            'ko.word-chain.mission.ga',
+            'get_mission_words',
+            1,
+            [{ word: '가나다' }, { word: '가나가' }],
+            [{ word: '가나가', status: 'ok' }, { word: '가나다', status: 'ok' }],
+        ],
+        [
+            9_202,
+            'ko.reverse-word-chain.mission.na',
+            'get_mission_words',
+            2,
+            [{ word: '가나다' }, { word: '다라나' }, { word: '나가나' }],
+            [
+                { word: '가나다', status: 'ok' },
+                { word: '나가나', status: 'ok' },
+                { word: '다라나', status: 'ok' },
+            ],
+        ],
+        [
+            9_303,
+            'ko.kkungkkungtta.mission.ha',
+            'get_mission_len3_words',
+            8192,
+            [{ word: '하나다' }, { word: '하나하' }],
+            [{ word: '하나하', status: 'ok' }, { word: '하나다', status: 'ok' }],
+        ],
+    ] as const)(
+        'loads remapped mission child %s from %s',
+        async (id, referenceCode, rpc, targetMask, missionWords, expectedWords) => {
+            // Break caught: routing mission children by legacy numeric ranges instead of immutable references.
+            const { client } = createClient({
+                docs: { data: docsRow({ id, name: '미션', typez: 'ect', reference_code: referenceCode }), error: null },
+                missionWords: { data: missionWords, error: null },
+                missionLen3Words: { data: missionWords, error: null },
+            });
+
+            await expect(new SupabaseDocsContentQueryGateway(client).loadByDocsId(id)).resolves.toEqual(ok(expect.objectContaining({
+                isSpecial: true,
+                words: expectedWords,
+            })));
+            expect(client.rpc).toHaveBeenCalledWith(rpc, { target_mask: targetMask });
+        },
+    );
+
+    it.each([
+        ['a legacy mission-range id without a reference', null, ok(null)],
+        [
+            'a mission parent reference',
+            'ko.word-chain.mission',
+            ok(expect.objectContaining({ isMissionParent: true, isSpecial: false, words: [] })),
+        ],
+        ['an unknown mission child reference', 'ko.word-chain.mission.unknown', ok(null)],
+    ])('does not route %s as a mission child', async (_name, referenceCode, expectedResult) => {
+        // Break caught: classifying an ID range, parent, or inexact child reference as a mission child.
+        const { client } = createClient({
+            docs: { data: docsRow({ id: 209, name: '미션', typez: 'ect', reference_code: referenceCode }), error: null },
         });
 
-        await expect(new SupabaseDocsContentQueryGateway(client).loadByDocsId(209)).resolves.toEqual(ok(expect.objectContaining({
-            isSpecial: true,
-            words: [{ word: '가나가', status: 'ok' }, { word: '가나다', status: 'ok' }],
-        })));
-        expect(calls).toContain('rpc:get_mission_words');
+        await expect(new SupabaseDocsContentQueryGateway(client).loadByDocsId(209)).resolves.toEqual(expectedResult);
+        expect(client.rpc).not.toHaveBeenCalledWith(
+            expect.stringMatching(/^get_mission(?:_len3)?_words$/),
+            expect.anything(),
+        );
     });
 
     it.each([
@@ -196,35 +251,38 @@ describe('SupabaseDocsContentQueryGateway', () => {
         expect(calls).toContain('rpc:get_long_wait_words_data');
     });
 
-    it('uses the last-character mission RPC path for ids 224 through 237', async () => {
-        const { client, calls } = createClient({
-            docs: { data: docsRow({ id: 224, name: '미션', typez: 'ect' }), error: null },
-            missionWords: { data: [{ word: '가나다' }, { word: '나다가' }, { word: '가나가' }], error: null },
-        });
-
-        await expect(new SupabaseDocsContentQueryGateway(client).loadByDocsId(224)).resolves.toEqual(ok(expect.objectContaining({
-            words: [{ word: '가나다', status: 'ok' }, { word: '가나가', status: 'ok' }, { word: '나다가', status: 'ok' }],
-            isSpecial: true,
-        })));
-        expect(calls).toContain('rpc:get_mission_words');
-    });
-
-    it.each([
-        [239, 'get_mission_len3_words'],
-        [252, 'get_mission_len3_words'],
-    ])('uses the len3 mission RPC inside the %s special range', async (id, rpc) => {
-        const { client, calls } = createClient({
-            docs: { data: docsRow({ id, name: '미션', typez: 'ect' }), error: null },
-            missionLen3Words: { data: [{ word: '가나가' }], error: null },
-        });
-
-        await expect(new SupabaseDocsContentQueryGateway(client).loadByDocsId(id)).resolves.toEqual(ok(expect.objectContaining({ isSpecial: true })));
-        expect(calls).toContain(`rpc:${rpc}`);
-    });
-
     it.each([203, 207, 253])('returns not-found projection data for unsupported ect docs id %s', async (id) => {
         const { client } = createClient({ docs: { data: docsRow({ id, name: '기타', typez: 'ect' }), error: null } });
         await expect(new SupabaseDocsContentQueryGateway(client).loadByDocsId(id)).resolves.toEqual(ok(null));
+    });
+
+    it.each([
+        [
+            'a returned mission RPC error',
+            9_101,
+            'ko.word-chain.mission.ga',
+            { missionWords: { data: null, error: { message: 'private' } } },
+        ],
+        [
+            'a thrown mission RPC promise',
+            9_202,
+            'ko.reverse-word-chain.mission.na',
+            { missionWords: new Error('private') },
+        ],
+        [
+            'a malformed mission word row',
+            9_303,
+            'ko.kkungkkungtta.mission.ha',
+            { missionLen3Words: { data: [{ word: 1 }], error: null } },
+        ],
+    ] as const)('returns the stable infrastructure error for %s', async (_name, id, referenceCode, response) => {
+        // Break caught: leaking or accepting malformed failures on a semantically selected mission RPC.
+        const { client } = createClient({
+            docs: { data: docsRow({ id, name: '미션', typez: 'ect', reference_code: referenceCode }), error: null },
+            ...response,
+        });
+
+        await expect(new SupabaseDocsContentQueryGateway(client).loadByDocsId(id)).resolves.toEqual(err(infrastructureError));
     });
 
     it.each([

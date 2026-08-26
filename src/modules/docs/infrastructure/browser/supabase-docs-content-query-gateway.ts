@@ -4,7 +4,11 @@ import type { ApplicationError } from '@/src/shared/application/application-erro
 import { browserSupabaseClient } from '@/src/shared/infrastructure/supabase/browser-client';
 import type { DocsContentQueryGateway } from '../../application/docs-content-query-ports';
 import type { DocsContentProjection, DocsContentType, DocsContentWord } from '../../application/docs-content-query-types';
-import { isMissionParentReferenceCode } from '../../application/docs-marker-query-types';
+import {
+    isMissionParentReferenceCode,
+    parseMissionChildReferenceCode,
+    type MissionChildReference,
+} from '../../application/docs-reference-types';
 
 type QueryResponse = { data: unknown; error: unknown };
 
@@ -25,18 +29,10 @@ interface DocsContentQueryClient {
 
 type DocsMetadata = DocsContentProjection['metadata'] & {
     duem: boolean;
+    missionChild: MissionChildReference | null;
     isMissionParent: boolean;
 };
 type PendingWord = { word: string; status: 'add' | 'delete'; requesterNickname?: string };
-
-const MISSION_CHARS = ['가', '나', '다', '라', '마', '바', '사', '아', '자', '차', '카', '타', '파', '하'];
-
-/** 기존 숫자 ID 기반 미션 문서 범위를 Phase 0B 이전까지 Infrastructure에 격리합니다. */
-const isSpecialMissionDocsId = (docsId: number): boolean => (
-    (209 <= docsId && docsId <= 222)
-    || (224 <= docsId && docsId <= 237)
-    || (239 <= docsId && docsId <= 252)
-);
 
 const infrastructureError = (): ApplicationError => ({
     kind: 'infrastructure',
@@ -66,14 +62,15 @@ const parseMetadata = (row: unknown, docsId: number): DocsMetadata | null => {
         || !isDocsContentType(row.typez)
         || typeof row.duem !== 'boolean'
         || !isNullableString(row.reference_code)) return null;
+    const referenceCode = row.reference_code;
     return {
         id: row.id,
         title: row.name,
         lastUpdatedAt: row.last_update,
         type: row.typez,
         duem: row.duem,
-        isMissionParent: row.reference_code !== null
-            && isMissionParentReferenceCode(row.reference_code),
+        missionChild: referenceCode === null ? null : parseMissionChildReferenceCode(referenceCode),
+        isMissionParent: referenceCode !== null && isMissionParentReferenceCode(referenceCode),
     };
 };
 
@@ -202,6 +199,7 @@ export class SupabaseDocsContentQueryGateway implements DocsContentQueryGateway 
 
             const {
                 duem: _duem,
+                missionChild: _missionChild,
                 isMissionParent,
                 ...projectionMetadata
             } = metadata;
@@ -209,7 +207,7 @@ export class SupabaseDocsContentQueryGateway implements DocsContentQueryGateway 
                 metadata: projectionMetadata,
                 starredUserIds,
                 words,
-                isSpecial: isSpecialMissionDocsId(docsId),
+                isSpecial: metadata.missionChild !== null,
                 isMissionParent,
             });
         } catch {
@@ -285,17 +283,21 @@ export class SupabaseDocsContentQueryGateway implements DocsContentQueryGateway 
             return approvedWords === null || pendingWords === null ? undefined : toContentWords(approvedWords, pendingWords);
         }
 
-        const ranges: Array<{ start: number; end: number; rpc: string; useLastChar: boolean }> = [
-            { start: 209, end: 222, rpc: 'get_mission_words', useLastChar: false },
-            { start: 224, end: 237, rpc: 'get_mission_words', useLastChar: true },
-            { start: 239, end: 252, rpc: 'get_mission_len3_words', useLastChar: false },
-        ];
-        const range = ranges.find(({ start, end }) => start <= metadata.id && metadata.id <= end);
-        if (range === undefined) return null;
-        const targetChar = MISSION_CHARS[metadata.id - range.start];
-        const response = await this.client.rpc(range.rpc, { target_mask: 1 << MISSION_CHARS.indexOf(targetChar) });
+        const missionChild = metadata.missionChild;
+        if (missionChild === null) return null;
+
+        const functionName = missionChild.family === 'kkungkkungtta'
+            ? 'get_mission_len3_words'
+            : 'get_mission_words';
+        const response = await this.client.rpc(functionName, {
+            target_mask: 1 << missionChild.characterIndex,
+        });
         const words = parseWords(response);
-        return words === null ? undefined : selectMissionWords(words, targetChar, range.useLastChar)
+        return words === null ? undefined : selectMissionWords(
+            words,
+            missionChild.character,
+            missionChild.usesLastCharacter,
+        )
             .map((word) => ({ word, status: 'ok' }));
     }
 }
