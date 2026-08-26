@@ -122,7 +122,7 @@ git grep -n -E "\bSCM\." -- "src/**/*.ts" "src/**/*.tsx"
 
 | 기능군 | 대표 파일 | 현재 위험 |
 | --- | --- | --- |
-| 관리자 요청 단어 조회 | `admin/request-words/AdminWrapper.tsx`, `admin/request-words/ThemeSelectModal.tsx` | 대기 요청·주제 조회의 DB Row와 query shape가 presentation에 노출 |
+| 관리자 요청 단어 조회 | `admin/request-words/AdminWrapper.tsx` | 대기 요청 목록의 DB Row와 query shape가 presentation에 노출. `ThemeSelectModal.tsx`의 주제 조회는 word-catalog cache를 재사용 |
 | 관리자 단어 직접 추가 | `word/add/WordAddHome.tsx` | 관리자·`r4` 직접 추가의 다중 mutation과 docs 갱신 순서가 legacy SCM에 남음 |
 | 인증·프로필 | `AutoLogin.tsx`, `auth/auth.tsx`, `profile/**` | Auth SDK 상태와 사용자 DB profile 조회가 SCM에 결합 |
 | 공지 | `notification/**`, `hooks/useNotice.ts` | 조회·작성·Storage 업로드가 하나의 manager에 결합 |
@@ -898,6 +898,8 @@ stack을 fresh reset하고 모든 DB 테스트를 실행한 뒤 항상 중지한
 5. 통계와 랜덤 연결 단어 (완료)
    - `src/app/word/stats/WordStatsHome.tsx`를 `word-catalog` 통계 query service와 React Query hook으로 이전했다.
    - 랜덤 연결 단어 query도 `word-catalog` 경계에서 제공한다.
+6. 관리자 요청 단어 주제 선택 (완료)
+   - `src/app/admin/request-words/ThemeSelectModal.tsx`가 `useWordThemes(isOpen)`으로 word-catalog 주제 cache를 재사용하며, legacy SCM/SWR fetcher를 제거했다.
 
 목표:
 
@@ -1045,7 +1047,7 @@ Notifications:
 | local base schema | 완료 | `55320..55329` remapped port의 disposable local bootstrap과 versioned seed 검증 완료 |
 | docs 의미 키 | 완료 | 47개 reference와 varying-PK/누락-reference/rollback 검증 완료; cloud rollout은 사용자/운영자 대기 |
 | 관리자 단어 삭제 (`admin/del-words`) | 완료 | cloud Supabase migration은 사용자/운영자 실행 대기, 운영 지표 관찰 |
-| 관리자 요청 단어/개별 승인 | 부분 완료 | 개별 승인·반려 mutation은 완료; wrapper와 주제 선택 조회는 legacy SCM에 남아 있음 |
+| 관리자 요청 단어/개별 승인 | 부분 완료 | 개별 승인·반려 mutation과 주제 선택 조회는 완료; wrapper의 대기 요청 목록 조회는 legacy SCM에 남아 있음 |
 | docs 내부 관리자 단어 moderation | 완료 | 기존 요청 moderation RPC 재사용; 직접 삭제 cloud migration은 사용자/운영자 통제 rollout 대기 |
 | 관리자 docs 요청 moderation | 완료 | 승인·반려 mutation과 대기 요청 목록 query 이전 완료; migration cloud rollout은 사용자/운영자 실행 대기 |
 | 사용자 단어 요청 | 부분 완료 | Phase 2 mutation 코드 이전은 완료; 단일·대량 추가 요청을 포함한 관련 cloud migration rollout은 사용자/운영자 실행 대기 |

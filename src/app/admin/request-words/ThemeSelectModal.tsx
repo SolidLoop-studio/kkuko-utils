@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import useSWR from 'swr'
 import {
     Dialog,
     DialogContent,
@@ -9,23 +8,17 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "@/src/app/components/ui/dialog"
-import { Button } from "@/src/app/components/ui/button"
-import { Checkbox } from "@/src/app/components/ui/checkbox"
-import { Badge } from "@/src/app/components/ui/badge"
-import { ScrollArea } from "@/src/app/components/ui/scroll-area"
-import { SCM } from '@/src/app/lib/supabaseClient'
+} from "../../components/ui/dialog"
+import { Button } from "../../components/ui/button"
+import { Checkbox } from "../../components/ui/checkbox"
+import { Badge } from "../../components/ui/badge"
+import { ScrollArea } from "../../components/ui/scroll-area"
+import { useWordThemes } from '../../../modules/word-catalog'
 
 type Theme = {
     theme_id: number;
     theme_name: string;
     theme_code: string;
-}
-
-type AllTheme = {
-    id: number;
-    name: string;
-    code: string;
 }
 
 type ThemeSelectModalProps = {
@@ -47,19 +40,11 @@ export default function ThemeSelectModal({
 }: ThemeSelectModalProps) {
     const [selectedThemes, setSelectedThemes] = useState<Set<number>>(new Set());
 
-    // useSWR로 전체 주제 목록 가져오기
-    const { data: allThemes = [], isLoading } = useSWR<AllTheme[]>(
-        isOpen ? 'allThemes' : null,
-        async () => {
-            const { data, error } = await SCM.get().allThemes();
-            if (error) throw error;
-            return data || [];
-        },
-        {
-            revalidateOnFocus: false,
-            revalidateOnReconnect: false
-        }
-    );
+    const {
+        data: allThemes = [],
+        error,
+        isLoading,
+    } = useWordThemes(isOpen);
 
     // 모달이 열릴 때 초기 선택된 주제 설정
     useEffect(() => {
@@ -145,6 +130,10 @@ export default function ThemeSelectModal({
                         {isLoading ? (
                             <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                                 주제 목록을 불러오는 중...
+                            </div>
+                        ) : error ? (
+                            <div className="text-center py-8 text-red-500">
+                                주제 목록을 불러오는 중 오류가 발생했습니다.
                             </div>
                         ) : (
                             <div className="space-y-6">
