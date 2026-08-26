@@ -1,5 +1,5 @@
 import { ISupabaseClientManager, IAddManager, IGetManager, IDeleteManager, IUpdateManager } from './ISupabaseClientManager';
-import type { PostgrestError, Session, SupabaseClient } from '@supabase/supabase-js';
+import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/src/app/types/database.types';
 import { StorageError } from '@supabase/storage-js';
 import axios from 'axios';
@@ -142,12 +142,6 @@ class GetManager implements IGetManager {
     }
     public async releaseNote() {
         return await this.supabase.from('release_note').select('*').order('created_at', { ascending: false });
-    }
-    public async userById(userId: string) {
-        return await this.supabase.from('users').select('*').eq('id', userId).maybeSingle();
-    }
-    public async session() {
-        return await this.supabase.auth.getSession();
     }
     public async usersByNickname(userName: string) {
         return await this.supabase.from("users").select("*").eq("nickname", userName.trim())
@@ -366,26 +360,6 @@ export class SupabaseClientManager implements ISupabaseClientManager {
     public update() {
         return this._update;
     }
-    public async loginByGoogle(originUrl: string) {
-        return await this.supabase.auth.signInWithOAuth({
-            provider: "google",
-            options: {
-                redirectTo: `${originUrl}/api/auth/callback`,
-            },
-        });
-    }
-    public onAuthStateChange(func: (session: Session | null) => Promise<void>) {
-        return this.supabase.auth.onAuthStateChange(async (_event, session) => {
-            try {
-                await func(session)
-            }
-            finally { }
-        });
-    }
-    public async logout() {
-        await this.supabase.auth.signOut()
-    }
-
     // 이미지 업로드 기능
     public async uploadImage(file: File, path: string) {
         return await this.supabase.storage

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import type { AppDispatch } from "../store/store";
@@ -15,6 +14,15 @@ import { Alert, AlertDescription } from "@/src/app/components/ui/alert";
 import ErrorModal from '../components/ErrModal';
 import type { ErrorMessage } from "@/src/app/types/type";
 import { SCM } from "@/src/app/lib/supabaseClient";
+import type { ApplicationError } from "@/src/shared/application/application-error";
+import { useAuthSession } from "@/src/modules/identity";
+
+const toErrorMessage = (error: ApplicationError): ErrorMessage => ({
+    ErrName: "인증 오류",
+    ErrMessage: error.message,
+    ErrStackRace: null,
+    inputValue: null,
+});
 
 const AuthPage = () => {
     const router = useRouter();
@@ -24,73 +32,52 @@ const AuthPage = () => {
     const [nicknameError, setNicknameError] = useState("");
     const dispatch = useDispatch<AppDispatch>();
     const [errorModalView, setErrorModalView] = useState<ErrorMessage | null>(null);
+    const { getSession, listen, signInWithGoogle: startGoogleLogin } = useAuthSession();
 
     useEffect(() => {
-        
-        const checkUser = async (session: Session | null) => {
-            if (!session) {
+        setLoading(true);
+        const subscriptionResult = listen((result) => {
+            if (!result.ok) {
+                setErrorModalView(toErrorMessage(result.error));
                 setLoading(false);
                 return;
             }
-
-            const { data, error: err } = await SCM.get().userById(session.user.id);
-    
-            if (err) {
-                setErrorModalView({
-                    ErrName: err.name ?? null,
-                    ErrMessage: err.message ?? null,
-                    ErrStackRace: err.stack ?? null,
-                    inputValue: null
-                });
+            if (!result.value.isAuthenticated) {
+                setLoading(false);
                 return;
             }
-    
-            if (!data) {
+            const profile = result.value.profile;
+            if (!profile) {
                 setIsNewUser(true);
                 setLoading(false);
             } else {
-                dispatch(
-                    userAction.setInfo({
-                        username: data.nickname,
-                        role: data.role ?? "guest",
-                    })
-                );
-                if (data.role === "admin"){
+                dispatch(userAction.setInfo({
+                    username: profile.nickname,
+                    role: profile.role,
+                    uuid: profile.id,
+                }));
+                if (profile.role === "admin"){
                     router.push("/admin");
                 } else {
-                    router.push(`/profile/${data.nickname}`);
+                    router.push(`/profile/${profile.nickname}`);
                 }
-
             }
-    
-        };
-        setLoading(true);
-        const { data: authListener } = SCM.onAuthStateChange(checkUser);
+        });
+        if (!subscriptionResult.ok) {
+            setErrorModalView(toErrorMessage(subscriptionResult.error));
+            setLoading(false);
+            return;
+        }
         return () => {
-            authListener.subscription.unsubscribe();
+            subscriptionResult.value.unsubscribe();
         };
-    }, [router, dispatch]);
+    }, [router, dispatch, listen]);
     
 
     const signInWithGoogle = async () => {
-        const { error: err } = await SCM.loginByGoogle(location.origin);
-        if (err) {
-            if (err instanceof Error) {
-                setErrorModalView({
-                    ErrName: err.name,
-                    ErrMessage: err.message,
-                    ErrStackRace: err.stack,
-                    inputValue: null
-                });
-
-            } else {
-                setErrorModalView({
-                    ErrName: null,
-                    ErrMessage: null,
-                    ErrStackRace: err as string,
-                    inputValue: null
-                });
-            }
+        const result = await startGoogleLogin(location.origin);
+        if (!result.ok) {
+            setErrorModalView(toErrorMessage(result.error));
         }
     };
 
@@ -98,8 +85,13 @@ const AuthPage = () => {
         setLoading(true);
         setNicknameError("");
 
-        const session = await SCM.get().session();
-        if (!session.data.session) {
+        const sessionResult = await getSession();
+        if (!sessionResult.ok) {
+            setErrorModalView(toErrorMessage(sessionResult.error));
+            setLoading(false);
+            return;
+        }
+        if (!sessionResult.value) {
             setLoading(false);
             return;
         }

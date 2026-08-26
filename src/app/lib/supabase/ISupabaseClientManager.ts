@@ -1,4 +1,4 @@
-import { AuthError, OAuthResponse, PostgrestError, PostgrestSingleResponse, Session, Subscription } from '@supabase/supabase-js';
+import { PostgrestError, PostgrestSingleResponse } from '@supabase/supabase-js';
 import type { Database } from '@/src/app/types/database.types'
 
 type wait_word = Database['public']['Tables']['wait_words']['Row']
@@ -32,8 +32,6 @@ export interface IGetManager{
     wordsThemes(wordIds: number[]): Promise<PostgrestSingleResponse<{ theme_id: number; word_id: number; words: word; themes: theme}[]>>
     allWords({ includeAddReq, includeDeleteReq, includeInjung, includeNoInjung, onlyWordChain, lenf }: { includeAddReq?: boolean; includeDeleteReq?: boolean; includeInjung?: boolean; includeNoInjung?: boolean; onlyWordChain?: boolean; lenf?: boolean; }): Promise<{ data: { word: string; noin_canuse: boolean; k_canuse: boolean; status: "ok" | "add" | "delete"; }[]; error: null } | {data: null; error: PostgrestError; }>
     releaseNote(): Promise<PostgrestSingleResponse<{ id: number; content: string; created_at: string; title: string; link: string | null }[]>>;
-    userById(userId: string): Promise<PostgrestSingleResponse<user | null>>;
-    session(): Promise<{data: {session: Session}, error: null} | {data: { session: null}, error: AuthError} | { data: {session: null}, error: null}>;
     usersByNickname(userName: string): Promise<PostgrestSingleResponse<user[]>>;
     usersLikeByNickname(q: string): Promise<PostgrestSingleResponse<user[]>>;
     userByNickname(nickname: string): Promise<PostgrestSingleResponse<user | null>>;
@@ -79,8 +77,5 @@ export interface ISupabaseClientManager {
     get(): IGetManager;
     delete(): IDeleteManager;
     update(): IUpdateManager;
-    loginByGoogle(originUrl: string): Promise<OAuthResponse>;
-    onAuthStateChange(func: (session: Session | null) => Promise<void>): {data: {subscription: Subscription}}
-    logout(): Promise<void>;
     getJWT(): Promise<string | null>;
 }
