@@ -62,6 +62,7 @@ const initialProjection = {
     starredUserIds: [],
     words: [{ word: '가방', status: 'add' as const, requesterNickname: '요청자' }],
     isSpecial: false,
+    isMissionParent: false,
 };
 
 const refreshedProjection = {
@@ -69,6 +70,7 @@ const refreshedProjection = {
     starredUserIds: ['starred-user'],
     words: [{ word: '하마', status: 'ok' as const }],
     isSpecial: false,
+    isMissionParent: false,
 };
 
 const backgroundProjection = {
@@ -76,6 +78,20 @@ const backgroundProjection = {
     starredUserIds: ['background-star'],
     words: [{ word: '호랑이', status: 'ok' as const }],
     isSpecial: false,
+    isMissionParent: false,
+};
+
+const remappedMissionParentProjection = {
+    metadata: {
+        id: 7_301,
+        title: '리매핑된 미션글자',
+        lastUpdatedAt: '2026-08-25T00:00:00.000Z',
+        type: 'ect' as const,
+    },
+    starredUserIds: [],
+    words: [],
+    isSpecial: false,
+    isMissionParent: true,
 };
 
 const createWrapper = () => {
@@ -163,5 +179,34 @@ describe('DocsDataPage real useDocsContent admin refetch integration', () => {
         expect(screen.getByText('백그라운드 갱신 문서')).toBeInTheDocument();
         expect(screen.queryByTestId('row-가방')).not.toBeInTheDocument();
         expect(recordedDocsIds).toEqual([55]);
+    });
+
+    it('renders marker links for a remapped canonical parent from its content projection', async () => {
+        // Break caught: reconstructing mission-parent identity from legacy numeric IDs in the page or component.
+        const getContent = jest.fn().mockResolvedValue(ok(remappedMissionParentProjection));
+        const getMarkers = jest.fn().mockResolvedValue(ok([
+            { character: '가', docsId: 9_001, lastUpdatedAt: null },
+            ...Array.from({ length: 13 }, () => null),
+        ]));
+        jest.mocked(createBrowserDocsServices).mockReturnValue({
+            docsContentQueryService: { get: getContent },
+            docsViewCommandService: { record: jest.fn().mockResolvedValue(ok(undefined)) },
+            docsFavoriteCommandService: { set: jest.fn().mockResolvedValue(ok(undefined)) },
+            docsMarkerQueryService: { get: getMarkers },
+        } as never);
+        jest.mocked(createBrowserWordModerationServices).mockReturnValue({
+            docsWordMutationTargetService: {
+                get: jest.fn().mockReturnValue(ok({ targets: [] })),
+            },
+        } as never);
+        const { Wrapper } = createWrapper();
+
+        render(<DocsDataPage id={7_301} />, { wrapper: Wrapper });
+
+        expect(await screen.findByRole('heading', { name: '미션글자', level: 2 })).toBeInTheDocument();
+        expect(await screen.findByRole('link', { name: /가 업데이트 정보 없음/ }))
+            .toHaveAttribute('href', '/words-docs/9001');
+        expect(getContent).toHaveBeenCalledWith(7_301);
+        expect(getMarkers).toHaveBeenCalledWith(7_301);
     });
 });

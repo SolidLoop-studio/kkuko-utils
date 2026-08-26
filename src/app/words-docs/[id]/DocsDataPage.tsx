@@ -39,6 +39,7 @@ const isSameProjection = (left: DocsContentProjection, right: DocsContentProject
     && left.metadata.lastUpdatedAt === right.metadata.lastUpdatedAt
     && left.metadata.type === right.metadata.type
     && left.isSpecial === right.isSpecial
+    && left.isMissionParent === right.isMissionParent
     && left.starredUserIds.length === right.starredUserIds.length
     && left.starredUserIds.every((userId, index) => userId === right.starredUserIds[index])
     && left.words.length === right.words.length
@@ -170,6 +171,7 @@ export default function DocsDataPage({ id }: { id: number }) {
             metaData={{ title: snapshot.projection.metadata.title, lastUpdate: snapshot.projection.metadata.lastUpdatedAt, typez: snapshot.projection.metadata.type }}
             starCount={snapshot.projection.starredUserIds}
             isSpecial={snapshot.projection.isSpecial}
+            isMissionParent={snapshot.projection.isMissionParent}
             onContentRefresh={refreshContent}
         />;
     }

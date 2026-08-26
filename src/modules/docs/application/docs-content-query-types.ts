@@ -16,4 +16,5 @@ export interface DocsContentProjection {
     starredUserIds: string[];
     words: DocsContentWord[];
     isSpecial: boolean;
+    isMissionParent: boolean;
 }

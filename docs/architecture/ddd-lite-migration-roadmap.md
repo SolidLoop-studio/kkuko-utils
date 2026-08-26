@@ -932,7 +932,9 @@ stack을 fresh reset하고 모든 DB 테스트를 실행한 뒤 항상 중지한
 현재 완료 범위는 공개 목록·로그·정보·본문 projection, 관리자 대기 요청 목록과 moderation,
 `WordsDocsHome`의 기존 글자 문서/대기 요청 중복 조회와 생성 요청 command, `DocsDataPage`의
 best-effort 조회 수 기록, `DocsDataHome`의 인증된 멱등 즐겨찾기 command, 그리고 미션글자
-marker의 semantic bulk query다. marker query는 세 `*.mission` 상위 reference만 허용하고
+marker의 semantic bulk query다. 본문 projection은 같은 세 상위 `reference_code`를
+`isMissionParent`로 분류해 page와 component에 전달하므로 remapped PK에서도 marker 화면과 query가
+활성화되고, presentation은 더 이상 기존 상위 문서 ID 목록을 소유하지 않는다. marker query는 세 `*.mission` 상위 reference만 허용하고
 14개 하위 reference를 canonical 순서로 한 번에 조회하며, 누락 행은 `null`로 보존하고 실패는
 본문 렌더링과 분리한다. 각 컴포넌트는 feature hook을 사용하며 대체된
 `letterDocs`·`waitDocs`·`docView`·`starDocs`·`startDocs`와 read-side `docsLastUpdate(id)`는 제거되었다.
@@ -1048,7 +1050,7 @@ Notifications:
 | 관리자 docs 요청 moderation | 완료 | 승인·반려 mutation과 대기 요청 목록 query 이전 완료; migration cloud rollout은 사용자/운영자 실행 대기 |
 | 사용자 단어 요청 | 부분 완료 | Phase 2 mutation 코드 이전은 완료; 단일·대량 추가 요청을 포함한 관련 cloud migration rollout은 사용자/운영자 실행 대기 |
 | word-catalog 조회 | 완료 | 브라우저 검색·자동완성, 단어 상세 query, 고급 검색 Route Handler, 다운로드, 통계, 랜덤 연결 단어 query 완료 |
-| docs context | 부분 완료 | 공개 목록·로그·정보·본문, 관리자 대기 요청 목록/moderation, `WordsDocsHome` 중복 조회·생성 요청, `DocsDataPage` best-effort 조회 수 기록, `DocsDataHome` 멱등 즐겨찾기와 semantic marker bulk query 이전 완료; `letterDocs`·`waitDocs`·`docView`·`starDocs`·`startDocs` 및 read-side `docsLastUpdate(id)` 제거. 다음 경계는 실제 소비자 검사 후 지정 |
+| docs context | 부분 완료 | 공개 목록·로그·정보·본문, 관리자 대기 요청 목록/moderation, `WordsDocsHome` 중복 조회·생성 요청, `DocsDataPage` best-effort 조회 수 기록, `DocsDataHome` 멱등 즐겨찾기와 semantic marker bulk query 이전 완료; 본문 projection의 immutable `reference_code` 분류가 remapped parent marker 화면까지 이어지고 presentation의 legacy parent ID gating 제거; `letterDocs`·`waitDocs`·`docView`·`starDocs`·`startDocs` 및 read-side `docsLastUpdate(id)` 제거. 다음 경계는 실제 소비자 검사 후 지정 |
 | identity/profile | 미착수 | Auth와 profile DB 계약 분리 |
 | notifications/storage | 미착수 | query/command/storage port 분리 |
 | SCM 최종 제거 | 대기 | 모든 context 이전 후 실행 |

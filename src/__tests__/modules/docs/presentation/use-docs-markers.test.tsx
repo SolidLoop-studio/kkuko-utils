@@ -9,6 +9,7 @@ jest.mock(
 
 import { ok } from '@/src/shared/application/result';
 import type { DocsMarker } from '@/src/modules/docs/application/docs-marker-query-types';
+import type { DocsContentProjection } from '@/src/modules/docs/application/docs-content-query-types';
 import { createBrowserDocsServices } from '@/src/modules/docs/infrastructure/browser/browser-docs-services';
 import { useDocsMarkers } from '@/src/modules/docs/presentation/use-docs-markers';
 
@@ -16,6 +17,19 @@ const markers: Array<DocsMarker | null> = [
     { character: '가', docsId: 901, lastUpdatedAt: '2026-08-25T01:00:00.000Z' },
     null,
 ];
+
+const missionParentProjection: DocsContentProjection = {
+    metadata: {
+        id: 7_301,
+        title: '미션 글자',
+        lastUpdatedAt: '2026-08-25T01:00:00.000Z',
+        type: 'ect',
+    },
+    starredUserIds: [],
+    words: [],
+    isSpecial: false,
+    isMissionParent: true,
+};
 
 const createWrapper = () => {
     const queryClient = new QueryClient({
@@ -42,7 +56,10 @@ describe('useDocsMarkers', () => {
         } as unknown as ReturnType<typeof createBrowserDocsServices>);
         const { queryClient, Wrapper } = createWrapper();
 
-        const { result } = renderHook(() => useDocsMarkers(7_301, true), { wrapper: Wrapper });
+        const { result } = renderHook(() => useDocsMarkers(
+            missionParentProjection.metadata.id,
+            missionParentProjection.isMissionParent,
+        ), { wrapper: Wrapper });
 
         await waitFor(() => expect(result.current.data).toEqual(markers));
         expect(queryClient.getQueryData(['docs', 7_301, 'markers'])).toEqual(markers);
@@ -57,7 +74,15 @@ describe('useDocsMarkers', () => {
         } as unknown as ReturnType<typeof createBrowserDocsServices>);
         const { Wrapper } = createWrapper();
 
-        const { result } = renderHook(() => useDocsMarkers(55, false), { wrapper: Wrapper });
+        const ordinaryProjection: DocsContentProjection = {
+            ...missionParentProjection,
+            metadata: { ...missionParentProjection.metadata, id: 55, type: 'theme' },
+            isMissionParent: false,
+        };
+        const { result } = renderHook(() => useDocsMarkers(
+            ordinaryProjection.metadata.id,
+            ordinaryProjection.isMissionParent,
+        ), { wrapper: Wrapper });
 
         expect(result.current.fetchStatus).toBe('idle');
         expect(get).not.toHaveBeenCalled();

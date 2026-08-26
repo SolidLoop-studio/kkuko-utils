@@ -35,6 +35,7 @@ import {
 
 interface DocsPageProp {
     id: number;
+    isMissionParent?: boolean;
     data: DocsWordData[];
     metaData: {
         title: string;
@@ -87,7 +88,15 @@ const isSameDocsWordRow = (left: DocsWordData, right: DocsWordData) => (
     && isSameMutationTarget(left.mutationTarget, right.mutationTarget)
 );
 
-const DocsDataHome = ({ id, data, metaData, starCount, isSpecial, onContentRefresh }: DocsPageProp) => {
+const DocsDataHome = ({
+    id,
+    isMissionParent = false,
+    data,
+    metaData,
+    starCount,
+    isSpecial,
+    onContentRefresh,
+}: DocsPageProp) => {
     const parentRef = useRef<HTMLDivElement>(null);
     const isFavoriteSubmissionPendingRef = useRef(false);
     const [tocList, setTocList] = useState<string[]>([]);
@@ -95,13 +104,11 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial, onContentRefre
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [isTabSwitching, setIsTabSwitching] = useState<boolean>(false);
     const [activeTab, setActiveTab] = useState<TabType>("all");
-        const user = useSelector((state: RootState) => state.user);
-        const specialIds = [208, 223, 238];
+    const user = useSelector((state: RootState) => state.user);
     const [isUserStarreda, setIsUserStarreda] = useState<boolean>(false);
     const [loginNeedModalOpen, setLoginNeedModalOpen] = useState<boolean>(false);
     const [errorModalView, setErrorModalView] = useState<ErrorMessage | null>(null);
     const [isAdminCompleteModalOpen, setIsAdminCompleteModalOpen] = useState(false);
-    const isMissionParent = specialIds.includes(id);
     const {
         setFavorite,
         isPending: isFavoritePending,
@@ -484,7 +491,7 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial, onContentRefre
                                     <span>{currentStarCount}</span>
                                 </button>
 
-                                {!specialIds.includes(id) && (
+                                {!isMissionParent && (
                                     <>
                                         <Link href={`/words-docs/${id}/info`}>
                                             <button className="px-6 py-3 bg-white/20 text-white rounded-xl font-medium hover:bg-white/30 transition-all duration-200 flex items-center gap-2 backdrop-blur-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
@@ -514,7 +521,7 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial, onContentRefre
                     </div>
 
                     {/* 탭 네비게이션 */}
-                    {metaData.typez !== "ect" && !specialIds.includes(id) && (
+                    {metaData.typez !== "ect" && !isMissionParent && (
                         <div className="px-8 pt-6 pb-2 overflow-x-auto">
                             <nav className="flex space-x-1" aria-label="Tabs">
                                 {(["all", "mission", "long"] as TabType[]).map((tab) => (
@@ -547,7 +554,7 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial, onContentRefre
                 </div>
 
                 {/* 목차 섹션 */}
-                {!isTabSwitching && !specialIds.includes(id) && (
+                {!isTabSwitching && !isMissionParent && (
                     <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg border-0 p-6 mb-8">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
@@ -564,7 +571,7 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial, onContentRefre
                 )}
 
                 {/* 컨텐츠 섹션 */}
-                {specialIds.includes(id) ? (
+                {isMissionParent ? (
                     <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg border-0 p-8">
                         <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">미션글자</h2>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">

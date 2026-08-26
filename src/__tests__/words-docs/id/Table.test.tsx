@@ -190,6 +190,7 @@ const contentProjection = (overrides: Partial<{
     starredUserIds: [],
     words: overrides.words ?? [{ word: '나비', status: 'ok' as const }],
     isSpecial: false,
+    isMissionParent: false,
 });
 
 const createDeferred = <T,>() => {
@@ -858,6 +859,7 @@ describe('Docs word target enrichment', () => {
                 starredUserIds: [],
                 words: [{ word: '가방', status: 'ok' }, { word: '나비', status: 'delete', requesterNickname: 'requester-2' }],
                 isSpecial: false,
+                isMissionParent: false,
             },
             error: null,
             isLoading: false,

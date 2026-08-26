@@ -34,6 +34,7 @@ const docsRow = (overrides: Record<string, unknown> = {}) => ({
     last_update: '2026-08-25T04:00:00.000Z',
     typez: 'letter',
     duem: false,
+    reference_code: null,
     ...overrides,
 });
 
@@ -87,6 +88,7 @@ describe('SupabaseDocsContentQueryGateway', () => {
                 { word: '라면', status: 'add', requesterNickname: '요청자' },
             ],
             isSpecial: false,
+            isMissionParent: false,
         }));
         expect(calls).toContain('from:docs');
         expect(calls).toContain('from:user_star_docs');
@@ -125,14 +127,43 @@ describe('SupabaseDocsContentQueryGateway', () => {
         expect(calls).toContain('rpc:get_mission_words');
     });
 
-    it.each([208, 223, 238])('returns marker docs id %s with no word query and no words', async (id) => {
-        const { client, calls } = createClient({ docs: { data: docsRow({ id, typez: 'ect' }), error: null } });
+    it.each([
+        [7_301, 'ko.word-chain.mission'],
+        [8_802, 'ko.reverse-word-chain.mission'],
+        [9_903, 'ko.kkungkkungtta.mission'],
+    ])('returns remapped semantic marker parent %s for %s with no word query', async (id, referenceCode) => {
+        // Break caught: recognizing mission parents by legacy numeric IDs instead of immutable reference codes.
+        const { client, calls } = createClient({
+            docs: {
+                data: docsRow({ id, typez: 'ect', reference_code: referenceCode }),
+                error: null,
+            },
+        });
 
         await expect(new SupabaseDocsContentQueryGateway(client).loadByDocsId(id)).resolves.toEqual(ok(expect.objectContaining({
             words: [],
             isSpecial: false,
+            isMissionParent: true,
         })));
         expect(calls).not.toContain('from:words');
+        expect(calls.some((call) => call.startsWith('rpc:'))).toBe(false);
+    });
+
+    it.each([
+        'ko.word-chain.mission.ga',
+        'ko.word-chain.long',
+        'ko.custom.mission',
+    ])('does not classify non-parent reference %s as a mission parent', async (referenceCode) => {
+        // Break caught: treating suffix-like or arbitrary mission references as canonical parents.
+        const { client } = createClient({
+            docs: {
+                data: docsRow({ id: 7_301, typez: 'letter', reference_code: referenceCode }),
+                error: null,
+            },
+        });
+
+        await expect(new SupabaseDocsContentQueryGateway(client).loadByDocsId(7_301))
+            .resolves.toEqual(ok(expect.objectContaining({ isMissionParent: false })));
     });
 
     it('uses two-eum letter matching for both approved and pending letter words', async () => {
@@ -198,6 +229,7 @@ describe('SupabaseDocsContentQueryGateway', () => {
 
     it.each([
         ['malformed metadata', { docs: { data: docsRow({ duem: 'false' }), error: null } }],
+        ['malformed reference code', { docs: { data: docsRow({ reference_code: 208 }), error: null } }],
         ['malformed word', { words: { data: [{ word: 1 }], error: null } }],
         ['malformed wait word', { waitWords: { data: [{ word: '라면', requested_by: null, request_type: 'edit' }], error: null } }],
         ['malformed star', { stars: { data: [{ user_id: 1 }], error: null } }],

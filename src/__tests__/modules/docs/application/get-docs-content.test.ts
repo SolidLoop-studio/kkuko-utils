@@ -33,6 +33,7 @@ describe('GetDocsContentService', () => {
             starredUserIds: ['user-1'],
             words: [{ word: '라디오', status: 'ok' as const }],
             isSpecial: false,
+            isMissionParent: true,
         };
         const success = ok(projection);
         const failure = err({

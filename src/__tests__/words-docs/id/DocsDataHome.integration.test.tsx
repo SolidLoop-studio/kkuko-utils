@@ -62,6 +62,7 @@ import type { DocsWordData } from '../../../app/words-docs/[id]/docs-word-data';
 const mockUseDocsWordModeration = jest.mocked(useDocsWordModeration);
 const mockUseDocsFavorite = jest.mocked(useDocsFavorite);
 const mockUseDocsMarkers = jest.mocked(useDocsMarkers);
+const remappedMissionParentId = 7_301;
 const mockUseUserWordRequestActions = jest.mocked(useUserWordRequestActions);
 const mockCreateBrowserServices = jest.mocked(createBrowserWordModerationServices);
 const approve = jest.fn();
@@ -362,7 +363,8 @@ describe('DocsDataHome administrator removal completion integration', () => {
 
         render(
             <DocsDataHome
-                id={208}
+                id={remappedMissionParentId}
+                isMissionParent
                 data={[]}
                 metaData={{ title: '미션글자', lastUpdate: '2026-08-22T00:00:00.000Z', typez: 'ect' }}
                 starCount={[]}
@@ -374,8 +376,24 @@ describe('DocsDataHome administrator removal completion integration', () => {
         expect(screen.getAllByText('업데이트 정보 없음')).toHaveLength(13);
         expect(screen.getByRole('link', { name: /가 현지화된 시각/ }))
             .toHaveAttribute('href', '/words-docs/9001');
-        expect(mockUseDocsMarkers).toHaveBeenCalledWith(208, true);
+        expect(mockUseDocsMarkers).toHaveBeenCalledWith(remappedMissionParentId, true);
         localizedTime.mockRestore();
+    });
+
+    it('does not activate marker presentation from a legacy parent id alone', () => {
+        render(
+            <DocsDataHome
+                id={208}
+                isMissionParent={false}
+                data={[]}
+                metaData={{ title: 'ordinary document', lastUpdate: '2026-08-22T00:00:00.000Z', typez: 'ect' }}
+                starCount={[]}
+            />,
+            { wrapper: createWrapper('guest', undefined) },
+        );
+
+        expect(screen.queryByRole('heading', { name: '미션글자', level: 2 })).not.toBeInTheDocument();
+        expect(mockUseDocsMarkers).toHaveBeenCalledWith(208, false);
     });
 
     it('미션 marker 조회 실패가 메인 문서 페이지를 깨뜨리지 않는다', () => {
@@ -391,7 +409,8 @@ describe('DocsDataHome administrator removal completion integration', () => {
 
         render(
             <DocsDataHome
-                id={208}
+                id={remappedMissionParentId}
+                isMissionParent
                 data={[]}
                 metaData={{ title: '미션글자', lastUpdate: '2026-08-22T00:00:00.000Z', typez: 'ect' }}
                 starCount={[]}

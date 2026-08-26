@@ -17,6 +17,7 @@ const projection: DocsContentProjection = {
     starredUserIds: ['user-1'],
     words: [{ word: '라디오', status: 'ok' }],
     isSpecial: false,
+    isMissionParent: false,
 };
 
 const refreshedProjection: DocsContentProjection = {

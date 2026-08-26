@@ -74,6 +74,7 @@ jest.mock(
                     starredUserIds: ['user-1'],
                     words: [{ word: '본문단어', status: 'ok', requesterNickname: '요청자' }],
                     isSpecial: false,
+                    isMissionParent: false,
                 },
             }),
         })),
@@ -177,6 +178,7 @@ describe('browser docs services', () => {
                 starredUserIds: ['user-1'],
                 words: [{ word: '본문단어', status: 'ok', requesterNickname: '요청자' }],
                 isSpecial: false,
+                isMissionParent: false,
             },
         });
     });

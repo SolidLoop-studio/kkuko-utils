@@ -4,6 +4,7 @@ import type { ApplicationError } from '@/src/shared/application/application-erro
 import { browserSupabaseClient } from '@/src/shared/infrastructure/supabase/browser-client';
 import type { DocsContentQueryGateway } from '../../application/docs-content-query-ports';
 import type { DocsContentProjection, DocsContentType, DocsContentWord } from '../../application/docs-content-query-types';
+import { isMissionParentReferenceCode } from '../../application/docs-marker-query-types';
 
 type QueryResponse = { data: unknown; error: unknown };
 
@@ -22,11 +23,12 @@ interface DocsContentQueryClient {
     rpc(functionName: string, parameters?: Record<string, unknown>): PromiseLike<QueryResponse>;
 }
 
-type DocsMetadata = DocsContentProjection['metadata'] & { duem: boolean };
+type DocsMetadata = DocsContentProjection['metadata'] & {
+    duem: boolean;
+    isMissionParent: boolean;
+};
 type PendingWord = { word: string; status: 'add' | 'delete'; requesterNickname?: string };
 
-/** 기존 미션글자 선택 화면을 표시만 하는 marker 문서입니다. */
-const MARKER_DOCS_IDS = new Set<number>([208, 223, 238]);
 const MISSION_CHARS = ['가', '나', '다', '라', '마', '바', '사', '아', '자', '차', '카', '타', '파', '하'];
 
 /** 기존 숫자 ID 기반 미션 문서 범위를 Phase 0B 이전까지 Infrastructure에 격리합니다. */
@@ -62,8 +64,17 @@ const parseMetadata = (row: unknown, docsId: number): DocsMetadata | null => {
         || typeof row.name !== 'string'
         || typeof row.last_update !== 'string'
         || !isDocsContentType(row.typez)
-        || typeof row.duem !== 'boolean') return null;
-    return { id: row.id, title: row.name, lastUpdatedAt: row.last_update, type: row.typez, duem: row.duem };
+        || typeof row.duem !== 'boolean'
+        || !isNullableString(row.reference_code)) return null;
+    return {
+        id: row.id,
+        title: row.name,
+        lastUpdatedAt: row.last_update,
+        type: row.typez,
+        duem: row.duem,
+        isMissionParent: row.reference_code !== null
+            && isMissionParentReferenceCode(row.reference_code),
+    };
 };
 
 const parseStarredUserIds = (response: QueryResponse): string[] | null => {
@@ -172,7 +183,7 @@ export class SupabaseDocsContentQueryGateway implements DocsContentQueryGateway 
     async loadByDocsId(docsId: number): Promise<Result<DocsContentProjection | null>> {
         try {
             const docsResponse = await this.client.from('docs')
-                .select('id, name, last_update, typez, duem').eq('id', docsId).maybeSingle();
+                .select('id, name, last_update, typez, duem, reference_code').eq('id', docsId).maybeSingle();
             if (!isRecord(docsResponse) || docsResponse.error !== null) return err(infrastructureError());
             if (docsResponse.data === null) return ok(null);
             const metadata = parseMetadata(docsResponse.data, docsId);
@@ -183,18 +194,23 @@ export class SupabaseDocsContentQueryGateway implements DocsContentQueryGateway 
             const starredUserIds = parseStarredUserIds(starsResponse);
             if (starredUserIds === null) return err(infrastructureError());
 
-            const words = MARKER_DOCS_IDS.has(docsId)
+            const words = metadata.isMissionParent
                 ? []
                 : await this.loadWords(metadata);
             if (words === undefined) return err(infrastructureError());
             if (words === null) return ok(null);
 
-            const { duem: _duem, ...projectionMetadata } = metadata;
+            const {
+                duem: _duem,
+                isMissionParent,
+                ...projectionMetadata
+            } = metadata;
             return ok({
                 metadata: projectionMetadata,
                 starredUserIds,
                 words,
                 isSpecial: isSpecialMissionDocsId(docsId),
+                isMissionParent,
             });
         } catch {
             return err(infrastructureError());
