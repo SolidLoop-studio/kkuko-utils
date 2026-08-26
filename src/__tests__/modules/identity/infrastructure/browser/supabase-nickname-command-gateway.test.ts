@@ -42,14 +42,11 @@ describe('SupabaseNicknameCommandGateway', () => {
     });
 
     it('maps a concurrent unique violation to one stable conflict', async () => {
-        // Break caught: exposing a 23505 duplicate race or treating it as a generic failure.
+        // Break caught: failing to consume the route's stable duplicate-race contract.
         const { fetchClient, gateway } = createGateway();
         fetchClient.mockResolvedValue(response({
             data: null,
-            error: {
-                code: '23505',
-                message: 'duplicate key value violates unique constraint users_nickname_key',
-            },
+            error: { code: 'NICKNAME_CONFLICT' },
         }, false));
 
         const result = await gateway.register('테스터');
@@ -62,16 +59,16 @@ describe('SupabaseNicknameCommandGateway', () => {
                 message: '이미 사용 중인 닉네임입니다.',
             },
         });
-        if (!result.ok) expect(result.error.message).not.toContain('users_nickname_key');
+        if (!result.ok) expect(result.error.message).not.toContain('NICKNAME_CONFLICT');
     });
 
     it.each([
-        ['no session', 'unauthorized', '인증이 필요합니다.'],
-        ['invalid data', 'validation', '닉네임을 입력해주세요.'],
-    ])('maps %s without exposing the raw server value', async (serverError, kind, message) => {
-        // Break caught: leaking existing route-handler auth/validation sentinel strings.
+        ['NICKNAME_UNAUTHORIZED', 'unauthorized', '인증이 필요합니다.'],
+        ['NICKNAME_INVALID', 'validation', '닉네임을 입력해주세요.'],
+    ])('maps %s without exposing the public server code', async (serverCode, kind, message) => {
+        // Break caught: leaking route contract codes instead of projecting ApplicationError messages.
         const { fetchClient, gateway } = createGateway();
-        fetchClient.mockResolvedValue(response({ data: null, error: serverError }, false));
+        fetchClient.mockResolvedValue(response({ data: null, error: { code: serverCode } }, false));
 
         await expect(gateway.register('테스터')).resolves.toMatchObject({
             ok: false,
@@ -97,11 +94,11 @@ describe('SupabaseNicknameCommandGateway', () => {
     });
 
     it('maps unknown returned and thrown details to a stable infrastructure error', async () => {
-        // Break caught: leaking raw database/auth/network errors through Result.
+        // Break caught: leaking raw database/auth/network errors or treating raw 23505 as public contract.
         const returned = createGateway();
         returned.fetchClient.mockResolvedValue(response({
             data: null,
-            error: { code: 'XX999', message: 'private database detail' },
+            error: { code: '23505', message: 'private database detail' },
         }, false));
         const thrown = createGateway();
         thrown.fetchClient.mockRejectedValue(new Error('private network detail'));

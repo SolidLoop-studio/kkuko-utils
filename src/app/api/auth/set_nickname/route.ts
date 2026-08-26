@@ -4,24 +4,27 @@ import { createServerClient } from '@supabase/ssr';
 import { Database } from '@/src/app/types/database.types';
 import { createClient } from '@supabase/supabase-js';
 
-export async function POST(request: NextRequest){
-    const body = await request.json().catch()
-    
-    // 유효하지 않은 데이터는 그냥 반환
-    if (!body){
-        return NextResponse.json({
-            data: null,
-            error: "invalid data"
-        })
-    }
+const errorResponse = (
+    code: 'NICKNAME_INVALID'
+        | 'NICKNAME_UNAUTHORIZED'
+        | 'NICKNAME_CONFLICT'
+        | 'NICKNAME_INTERNAL_ERROR',
+    status: number,
+) => NextResponse.json({ data: null, error: { code } }, { status });
 
-    const {nickname}: {nickname: string} = body;
-    if (!nickname){
-        return NextResponse.json({
-            data: null,
-            error: "invalid data"
-        })
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    typeof value === 'object' && value !== null && !Array.isArray(value)
+);
+
+export async function POST(request: NextRequest){
+    const body: unknown = await request.json().catch(() => null);
+    if (!isRecord(body)
+        || typeof body.nickname !== 'string'
+        || body.nickname.length === 0
+        || body.nickname !== body.nickname.trim()) {
+        return errorResponse('NICKNAME_INVALID', 400);
     }
+    const nickname = body.nickname;
 
     // 요청자의 데이터를 쿠키에서 얻어냄
     let supabaseResponse = NextResponse.next({request,})
@@ -50,10 +53,7 @@ export async function POST(request: NextRequest){
     // 유효한 유저인지 검사
     const { data: { user } } = await supabase.auth.getUser();
     if (!user){
-        return NextResponse.json({
-            data: null,
-            error: "no session"
-        })
+        return errorResponse('NICKNAME_UNAUTHORIZED', 401);
     }
 
     // 업데이트 처리
@@ -61,12 +61,12 @@ export async function POST(request: NextRequest){
         process.env.NEXT_PUBLIC_SUPABASE_URL, 
         process.env.SUPABASE_SERVICE_KEY
     )
-    const {data, error} = await supabaseServer.from('users').insert({id: user.id, nickname: nickname.trim()}).select('*').maybeSingle();
+    const {data, error} = await supabaseServer.from('users').insert({id: user.id, nickname}).select('*').maybeSingle();
     if (error){
-        return NextResponse.json({
-            data,
-            error
-        },{status:500})
+        return errorResponse(
+            error.code === '23505' ? 'NICKNAME_CONFLICT' : 'NICKNAME_INTERNAL_ERROR',
+            error.code === '23505' ? 409 : 500,
+        );
     }
     return NextResponse.json({
         data,

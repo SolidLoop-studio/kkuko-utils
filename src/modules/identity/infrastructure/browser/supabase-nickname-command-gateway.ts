@@ -42,9 +42,10 @@ const isRecord = (value: unknown): value is Record<string, unknown> => (
 );
 
 const mapServerError = (value: unknown): ApplicationError => {
-    if (value === 'no session') return unauthorizedError();
-    if (value === 'invalid data') return validationError();
-    if (isRecord(value) && value.code === '23505') return conflictError();
+    if (!isRecord(value)) return infrastructureError();
+    if (value.code === 'NICKNAME_UNAUTHORIZED') return unauthorizedError();
+    if (value.code === 'NICKNAME_INVALID') return validationError();
+    if (value.code === 'NICKNAME_CONFLICT') return conflictError();
     return infrastructureError();
 };
 

@@ -960,6 +960,7 @@ Identity/Profile:
   - 기존 가입 화면과 같은 양끝 공백 제거 및 빈 값 거부 규칙을 Application service가 소유한다.
   - availability query와 authenticated registration command를 분리하고 UI command는 nickname만 받는다.
   - 등록 actor ID는 기존 server auth 경계가 `getUser()`로 결정하며 browser payload에서 UUID나 role을 받지 않는다.
+  - server route는 canonical nickname만 허용하고 validation/unauthorized/conflict/infrastructure를 안정적인 공개 code와 HTTP status로 투영하며 PostgREST 진단 정보는 응답하지 않는다.
   - 사전 availability 확인 뒤에도 `users_nickname_key` unique constraint를 최종 권위로 사용하고 동시 중복은 안정적인 `conflict`로 변환한다.
   - `auth/auth.tsx`는 겹치는 제출을 합치고 성공 projection을 Redux에 저장한 뒤 기존처럼 홈으로 이동한다.
   - 가입에서 대체된 `add().nickname`은 제거했지만 profile nickname 편집이 아직 사용하는 `usersByNickname`은 유지한다.
