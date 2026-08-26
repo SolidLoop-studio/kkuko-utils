@@ -2,7 +2,6 @@ import { ISupabaseClientManager, IAddManager, IGetManager, IDeleteManager, IUpda
 import type { PostgrestError, Session, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/src/app/types/database.types';
 import type { addWordQueryType, addWordThemeQueryType, DocsLogData, WordLogData } from '@/src/app/types/type';
-import { chunk } from 'es-toolkit';
 import { StorageError } from '@supabase/storage-js';
 import axios from 'axios';
 
@@ -200,25 +199,6 @@ class GetManager implements IGetManager {
         const { count: count2, error: error2 } = await this.supabase.from('word_themes_wait').select('word_id', { count: 'exact', head: true });
         if (error1 || error2) return { count: null, error: error1 ?? error2 };
         return { count: (count1 ?? 0) + (count2 ?? 0), error: null };
-    }
-    public async allWordWaitTheme(c?: "add" | "delete") {
-        if (c == "add") {
-            return await this.supabase.from('word_themes_wait').select('*,words(word,id),themes(*),users(*)').eq('typez', 'add');
-        }
-        else if (c == "delete") {
-            return await this.supabase.from('word_themes_wait').select('*,words(word,id),themes(*),users(*)').eq('typez', "delete")
-        }
-        return await this.supabase.from('word_themes_wait').select('*,words(word,id),themes(*),users(*)');
-    }
-    public async waitWordsThemes(waitWordIds: number[]) {
-        const result = [];
-        const chunkedIds = chunk(waitWordIds, 300);
-        for (const ids of chunkedIds) {
-            const { data, error } = await this.supabase.from('wait_word_themes').select('*,themes(*),wait_words(word)').in('wait_word_id', ids);
-            if (error) return { data: null, error };
-            result.push(...data);
-        }
-        return { data: result, error: null };
     }
     public async wordsByWords(words: string[]) {
         return await this.supabase.rpc('get_words_with_themes', { words_input: words });

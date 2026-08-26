@@ -828,6 +828,9 @@ stack을 fresh reset하고 모든 DB 테스트를 실행한 뒤 항상 중지한
 요청은 기존 원자적 요청 moderation RPC를 재사용하고, 주제 변경 moderation과 중복 없는
 주제 docs 로그를 지원한다. `RequestDocsWrapper`의 요청 목록 query는 Phase 4 docs read의 첫
 세로 슬라이스로 `PendingDocsRequest` query gateway와 React Query hook으로 이전되었다.
+`AdminWrapper`의 추가·삭제·주제 변경 대기 목록도 `PendingWordModerationRequest` query service와
+React Query hook으로 이전했다. Infrastructure가 세 조회, 300개 chunk, 행 검증, 주제 변경 그룹과
+기존 그룹 ID 생성을 소유하며, UI에는 안정적인 Application 오류만 전달한다.
 `WordsDocsHome.tsx`는 대기 요청과 기존 글자 문서 중복 조회, 생성 요청 command를 docs module로
 이전했고, 해당 SCM import와 `letterDocs`·`waitDocs` manager 메서드는 제거했다. docs 요청 moderation migration은 로컬 pgTAP behavior/concurrency test로 검증되었고, cloud 반영은
 사용자/운영자가 통제하는 rollout을 기다린다.
@@ -1047,7 +1050,7 @@ Notifications:
 | local base schema | 완료 | `55320..55329` remapped port의 disposable local bootstrap과 versioned seed 검증 완료 |
 | docs 의미 키 | 완료 | 47개 reference와 varying-PK/누락-reference/rollback 검증 완료; cloud rollout은 사용자/운영자 대기 |
 | 관리자 단어 삭제 (`admin/del-words`) | 완료 | cloud Supabase migration은 사용자/운영자 실행 대기, 운영 지표 관찰 |
-| 관리자 요청 단어/개별 승인 | 부분 완료 | 개별 승인·반려 mutation과 주제 선택 조회는 완료; wrapper의 대기 요청 목록 조회는 legacy SCM에 남아 있음 |
+| 관리자 요청 단어/개별 승인 | 완료 | 개별 승인·반려 mutation, 주제 선택 조회, 대기 요청 목록 query를 `word-moderation` 서비스와 React Query hook으로 이전하고 `allWordWaitTheme`·`waitWordsThemes` legacy getter를 제거함; 다음 별도 경계는 관리자·`r4` 직접 단어 추가 transaction |
 | docs 내부 관리자 단어 moderation | 완료 | 기존 요청 moderation RPC 재사용; 직접 삭제 cloud migration은 사용자/운영자 통제 rollout 대기 |
 | 관리자 docs 요청 moderation | 완료 | 승인·반려 mutation과 대기 요청 목록 query 이전 완료; migration cloud rollout은 사용자/운영자 실행 대기 |
 | 사용자 단어 요청 | 부분 완료 | Phase 2 mutation 코드 이전은 완료; 단일·대량 추가 요청을 포함한 관련 cloud migration rollout은 사용자/운영자 실행 대기 |

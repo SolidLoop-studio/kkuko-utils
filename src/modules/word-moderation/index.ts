@@ -10,6 +10,9 @@ export {
 export {
     DeleteWordDirectlyService,
 } from './application/delete-word-directly';
+export {
+    GetPendingWordModerationRequestsService,
+} from './application/get-pending-word-moderation-requests';
 export type {
     WordApprovalJobStore,
     WordApprovalOperationGateway,
@@ -19,6 +22,15 @@ export type {
     DirectWordDeletionGateway,
     DocsWordMutationTargetGateway,
 } from './application/docs-word-moderation-ports';
+export type {
+    PendingWordModerationQueryGateway,
+} from './application/pending-word-moderation-query-ports';
+export type {
+    PendingWordModerationRequest,
+    PendingWordModerationRequestType,
+    PendingWordModerationTheme,
+    PendingWordModerationThemeType,
+} from './application/pending-word-moderation-query-types';
 export type {
     DeleteWordDirectlyCommand,
     DeleteWordDirectlyResult,
@@ -74,6 +86,11 @@ export {
     type DirectWordDeletionService,
     type DocsWordModerationServices,
 } from './presentation/use-docs-word-moderation';
+export {
+    pendingWordModerationQueryKey,
+    usePendingWordModerationRequests,
+    type PendingWordModerationQueryService,
+} from './presentation/use-pending-word-moderation-requests';
 export type {
     DeletionProgress,
     StoredWordDeletionJob,

@@ -3,12 +3,14 @@ import { RunWordDeletionService } from '../../application/run-word-deletion';
 import { ModerateWordRequestsService } from '../../application/moderate-word-requests';
 import { GetDocsWordMutationTargetsService } from '../../application/get-docs-word-mutation-targets';
 import { DeleteWordDirectlyService } from '../../application/delete-word-directly';
+import { GetPendingWordModerationRequestsService } from '../../application/get-pending-word-moderation-requests';
 import { IndexedDbWordApprovalJobStore } from './word-approval-job-db';
 import { IndexedDbWordDeletionJobStore } from './word-deletion-job-db';
 import { SupabaseDocsWordModerationGateway } from './supabase-docs-word-moderation-gateway';
 import { SupabaseWordDeletionGateway } from './supabase-word-deletion-gateway';
 import { SupabaseWordModerationGateway } from './supabase-word-moderation-gateway';
 import { SupabaseWordRequestModerationGateway } from './supabase-word-request-moderation-gateway';
+import { SupabasePendingWordModerationQueryGateway } from './supabase-pending-word-moderation-query-gateway';
 
 export interface BrowserWordModerationServices {
     wordApprovalService: RunWordApprovalService;
@@ -16,6 +18,7 @@ export interface BrowserWordModerationServices {
     wordRequestModerationService: ModerateWordRequestsService;
     docsWordMutationTargetService: GetDocsWordMutationTargetsService;
     directWordDeletionService: DeleteWordDirectlyService;
+    pendingWordModerationQueryService: GetPendingWordModerationRequestsService;
 }
 
 let browserWordModerationServices: BrowserWordModerationServices | null = null;
@@ -38,6 +41,9 @@ export const createBrowserWordModerationServices = (): BrowserWordModerationServ
             ),
             docsWordMutationTargetService: new GetDocsWordMutationTargetsService(docsGateway),
             directWordDeletionService: new DeleteWordDirectlyService(docsGateway),
+            pendingWordModerationQueryService: new GetPendingWordModerationRequestsService(
+                new SupabasePendingWordModerationQueryGateway(),
+            ),
         };
     }
 
