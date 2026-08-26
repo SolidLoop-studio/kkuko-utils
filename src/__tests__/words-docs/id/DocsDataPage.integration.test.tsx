@@ -37,13 +37,15 @@ jest.mock('@tanstack/react-virtual', () => ({
 }));
 
 jest.mock('../../../app/words-docs/[id]/WordsTableBody', () => {
-    return function FakeWordsTableBody({ initialData, onAdminActionComplete }: {
+    return function FakeWordsTableBody({ initialData, isSp, onAdminActionComplete }: {
         initialData: Array<{ word: string; status: 'add' | 'delete' | 'ok'; mutationTarget: unknown }>;
+        isSp?: { m: string };
         onAdminActionComplete: (action: 'approve' | 'reject' | 'delete-directly', row: (typeof initialData)[number]) => Promise<boolean>;
     }) {
         return (
         <div>
             {initialData.map((row) => <p key={row.word} data-testid={`row-${row.word}`}>{row.word}</p>)}
+            <output data-testid="special-mission">{isSp?.m ?? 'ordinary'}</output>
             <button onClick={() => void onAdminActionComplete('reject', initialData[0])}>admin-refresh</button>
         </div>
         );
@@ -53,7 +55,6 @@ jest.mock('../../../app/words-docs/[id]/WordsTableBody', () => {
 import { createBrowserDocsServices } from '@/src/modules/docs/infrastructure/browser/browser-docs-services';
 import { createBrowserWordModerationServices } from '@/src/modules/word-moderation/infrastructure/browser/browser-word-moderation-services';
 import { ok } from '@/src/shared/application/result';
-import { SCM } from '@/src/app/lib/supabaseClient';
 import { loadingReducer, themeReducer, userReducer } from '@/src/app/store/slice';
 import DocsDataPage from '@/src/app/words-docs/[id]/DocsDataPage';
 
@@ -208,5 +209,41 @@ describe('DocsDataPage real useDocsContent admin refetch integration', () => {
             .toHaveAttribute('href', '/words-docs/9001');
         expect(getContent).toHaveBeenCalledWith(7_301);
         expect(getMarkers).toHaveBeenCalledWith(7_301);
+    });
+
+    it('forwards special mode to a remapped mission child content projection', async () => {
+        // Characterization only: the page forwards the already-classified projection field;
+        // Supabase reference-code classification is covered by the content gateway tests.
+        const getContent = jest.fn().mockResolvedValue(ok({
+            metadata: {
+                id: 9_101,
+                title: '리매핑된 미션가',
+                lastUpdatedAt: '2026-08-25T00:00:00.000Z',
+                type: 'ect' as const,
+            },
+            starredUserIds: [],
+            words: [{ word: '가방', status: 'ok' as const }],
+            isSpecial: true,
+            isMissionParent: false,
+        }));
+        jest.mocked(createBrowserDocsServices).mockReturnValue({
+            docsContentQueryService: { get: getContent },
+            docsViewCommandService: { record: jest.fn().mockResolvedValue(ok(undefined)) },
+        } as never);
+        jest.mocked(createBrowserWordModerationServices).mockReturnValue({
+            docsWordMutationTargetService: {
+                get: jest.fn().mockReturnValue(ok({
+                    targets: [{ kind: 'registered-word', wordId: 9_101 }],
+                })),
+            },
+        } as never);
+        const { Wrapper } = createWrapper();
+
+        render(<DocsDataPage id={9_101} />, { wrapper: Wrapper });
+
+        expect(await screen.findByTestId('row-가방')).toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: '미션글자', level: 2 })).not.toBeInTheDocument();
+        expect(screen.getByTestId('special-mission')).toHaveTextContent('가');
+        expect(getContent).toHaveBeenCalledWith(9_101);
     });
 });
