@@ -51,8 +51,14 @@ jest.mock('../../../app/components/ui/scroll-area', () => ({
 }));
 
 jest.mock('../../../app/lib/supabaseClient', () => ({
-    SCM: { get: jest.fn(() => ({ allThemes: jest.fn() })) },
+    get SCM() {
+        throw new Error('ThemeSelectModal must not import legacy SCM.');
+    },
 }));
+
+jest.mock('swr', () => {
+    throw new Error('ThemeSelectModal must not import SWR.');
+});
 
 import ThemeSelectModal from '../../../app/admin/request-words/ThemeSelectModal';
 import { useWordThemes } from '../../../modules/word-catalog';
