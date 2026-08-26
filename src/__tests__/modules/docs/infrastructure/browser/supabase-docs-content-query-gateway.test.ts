@@ -176,10 +176,8 @@ describe('SupabaseDocsContentQueryGateway', () => {
         });
 
         await expect(new SupabaseDocsContentQueryGateway(client).loadByDocsId(209)).resolves.toEqual(expectedResult);
-        expect(client.rpc).not.toHaveBeenCalledWith(
-            expect.stringMatching(/^get_mission(?:_len3)?_words$/),
-            expect.anything(),
-        );
+        expect(client.rpc.mock.calls.map(([functionName]) => functionName))
+            .not.toContainEqual(expect.stringMatching(/^get_mission(?:_len3)?_words$/));
     });
 
     it.each([
