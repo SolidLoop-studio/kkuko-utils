@@ -2,9 +2,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 jest.mock('../../modules/identity', () => ({ useProfileSearch: jest.fn() }));
-jest.mock('../../app/lib/supabaseClient', () => ({
-    SCM: { get: jest.fn(() => ({ usersLikeByNickname: jest.fn() })) },
-}));
 
 import ProfileHomePage from '@/src/app/profile/ProfileHome';
 import { useProfileSearch } from '../../modules/identity';
@@ -105,6 +102,32 @@ describe('ProfileHomePage', () => {
         expect(screen.queryByText('테스터')).not.toBeInTheDocument();
         expect(input).toHaveValue('   ');
         expect(screen.queryByText('private database details')).not.toBeInTheDocument();
+    });
+
+    test('clears prior results and retains input for a stable infrastructure error', async () => {
+        // Break caught: retaining stale profiles or clearing retry input after an infrastructure failure.
+        const user = userEvent.setup();
+        const search = jest.fn()
+            .mockResolvedValueOnce(ok(profiles))
+            .mockResolvedValueOnce(err({
+                kind: 'infrastructure' as const,
+                message: '사용자 검색 중 오류가 발생했습니다.',
+            }));
+        mockProfileSearch(search);
+        render(<ProfileHomePage />);
+
+        const input = screen.getByPlaceholderText('닉네임으로 검색...');
+        await user.type(input, '테스터');
+        await user.click(screen.getByRole('button', { name: '검색' }));
+        expect(await screen.findByText('테스터')).toBeInTheDocument();
+
+        await user.type(input, '재검색');
+        await user.click(screen.getByRole('button', { name: '검색' }));
+
+        expect(await screen.findByText('사용자 검색 중 오류가 발생했습니다.')).toBeInTheDocument();
+        expect(screen.queryByText('검색할 닉네임을 입력해주세요.')).not.toBeInTheDocument();
+        expect(screen.queryByText('테스터')).not.toBeInTheDocument();
+        expect(input).toHaveValue('재검색');
     });
 
     test('follows pending state for the loading overlay and search button', () => {
