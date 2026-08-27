@@ -112,14 +112,14 @@ export class SaveNotificationService {
         uploaded: Result<StoredNotificationImage> | null,
         saved: PersistedNotificationWriteResult,
     ): Promise<void> {
-        const previousImageUrl = saved.persistedPreviousImageUrl;
-        if (previousImageUrl === null) return;
+        const imageUrlToCleanUp = saved.persistedPreviousImageUrl;
+        if (imageUrlToCleanUp === null) return;
 
         try {
-            const previousPath = this.storage.managedPathFromPublicUrl(previousImageUrl);
+            const previousPath = this.storage.managedPathFromPublicUrl(imageUrlToCleanUp);
             if (previousPath === null || (uploaded?.ok && previousPath === uploaded.value.path)) return;
 
-            const referenceResult = await this.imageReferences.hasReference(previousImageUrl);
+            const referenceResult = await this.imageReferences.hasReference(imageUrlToCleanUp);
             if (!referenceResult.ok || referenceResult.value) return;
             await this.bestEffortRemove(previousPath);
         } catch {
