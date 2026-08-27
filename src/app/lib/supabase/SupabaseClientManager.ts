@@ -138,9 +138,6 @@ class GetManager implements IGetManager {
     public async usersByNickname(userName: string) {
         return await this.supabase.from("users").select("*").eq("nickname", userName.trim())
     }
-    public async usersLikeByNickname(q: string) {
-        return this.supabase.from("users").select("*").ilike("nickname", `%${q}%`);
-    }
     public async userByNickname(nickname: string) {
         return await this.supabase.from('users').select('*').eq('nickname', nickname).maybeSingle();
     }

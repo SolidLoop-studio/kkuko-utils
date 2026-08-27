@@ -30,7 +30,6 @@ export interface IGetManager{
     allWords({ includeAddReq, includeDeleteReq, includeInjung, includeNoInjung, onlyWordChain, lenf }: { includeAddReq?: boolean; includeDeleteReq?: boolean; includeInjung?: boolean; includeNoInjung?: boolean; onlyWordChain?: boolean; lenf?: boolean; }): Promise<{ data: { word: string; noin_canuse: boolean; k_canuse: boolean; status: "ok" | "add" | "delete"; }[]; error: null } | {data: null; error: PostgrestError; }>
     releaseNote(): Promise<PostgrestSingleResponse<{ id: number; content: string; created_at: string; title: string; link: string | null }[]>>;
     usersByNickname(userName: string): Promise<PostgrestSingleResponse<user[]>>;
-    usersLikeByNickname(q: string): Promise<PostgrestSingleResponse<user[]>>;
     userByNickname(nickname: string): Promise<PostgrestSingleResponse<user | null>>;
     monthlyConRankByUserId(userId: string): Promise<PostgrestSingleResponse<number>>;
     monthlyContributionsByUserId(userId: string): Promise<PostgrestSingleResponse<Database['public']['Tables']['user_month_contributions']['Row'][]>>

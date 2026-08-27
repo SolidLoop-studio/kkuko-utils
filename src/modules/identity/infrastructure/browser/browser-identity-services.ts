@@ -2,15 +2,18 @@ import { CheckNicknameAvailabilityService } from '../../application/check-nickna
 import { GetCurrentUserProfileService } from '../../application/get-current-user-profile';
 import { ManageAuthSessionService } from '../../application/manage-auth-session';
 import { RegisterNicknameService } from '../../application/register-nickname';
+import { SearchProfilesByNicknameService } from '../../application/search-profiles-by-nickname';
 import { SupabaseAuthGateway } from './supabase-auth-gateway';
 import { SupabaseCurrentUserProfileQueryGateway } from './supabase-current-user-profile-query-gateway';
 import { SupabaseNicknameCommandGateway } from './supabase-nickname-command-gateway';
 import { SupabaseNicknameQueryGateway } from './supabase-nickname-query-gateway';
+import { SupabaseProfileSearchQueryGateway } from './supabase-profile-search-query-gateway';
 
 export interface BrowserIdentityServices {
     authSessionService: ManageAuthSessionService;
     checkNicknameAvailabilityService: CheckNicknameAvailabilityService;
     currentUserProfileQueryService: GetCurrentUserProfileService;
+    profileSearchQueryService: SearchProfilesByNicknameService;
     registerNicknameService: RegisterNicknameService;
 }
 
@@ -22,6 +25,9 @@ export const createBrowserIdentityServices = (): BrowserIdentityServices => ({
     ),
     currentUserProfileQueryService: new GetCurrentUserProfileService(
         new SupabaseCurrentUserProfileQueryGateway(),
+    ),
+    profileSearchQueryService: new SearchProfilesByNicknameService(
+        new SupabaseProfileSearchQueryGateway(),
     ),
     registerNicknameService: new RegisterNicknameService(new SupabaseNicknameCommandGateway()),
 });
