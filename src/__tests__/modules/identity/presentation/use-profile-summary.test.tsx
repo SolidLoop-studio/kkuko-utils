@@ -91,6 +91,20 @@ describe('useProfileSummary', () => {
         }));
     });
 
+    test('maps a private ApplicationError-shaped rejection to the stable infrastructure error', async () => {
+        // Break caught: accepting a rejected object merely because it resembles an ApplicationError.
+        mockService(async () => {
+            throw { kind: 'infrastructure', message: 'private database detail' };
+        });
+        const { QueryWrapper } = createQueryWrapper();
+        const { result } = renderHook(() => useProfileSummary('테스터'), { wrapper: QueryWrapper });
+
+        await waitFor(() => expect(result.current.error).toEqual({
+            kind: 'infrastructure',
+            message: '프로필 정보를 불러오는 중 오류가 발생했습니다.',
+        }));
+    });
+
     test('keeps distinct nicknames in distinct cache entries', async () => {
         // Break caught: reusing one public profile projection for another nickname.
         mockService(async (nickname) => ok({ ...projection, id: nickname, nickname }));

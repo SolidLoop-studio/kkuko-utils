@@ -19,14 +19,6 @@ jest.mock('recharts', () => ({
 const starredDocsById = jest.fn().mockResolvedValue({ data: [], error: null });
 const requestsListById = jest.fn().mockResolvedValue({ data: [], error: null });
 const logsListById = jest.fn().mockResolvedValue({ data: [], error: null });
-const userByNickname = jest.fn().mockResolvedValue({
-    data: {
-        id: 'user-1', nickname: '테스터', role: 'admin', contribution: 120, month_contribution: 42,
-    },
-    error: null,
-});
-const monthlyConRankByUserId = jest.fn().mockResolvedValue({ data: 3, error: null });
-const monthlyContributionsByUserId = jest.fn().mockResolvedValue({ data: [], error: null });
 
 jest.mock('../../../app/lib/supabaseClient', () => ({
     SCM: {
@@ -34,9 +26,6 @@ jest.mock('../../../app/lib/supabaseClient', () => ({
             starredDocsById,
             requestsListById,
             logsListById,
-            userByNickname,
-            monthlyConRankByUserId,
-            monthlyContributionsByUserId,
             usersByNickname: jest.fn(),
         }),
     },
@@ -74,21 +63,42 @@ describe('ProfilePage', () => {
 
     test('renders every main card field from the summary projection and loads excluded activities once', async () => {
         // Break caught: retaining the three legacy summary getters instead of consuming one projection.
-        render(<ProfilePage userName="테스터" />);
+        const { rerender } = render(<ProfilePage userName="테스터" />);
 
         await waitFor(() => expect(screen.getByText('테스터')).toBeInTheDocument());
         expect(screen.getByText('관리자')).toBeInTheDocument();
         expect(screen.getByText('120')).toBeInTheDocument();
         expect(screen.getByText('42')).toBeInTheDocument();
         expect(screen.getByText('3등')).toBeInTheDocument();
-        expect(screen.getByTestId('monthly-chart')).toHaveTextContent('2026-04');
+        expect(screen.getByTestId('monthly-chart')).toHaveTextContent(JSON.stringify(
+            projection.recentMonthlyContributions,
+        ));
         expect(screen.getByRole('link', { name: '관리자 대시보드' })).toHaveAttribute('href', '/admin');
         await waitFor(() => expect(starredDocsById).toHaveBeenCalledWith('user-1'));
+        expect(starredDocsById).toHaveBeenCalledTimes(1);
         expect(requestsListById).toHaveBeenCalledWith('user-1');
+        expect(requestsListById).toHaveBeenCalledTimes(1);
         expect(logsListById).toHaveBeenCalledWith('user-1');
-        expect(userByNickname).not.toHaveBeenCalled();
-        expect(monthlyConRankByUserId).not.toHaveBeenCalled();
-        expect(monthlyContributionsByUserId).not.toHaveBeenCalled();
+        expect(logsListById).toHaveBeenCalledTimes(1);
+
+        const sameIdProjection = { ...projection, nickname: '같은 사용자' };
+        mockSummary({ isPending: false, data: sameIdProjection, error: null });
+        rerender(<ProfilePage userName="테스터" />);
+        await waitFor(() => expect(screen.getByText('같은 사용자')).toBeInTheDocument());
+        expect(starredDocsById).toHaveBeenCalledTimes(1);
+        expect(requestsListById).toHaveBeenCalledTimes(1);
+        expect(logsListById).toHaveBeenCalledTimes(1);
+
+        const differentIdProjection = { ...projection, id: 'user-2', nickname: '다른 사용자' };
+        mockSummary({ isPending: false, data: differentIdProjection, error: null });
+        rerender(<ProfilePage userName="테스터" />);
+        await waitFor(() => expect(screen.getByText('다른 사용자')).toBeInTheDocument());
+        expect(starredDocsById).toHaveBeenNthCalledWith(2, 'user-2');
+        expect(requestsListById).toHaveBeenNthCalledWith(2, 'user-2');
+        expect(logsListById).toHaveBeenNthCalledWith(2, 'user-2');
+        expect(starredDocsById).toHaveBeenCalledTimes(2);
+        expect(requestsListById).toHaveBeenCalledTimes(2);
+        expect(logsListById).toHaveBeenCalledTimes(2);
     });
 
     test('shows the pending overlay and a stable summary error Modal', async () => {

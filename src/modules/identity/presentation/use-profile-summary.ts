@@ -16,23 +16,19 @@ const profileSummaryError = (): ApplicationError => ({
     message: '프로필 정보를 불러오는 중 오류가 발생했습니다.',
 });
 
-const isApplicationError = (value: unknown): value is ApplicationError => (
-    typeof value === 'object'
-    && value !== null
-    && typeof (value as { kind?: unknown }).kind === 'string'
-    && typeof (value as { message?: unknown }).message === 'string'
-);
-
 const unwrapProfileSummary = async (
     operation: () => Promise<Result<ProfileSummaryProjection>>,
 ): Promise<ProfileSummaryProjection> => {
+    let result: Result<ProfileSummaryProjection>;
+
     try {
-        const result = await operation();
-        if (!result.ok) throw result.error;
-        return result.value;
-    } catch (error) {
-        throw isApplicationError(error) ? error : profileSummaryError();
+        result = await operation();
+    } catch {
+        throw profileSummaryError();
     }
+
+    if (!result.ok) throw result.error;
+    return result.value;
 };
 
 /** 닉네임 기반 프로필 요약 projection을 React Query cache와 연결합니다. */
