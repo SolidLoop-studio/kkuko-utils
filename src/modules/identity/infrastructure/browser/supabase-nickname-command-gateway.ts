@@ -69,7 +69,10 @@ const parseProfile = (
 
 /** 닉네임만 서버 경계로 전달하고 인증 주체에서 생성된 users 행을 검증합니다. */
 export class SupabaseNicknameCommandGateway implements NicknameCommandGateway {
-    constructor(private readonly fetchClient: FetchClient = fetch) {}
+    constructor(
+        private readonly fetchClient: FetchClient = (input, init) =>
+            globalThis.fetch(input, init),
+    ) {}
 
     async register(nickname: string): Promise<Result<NicknameRegistrationProfile>> {
         try {

@@ -16,6 +16,35 @@ const response = (body: ResponseBody, isOk = true): HttpResponse => ({
 });
 
 describe('SupabaseNicknameCommandGateway', () => {
+    it('calls the default browser fetch with its global receiver', async () => {
+        // Break caught: storing window.fetch and invoking it with the gateway as its receiver.
+        const originalFetch = globalThis.fetch;
+        const browserFetch = jest.fn(function browserFetch(
+            this: unknown,
+            _input: RequestInfo | URL,
+            _init?: RequestInit,
+        ) {
+            if (this !== globalThis) throw new TypeError('Illegal invocation');
+            return Promise.resolve(response({
+                data: { id: 'user-1', nickname: '테스터', role: 'r1' },
+                error: null,
+            }));
+        }) as unknown as typeof fetch;
+        globalThis.fetch = browserFetch;
+
+        try {
+            const gateway = new SupabaseNicknameCommandGateway();
+
+            await expect(gateway.register('테스터')).resolves.toEqual(ok({
+                id: 'user-1',
+                nickname: '테스터',
+                role: 'r1',
+            }));
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
+    });
+
     it('posts the normalized nickname only and projects the authenticated actor row', async () => {
         // Break caught: accepting or emitting a caller-controlled actor UUID or role.
         const { fetchClient, gateway } = createGateway();
