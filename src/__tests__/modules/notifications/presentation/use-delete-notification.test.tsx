@@ -63,11 +63,13 @@ describe('useDeleteNotification', () => {
         expect(deleteById).toHaveBeenCalledWith(17);
         expect(invalidateQueries).not.toHaveBeenCalled();
 
+        let deletionResult: Result<void> | undefined;
         await act(async () => {
             deferred.resolve(ok(undefined));
-            await deletion;
+            deletionResult = await deletion;
         });
 
+        expect(deletionResult).toEqual(ok(undefined));
         expect(invalidateQueries).toHaveBeenCalledWith({
             queryKey: notificationQueryKeys.activeList,
         });

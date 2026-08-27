@@ -14,16 +14,23 @@ export interface BrowserNotificationServices {
 }
 
 /** 브라우저 공지 조회 기능의 application service를 조합합니다. */
-export const createBrowserNotificationServices = (): BrowserNotificationServices => ({
-    notificationDeleteService: new DeleteNotificationService(
-        new SupabaseNotificationDeleteCommandGateway(),
-    ),
-    notificationListQueryService: new GetNotificationListService(
-        new SupabaseNotificationListQueryGateway(),
-    ),
-    notificationWriteService: new SaveNotificationService(
-        new SupabaseNotificationWriteCommandGateway(),
-        new SupabaseNotificationImageStorage(),
-        new SupabaseNotificationImageReferenceQueryGateway(),
-    ),
-});
+export const createBrowserNotificationServices = (): BrowserNotificationServices => {
+    const imageStorage = new SupabaseNotificationImageStorage();
+    const imageReferences = new SupabaseNotificationImageReferenceQueryGateway();
+
+    return {
+        notificationDeleteService: new DeleteNotificationService(
+            new SupabaseNotificationDeleteCommandGateway(),
+            imageStorage,
+            imageReferences,
+        ),
+        notificationListQueryService: new GetNotificationListService(
+            new SupabaseNotificationListQueryGateway(),
+        ),
+        notificationWriteService: new SaveNotificationService(
+            new SupabaseNotificationWriteCommandGateway(),
+            imageStorage,
+            imageReferences,
+        ),
+    };
+};
