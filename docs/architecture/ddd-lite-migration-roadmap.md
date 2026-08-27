@@ -123,7 +123,6 @@ git grep -n -E "\bSCM\." -- "src/**/*.ts" "src/**/*.tsx"
 | 기능군 | 대표 파일 | 현재 위험 |
 | --- | --- | --- |
 | 인증·프로필 | `profile/ProfileHome.tsx`, `profile/[username]/ProfilePage.tsx` | 프로필 검색·상세 집계와 프로필 nickname 편집이 아직 SCM에 결합 |
-| 공지 | `notification/[id]/NotificationDetail.tsx`, `notification/components/NotificationWriteForm.tsx` | 관리자 삭제·생성·수정 command와 이미지 Storage 업로드·공개 URL 조회가 아직 SCM에 결합 |
 
 ## 4. 현재 문제점과 해결 방향
 
