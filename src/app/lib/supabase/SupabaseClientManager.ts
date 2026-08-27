@@ -31,9 +31,6 @@ class AddManager implements IAddManager {
     public async waitWords(q: { word: string; requested_by: string | null; request_type: 'add'; }[]) {
         return this.supabase.from('wait_words').upsert(q, { onConflict: "word", ignoreDuplicates: true }).select('*');
     }
-    public async notification(data: { title: string; body: string; img?: string | null; end_at: string, is_important?: boolean, is_modal?: boolean }) {
-        return await this.supabase.from('notification').insert(data).select('*').single();
-    }
 
 }
 
@@ -309,9 +306,6 @@ class UpdateManager implements IUpdateManager {
     public async userContribution({ userId, amount = 1 }: { userId: string, amount?: number }) {
         return await this.supabase.rpc('increment_contribution', { target_id: userId, inc_amount: amount });
     }
-    public async notification(id: number, data: { title?: string; body?: string; img?: string | null; end_at: string, is_important?: boolean; is_modal?: boolean }) {
-        return await this.supabase.from('notification').update(data).eq('id', id).select('*').single();
-    }
 }
 
 export class SupabaseClientManager implements ISupabaseClientManager {
@@ -338,29 +332,6 @@ export class SupabaseClientManager implements ISupabaseClientManager {
     }
     public update() {
         return this._update;
-    }
-    // 이미지 업로드 기능
-    public async uploadImage(file: File, path: string) {
-        return await this.supabase.storage
-            .from('public_img')
-            .upload(path, file, {
-                cacheControl: '3600',
-                upsert: false
-            });
-    }
-
-    // 이미지 삭제 기능
-    public async deleteImage(path: string) {
-        return await this.supabase.storage
-            .from('public_img')
-            .remove([path]);
-    }
-
-    // 공개 URL 가져오기
-    public getPublicUrl(path: string) {
-        return this.supabase.storage
-            .from('public_img')
-            .getPublicUrl(path);
     }
 
     async getJWT(){

@@ -9,7 +9,6 @@ type user = Database['public']['Tables']['users']['Row'];
 type docs_log = Database['public']['Tables']['docs_logs']['Row'];
 type user_star_docs = Database['public']['Tables']['user_star_docs']['Row'];
 type log = Database['public']['Tables']['logs']['Row'];
-type notification = Database['public']['Tables']['notification']['Row'];
 type okWord = Omit<word, 'mission_mark'> & { mission_mark?: number; };
 
 type delete_word_themes_bulk = Database['public']['Functions']['delete_word_themes_bulk']['Returns'];
@@ -20,7 +19,6 @@ export interface IAddManager {
     waitWordThemes(insertWaitWordThemeData: { wait_word_id: number; theme_id: number; }[]): Promise<PostgrestSingleResponse<null>>
     wordThemesReq(q: {word_id: number, theme_id: number, typez: "add" | "delete", req_by: string | null}[]): Promise<PostgrestSingleResponse<{typez: "add" | "delete"; themes:{name: string}}[]>>
     waitWords(q: {word: string, requested_by: string | null, request_type: "add"}[]): Promise<PostgrestSingleResponse<(wait_word)[]>>;
-    notification(data: { title: string; body: string; img?: string | null; end_at: string; is_important?: boolean; is_modal?: boolean }): Promise<PostgrestSingleResponse<notification>>;
 }
 
 // get 관련 타입
@@ -63,7 +61,6 @@ export interface IDeleteManager{
 // update 관련 타입
 export interface IUpdateManager{
     userContribution({ userId, amount }: { userId: string, amount?: number }): Promise<PostgrestSingleResponse<undefined>>;
-    notification(id: number, data: { title?: string; body?: string; img?: string | null; end_at?: string | null; is_important?: boolean; is_modal?: boolean }): Promise<PostgrestSingleResponse<notification>>;
 }
 
 // 전체 supabaseManager 타입 

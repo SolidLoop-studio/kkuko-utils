@@ -992,8 +992,12 @@ Notifications:
   - Application service가 양의 safe integer ID를 검증하고, validation 및 adapter의 반환·throw 실패를 안정적인 공개 `Result` 오류로 변환한다.
   - RLS가 적용된 browser Supabase adapter가 단일 `notification` row delete를 수행하며, 성공한 경우에만 활성 공지 목록 React Query cache를 무효화한다.
   - 관리자 확인·완료 Modal, 목록 이동과 refresh 동작은 유지하고 대체된 legacy `notificationById` delete method를 제거했다.
-  - 이 단일 row delete에는 schema·RPC·service-role 경계가 필요하지 않았으며 cloud rollout은 수행하지 않았다.
-- 다음 write/Storage plan: 공지 생성·수정 command와 이미지 Storage gateway를 분리하고, update/remove/delete의 managed-image lifecycle 및 DB 저장 실패 시 업로드 파일 정리 정책을 정의한다. 이 범위가 완료되기 전에는 `notifications/storage`를 완료로 표시하지 않는다.
+  - DB가 반환한 삭제 row의 이미지에만 lifecycle cleanup을 적용한다. managed URL은 DB 성공 뒤 fresh zero-reference 결과일 때만 best-effort로 삭제하며, shared·external·uncertain URL은 보존한다.
+- 공지 생성·수정 command와 이미지 Storage 경계 분리 (완료)
+  - form은 파일 선택 시 local preview만 만들고 submit 시에만 저장 command를 실행한다. presentation은 PostgREST 오류를 노출하거나 `alert`를 사용하지 않는다.
+  - 새 이미지 upload 뒤 DB create/update가 실패하면 새 object를 best-effort로 제거한다. DB가 검증해 반환한 managed 기존 이미지는 replace/remove/delete가 DB 성공한 뒤 fresh zero-reference 결과일 때만 best-effort로 제거한다.
+  - shared·external·stale·uncertain URL은 삭제하지 않는다. 이 no-migration guarded best-effort 정책은 concurrency-proof garbage collection이 아니다.
+  - 이 경계에는 database migration이나 cloud rollout이 없었다.
 
 ### Phase 6. 기타 외부 연동 분리
 
@@ -1090,7 +1094,7 @@ Notifications:
 | word-catalog 조회 | 완료 | 브라우저 검색·자동완성, 단어 상세 query, 고급 검색 Route Handler, 다운로드, 통계, 랜덤 연결 단어 query 완료 |
 | docs context | 부분 완료 | 공개 목록·로그·정보·본문, 관리자 대기 요청 목록/moderation, `WordsDocsHome` 중복 조회·생성 요청, `DocsDataPage` best-effort 조회 수 기록, `DocsDataHome` 멱등 즐겨찾기와 semantic marker bulk query 이전 완료; immutable mission reference catalog가 mission child의 `isSpecial`, family별 RPC, 대상 글자와 remapped-PK child page coverage를 소유하고 presentation의 legacy parent ID gating을 제거함; `letterDocs`·`waitDocs`·`docView`·`starDocs`·`startDocs` 및 read-side `docsLastUpdate(id)` 제거. `AdminLogsWrapper`의 live `SCM.get().allDocs`는 별도 admin-logs projection 슬라이스에서 이전할 때까지 유지; Phase 0B cloud rollout은 사용자/운영자 통제 대기 상태. 다음 경계는 실제 소비자 검사 후 지정 |
 | identity/profile | 부분 완료 | Auth session·Google login·상태 listener·logout, 현재 사용자 공개 profile query, nickname availability/registration 경계 완료; 다음 경계는 profile 화면 projection이며 profile 편집의 legacy `usersByNickname`도 그 소비자 이전까지 유지 |
-| notifications/storage | 부분 완료 | 활성 목록·최신 모달 query와 browser/server adapter, React Query cache/dismissal 정책 및 server-safe 상세·metadata·편집 query, 관리자 notification row-delete command 완료. row-delete는 양의 safe integer ID validation, 안정적 오류 mapping, RLS-protected browser adapter, 성공 시에만 active-list cache invalidation, 기존 확인·완료 Modal 동작과 `notificationById` 제거를 포함하며 cloud rollout은 수행하지 않았다. 다음 write/Storage plan은 생성·수정 command, 이미지 Storage port, update/remove/delete managed-image lifecycle과 DB 저장 실패 시 업로드 파일 정리 정책을 소유한다. |
+| notifications/storage | 완료 | 활성 목록·최신 모달 query와 browser/server adapter, React Query cache/dismissal 정책, server-safe 상세·metadata·편집 query, 관리자 create/update/delete command 및 이미지 Storage 경계 완료. 새 upload는 DB 저장 실패 시 best-effort로 제거하고, DB가 검증해 반환한 managed replace/remove/delete 대상은 DB 성공 뒤 fresh zero-reference 결과일 때만 best-effort로 제거한다. shared·external·stale·uncertain URL은 보존한다. form은 PostgREST 오류나 `alert`를 노출하지 않는다. 이 no-migration guarded 정책은 concurrency-proof garbage collection이 아니며 database migration·cloud rollout은 수행하지 않았다. 이는 notification sub-boundary 완료만 뜻하며 전체 SCM 제거는 별도 작업이다. |
 | SCM 최종 제거 | 대기 | 모든 context 이전 후 실행 |
 
 상태 값은 `미착수`, `설계 중`, `구현 중`, `부분 완료`, `완료`로 관리한다. 기능 일부만 새 구조를 사용하면 완료로 표시하지 않는다.
