@@ -138,15 +138,6 @@ class GetManager implements IGetManager {
     public async usersByNickname(userName: string) {
         return await this.supabase.from("users").select("*").eq("nickname", userName.trim())
     }
-    public async userByNickname(nickname: string) {
-        return await this.supabase.from('users').select('*').eq('nickname', nickname).maybeSingle();
-    }
-    public async monthlyConRankByUserId(userId: string) {
-        return await this.supabase.rpc("get_user_monthly_rank", { uid: userId });
-    }
-    public async monthlyContributionsByUserId(userId: string) {
-        return await this.supabase.from('user_month_contributions').select('*').eq('user_id', userId).limit(4);
-    }
     public async starredDocsById(userId: string) {
         return await this.supabase.from("user_star_docs").select("*,docs(*)").eq("user_id", userId);
     }

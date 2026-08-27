@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
     Card,
     CardContent,
@@ -45,8 +45,8 @@ import axios, { isAxiosError } from "axios";
 import { Progress } from '@/src/app/components/ui/progress';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import Link from "next/link";
+import { useProfileSummary, type IdentityRole } from "@/src/modules/identity";
 
-type role = "r1" | "r2" | "r3" | "r4" | "admin";
 type status = "pending" | "approved" | "rejected";
 type ttype = "add" | "delete";
 
@@ -54,7 +54,7 @@ type userInfo = {
     id: string;
     nickname: string;
     contribution: number;
-    role: role;
+    role: IdentityRole;
     month_contribution: number;
 };
 
@@ -86,7 +86,7 @@ const dummyUser = {
     id: "123e4567-e89b-12d3-a456-426614174000",
     nickname: "dummyUser",
     contribution: 245,
-    role: "r3" as role,
+    role: "r3" as IdentityRole,
     month_contribution: 42,
     month_contribution_rank: 4,
 };
@@ -118,6 +118,7 @@ const TabSkeleton = () => (
 );
 
 const ProfilePage = ({ userName }: { userName: string }) => {
+    const summaryQuery = useProfileSummary(userName);
     const [user, setUser] = useState<
         userInfo & { month_contribution_rank: number }
     >(dummyUser);
@@ -127,7 +128,7 @@ const ProfilePage = ({ userName }: { userName: string }) => {
     const [isEditing, setIsEditing] = useState<boolean>(false);
     const [newNickname, setNewNickname] = useState<string>(user.nickname);
     const [nicknameError, setNicknameError] = useState<string>("");
-    const [loading, setLoading] = useState<string | null>("유저 데이터 가져 오는 중...");
+    const [loading, setLoading] = useState<string | null>(null);
     const [errorModalView, seterrorModalView] = useState<ErrorMessage | null>(null);
     const router = useRouter();
     const userReudx = useSelector((state: RootState) => state.user);
@@ -140,6 +141,7 @@ const ProfilePage = ({ userName }: { userName: string }) => {
         requests: true,
         processed: true
     });
+    const loadedTabsUserId = useRef<string | null>(null);
 
     // 자신 프로필 인지 체크 (닉네임 변경 ui표시 여부 결정)
     const isOwnProfile = user.id === userReudx.uuid;
@@ -156,91 +158,61 @@ const ProfilePage = ({ userName }: { userName: string }) => {
     };
 
     useEffect(() => {
-        const getData = async () => {
-            // 유저 기본 데이터 가져오기
-            const { data: getUserData, error: getUserError } = await SCM.get().userByNickname(userName);
-            if (getUserError) {
-                return makeError(getUserError);
-            }
-            if (!getUserData) {
-                return makeError({
-                    name: "unknown",
-                    details: "",
-                    code: "EEE1",
-                    hint: "",
-                    message: "알수 없는 에러",
-                });
-            }
-            // 이번달 기여도 랭킹 가져오기
-            const { data: mcrankData, error: mcrankError } = await SCM.get().monthlyConRankByUserId(getUserData.id);
-            if (mcrankError) {
-                return makeError(mcrankError);
-            }
-            setNewNickname(getUserData.nickname);
-            setUser({ ...getUserData, month_contribution_rank: mcrankData });
-            setIsAdmin(getUserData.role === "admin");
-            const {data: monthlyContributionsData, error: monthlyContributionsError} = await SCM.get().monthlyContributionsByUserId(getUserData.id);
-            if (monthlyContributionsError) return makeError(monthlyContributionsError);
+        const summary = summaryQuery.data;
+        if (!summary) return;
 
-            const now = new Date();
+        setNewNickname(summary.nickname);
+        setUser({
+            id: summary.id,
+            nickname: summary.nickname,
+            contribution: summary.totalContribution,
+            role: summary.role,
+            month_contribution: summary.monthlyContribution,
+            month_contribution_rank: summary.monthlyContributionRank,
+        });
+        setIsAdmin(summary.role === "admin");
+        setMonthlyContributions(summary.recentMonthlyContributions);
 
-            // 최근 5개월 구하기 (가장 오래된 달부터 정렬)
-            const recentMonths = Array.from({ length: 5 }, (_, i) => {
-            const date = new Date(now.getFullYear(), now.getMonth() - 4 + i); // 5개월 전부터 현재까지
-            return `${date.getFullYear()}-${date.getMonth() + 1}`;
-            });
+        if (loadedTabsUserId.current !== summary.id) {
+            loadedTabsUserId.current = summary.id;
+            void loadTabsData(summary.id);
+        }
+    }, [summaryQuery.data]);
 
-            // DB에서 가져온 기여도 데이터를 Map으로 변환 (month: contribution)
-            const contributionMap = new Map(
-            monthlyContributionsData.map(({ contribution, month }) => {
-                const formattedMonth = `${new Date(month).getFullYear()}-${new Date(month).getMonth() + 1}`;
-                return [formattedMonth, contribution];
-            })
-            );
-
-            // 현재 달 데이터 추가
-            contributionMap.set(
-                `${now.getFullYear()}-${now.getMonth() + 1}`,
-                getUserData.month_contribution
-            );
-
-            // 최종 배열 구성 (누락된 달은 0으로 채움)
-            const filledContributions = recentMonths.map(month => ({
-                month,
-                contribution: contributionMap.get(month) ?? 0,
-            }));
-
-            setMonthlyContributions(filledContributions);
-
-            setLoading(null);
-            await loadTabsData(getUserData.id);
-        };
-        getData();
-        
-    }, []);
+    useEffect(() => {
+        if (!summaryQuery.error) return;
+        seterrorModalView({
+            ErrName: "profile summary",
+            ErrMessage: summaryQuery.error.message,
+            ErrStackRace: "",
+            inputValue: "admin",
+        });
+    }, [summaryQuery.error]);
 
     // 등급에 따름 이름
-    const getRoleName = (role: role) => {
-        const roleNames = {
+    const getRoleName = (role: IdentityRole) => {
+        const roleNames: Record<IdentityRole, string> = {
+            guest: "게스트",
             r1: "새싹",
             r2: "일반",
             r3: "활동가",
             r4: "베테랑",
             admin: "관리자",
         };
-        return roleNames[role] || role;
+        return roleNames[role];
     };
 
     // 등급에 따른 색깔
-    const getRoleColor = (role: role) => {
-        const roleColors = {
+    const getRoleColor = (role: IdentityRole) => {
+        const roleColors: Record<IdentityRole, string> = {
+            guest: "bg-gray-100 text-gray-800",
             r1: "bg-green-100 text-green-800",
             r2: "bg-blue-100 text-blue-800",
             r3: "bg-purple-100 text-purple-800",
             r4: "bg-orange-100 text-orange-800",
             admin: "bg-red-100 text-red-800",
         };
-        return roleColors[role] || "bg-gray-100 text-gray-800";
+        return roleColors[role];
     };
 
     // 이번달 기여도 랭크 글자의 색깔
@@ -447,8 +419,18 @@ const ProfilePage = ({ userName }: { userName: string }) => {
     };
 
     // 다음 등급까지의 진행도 얻는 함수
-    const getRoleProgress = (role: role, contribution: number) => {
+    const getRoleProgress = (role: IdentityRole, contribution: number) => {
         switch (role) {
+            case 'guest':
+                return {
+                    current: contribution,
+                    target: contribution,
+                    nextRole: null,
+                    nextRoleName: null,
+                    showProgress: false,
+                    maxLevel: false,
+                    adminLevel: false,
+                };
             case 'r1':
                 return {
                     current: contribution,
@@ -483,14 +465,6 @@ const ProfilePage = ({ userName }: { userName: string }) => {
                     nextRoleName: null,
                     showProgress: false,
                     adminLevel: true
-                };
-            default:
-                return {
-                    current: 0,
-                    target: 500,
-                    nextRole: 'r2',
-                    nextRoleName: '일반',
-                    showProgress: true
                 };
         }
     };
@@ -842,13 +816,13 @@ const ProfilePage = ({ userName }: { userName: string }) => {
                 </div>
             </div>
             {/* 로딩 오버레이 */}
-            {loading && (
+            {(summaryQuery.isPending ? "유저 데이터 가져 오는 중..." : loading) && (
                 <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
                     <Card className="p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                         <div className="flex items-center space-x-3">
                             <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
                             <span className="text-slate-700 dark:text-slate-300">
-                                {loading}
+                                {summaryQuery.isPending ? "유저 데이터 가져 오는 중..." : loading}
                             </span>
                         </div>
                     </Card>
