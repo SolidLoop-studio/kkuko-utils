@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
     Card,
     CardContent,
@@ -47,6 +47,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import Link from "next/link";
 import {
     useProfileFavoriteDocs,
+    useProfileProcessedRequests,
     useProfileSummary,
     useProfileWordRequests,
     type IdentityRole,
@@ -62,14 +63,6 @@ type userInfo = {
     role: IdentityRole;
     month_contribution: number;
 };
-
-type logList = {
-    id: number;
-    word: string;
-    created_at: string;
-    state: status;
-    r_type: ttype;
-}[];
 
 // 로딩 중 표시해줄 더미 데이터 목록들
 const dummyUser = {
@@ -110,11 +103,11 @@ const TabSkeleton = () => (
 const ProfilePage = ({ userName }: { userName: string }) => {
     const summaryQuery = useProfileSummary(userName);
     const favoriteDocsQuery = useProfileFavoriteDocs(summaryQuery.data?.id ?? "");
+    const processedRequestsQuery = useProfileProcessedRequests(summaryQuery.data?.id ?? "");
     const wordRequestsQuery = useProfileWordRequests(summaryQuery.data?.id ?? "");
     const [user, setUser] = useState<
         userInfo & { month_contribution_rank: number }
     >(dummyUser);
-    const [logs, setLogs] = useState<logList>([]);
     const [isEditing, setIsEditing] = useState<boolean>(false);
     const [newNickname, setNewNickname] = useState<string>(user.nickname);
     const [nicknameError, setNicknameError] = useState<string>("");
@@ -126,10 +119,6 @@ const ProfilePage = ({ userName }: { userName: string }) => {
     const [complete, setComplete] = useState<string | null>(null);
     const [isAdmin, setIsAdmin] = useState<boolean>(false);
     const [monthlyContributions, setMonthlyContributions] = useState<{ month: string, contribution: number }[]>(dummyMonthlyData);
-    const [tabsLoading, setTabsLoading] = useState({
-        processed: true
-    });
-    const loadedTabsUserId = useRef<string | null>(null);
 
     // 자신 프로필 인지 체크 (닉네임 변경 ui표시 여부 결정)
     const isOwnProfile = user.id === userReudx.uuid;
@@ -161,10 +150,6 @@ const ProfilePage = ({ userName }: { userName: string }) => {
         setIsAdmin(summary.role === "admin");
         setMonthlyContributions(summary.recentMonthlyContributions);
 
-        if (loadedTabsUserId.current !== summary.id) {
-            loadedTabsUserId.current = summary.id;
-            void loadTabsData(summary.id);
-        }
     }, [summaryQuery.data]);
 
     useEffect(() => {
@@ -210,20 +195,6 @@ const ProfilePage = ({ userName }: { userName: string }) => {
         if (rank === 2) return "bg-gray-300 text-black";
         if (rank === 3) return "bg-orange-400 text-black";
         return "bg-black text-white";
-    };
-
-    // 처리 내역 데이터 레이지 로딩
-    const loadTabsData = async (userId: string) => {
-        try {
-            const { data, error } = await SCM.get().logsListById(userId);
-
-            if (error) throw error;
-            setLogs(data);
-        } catch (error) {
-            console.error('처리 내역 로딩 실패:', error);
-        } finally {
-            setTabsLoading(prev => ({ ...prev, processed: false }));
-        }
     };
 
     // 닉네임 업데이트 처리하는 함수
@@ -719,38 +690,42 @@ const ProfilePage = ({ userName }: { userName: string }) => {
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <ScrollArea className="h-[400px]">
-                                        {tabsLoading.processed ? <TabSkeleton /> : (<div className="p-4">
-                                            {logs.length === 0 ? (
+                                        {processedRequestsQuery.isPending ? <TabSkeleton /> : (<div className="p-4">
+                                            {processedRequestsQuery.error ? (
+                                                <p className="text-center text-muted-foreground dark:text-gray-400 py-8">
+                                                    {processedRequestsQuery.error.message}
+                                                </p>
+                                            ) : (processedRequestsQuery.data?.length ?? 0) === 0 ? (
                                                 <p className="text-center text-muted-foreground dark:text-gray-400 py-8">
                                                     처리된 요청이 없습니다.
                                                 </p>
                                             ) : (
                                                 <div className="space-y-3">
-                                                    {logs.map((log, index) => (
-                                                        <div key={log.id}>
+                                                    {processedRequestsQuery.data?.map((item, index) => (
+                                                        <div key={item.id}>
                                                             <div className="flex items-center justify-between p-3 border rounded-lg">
                                                                 <div className="flex items-center gap-3">
-                                                                    {log.r_type === "add" ? (
+                                                                    {item.requestType === "add" ? (
                                                                         <Plus className="h-4 w-4 text-green-500" />
                                                                     ) : (
                                                                         <Trash2 className="h-4 w-4 text-red-500" />
                                                                     )}
                                                                     <div>
-                                                                        <p className="font-medium text-gray-900 dark:text-gray-100">{log.word}</p>
+                                                                        <p className="font-medium text-gray-900 dark:text-gray-100">{item.word}</p>
                                                                         <p className="text-sm text-muted-foreground dark:text-gray-400">
-                                                                            {getRequestTypeText(log.r_type)} •{" "}
-                                                                            {formatTimeAgo(log.created_at)}
+                                                                            {getRequestTypeText(item.requestType)} •{" "}
+                                                                            {formatTimeAgo(item.createdAt)}
                                                                         </p>
                                                                     </div>
                                                                 </div>
                                                                 <div className="flex items-center gap-2">
-                                                                    {getStatusIcon(log.state)}
+                                                                    {getStatusIcon(item.state)}
                                                                     <span className="text-sm text-gray-900 dark:text-gray-100">
-                                                                        {getStatusText(log.state)}
+                                                                        {getStatusText(item.state)}
                                                                     </span>
                                                                 </div>
                                                             </div>
-                                                            {index < logs.length - 1 && (
+                                                            {index < (processedRequestsQuery.data?.length ?? 0) - 1 && (
                                                                 <Separator className="my-2" />
                                                             )}
                                                         </div>

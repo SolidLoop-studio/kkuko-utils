@@ -2,6 +2,7 @@ import { CheckNicknameAvailabilityService } from '../../application/check-nickna
 import { GetCurrentUserProfileService } from '../../application/get-current-user-profile';
 import { GetProfileSummaryService } from '../../application/get-profile-summary';
 import { GetProfileFavoriteDocsService } from '../../application/get-profile-favorite-docs';
+import { GetProfileProcessedRequestsService } from '../../application/get-profile-processed-requests';
 import { GetProfileWordRequestsService } from '../../application/get-profile-word-requests';
 import { ManageAuthSessionService } from '../../application/manage-auth-session';
 import { RegisterNicknameService } from '../../application/register-nickname';
@@ -13,6 +14,7 @@ import { SupabaseNicknameQueryGateway } from './supabase-nickname-query-gateway'
 import { SupabaseProfileSearchQueryGateway } from './supabase-profile-search-query-gateway';
 import { SupabaseProfileSummaryQueryGateway } from './supabase-profile-summary-query-gateway';
 import { SupabaseProfileFavoriteDocsQueryGateway } from './supabase-profile-favorite-docs-query-gateway';
+import { SupabaseProfileProcessedRequestsQueryGateway } from './supabase-profile-processed-requests-query-gateway';
 import { SupabaseProfileWordRequestsQueryGateway } from './supabase-profile-word-requests-query-gateway';
 
 export interface BrowserIdentityServices {
@@ -22,6 +24,7 @@ export interface BrowserIdentityServices {
     profileSearchQueryService: SearchProfilesByNicknameService;
     profileSummaryQueryService: GetProfileSummaryService;
     profileFavoriteDocsQueryService: GetProfileFavoriteDocsService;
+    profileProcessedRequestsQueryService: GetProfileProcessedRequestsService;
     profileWordRequestsQueryService: GetProfileWordRequestsService;
     registerNicknameService: RegisterNicknameService;
 }
@@ -43,6 +46,9 @@ export const createBrowserIdentityServices = (): BrowserIdentityServices => ({
     ),
     profileFavoriteDocsQueryService: new GetProfileFavoriteDocsService(
         new SupabaseProfileFavoriteDocsQueryGateway(),
+    ),
+    profileProcessedRequestsQueryService: new GetProfileProcessedRequestsService(
+        new SupabaseProfileProcessedRequestsQueryGateway(),
     ),
     profileWordRequestsQueryService: new GetProfileWordRequestsService(
         new SupabaseProfileWordRequestsQueryGateway(),

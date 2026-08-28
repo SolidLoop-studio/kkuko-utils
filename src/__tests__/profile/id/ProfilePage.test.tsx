@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 
 jest.mock('../../../modules/identity', () => ({
     useProfileFavoriteDocs: jest.fn(),
+    useProfileProcessedRequests: jest.fn(),
     useProfileWordRequests: jest.fn(),
     useProfileSummary: jest.fn(),
 }));
@@ -21,12 +22,9 @@ jest.mock('recharts', () => ({
     Tooltip: () => null,
 }));
 
-const logsListById = jest.fn().mockResolvedValue({ data: [], error: null });
-
 jest.mock('../../../app/lib/supabaseClient', () => ({
     SCM: {
         get: () => ({
-            logsListById,
             usersByNickname: jest.fn(),
         }),
     },
@@ -64,17 +62,25 @@ const mockWordRequests = (value: Partial<ReturnType<typeof useProfileWordRequest
     jest.mocked(useProfileWordRequests).mockReturnValue(value as ReturnType<typeof useProfileWordRequests>);
 };
 
+const mockProcessedRequests = (value: unknown) => {
+    const identity = jest.requireMock('../../../modules/identity') as {
+        useProfileProcessedRequests: jest.Mock;
+    };
+    identity.useProfileProcessedRequests.mockReturnValue(value);
+};
+
 describe('ProfilePage', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockSummary({ isPending: false, data: projection, error: null });
         mockFavoriteDocs({ isPending: false, data: [], error: null });
         mockWordRequests({ isPending: false, data: [], error: null });
+        mockProcessedRequests({ isPending: false, data: [], error: null });
     });
 
-    test('renders every main card field from the summary projection and loads remaining legacy processed activity once', async () => {
+    test('renders every main card field from the summary projection', async () => {
         // Break caught: retaining the replaced profile summary getters instead of consuming one projection.
-        const { rerender } = render(<ProfilePage userName="테스터" />);
+        render(<ProfilePage userName="테스터" />);
 
         await waitFor(() => expect(screen.getByText('테스터')).toBeInTheDocument());
         expect(screen.getByText('관리자')).toBeInTheDocument();
@@ -85,21 +91,6 @@ describe('ProfilePage', () => {
             projection.recentMonthlyContributions,
         ));
         expect(screen.getByRole('link', { name: '관리자 대시보드' })).toHaveAttribute('href', '/admin');
-        expect(logsListById).toHaveBeenCalledWith('user-1');
-        expect(logsListById).toHaveBeenCalledTimes(1);
-
-        const sameIdProjection = { ...projection, nickname: '같은 사용자' };
-        mockSummary({ isPending: false, data: sameIdProjection, error: null });
-        rerender(<ProfilePage userName="테스터" />);
-        await waitFor(() => expect(screen.getByText('같은 사용자')).toBeInTheDocument());
-        expect(logsListById).toHaveBeenCalledTimes(1);
-
-        const differentIdProjection = { ...projection, id: 'user-2', nickname: '다른 사용자' };
-        mockSummary({ isPending: false, data: differentIdProjection, error: null });
-        rerender(<ProfilePage userName="테스터" />);
-        await waitFor(() => expect(screen.getByText('다른 사용자')).toBeInTheDocument());
-        expect(logsListById).toHaveBeenNthCalledWith(2, 'user-2');
-        expect(logsListById).toHaveBeenCalledTimes(2);
     });
 
     test('shows the pending overlay and a stable summary error Modal', async () => {
@@ -192,5 +183,37 @@ describe('ProfilePage', () => {
         rerender(<ProfilePage userName="테스터" />);
 
         await waitFor(() => expect(screen.getByText('단어 요청 내역을 불러오는 중 오류가 발생했습니다.')).toBeInTheDocument());
+    });
+
+    test('renders processed requests from the feature hook and shows a safe tab error', async () => {
+        // Break caught: keeping processed activity in the legacy SCM loader instead of the identity query hook.
+        mockProcessedRequests({
+            isPending: false,
+            data: [{
+                id: 43,
+                word: '처리단어',
+                requestType: 'delete',
+                createdAt: '2026-08-27T00:00:00.000Z',
+                state: 'approved',
+            }],
+            error: null,
+        });
+        const { rerender } = render(<ProfilePage userName="테스터" />);
+        const user = userEvent.setup();
+
+        await user.click(screen.getByRole('tab', { name: '처리 내역' }));
+
+        await waitFor(() => expect(screen.getByText('처리단어')).toBeInTheDocument());
+        expect(screen.getByText(/삭제/)).toBeInTheDocument();
+        expect(screen.getByText('승인됨')).toBeInTheDocument();
+
+        mockProcessedRequests({
+            isPending: false,
+            data: undefined,
+            error: { kind: 'infrastructure', message: '처리된 요청을 불러오는 중 오류가 발생했습니다.' },
+        });
+        rerender(<ProfilePage userName="테스터" />);
+
+        await waitFor(() => expect(screen.getByText('처리된 요청을 불러오는 중 오류가 발생했습니다.')).toBeInTheDocument());
     });
 });

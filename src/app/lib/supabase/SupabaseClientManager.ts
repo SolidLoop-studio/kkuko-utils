@@ -138,9 +138,6 @@ class GetManager implements IGetManager {
     public async usersByNickname(userName: string) {
         return await this.supabase.from("users").select("*").eq("nickname", userName.trim())
     }
-    public async logsListById(userId: string) {
-        return await this.supabase.from("logs").select("*").eq("make_by", userId).order("created_at", { ascending: false }).limit(30);
-    }
     public async wordsCount() {
         const { data, error } = await this.supabase.from('words_count').select('total_words').single();
         if (error) return { count: null, error };
