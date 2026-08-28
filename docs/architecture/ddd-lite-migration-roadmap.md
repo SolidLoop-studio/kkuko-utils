@@ -46,7 +46,7 @@
 - Next.js Route Handler는 모든 DB 요청의 의무적인 중간 계층이 아니다. 서버 secret 또는 서버 전용 통합이 필요한 경우에만 사용한다.
 - 기존 `SCM`은 한 번에 제거하지 않고, 위험도가 높은 기능부터 strangler 방식으로 축소한다.
 
-관리자 단어 대량 승인·삭제, 요청 moderation, 사용자 단어 요청, `word-catalog` 조회와 주요 docs 경계가 위 원칙으로 이전되었다. `WordAddHome.tsx`의 일반 사용자 요청뿐 아니라 관리자·`r4` 직접 추가도 feature hook과 원자적 RPC를 사용한다. 직접 추가 RPC는 actor/role을 DB에서 결정하고 단어·주제 관계·단어 로그·중복 없는 docs 로그·최근 수정 효과를 한 transaction으로 처리하며, behavior/concurrency pgTAP으로 검증되었다. Auth session 복원·상태 구독·Google 로그인·로그아웃은 작은 identity gateway로, 현재 사용자 공개 프로필 조회는 별도 query 계약으로 분리되었다. 신규 사용자 nickname 확인·등록도 nickname-only Application command와 분리된 query/command gateway로 이전되었고, 최종 중복 판정은 기존 unique constraint가 담당한다. Phase 0B의 47개 의미 reference와 disposable local DB 검증도 완료되었다. 관련 cloud Supabase migration은 사용자/운영자가 통제하는 rollout 대기 상태이며, 아직 검사하지 않은 다음 경계를 추측하지 않는다.
+관리자 단어 대량 승인·삭제, 요청 moderation, 사용자 단어 요청, `word-catalog` 조회와 주요 docs 경계가 위 원칙으로 이전되었다. `WordAddHome.tsx`의 일반 사용자 요청뿐 아니라 관리자·`r4` 직접 추가도 feature hook과 원자적 RPC를 사용한다. 직접 추가 RPC는 actor/role을 DB에서 결정하고 단어·주제 관계·단어 로그·중복 없는 docs 로그·최근 수정 효과를 한 transaction으로 처리하며, behavior/concurrency pgTAP으로 검증되었다. Auth session 복원·상태 구독·Google 로그인·로그아웃은 작은 identity gateway로, 현재 사용자 공개 프로필 조회는 별도 query 계약으로 분리되었다. 신규 사용자 nickname 확인·등록과 프로필 nickname 변경도 nickname-only Application command와 분리된 gateway/hook으로 이전되었고, 인증 actor는 server `getUser()`가 결정하며 최종 중복 판정은 기존 unique constraint가 담당한다. 관찰된 identity/profile presentation의 legacy SCM 소비자는 0개다. Phase 0B의 47개 의미 reference와 disposable local DB 검증도 완료되었다. 관련 cloud Supabase migration은 사용자/운영자가 통제하는 rollout 대기 상태이며, 아직 검사하지 않은 다음 경계를 추측하지 않는다.
 
 ## 3. 현재 상태
 
@@ -116,13 +116,13 @@ git grep -n -E "\bSCM\." -- "src/**/*.ts" "src/**/*.tsx"
 
 즉, 전체 프로젝트에서 SCM이 제거된 것은 아니다. 안전한 전환 방법을 검증한 초기 세로 슬라이스들이 완성된 상태다.
 
-### 3.3 아직 남은 주요 직접 의존성
+### 3.3 주요 직접 의존성 추적
 
 남은 사용처는 대략 다음 기능군으로 나뉜다.
 
 | 기능군 | 대표 파일 | 현재 위험 |
 | --- | --- | --- |
-| 인증·프로필 | `profile/ProfileHome.tsx`, `profile/[username]/ProfilePage.tsx` | 프로필 검색·상세 집계와 프로필 nickname 편집이 아직 SCM에 결합 |
+| 인증·프로필 | `profile/ProfileHome.tsx`, `profile/[username]/ProfilePage.tsx` | 기능별 Application/gateway/hook 경계로 이전 완료; 관찰된 presentation legacy SCM 소비자 0개 |
 
 ## 4. 현재 문제점과 해결 방향
 
@@ -969,31 +969,37 @@ Identity/Profile:
   - server route는 canonical nickname만 허용하고 validation/unauthorized/conflict/infrastructure를 안정적인 공개 code와 HTTP status로 투영하며 PostgREST 진단 정보는 응답하지 않는다.
   - 사전 availability 확인 뒤에도 `users_nickname_key` unique constraint를 최종 권위로 사용하고 동시 중복은 안정적인 `conflict`로 변환한다.
   - `auth/auth.tsx`는 겹치는 제출을 합치고 성공 projection을 Redux에 저장한 뒤 기존처럼 홈으로 이동한다.
-  - 가입에서 대체된 `add().nickname`은 제거했지만 profile nickname 편집이 아직 사용하는 `usersByNickname`은 유지한다.
+  - 가입에서 대체된 `add().nickname`을 제거했고, 후속 profile nickname 변경 slice에서 마지막 `usersByNickname` 소비자와 getter도 제거했다.
 - header/logout이 SCM 전체를 의존하지 않도록 Auth port 축소 (완료)
 - profile nickname 검색 projection과 명시적 제출 hook 분리 (완료)
   - `ProfileSearchItem`은 id·nickname·role·총/월간 기여도만 노출하고 browser adapter가 nullable role을 `guest`로 정규화한다.
   - `ProfileHome`은 explicit-submit `useProfileSearch` mutation으로 검색하며 blank query validation과 infrastructure 오류를 안정적인 공개 메시지로 표시한다.
-  - 대체된 SCM `usersLikeByNickname` getter는 제거했고, profile 요약·activity와 nickname 편집의 관찰된 legacy 소비자는 후속 slice로 남긴다.
+  - 대체된 SCM `usersLikeByNickname` getter를 제거했고, 당시 남긴 profile 요약·activity·nickname 편집 legacy 소비자도 후속 slice에서 이전했다.
   - 이 slice는 Route Handler, DB migration, linked Supabase 명령 또는 cloud rollout을 수행하지 않았다.
 - profile main summary·월간 rank·최근 5개월 contribution projection 분리 (완료)
   - browser gateway는 최신 네 개의 저장 월을 내림차순으로 조회하고, Application service가 누락 월을 채운 오름차순 다섯 points와 현재 `month_contribution`의 authoritative override를 만든다.
   - nullable role은 `guest`로 정규화하며, profile page는 guest badge와 progress 없는 상태를 명시적으로 렌더링한다. 반환·throw·손상된 Infrastructure 응답은 안정적인 공개 오류로만 투영한다.
-  - 대체된 SCM `userByNickname`·`monthlyConRankByUserId`·`monthlyContributionsByUserId` getter는 제거했다. nickname edit의 `usersByNickname` 소비자는 후속 slice로 유지한다.
+  - 대체된 SCM `userByNickname`·`monthlyConRankByUserId`·`monthlyContributionsByUserId` getter는 제거했다. 당시 남겨 둔 nickname edit의 `usersByNickname` 소비자는 후속 command slice에서 제거했다.
   - 이 slice는 database migration, linked Supabase 명령 또는 cloud rollout을 수행하지 않았다.
 - profile 즐겨찾기 문서 activity query 분리 (완료)
   - Application query와 browser Supabase gateway가 프로필 사용자의 즐겨찾기 문서를 `id`·`name`·`type`·`lastUpdatedAt` projection으로 조회하며, blank user ID와 반환·throw Infrastructure 실패를 안정적인 공개 오류로 정규화한다.
   - `ProfilePage`의 즐겨찾기 탭은 React Query hook으로 loading·empty·backend ordering·문서 링크·상대 시간·type badge를 유지하고, 안전한 tab 오류 상태를 렌더링한다.
-  - 대체된 SCM `starredDocsById` getter는 제거했다. nickname edit의 `usersByNickname` 소비자는 후속 slice로 유지한다.
+  - 대체된 SCM `starredDocsById` getter는 제거했고, nickname edit의 `usersByNickname`도 후속 command slice에서 제거했다.
   - 이 slice는 database migration, linked Supabase 명령 또는 cloud rollout을 수행하지 않았다.
 - profile 단어 요청 activity query 분리 (완료)
   - Application query와 browser Supabase gateway가 프로필 사용자의 최신 단어 요청 30건을 `id`·`word`·`requestType`·`requestedAt`·`status` projection으로 조회하며, add/delete 유형과 pending/approved/rejected 상태만 허용하고 blank user ID와 반환·throw Infrastructure 실패를 안정적인 공개 오류로 정규화한다.
   - `ProfilePage`의 요청 내역 탭은 React Query hook으로 loading·empty·backend newest-first ordering·추가/삭제 icon·상태 text·상대 시간을 유지하고, 안전한 tab 오류 상태를 렌더링한다.
-  - 대체된 SCM `requestsListById` getter는 제거했다. nickname edit의 `usersByNickname` 소비자는 후속 slice로 유지한다.
+  - 대체된 SCM `requestsListById` getter는 제거했고, nickname edit의 `usersByNickname`도 후속 command slice에서 제거했다.
 - profile 처리 요청 activity query 분리 (완료)
   - `GetProfileProcessedRequestsService`·`ProfileProcessedRequestsQueryGateway`와 `useProfileProcessedRequests`가 maker ID의 최신 30개 처리 요청을 좁은 projection·안정 오류로 조회한다.
-  - 대체된 SCM `logsListById` getter는 제거했다. nickname edit의 `usersByNickname` 소비자는 후속 slice로 유지한다.
+  - 대체된 SCM `logsListById` getter는 제거했고, nickname edit의 `usersByNickname`도 후속 command slice에서 제거했다.
   - 이 slice는 database migration, linked Supabase 명령 또는 cloud rollout을 수행하지 않았다.
+- profile nickname 변경 command 분리 (완료)
+  - `UpdateProfileNicknameService`는 nickname만 받아 양끝 공백을 제거하고 blank를 거부하며, `id`·`nickname`·`role`만 가진 공개 프로필을 반환한다.
+  - browser command gateway는 `/api/auth/update_nickname`에 canonical nickname만 전달한다. route는 `getUser()`의 인증 주체 ID로만 업데이트하며 caller UUID나 role을 받지 않는다.
+  - 기존 `users_nickname_key` unique constraint를 동시 중복의 최종 권위로 유지하고 validation·unauthorized·conflict·infrastructure를 안정적인 공개 code/status/error로 변환해 PostgREST 진단을 노출하지 않는다.
+  - `useProfileNicknameUpdate`는 겹치는 제출을 하나의 command promise로 합친다. `ProfilePage`는 같은 닉네임 취소, 인라인 validation/conflict, 안전한 오류 Modal, 로컬 profile·Redux 갱신, 완료 Modal과 새 profile URL redirect를 유지한다.
+  - `ProfilePage`의 마지막 SCM·Axios·PostgREST 결합과 대체된 `usersByNickname` getter/interface를 제거했다. 이 slice는 database migration, linked Supabase 명령 또는 cloud rollout을 수행하지 않았다.
 
 Notifications:
 
@@ -1114,7 +1120,7 @@ Notifications:
 | 사용자 단어 요청 | 부분 완료 | Phase 2 mutation 코드 이전은 완료; 단일·대량 추가 요청을 포함한 관련 cloud migration rollout은 사용자/운영자 실행 대기 |
 | word-catalog 조회 | 완료 | 브라우저 검색·자동완성, 단어 상세 query, 고급 검색 Route Handler, 다운로드, 통계, 랜덤 연결 단어 query 완료 |
 | docs context | 부분 완료 | 공개 목록·로그·정보·본문, 관리자 대기 요청 목록/moderation, `WordsDocsHome` 중복 조회·생성 요청, `DocsDataPage` best-effort 조회 수 기록, `DocsDataHome` 멱등 즐겨찾기와 semantic marker bulk query 이전 완료; immutable mission reference catalog가 mission child의 `isSpecial`, family별 RPC, 대상 글자와 remapped-PK child page coverage를 소유하고 presentation의 legacy parent ID gating을 제거함; `letterDocs`·`waitDocs`·`docView`·`starDocs`·`startDocs` 및 read-side `docsLastUpdate(id)` 제거. `AdminLogsWrapper`의 live `SCM.get().allDocs`는 별도 admin-logs projection 슬라이스에서 이전할 때까지 유지; Phase 0B cloud rollout은 사용자/운영자 통제 대기 상태. 다음 경계는 실제 소비자 검사 후 지정 |
-| identity/profile | 부분 완료 | Auth session·Google login·상태 listener·logout, 현재 사용자 공개 profile query, nickname availability/registration, ProfileHome nickname search projection·명시적 제출 hook·빈 검색 validation·안정 오류·SCM `usersLikeByNickname` 제거, profile main summary·월간 rank·최신 네 stored history 기반의 recent-five-month projection·현재 월 override·안정 오류 및 SCM `userByNickname`·`monthlyConRankByUserId`·`monthlyContributionsByUserId` 제거, profile 즐겨찾기 문서·단어 요청·처리 요청 activity query의 Application/gateway/hook·안정 오류·SCM `starredDocsById`·`requestsListById`·`logsListById` 제거 완료; nickname edit의 관찰된 legacy `usersByNickname` 소비자는 후속 slice로 유지하며 이 slice는 database/cloud rollout을 수행하지 않음 |
+| identity/profile | 완료 | Auth session·Google login·상태 listener·logout, 현재 사용자 공개 profile query, nickname availability/registration, ProfileHome nickname search, profile main summary·월간 rank·최근 5개월 contribution, 즐겨찾기 문서·단어 요청·처리 요청 activity query, profile nickname 변경 command의 Application/gateway/hook·안정 오류·성공 UI 흐름 이전 완료. 관찰된 identity/profile presentation의 legacy SCM 소비자는 0개이며, 대체된 `usersLikeByNickname`·`userByNickname`·`monthlyConRankByUserId`·`monthlyContributionsByUserId`·`starredDocsById`·`requestsListById`·`logsListById`·`usersByNickname` getter를 제거함. nickname update slice는 database/cloud rollout을 수행하지 않음 |
 | notifications/storage | 완료 | 활성 목록·최신 모달 query와 browser/server adapter, React Query cache/dismissal 정책, server-safe 상세·metadata·편집 query, 관리자 create/update/delete command 및 이미지 Storage 경계 완료. 새 upload는 DB 저장 실패 시 best-effort로 제거하고, DB가 검증해 반환한 managed replace/remove/delete 대상은 DB 성공 뒤 fresh zero-reference 결과일 때만 best-effort로 제거한다. shared·external·stale·uncertain URL은 보존한다. form은 PostgREST 오류나 `alert`를 노출하지 않는다. 이 no-migration guarded 정책은 concurrency-proof garbage collection이 아니며 database migration·cloud rollout은 수행하지 않았다. 이는 notification sub-boundary 완료만 뜻하며 전체 SCM 제거는 별도 작업이다. |
 | SCM 최종 제거 | 대기 | 모든 context 이전 후 실행 |
 

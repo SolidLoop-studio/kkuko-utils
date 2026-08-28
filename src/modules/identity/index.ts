@@ -41,3 +41,4 @@ export { useProfileSummary } from './presentation/use-profile-summary';
 export { useProfileFavoriteDocs } from './presentation/use-profile-favorite-docs';
 export { useProfileProcessedRequests } from './presentation/use-profile-processed-requests';
 export { useProfileWordRequests } from './presentation/use-profile-word-requests';
+export { useProfileNicknameUpdate } from './presentation/use-profile-nickname-update';

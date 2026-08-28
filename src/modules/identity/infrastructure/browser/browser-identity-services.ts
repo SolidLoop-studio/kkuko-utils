@@ -7,6 +7,7 @@ import { GetProfileWordRequestsService } from '../../application/get-profile-wor
 import { ManageAuthSessionService } from '../../application/manage-auth-session';
 import { RegisterNicknameService } from '../../application/register-nickname';
 import { SearchProfilesByNicknameService } from '../../application/search-profiles-by-nickname';
+import { UpdateProfileNicknameService } from '../../application/update-profile-nickname';
 import { SupabaseAuthGateway } from './supabase-auth-gateway';
 import { SupabaseCurrentUserProfileQueryGateway } from './supabase-current-user-profile-query-gateway';
 import { SupabaseNicknameCommandGateway } from './supabase-nickname-command-gateway';
@@ -16,6 +17,7 @@ import { SupabaseProfileSummaryQueryGateway } from './supabase-profile-summary-q
 import { SupabaseProfileFavoriteDocsQueryGateway } from './supabase-profile-favorite-docs-query-gateway';
 import { SupabaseProfileProcessedRequestsQueryGateway } from './supabase-profile-processed-requests-query-gateway';
 import { SupabaseProfileWordRequestsQueryGateway } from './supabase-profile-word-requests-query-gateway';
+import { SupabaseProfileNicknameCommandGateway } from './supabase-profile-nickname-command-gateway';
 
 export interface BrowserIdentityServices {
     authSessionService: ManageAuthSessionService;
@@ -27,6 +29,7 @@ export interface BrowserIdentityServices {
     profileProcessedRequestsQueryService: GetProfileProcessedRequestsService;
     profileWordRequestsQueryService: GetProfileWordRequestsService;
     registerNicknameService: RegisterNicknameService;
+    profileNicknameUpdateService: UpdateProfileNicknameService;
 }
 
 /** 브라우저 identity 기능에 필요한 작은 인증·프로필·닉네임 서비스를 조합합니다. */
@@ -54,4 +57,7 @@ export const createBrowserIdentityServices = (): BrowserIdentityServices => ({
         new SupabaseProfileWordRequestsQueryGateway(),
     ),
     registerNicknameService: new RegisterNicknameService(new SupabaseNicknameCommandGateway()),
+    profileNicknameUpdateService: new UpdateProfileNicknameService(
+        new SupabaseProfileNicknameCommandGateway(),
+    ),
 });

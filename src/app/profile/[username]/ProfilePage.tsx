@@ -35,23 +35,22 @@ import { useRouter } from "next/navigation";
 import ErrorModal from "@/src/app/components/ErrModal";
 import { AppDispatch, RootState } from "@/src/app/store/store";
 import { useDispatch, useSelector } from "react-redux";
-import type { PostgrestError } from "@supabase/supabase-js";
-import { SCM } from "@/src/app/lib/supabaseClient";
 import { userAction } from "@/src/app/store/slice";
 import CompleteModal from "@/src/app/components/CompleteModal";
 import { ScrollArea } from "@/src/app/components/ui/scroll-area";
 import { Separator } from "@radix-ui/react-select";
-import axios, { isAxiosError } from "axios";
 import { Progress } from '@/src/app/components/ui/progress';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import Link from "next/link";
 import {
     useProfileFavoriteDocs,
     useProfileProcessedRequests,
+    useProfileNicknameUpdate,
     useProfileSummary,
     useProfileWordRequests,
     type IdentityRole,
 } from "@/src/modules/identity";
+import type { ApplicationError } from "@/src/shared/application/application-error";
 
 type status = "pending" | "approved" | "rejected";
 type ttype = "add" | "delete";
@@ -105,6 +104,7 @@ const ProfilePage = ({ userName }: { userName: string }) => {
     const favoriteDocsQuery = useProfileFavoriteDocs(summaryQuery.data?.id ?? "");
     const processedRequestsQuery = useProfileProcessedRequests(summaryQuery.data?.id ?? "");
     const wordRequestsQuery = useProfileWordRequests(summaryQuery.data?.id ?? "");
+    const nicknameUpdate = useProfileNicknameUpdate();
     const [user, setUser] = useState<
         userInfo & { month_contribution_rank: number }
     >(dummyUser);
@@ -124,12 +124,12 @@ const ProfilePage = ({ userName }: { userName: string }) => {
     const isOwnProfile = user.id === userReudx.uuid;
 
     // 오류 처리 함수
-    const makeError = (error: PostgrestError) => {
+    const makeError = (error: ApplicationError) => {
         seterrorModalView({
-            ErrName: error.name,
+            ErrName: "nickname update",
             ErrMessage: error.message,
-            ErrStackRace: error.code,
-            inputValue: "admin",
+            ErrStackRace: error.code ?? "",
+            inputValue: newNickname,
         });
         setLoading(null);
     };
@@ -197,44 +197,6 @@ const ProfilePage = ({ userName }: { userName: string }) => {
         return "bg-black text-white";
     };
 
-    // 닉네임 업데이트 처리하는 함수
-    const updateNickname = async (updateNickname: string) => {
-        try {
-            // api로 업데이트 요청 날리고 적절하게 반환값 가공
-            const res = await axios.post<
-                { data: null; error: PostgrestError } | { data: userInfo; error: null }
-            >("/api/auth/update_nickname", {
-                nickname: updateNickname,
-            });
-            const { data, error } = res.data;
-            return { data, error };
-        } catch (error) {
-            if (isAxiosError(error)) {
-                return {
-                    data: null,
-                    error: {
-                        name: "update fail",
-                        details: "",
-                        code: "EEE4",
-                        hint: "",
-                        message: error.message,
-                    },
-                };
-            } else {
-                return {
-                    data: null,
-                    error: {
-                        name: "unknown",
-                        details: "",
-                        code: "EEE4",
-                        hint: "",
-                        message: "알수 없는 에러",
-                    },
-                };
-            }
-        }
-    };
-
     // 요청 / 처리 상태 아이콘
     const getStatusIcon = (status: status) => {
         switch (status) {
@@ -287,41 +249,29 @@ const ProfilePage = ({ userName }: { userName: string }) => {
         }
 
         setLoading("닉네임 변경 처리중...");
-        const { data: existingUser, error: existingUserError } = await SCM.get().usersByNickname(newNickname);
+        const result = await nicknameUpdate.updateProfileNickname(newNickname);
+        if (!result.ok) {
+            setLoading(null);
+            if (result.error.kind === "validation" || result.error.kind === "conflict") {
+                setNicknameError(result.error.message);
+                return;
+            }
+            makeError(result.error);
+            return;
+        }
 
-        if (existingUserError) {
-            return makeError(existingUserError);
-        }
-        if (existingUser.length > 0) {
-            setNicknameError("이미 존재하는 닉네임 입니다.");
-        } else {
-            // 존재하는 닉네임이 아니면 업데이트 처리
-            const { data: updateNicknameData, error: updateNicknameError } =
-                await updateNickname(newNickname);
-            if (updateNicknameError) {
-                return makeError(updateNicknameError);
-            }
-            if (!updateNicknameData) {
-                return makeError({
-                    name: "unknown",
-                    details: "",
-                    code: "EEE2",
-                    hint: "",
-                    message: "알수 없는 에러",
-                });
-            }
-            setUser((prev) => ({ ...prev, nickname: updateNicknameData.nickname }));
-            dispatch(
-                userAction.setInfo({
-                    username: updateNicknameData.nickname,
-                    role: updateNicknameData.role,
-                    uuid: updateNicknameData.id,
-                })
-            );
-            setComplete(
-                `${updateNicknameData.nickname}으로 닉네임이 정상적으로 변경되었습니다!`
-            );
-        }
+        const updateNicknameData = result.value;
+        setUser((prev) => ({ ...prev, nickname: updateNicknameData.nickname }));
+        dispatch(
+            userAction.setInfo({
+                username: updateNicknameData.nickname,
+                role: updateNicknameData.role,
+                uuid: updateNicknameData.id,
+            })
+        );
+        setComplete(
+            `${updateNicknameData.nickname}으로 닉네임이 정상적으로 변경되었습니다!`
+        );
         setLoading(null);
     };
 
@@ -406,7 +356,11 @@ const ProfilePage = ({ userName }: { userName: string }) => {
                                             <p className="text-sm text-red-500">{nicknameError}</p>
                                         )}
                                         <div className="flex gap-2 justify-center">
-                                            <Button size="sm" onClick={handleNicknameUpdate}>
+                                            <Button
+                                                size="sm"
+                                                onClick={handleNicknameUpdate}
+                                                disabled={nicknameUpdate.isPending}
+                                            >
                                                 저장
                                             </Button>
                                             <Button
@@ -429,6 +383,7 @@ const ProfilePage = ({ userName }: { userName: string }) => {
                                             <Button
                                                 size="sm"
                                                 variant="ghost"
+                                                aria-label="닉네임 수정"
                                                 onClick={() => setIsEditing(true)}
                                             >
                                                 <Edit3 className="h-4 w-4" />

@@ -1,15 +1,21 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { err, ok } from '@/src/shared/application/result';
+
+const mockPush = jest.fn();
+const mockDispatch = jest.fn();
+const mockUpdateProfileNickname = jest.fn();
 
 jest.mock('../../../modules/identity', () => ({
     useProfileFavoriteDocs: jest.fn(),
     useProfileProcessedRequests: jest.fn(),
     useProfileWordRequests: jest.fn(),
     useProfileSummary: jest.fn(),
+    useProfileNicknameUpdate: jest.fn(),
 }));
-jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }) }));
+jest.mock('next/navigation', () => ({ useRouter: () => ({ push: mockPush }) }));
 jest.mock('react-redux', () => ({
-    useDispatch: () => jest.fn(),
+    useDispatch: () => mockDispatch,
     useSelector: () => ({ uuid: 'user-1' }),
 }));
 jest.mock('recharts', () => ({
@@ -21,15 +27,6 @@ jest.mock('recharts', () => ({
     CartesianGrid: () => null,
     Tooltip: () => null,
 }));
-
-jest.mock('../../../app/lib/supabaseClient', () => ({
-    SCM: {
-        get: () => ({
-            usersByNickname: jest.fn(),
-        }),
-    },
-}));
-
 import ProfilePage from '@/src/app/profile/[username]/ProfilePage';
 import type { ProfileSummaryProjection } from '../../../modules/identity';
 import { useProfileFavoriteDocs, useProfileSummary, useProfileWordRequests } from '../../../modules/identity';
@@ -69,6 +66,18 @@ const mockProcessedRequests = (value: unknown) => {
     identity.useProfileProcessedRequests.mockReturnValue(value);
 };
 
+const mockNicknameUpdate = (value: { isPending?: boolean } = {}) => {
+    const identity = jest.requireMock('../../../modules/identity') as {
+        useProfileNicknameUpdate: jest.Mock;
+    };
+    identity.useProfileNicknameUpdate.mockReturnValue({
+        updateProfileNickname: mockUpdateProfileNickname,
+        isPending: value.isPending ?? false,
+        error: null,
+        clearError: jest.fn(),
+    });
+};
+
 describe('ProfilePage', () => {
     beforeEach(() => {
         jest.clearAllMocks();
@@ -76,6 +85,12 @@ describe('ProfilePage', () => {
         mockFavoriteDocs({ isPending: false, data: [], error: null });
         mockWordRequests({ isPending: false, data: [], error: null });
         mockProcessedRequests({ isPending: false, data: [], error: null });
+        mockNicknameUpdate();
+        mockUpdateProfileNickname.mockResolvedValue(ok({
+            id: 'user-1',
+            nickname: '변경닉네임',
+            role: 'admin',
+        }));
     });
 
     test('renders every main card field from the summary projection', async () => {
@@ -215,5 +230,92 @@ describe('ProfilePage', () => {
         rerender(<ProfilePage userName="테스터" />);
 
         await waitFor(() => expect(screen.getByText('처리된 요청을 불러오는 중 오류가 발생했습니다.')).toBeInTheDocument());
+    });
+
+    test('cancels editing without a command when the nickname is unchanged', async () => {
+        // Break caught: submitting the current nickname instead of preserving cancellation.
+        const user = userEvent.setup();
+        render(<ProfilePage userName="테스터" />);
+
+        await user.click(await screen.findByRole('button', { name: '닉네임 수정' }));
+        await user.click(screen.getByRole('button', { name: '저장' }));
+
+        expect(mockUpdateProfileNickname).not.toHaveBeenCalled();
+        expect(screen.queryByPlaceholderText('새 닉네임')).not.toBeInTheDocument();
+    });
+
+    test('shows blank and conflict errors inline through the nickname command flow', async () => {
+        // Break caught: sending blank input or moving an expected duplicate outcome into raw error UI.
+        const user = userEvent.setup();
+        const { unmount } = render(<ProfilePage userName="테스터" />);
+
+        await user.click(await screen.findByRole('button', { name: '닉네임 수정' }));
+        await user.clear(screen.getByPlaceholderText('새 닉네임'));
+        await user.click(screen.getByRole('button', { name: '저장' }));
+        expect(screen.getByText('닉네임을 입력해주세요.')).toBeInTheDocument();
+        expect(mockUpdateProfileNickname).not.toHaveBeenCalled();
+
+        unmount();
+        mockUpdateProfileNickname.mockResolvedValue(err({
+            kind: 'conflict',
+            code: 'NICKNAME_CONFLICT',
+            message: '이미 사용 중인 닉네임입니다.',
+        }));
+        render(<ProfilePage userName="테스터" />);
+        await user.click(await screen.findByRole('button', { name: '닉네임 수정' }));
+        await user.clear(screen.getByPlaceholderText('새 닉네임'));
+        await user.type(screen.getByPlaceholderText('새 닉네임'), '중복닉네임');
+        await user.click(screen.getByRole('button', { name: '저장' }));
+
+        await waitFor(() => expect(screen.getByText('이미 사용 중인 닉네임입니다.')).toBeInTheDocument());
+    });
+
+    test('renders stable infrastructure failure in the project error modal', async () => {
+        // Break caught: reconstructing or exposing Axios/PostgREST diagnostics in ProfilePage.
+        mockUpdateProfileNickname.mockResolvedValue(err({
+            kind: 'infrastructure',
+            message: '닉네임 변경 중 오류가 발생했습니다.',
+        }));
+        const user = userEvent.setup();
+        render(<ProfilePage userName="테스터" />);
+
+        await user.click(await screen.findByRole('button', { name: '닉네임 수정' }));
+        await user.clear(screen.getByPlaceholderText('새 닉네임'));
+        await user.type(screen.getByPlaceholderText('새 닉네임'), '변경닉네임');
+        await user.click(screen.getByRole('button', { name: '저장' }));
+
+        await waitFor(() => expect(screen.getByText('닉네임 변경 중 오류가 발생했습니다.')).toBeInTheDocument());
+    });
+
+    test('updates local and Redux profile, completes, then redirects to the new nickname', async () => {
+        // Break caught: losing the existing success side effects while replacing SCM/Axios.
+        const user = userEvent.setup();
+        render(<ProfilePage userName="테스터" />);
+
+        await user.click(await screen.findByRole('button', { name: '닉네임 수정' }));
+        await user.clear(screen.getByPlaceholderText('새 닉네임'));
+        await user.type(screen.getByPlaceholderText('새 닉네임'), '변경닉네임');
+        await user.click(screen.getByRole('button', { name: '저장' }));
+
+        await waitFor(() => expect(mockUpdateProfileNickname).toHaveBeenCalledWith('변경닉네임'));
+        expect(mockDispatch).toHaveBeenCalledWith({
+            type: 'user/setInfo',
+            payload: { username: '변경닉네임', role: 'admin', uuid: 'user-1' },
+        });
+        expect(await screen.findByText('변경닉네임으로 닉네임이 정상적으로 변경되었습니다!')).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: '확인' }));
+        expect(mockPush).toHaveBeenCalledWith('/profile/변경닉네임');
+    });
+
+    test('disables save while the nickname mutation is pending', async () => {
+        // Break caught: the page inviting repeated submissions while one command is in flight.
+        mockNicknameUpdate({ isPending: true });
+        const user = userEvent.setup();
+        render(<ProfilePage userName="테스터" />);
+
+        await user.click(await screen.findByRole('button', { name: '닉네임 수정' }));
+
+        expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
     });
 });
