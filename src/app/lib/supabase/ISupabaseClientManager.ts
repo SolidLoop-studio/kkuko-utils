@@ -22,7 +22,6 @@ export interface IAddManager {
 
 // get 관련 타입
 export interface IGetManager{
-    allDocs(): Promise<PostgrestSingleResponse<(docs & { users: user | null })[]>>;
     allThemes(): Promise<PostgrestSingleResponse<theme[]>>
     allWaitWords(c?:"add" | "delete"): Promise<PostgrestSingleResponse<(wait_word & {words: word | null; users: user | null})[]>>;
     wordsThemes(wordIds: number[]): Promise<PostgrestSingleResponse<{ theme_id: number; word_id: number; words: word; themes: theme}[]>>

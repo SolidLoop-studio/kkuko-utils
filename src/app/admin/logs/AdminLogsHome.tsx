@@ -34,8 +34,6 @@ type ErrorMessage = {
 type WordLog = {
     id: number;
     word: string;
-    processed_by: string | null;
-    make_by: string | null;
     state: "approved" | "rejected" | "pending";
     r_type: "add" | "delete";
     created_at: string;
@@ -45,42 +43,19 @@ type WordLog = {
 
 type DocsLog = {
     id: number;
-    docs_id: number;
     word: string;
-    add_by: string | null;
     type: "add" | "delete";
     date: string;
     docs: {
-        id: number;
         name: string;
-        typez: "letter" | "theme" | "ect";
-        duem: boolean;
-        maker: string | null;
-        created_at: string;
-        last_update: string;
-        views: number;
-        is_hidden: boolean;
     };
-    users: { nickname: string } | null;
+    users: { nickname: string | null } | null;
 }
 
 type Docs = {
     id: number;
     name: string;
     typez: "letter" | "theme" | "ect";
-    duem: boolean;
-    maker: string | null;
-    created_at: string;
-    last_update: string;
-    views: number;
-    is_hidden: boolean;
-    users: {
-        id: string;
-        nickname: string;
-        contribution: number;
-        month_contribution: number;
-        role: "r1" | "r2" | "r3" | "r4" | "admin";
-    } | null;
 }
 
 interface AdminLogsHomeProps {

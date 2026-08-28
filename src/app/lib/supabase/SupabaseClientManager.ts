@@ -48,13 +48,6 @@ class GetManager implements IGetManager {
     private wordLastLetterCountsCache: Record<string, { count: number, k_count: number, n_count: number }> = {};
     private wordLetterCountsCacheTime: number = 0;
 
-    public async allDocs() {
-        let q = this.supabase.from('docs').select('*, users(*)');
-        if (process.env.NODE_ENV === 'production') {
-            q = q.eq('is_hidden', false);
-        }
-        return await q;
-    }
     public async allThemes() {
         return await this.supabase.from('themes').select('*');
     }
