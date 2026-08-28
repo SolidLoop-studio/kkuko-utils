@@ -1,8 +1,20 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { Database } from '@/src/app/types/database.types';
 import { createClient } from '@supabase/supabase-js';
+
+type CookieToSet = { name: string; value: string; options: CookieOptions };
+
+const jsonResponse = (
+    body: unknown,
+    status: number,
+    cookies: CookieToSet[] = [],
+) => {
+    const response = NextResponse.json(body, { status });
+    cookies.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+    return response;
+};
 
 const errorResponse = (
     code: 'NICKNAME_INVALID'
@@ -10,7 +22,8 @@ const errorResponse = (
         | 'NICKNAME_CONFLICT'
         | 'NICKNAME_INTERNAL_ERROR',
     status: number,
-) => NextResponse.json({ data: null, error: { code } }, { status });
+    cookies: CookieToSet[] = [],
+) => jsonResponse({ data: null, error: { code } }, status, cookies);
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
     typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -25,11 +38,9 @@ export async function POST(request: NextRequest) {
         return errorResponse('NICKNAME_INVALID', 400);
     }
     const nickname = body.nickname;
+    let responseCookies: CookieToSet[] = [];
 
     try {
-        // 요청자의 데이터를 쿠키에서 얻어냄
-        let supabaseResponse = NextResponse.next({ request });
-
         const supabase = createServerClient<Database>(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -40,9 +51,7 @@ export async function POST(request: NextRequest) {
                     },
                     setAll(cookiesToSet) {
                         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-                        supabaseResponse = NextResponse.next({ request });
-                        cookiesToSet.forEach(({ name, value, options }) =>
-                            supabaseResponse.cookies.set(name, value, options));
+                        responseCookies = [...responseCookies, ...cookiesToSet];
                     },
                 },
             },
@@ -50,7 +59,7 @@ export async function POST(request: NextRequest) {
 
         // 유효한 유저인지 검사
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return errorResponse('NICKNAME_UNAUTHORIZED', 401);
+        if (!user) return errorResponse('NICKNAME_UNAUTHORIZED', 401, responseCookies);
 
         // 업데이트 처리
         const supabaseServer = createClient<Database>(
@@ -67,14 +76,15 @@ export async function POST(request: NextRequest) {
             return errorResponse(
                 error.code === '23505' ? 'NICKNAME_CONFLICT' : 'NICKNAME_INTERNAL_ERROR',
                 error.code === '23505' ? 409 : 500,
+                responseCookies,
             );
         }
-        if (!data) return errorResponse('NICKNAME_INTERNAL_ERROR', 500);
-        return NextResponse.json({
+        if (!data) return errorResponse('NICKNAME_INTERNAL_ERROR', 500, responseCookies);
+        return jsonResponse({
             data,
             error: null,
-        });
+        }, 200, responseCookies);
     } catch {
-        return errorResponse('NICKNAME_INTERNAL_ERROR', 500);
+        return errorResponse('NICKNAME_INTERNAL_ERROR', 500, responseCookies);
     }
 }

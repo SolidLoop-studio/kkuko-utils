@@ -2,11 +2,30 @@ import type { NextRequest } from 'next/server';
 
 jest.mock('next/server', () => ({
     NextResponse: {
-        json: (value: unknown, init?: { status?: number }) => ({
-            status: init?.status ?? 200,
-            json: async () => value,
-        }),
-        next: () => ({ cookies: { set: jest.fn() } }),
+        json: (value: unknown, init?: { status?: number }) => {
+            const values = new Map<string, { name: string; value: string; path?: string }>();
+            return {
+                status: init?.status ?? 200,
+                json: async () => value,
+                cookies: {
+                    set: jest.fn((name: string, cookieValue: string, options?: { path?: string }) => {
+                        values.set(name, { name, value: cookieValue, ...options });
+                    }),
+                    get: (name: string) => values.get(name),
+                },
+            };
+        },
+        next: () => {
+            const values = new Map<string, { name: string; value: string; path?: string }>();
+            return {
+                cookies: {
+                    set: jest.fn((name: string, cookieValue: string, options?: { path?: string }) => {
+                        values.set(name, { name, value: cookieValue, ...options });
+                    }),
+                    get: (name: string) => values.get(name),
+                },
+            };
+        },
     },
 }));
 
@@ -32,6 +51,31 @@ const createRequest = (json: () => Promise<unknown>): NextRequest => ({
 } as unknown as NextRequest);
 
 const responseBody = async (response: Awaited<ReturnType<typeof POST>>) => response.json();
+
+const refreshSessionCookiesDuringGetUser = () => {
+    mockGetUser.mockImplementation(async () => {
+        const createCall = mockCreateServerClient.mock.calls[
+            mockCreateServerClient.mock.calls.length - 1
+        ];
+        const options = createCall[2] as {
+            cookies: {
+                setAll(cookies: Array<{
+                    name: string;
+                    value: string;
+                    options: { path: string };
+                }>): void;
+            };
+        };
+        options.cookies.setAll([
+            { name: 'sb-access-token', value: 'fresh-access', options: { path: '/' } },
+            { name: 'sb-refresh-token', value: 'fresh-refresh', options: { path: '/' } },
+        ]);
+        return {
+            data: { user: { id: 'authenticated-user' } },
+            error: null,
+        };
+    });
+};
 
 describe('POST /api/auth/update_nickname', () => {
     beforeEach(() => {
@@ -97,6 +141,38 @@ describe('POST /api/auth/update_nickname', () => {
         await expect(responseBody(response)).resolves.toEqual({
             data: { id: 'authenticated-user', nickname: '변경닉네임', role: 'r2' },
             error: null,
+        });
+    });
+
+    it.each([
+        ['success', 200, () => undefined],
+        ['authenticated conflict', 409, () => mockMaybeSingle.mockResolvedValue({
+            data: null,
+            error: { code: '23505', message: 'private duplicate detail' },
+        })],
+    ])('propagates every refreshed session cookie on %s response', async (
+        _description,
+        expectedStatus,
+        arrangeDatabase,
+    ) => {
+        // Break caught: setAll() cookies remaining on a discarded NextResponse.next() instance.
+        arrangeDatabase();
+        refreshSessionCookiesDuringGetUser();
+
+        const response = await POST(createRequest(() => Promise.resolve({
+            nickname: '변경닉네임',
+        })));
+
+        expect(response.status).toBe(expectedStatus);
+        expect(response.cookies.get('sb-access-token')).toEqual({
+            name: 'sb-access-token',
+            value: 'fresh-access',
+            path: '/',
+        });
+        expect(response.cookies.get('sb-refresh-token')).toEqual({
+            name: 'sb-refresh-token',
+            value: 'fresh-refresh',
+            path: '/',
         });
     });
 
