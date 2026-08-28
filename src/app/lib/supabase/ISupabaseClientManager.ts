@@ -29,7 +29,6 @@ export interface IGetManager{
     allWords({ includeAddReq, includeDeleteReq, includeInjung, includeNoInjung, onlyWordChain, lenf }: { includeAddReq?: boolean; includeDeleteReq?: boolean; includeInjung?: boolean; includeNoInjung?: boolean; onlyWordChain?: boolean; lenf?: boolean; }): Promise<{ data: { word: string; noin_canuse: boolean; k_canuse: boolean; status: "ok" | "add" | "delete"; }[]; error: null } | {data: null; error: PostgrestError; }>
     releaseNote(): Promise<PostgrestSingleResponse<{ id: number; content: string; created_at: string; title: string; link: string | null }[]>>;
     usersByNickname(userName: string): Promise<PostgrestSingleResponse<user[]>>;
-    requestsListById(userId: string): Promise<PostgrestSingleResponse<wait_word[]>>;
     logsListById(userId: string): Promise<PostgrestSingleResponse<log[]>>;
     wordsCount(): Promise<{count: number | null; error: PostgrestError | null}>;
     waitWordsCount(): Promise<{count: number | null; error: PostgrestError | null}>;

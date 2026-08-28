@@ -45,7 +45,12 @@ import axios, { isAxiosError } from "axios";
 import { Progress } from '@/src/app/components/ui/progress';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import Link from "next/link";
-import { useProfileFavoriteDocs, useProfileSummary, type IdentityRole } from "@/src/modules/identity";
+import {
+    useProfileFavoriteDocs,
+    useProfileSummary,
+    useProfileWordRequests,
+    type IdentityRole,
+} from "@/src/modules/identity";
 
 type status = "pending" | "approved" | "rejected";
 type ttype = "add" | "delete";
@@ -57,14 +62,6 @@ type userInfo = {
     role: IdentityRole;
     month_contribution: number;
 };
-
-type waitWordList = {
-    id: number;
-    word: string;
-    request_type: ttype;
-    requested_at: string;
-    status: status;
-}[];
 
 type logList = {
     id: number;
@@ -113,10 +110,10 @@ const TabSkeleton = () => (
 const ProfilePage = ({ userName }: { userName: string }) => {
     const summaryQuery = useProfileSummary(userName);
     const favoriteDocsQuery = useProfileFavoriteDocs(summaryQuery.data?.id ?? "");
+    const wordRequestsQuery = useProfileWordRequests(summaryQuery.data?.id ?? "");
     const [user, setUser] = useState<
         userInfo & { month_contribution_rank: number }
     >(dummyUser);
-    const [waitWords, setWaitWords] = useState<waitWordList>([]);
     const [logs, setLogs] = useState<logList>([]);
     const [isEditing, setIsEditing] = useState<boolean>(false);
     const [newNickname, setNewNickname] = useState<string>(user.nickname);
@@ -130,7 +127,6 @@ const ProfilePage = ({ userName }: { userName: string }) => {
     const [isAdmin, setIsAdmin] = useState<boolean>(false);
     const [monthlyContributions, setMonthlyContributions] = useState<{ month: string, contribution: number }[]>(dummyMonthlyData);
     const [tabsLoading, setTabsLoading] = useState({
-        requests: true,
         processed: true
     });
     const loadedTabsUserId = useRef<string | null>(null);
@@ -216,41 +212,18 @@ const ProfilePage = ({ userName }: { userName: string }) => {
         return "bg-black text-white";
     };
 
-    // tap 부분 데이터 레이지 로딩
+    // 처리 내역 데이터 레이지 로딩
     const loadTabsData = async (userId: string) => {
-        // 요청 내역 로딩
-        const loadRequests = async () => {
-            try {
-                const { data, error } = await SCM.get().requestsListById(userId);
-                
-                if (error) throw error;
-                setWaitWords(data);
-            } catch (error) {
-                console.error('요청 내역 로딩 실패:', error);
-            } finally {
-                setTabsLoading(prev => ({ ...prev, requests: false }));
-            }
-        };
+        try {
+            const { data, error } = await SCM.get().logsListById(userId);
 
-        // 처리 내역 로딩
-        const loadProcessed = async () => {
-            try {
-                const { data, error } = await SCM.get().logsListById(userId);
-                
-                if (error) throw error;
-                setLogs(data);
-            } catch (error) {
-                console.error('처리 내역 로딩 실패:', error);
-            } finally {
-                setTabsLoading(prev => ({ ...prev, processed: false }));
-            }
-        };
-
-        // 병렬로 모든 탭 데이터 로딩
-        Promise.all([
-            loadRequests(),
-            loadProcessed()
-        ]);
+            if (error) throw error;
+            setLogs(data);
+        } catch (error) {
+            console.error('처리 내역 로딩 실패:', error);
+        } finally {
+            setTabsLoading(prev => ({ ...prev, processed: false }));
+        }
     };
 
     // 닉네임 업데이트 처리하는 함수
@@ -687,18 +660,22 @@ const ProfilePage = ({ userName }: { userName: string }) => {
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <ScrollArea className="h-[400px]">
-                                        {tabsLoading.requests ? <TabSkeleton /> : (<div className="p-4">
-                                            {waitWords.length === 0 ? (
+                                        {wordRequestsQuery.isPending ? <TabSkeleton /> : (<div className="p-4">
+                                            {wordRequestsQuery.error ? (
+                                                <p className="text-center text-muted-foreground dark:text-gray-400 py-8">
+                                                    {wordRequestsQuery.error.message}
+                                                </p>
+                                            ) : (wordRequestsQuery.data?.length ?? 0) === 0 ? (
                                                 <p className="text-center text-muted-foreground dark:text-gray-400 py-8">
                                                     요청 내역이 없습니다.
                                                 </p>
                                             ) : (
                                                 <div className="space-y-3">
-                                                    {waitWords.map((item, index) => (
+                                                    {wordRequestsQuery.data?.map((item, index) => (
                                                         <div key={item.id}>
                                                             <div className="flex items-center justify-between p-3 border rounded-lg">
                                                                 <div className="flex items-center gap-3">
-                                                                    {item.request_type === "add" ? (
+                                                                    {item.requestType === "add" ? (
                                                                         <Plus className="h-4 w-4 text-green-500" />
                                                                     ) : (
                                                                         <Trash2 className="h-4 w-4 text-red-500" />
@@ -706,8 +683,8 @@ const ProfilePage = ({ userName }: { userName: string }) => {
                                                                     <div>
                                                                         <p className="font-medium text-gray-900 dark:text-gray-100">{item.word}</p>
                                                                         <p className="text-sm text-muted-foreground dark:text-gray-400">
-                                                                            {getRequestTypeText(item.request_type)}{" "}
-                                                                            요청 • {formatTimeAgo(item.requested_at)}
+                                                                            {getRequestTypeText(item.requestType)}{" "}
+                                                                            요청 • {formatTimeAgo(item.requestedAt)}
                                                                         </p>
                                                                     </div>
                                                                 </div>
@@ -718,7 +695,7 @@ const ProfilePage = ({ userName }: { userName: string }) => {
                                                                     </span>
                                                                 </div>
                                                             </div>
-                                                            {index < waitWords.length - 1 && (
+                                                            {index < (wordRequestsQuery.data?.length ?? 0) - 1 && (
                                                                 <Separator className="my-2" />
                                                             )}
                                                         </div>

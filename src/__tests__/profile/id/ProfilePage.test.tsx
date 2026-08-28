@@ -1,7 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 jest.mock('../../../modules/identity', () => ({
     useProfileFavoriteDocs: jest.fn(),
+    useProfileWordRequests: jest.fn(),
     useProfileSummary: jest.fn(),
 }));
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }) }));
@@ -19,13 +21,11 @@ jest.mock('recharts', () => ({
     Tooltip: () => null,
 }));
 
-const requestsListById = jest.fn().mockResolvedValue({ data: [], error: null });
 const logsListById = jest.fn().mockResolvedValue({ data: [], error: null });
 
 jest.mock('../../../app/lib/supabaseClient', () => ({
     SCM: {
         get: () => ({
-            requestsListById,
             logsListById,
             usersByNickname: jest.fn(),
         }),
@@ -34,7 +34,7 @@ jest.mock('../../../app/lib/supabaseClient', () => ({
 
 import ProfilePage from '@/src/app/profile/[username]/ProfilePage';
 import type { ProfileSummaryProjection } from '../../../modules/identity';
-import { useProfileFavoriteDocs, useProfileSummary } from '../../../modules/identity';
+import { useProfileFavoriteDocs, useProfileSummary, useProfileWordRequests } from '../../../modules/identity';
 
 const projection: ProfileSummaryProjection = {
     id: 'user-1',
@@ -60,14 +60,19 @@ const mockFavoriteDocs = (value: Partial<ReturnType<typeof useProfileFavoriteDoc
     jest.mocked(useProfileFavoriteDocs).mockReturnValue(value as ReturnType<typeof useProfileFavoriteDocs>);
 };
 
+const mockWordRequests = (value: Partial<ReturnType<typeof useProfileWordRequests>>) => {
+    jest.mocked(useProfileWordRequests).mockReturnValue(value as ReturnType<typeof useProfileWordRequests>);
+};
+
 describe('ProfilePage', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockSummary({ isPending: false, data: projection, error: null });
         mockFavoriteDocs({ isPending: false, data: [], error: null });
+        mockWordRequests({ isPending: false, data: [], error: null });
     });
 
-    test('renders every main card field from the summary projection and loads remaining legacy activities once', async () => {
+    test('renders every main card field from the summary projection and loads remaining legacy processed activity once', async () => {
         // Break caught: retaining the replaced profile summary getters instead of consuming one projection.
         const { rerender } = render(<ProfilePage userName="테스터" />);
 
@@ -80,8 +85,6 @@ describe('ProfilePage', () => {
             projection.recentMonthlyContributions,
         ));
         expect(screen.getByRole('link', { name: '관리자 대시보드' })).toHaveAttribute('href', '/admin');
-        expect(requestsListById).toHaveBeenCalledWith('user-1');
-        expect(requestsListById).toHaveBeenCalledTimes(1);
         expect(logsListById).toHaveBeenCalledWith('user-1');
         expect(logsListById).toHaveBeenCalledTimes(1);
 
@@ -89,16 +92,13 @@ describe('ProfilePage', () => {
         mockSummary({ isPending: false, data: sameIdProjection, error: null });
         rerender(<ProfilePage userName="테스터" />);
         await waitFor(() => expect(screen.getByText('같은 사용자')).toBeInTheDocument());
-        expect(requestsListById).toHaveBeenCalledTimes(1);
         expect(logsListById).toHaveBeenCalledTimes(1);
 
         const differentIdProjection = { ...projection, id: 'user-2', nickname: '다른 사용자' };
         mockSummary({ isPending: false, data: differentIdProjection, error: null });
         rerender(<ProfilePage userName="테스터" />);
         await waitFor(() => expect(screen.getByText('다른 사용자')).toBeInTheDocument());
-        expect(requestsListById).toHaveBeenNthCalledWith(2, 'user-2');
         expect(logsListById).toHaveBeenNthCalledWith(2, 'user-2');
-        expect(requestsListById).toHaveBeenCalledTimes(2);
         expect(logsListById).toHaveBeenCalledTimes(2);
     });
 
@@ -160,5 +160,37 @@ describe('ProfilePage', () => {
         rerender(<ProfilePage userName="테스터" />);
 
         await waitFor(() => expect(screen.getByText('즐겨찾기한 문서를 불러오는 중 오류가 발생했습니다.')).toBeInTheDocument());
+    });
+
+    test('renders word requests from the feature hook and shows a safe tab error', async () => {
+        // Break caught: keeping word requests in the legacy SCM loader or exposing raw tab failures.
+        mockWordRequests({
+            isPending: false,
+            data: [{
+                id: 42,
+                word: '테스트단어',
+                requestType: 'add',
+                requestedAt: '2026-08-27T00:00:00.000Z',
+                status: 'pending',
+            }],
+            error: null,
+        });
+        const { rerender } = render(<ProfilePage userName="테스터" />);
+        const user = userEvent.setup();
+
+        await user.click(screen.getByRole('tab', { name: '요청 내역' }));
+
+        await waitFor(() => expect(screen.getByText('테스트단어')).toBeInTheDocument());
+        expect(screen.getByText(/추가 요청/)).toBeInTheDocument();
+        expect(screen.getByText('대기중')).toBeInTheDocument();
+
+        mockWordRequests({
+            isPending: false,
+            data: undefined,
+            error: { kind: 'infrastructure', message: '단어 요청 내역을 불러오는 중 오류가 발생했습니다.' },
+        });
+        rerender(<ProfilePage userName="테스터" />);
+
+        await waitFor(() => expect(screen.getByText('단어 요청 내역을 불러오는 중 오류가 발생했습니다.')).toBeInTheDocument());
     });
 });

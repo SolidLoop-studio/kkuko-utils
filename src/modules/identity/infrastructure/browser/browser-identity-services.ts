@@ -2,6 +2,7 @@ import { CheckNicknameAvailabilityService } from '../../application/check-nickna
 import { GetCurrentUserProfileService } from '../../application/get-current-user-profile';
 import { GetProfileSummaryService } from '../../application/get-profile-summary';
 import { GetProfileFavoriteDocsService } from '../../application/get-profile-favorite-docs';
+import { GetProfileWordRequestsService } from '../../application/get-profile-word-requests';
 import { ManageAuthSessionService } from '../../application/manage-auth-session';
 import { RegisterNicknameService } from '../../application/register-nickname';
 import { SearchProfilesByNicknameService } from '../../application/search-profiles-by-nickname';
@@ -12,6 +13,7 @@ import { SupabaseNicknameQueryGateway } from './supabase-nickname-query-gateway'
 import { SupabaseProfileSearchQueryGateway } from './supabase-profile-search-query-gateway';
 import { SupabaseProfileSummaryQueryGateway } from './supabase-profile-summary-query-gateway';
 import { SupabaseProfileFavoriteDocsQueryGateway } from './supabase-profile-favorite-docs-query-gateway';
+import { SupabaseProfileWordRequestsQueryGateway } from './supabase-profile-word-requests-query-gateway';
 
 export interface BrowserIdentityServices {
     authSessionService: ManageAuthSessionService;
@@ -20,6 +22,7 @@ export interface BrowserIdentityServices {
     profileSearchQueryService: SearchProfilesByNicknameService;
     profileSummaryQueryService: GetProfileSummaryService;
     profileFavoriteDocsQueryService: GetProfileFavoriteDocsService;
+    profileWordRequestsQueryService: GetProfileWordRequestsService;
     registerNicknameService: RegisterNicknameService;
 }
 
@@ -40,6 +43,9 @@ export const createBrowserIdentityServices = (): BrowserIdentityServices => ({
     ),
     profileFavoriteDocsQueryService: new GetProfileFavoriteDocsService(
         new SupabaseProfileFavoriteDocsQueryGateway(),
+    ),
+    profileWordRequestsQueryService: new GetProfileWordRequestsService(
+        new SupabaseProfileWordRequestsQueryGateway(),
     ),
     registerNicknameService: new RegisterNicknameService(new SupabaseNicknameCommandGateway()),
 });
