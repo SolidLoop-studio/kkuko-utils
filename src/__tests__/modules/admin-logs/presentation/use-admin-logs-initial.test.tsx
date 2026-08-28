@@ -32,7 +32,7 @@ const mockService = (handler: () => Promise<Result<AdminLogsInitialProjection>>)
     const get = jest.fn(handler);
     jest.mocked(createBrowserAdminLogsServices).mockReturnValue({
         adminLogsInitialQueryService: { get },
-    } as ReturnType<typeof createBrowserAdminLogsServices>);
+    } as unknown as ReturnType<typeof createBrowserAdminLogsServices>);
     return get;
 };
 

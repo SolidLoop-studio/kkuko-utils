@@ -40,8 +40,19 @@ const successfulResponses = {
     },
 };
 
+interface QueryDouble {
+    select(columns: string): QueryDouble;
+    order(column: string, options: { ascending: boolean }): QueryDouble;
+    range(from: number, to: number): QueryDouble;
+    eq(column: string, value: boolean): QueryDouble;
+    then(
+        resolve: (value: unknown) => unknown,
+        reject: (reason: unknown) => unknown,
+    ): Promise<unknown>;
+}
+
 const createQuery = (response: unknown, calls: string[]) => {
-    const query = {
+    const query: QueryDouble = {
         select: jest.fn((columns: string) => {
             calls.push(`select:${columns}`);
             return query;
