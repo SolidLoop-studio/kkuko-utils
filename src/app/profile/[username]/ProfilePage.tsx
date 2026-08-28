@@ -45,7 +45,7 @@ import axios, { isAxiosError } from "axios";
 import { Progress } from '@/src/app/components/ui/progress';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import Link from "next/link";
-import { useProfileSummary, type IdentityRole } from "@/src/modules/identity";
+import { useProfileFavoriteDocs, useProfileSummary, type IdentityRole } from "@/src/modules/identity";
 
 type status = "pending" | "approved" | "rejected";
 type ttype = "add" | "delete";
@@ -72,13 +72,6 @@ type logList = {
     created_at: string;
     state: status;
     r_type: ttype;
-}[];
-
-type starredDocsList = {
-    id: number;
-    name: string;
-    last_update: string;
-    typez: string;
 }[];
 
 // 로딩 중 표시해줄 더미 데이터 목록들
@@ -119,12 +112,12 @@ const TabSkeleton = () => (
 
 const ProfilePage = ({ userName }: { userName: string }) => {
     const summaryQuery = useProfileSummary(userName);
+    const favoriteDocsQuery = useProfileFavoriteDocs(summaryQuery.data?.id ?? "");
     const [user, setUser] = useState<
         userInfo & { month_contribution_rank: number }
     >(dummyUser);
     const [waitWords, setWaitWords] = useState<waitWordList>([]);
     const [logs, setLogs] = useState<logList>([]);
-    const [starredDocs, setStarredDocs] = useState<starredDocsList>([]);
     const [isEditing, setIsEditing] = useState<boolean>(false);
     const [newNickname, setNewNickname] = useState<string>(user.nickname);
     const [nicknameError, setNicknameError] = useState<string>("");
@@ -137,7 +130,6 @@ const ProfilePage = ({ userName }: { userName: string }) => {
     const [isAdmin, setIsAdmin] = useState<boolean>(false);
     const [monthlyContributions, setMonthlyContributions] = useState<{ month: string, contribution: number }[]>(dummyMonthlyData);
     const [tabsLoading, setTabsLoading] = useState({
-        starred: true,
         requests: true,
         processed: true
     });
@@ -226,28 +218,6 @@ const ProfilePage = ({ userName }: { userName: string }) => {
 
     // tap 부분 데이터 레이지 로딩
     const loadTabsData = async (userId: string) => {
-        // 즐겨찾기 문서 로딩
-        const loadStarredDocs = async () => {
-            try {
-                const { data, error } = await SCM.get().starredDocsById(userId);
-                
-                if (error) throw error;
-                
-                setStarredDocs(
-                    data.map(({ docs: { name, typez, last_update, id } }) => ({
-                        name,
-                        id,
-                        typez,
-                        last_update,
-                    }))
-                );
-            } catch (error) {
-                console.error('즐겨찾기 문서 로딩 실패:', error);
-            } finally {
-                setTabsLoading(prev => ({ ...prev, starred: false }));
-            }
-        };
-
         // 요청 내역 로딩
         const loadRequests = async () => {
             try {
@@ -278,7 +248,6 @@ const ProfilePage = ({ userName }: { userName: string }) => {
 
         // 병렬로 모든 탭 데이터 로딩
         Promise.all([
-            loadStarredDocs(),
             loadRequests(),
             loadProcessed()
         ]);
@@ -664,16 +633,20 @@ const ProfilePage = ({ userName }: { userName: string }) => {
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <ScrollArea className="h-[400px]">
-                                        {tabsLoading.starred ? <TabSkeleton /> :
+                                        {favoriteDocsQuery.isPending ? <TabSkeleton /> :
                                             (
                                             <div className="p-4">
-                                                {starredDocs.length === 0 ? (
+                                                {favoriteDocsQuery.error ? (
+                                                    <p className="text-center text-muted-foreground dark:text-gray-400 py-8">
+                                                        {favoriteDocsQuery.error.message}
+                                                    </p>
+                                                ) : (favoriteDocsQuery.data?.length ?? 0) === 0 ? (
                                                     <p className="text-center text-muted-foreground dark:text-gray-400 py-8">
                                                         즐겨찾기한 문서가 없습니다.
                                                     </p>
                                                 ) : (
                                                     <div className="space-y-3">
-                                                        {starredDocs.map((doc, index) => (
+                                                        {favoriteDocsQuery.data?.map((doc, index) => (
                                                             <Link href={`/words-docs/${doc.id}`} key={doc.id}>
                                                                 <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 dark:hover:bg-gray-700 transition-colors cursor-pointer">
                                                                     <div className="flex items-center gap-3">
@@ -681,14 +654,14 @@ const ProfilePage = ({ userName }: { userName: string }) => {
                                                                         <div>
                                                                             <p className="font-medium text-gray-900 dark:text-gray-100">{doc.name}</p>
                                                                             <p className="text-sm text-muted-foreground dark:text-gray-400">
-                                                                                {formatTimeAgo(doc.last_update)}에
+                                                                                {formatTimeAgo(doc.lastUpdatedAt)}에
                                                                                 업데이트
                                                                             </p>
                                                                         </div>
                                                                     </div>
-                                                                    <Badge variant="outline">{doc.typez}</Badge>
+                                                                    <Badge variant="outline">{doc.type}</Badge>
                                                                 </div>
-                                                                {index < starredDocs.length - 1 && (
+                                                                {index < (favoriteDocsQuery.data?.length ?? 0) - 1 && (
                                                                     <Separator className="my-2" />
                                                                 )}
                                                             </Link>

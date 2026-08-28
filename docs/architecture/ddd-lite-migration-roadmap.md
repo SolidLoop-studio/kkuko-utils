@@ -979,7 +979,12 @@ Identity/Profile:
 - profile main summary·월간 rank·최근 5개월 contribution projection 분리 (완료)
   - browser gateway는 최신 네 개의 저장 월을 내림차순으로 조회하고, Application service가 누락 월을 채운 오름차순 다섯 points와 현재 `month_contribution`의 authoritative override를 만든다.
   - nullable role은 `guest`로 정규화하며, profile page는 guest badge와 progress 없는 상태를 명시적으로 렌더링한다. 반환·throw·손상된 Infrastructure 응답은 안정적인 공개 오류로만 투영한다.
-  - 대체된 SCM `userByNickname`·`monthlyConRankByUserId`·`monthlyContributionsByUserId` getter는 제거했다. activity tabs와 nickname edit의 `starredDocsById`·`requestsListById`·`logsListById`·`usersByNickname` 소비자는 후속 slice로 유지한다.
+  - 대체된 SCM `userByNickname`·`monthlyConRankByUserId`·`monthlyContributionsByUserId` getter는 제거했다. 요청·처리 activity tabs와 nickname edit의 `requestsListById`·`logsListById`·`usersByNickname` 소비자는 후속 slice로 유지한다.
+  - 이 slice는 database migration, linked Supabase 명령 또는 cloud rollout을 수행하지 않았다.
+- profile 즐겨찾기 문서 activity query 분리 (완료)
+  - Application query와 browser Supabase gateway가 프로필 사용자의 즐겨찾기 문서를 `id`·`name`·`type`·`lastUpdatedAt` projection으로 조회하며, blank user ID와 반환·throw Infrastructure 실패를 안정적인 공개 오류로 정규화한다.
+  - `ProfilePage`의 즐겨찾기 탭은 React Query hook으로 loading·empty·backend ordering·문서 링크·상대 시간·type badge를 유지하고, 안전한 tab 오류 상태를 렌더링한다.
+  - 대체된 SCM `starredDocsById` getter는 제거했다. 요청·처리 activity tabs와 nickname edit의 `requestsListById`·`logsListById`·`usersByNickname` 소비자는 후속 slice로 유지한다.
   - 이 slice는 database migration, linked Supabase 명령 또는 cloud rollout을 수행하지 않았다.
 
 Notifications:
@@ -1101,7 +1106,7 @@ Notifications:
 | 사용자 단어 요청 | 부분 완료 | Phase 2 mutation 코드 이전은 완료; 단일·대량 추가 요청을 포함한 관련 cloud migration rollout은 사용자/운영자 실행 대기 |
 | word-catalog 조회 | 완료 | 브라우저 검색·자동완성, 단어 상세 query, 고급 검색 Route Handler, 다운로드, 통계, 랜덤 연결 단어 query 완료 |
 | docs context | 부분 완료 | 공개 목록·로그·정보·본문, 관리자 대기 요청 목록/moderation, `WordsDocsHome` 중복 조회·생성 요청, `DocsDataPage` best-effort 조회 수 기록, `DocsDataHome` 멱등 즐겨찾기와 semantic marker bulk query 이전 완료; immutable mission reference catalog가 mission child의 `isSpecial`, family별 RPC, 대상 글자와 remapped-PK child page coverage를 소유하고 presentation의 legacy parent ID gating을 제거함; `letterDocs`·`waitDocs`·`docView`·`starDocs`·`startDocs` 및 read-side `docsLastUpdate(id)` 제거. `AdminLogsWrapper`의 live `SCM.get().allDocs`는 별도 admin-logs projection 슬라이스에서 이전할 때까지 유지; Phase 0B cloud rollout은 사용자/운영자 통제 대기 상태. 다음 경계는 실제 소비자 검사 후 지정 |
-| identity/profile | 부분 완료 | Auth session·Google login·상태 listener·logout, 현재 사용자 공개 profile query, nickname availability/registration, ProfileHome nickname search projection·명시적 제출 hook·빈 검색 validation·안정 오류·SCM `usersLikeByNickname` 제거, profile main summary·월간 rank·최신 네 stored history 기반의 recent-five-month projection·현재 월 override·안정 오류 및 SCM `userByNickname`·`monthlyConRankByUserId`·`monthlyContributionsByUserId` 제거 완료; activity tabs와 nickname edit의 관찰된 legacy `starredDocsById`·`requestsListById`·`logsListById`·`usersByNickname` 소비자는 후속 slice로 유지하며 이 slice는 database/cloud rollout을 수행하지 않음 |
+| identity/profile | 부분 완료 | Auth session·Google login·상태 listener·logout, 현재 사용자 공개 profile query, nickname availability/registration, ProfileHome nickname search projection·명시적 제출 hook·빈 검색 validation·안정 오류·SCM `usersLikeByNickname` 제거, profile main summary·월간 rank·최신 네 stored history 기반의 recent-five-month projection·현재 월 override·안정 오류 및 SCM `userByNickname`·`monthlyConRankByUserId`·`monthlyContributionsByUserId` 제거, profile 즐겨찾기 문서 activity query의 Application/gateway/hook·안정 오류·SCM `starredDocsById` 제거 완료; 요청·처리 activity tabs와 nickname edit의 관찰된 legacy `requestsListById`·`logsListById`·`usersByNickname` 소비자는 후속 slice로 유지하며 이 slice는 database/cloud rollout을 수행하지 않음 |
 | notifications/storage | 완료 | 활성 목록·최신 모달 query와 browser/server adapter, React Query cache/dismissal 정책, server-safe 상세·metadata·편집 query, 관리자 create/update/delete command 및 이미지 Storage 경계 완료. 새 upload는 DB 저장 실패 시 best-effort로 제거하고, DB가 검증해 반환한 managed replace/remove/delete 대상은 DB 성공 뒤 fresh zero-reference 결과일 때만 best-effort로 제거한다. shared·external·stale·uncertain URL은 보존한다. form은 PostgREST 오류나 `alert`를 노출하지 않는다. 이 no-migration guarded 정책은 concurrency-proof garbage collection이 아니며 database migration·cloud rollout은 수행하지 않았다. 이는 notification sub-boundary 완료만 뜻하며 전체 SCM 제거는 별도 작업이다. |
 | SCM 최종 제거 | 대기 | 모든 context 이전 후 실행 |
 

@@ -1,6 +1,7 @@
 import { CheckNicknameAvailabilityService } from '../../application/check-nickname-availability';
 import { GetCurrentUserProfileService } from '../../application/get-current-user-profile';
 import { GetProfileSummaryService } from '../../application/get-profile-summary';
+import { GetProfileFavoriteDocsService } from '../../application/get-profile-favorite-docs';
 import { ManageAuthSessionService } from '../../application/manage-auth-session';
 import { RegisterNicknameService } from '../../application/register-nickname';
 import { SearchProfilesByNicknameService } from '../../application/search-profiles-by-nickname';
@@ -10,6 +11,7 @@ import { SupabaseNicknameCommandGateway } from './supabase-nickname-command-gate
 import { SupabaseNicknameQueryGateway } from './supabase-nickname-query-gateway';
 import { SupabaseProfileSearchQueryGateway } from './supabase-profile-search-query-gateway';
 import { SupabaseProfileSummaryQueryGateway } from './supabase-profile-summary-query-gateway';
+import { SupabaseProfileFavoriteDocsQueryGateway } from './supabase-profile-favorite-docs-query-gateway';
 
 export interface BrowserIdentityServices {
     authSessionService: ManageAuthSessionService;
@@ -17,6 +19,7 @@ export interface BrowserIdentityServices {
     currentUserProfileQueryService: GetCurrentUserProfileService;
     profileSearchQueryService: SearchProfilesByNicknameService;
     profileSummaryQueryService: GetProfileSummaryService;
+    profileFavoriteDocsQueryService: GetProfileFavoriteDocsService;
     registerNicknameService: RegisterNicknameService;
 }
 
@@ -34,6 +37,9 @@ export const createBrowserIdentityServices = (): BrowserIdentityServices => ({
     ),
     profileSummaryQueryService: new GetProfileSummaryService(
         new SupabaseProfileSummaryQueryGateway(),
+    ),
+    profileFavoriteDocsQueryService: new GetProfileFavoriteDocsService(
+        new SupabaseProfileFavoriteDocsQueryGateway(),
     ),
     registerNicknameService: new RegisterNicknameService(new SupabaseNicknameCommandGateway()),
 });

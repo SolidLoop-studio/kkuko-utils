@@ -11,12 +11,18 @@ export type {
 export type { ProfileSearchQueryGateway } from './application/profile-search-query-ports';
 export type { ProfileSearchItem } from './application/profile-search-query-types';
 export type { ProfileSummaryQueryGateway } from './application/profile-summary-query-ports';
+export type { ProfileFavoriteDocsQueryGateway } from './application/profile-favorite-docs-query-ports';
+export type {
+    ProfileFavoriteDoc,
+    ProfileFavoriteDocType,
+} from './application/profile-favorite-docs-query-types';
 export type {
     ProfileMonthlyContribution,
     ProfileSummaryProjection,
     ProfileSummarySource,
 } from './application/profile-summary-query-types';
 export { GetProfileSummaryService } from './application/get-profile-summary';
+export { GetProfileFavoriteDocsService } from './application/get-profile-favorite-docs';
 export { SearchProfilesByNicknameService } from './application/search-profiles-by-nickname';
 export { useAuthSession, type AuthSessionService } from './presentation/use-auth-session';
 export {
@@ -26,3 +32,4 @@ export {
 export { useProfileSearch } from './presentation/use-profile-search';
 export { identityQueryKeys } from './presentation/identity-query-keys';
 export { useProfileSummary } from './presentation/use-profile-summary';
+export { useProfileFavoriteDocs } from './presentation/use-profile-favorite-docs';

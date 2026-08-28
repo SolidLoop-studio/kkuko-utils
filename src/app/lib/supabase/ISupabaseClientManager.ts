@@ -7,7 +7,6 @@ type word = Database['public']['Tables']['words']['Row']
 type docs = Database['public']['Tables']['docs']['Row']
 type user = Database['public']['Tables']['users']['Row'];
 type docs_log = Database['public']['Tables']['docs_logs']['Row'];
-type user_star_docs = Database['public']['Tables']['user_star_docs']['Row'];
 type log = Database['public']['Tables']['logs']['Row'];
 type okWord = Omit<word, 'mission_mark'> & { mission_mark?: number; };
 
@@ -30,7 +29,6 @@ export interface IGetManager{
     allWords({ includeAddReq, includeDeleteReq, includeInjung, includeNoInjung, onlyWordChain, lenf }: { includeAddReq?: boolean; includeDeleteReq?: boolean; includeInjung?: boolean; includeNoInjung?: boolean; onlyWordChain?: boolean; lenf?: boolean; }): Promise<{ data: { word: string; noin_canuse: boolean; k_canuse: boolean; status: "ok" | "add" | "delete"; }[]; error: null } | {data: null; error: PostgrestError; }>
     releaseNote(): Promise<PostgrestSingleResponse<{ id: number; content: string; created_at: string; title: string; link: string | null }[]>>;
     usersByNickname(userName: string): Promise<PostgrestSingleResponse<user[]>>;
-    starredDocsById(userId: string): Promise<PostgrestSingleResponse<(user_star_docs & {docs: docs})[]>>;
     requestsListById(userId: string): Promise<PostgrestSingleResponse<wait_word[]>>;
     logsListById(userId: string): Promise<PostgrestSingleResponse<log[]>>;
     wordsCount(): Promise<{count: number | null; error: PostgrestError | null}>;
