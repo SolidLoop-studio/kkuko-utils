@@ -125,9 +125,6 @@ class GetManager implements IGetManager {
         }
         return { data, error: null }
     }
-    public async releaseNote() {
-        return await this.supabase.from('release_note').select('*').order('created_at', { ascending: false });
-    }
     public async wordsCount() {
         const { data, error } = await this.supabase.from('words_count').select('total_words').single();
         if (error) return { count: null, error };
