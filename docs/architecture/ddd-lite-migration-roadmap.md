@@ -75,6 +75,16 @@ git grep -n -E "\bSCM\." -- "src/**/*.ts" "src/**/*.tsx"
 `words-docs/[id]`의 관리자 moderation presentation 경로는 `SCM`,
 `@supabase/supabase-js`, `.rpc(`, `.from(` import/call 검색 결과가 0건이다.
 
+2026-08-30 관리자 대시보드 count projection 전환 후 실제 import/call 구문을 다시
+측정한 결과, `SCM` import 소스 파일은 4개이고 `SCM.*` 호출 라인은 4개다. 테스트의
+source-boundary 설명 문자열처럼 실행되지 않는 `SCM` 텍스트는 제외했다. 측정에는 다음
+구문 기준을 사용했으며, 이 수치는 최종 제거 완료가 아니라 남은 전환 범위를 나타낸다.
+
+```bash
+git grep -l -E '^[[:space:]]*import[[:space:]].*SCM.*from[[:space:]]' -- 'src/**/*.ts' 'src/**/*.tsx'
+git grep -n -E 'SCM\.(get|add|delete|update|getJWT)\(' -- 'src/**/*.ts' 'src/**/*.tsx'
+```
+
 ### 3.2 완료된 기반 작업
 
 다음 기반은 이미 구현되어 있다.
@@ -1049,7 +1059,15 @@ Notifications:
   - `WordCombinerCandidate`는 현재 조합기가 소비하는 `word`만 노출한다. accepted 5·6글자 단어와 공개 영문 목록의 중복 occurrence를 그대로 보존한 채 결정적으로 정렬하며, 현재 `lenf` 경계가 사용하지 않던 pending add/delete는 조회하지 않는다.
   - browser Supabase adapter가 `words` length filter와 Storage 파일 읽기를 소유하고, `useWordCombinerCandidates`가 React Query cache·loading·안정 오류를 소유한다. 기존 조합기는 빈 목록에서도 그대로 동작한다. `words` 조회는 기존과 같은 단일 요청이므로 configured PostgREST row cap을 유지하며, 이 slice에는 pagination을 추가하지 않았다.
   - 대체된 `allWords` getter와 전용 memory cache, presentation의 인위적 delay를 제거했다. 이 slice는 database migration이나 cloud rollout을 수행하지 않았다.
-- admin dashboard count를 작은 admin projection query로 이동
+- admin dashboard count를 작은 admin projection query로 이동 (완료)
+  - `words_count.total_words` 단일 행과 `wait_words`·`word_themes_wait` exact head count를
+    동시에 시작하는 browser gateway, 좁은 Application projection, React Query hook으로
+    이전했다.
+  - `AdminPage`는 `totalWords`와 두 대기 테이블 합계인 `pendingWordChanges`만 소비하며,
+    loading·success·안전한 오류 Modal 상태를 렌더링한다.
+  - 대체된 `wordsCount`·`waitWordsCount` manager/interface 메서드를 제거했다. 2026-08-30
+    fresh audit 기준으로 남은 실제 SCM import 파일과 호출 라인은 각각 4개이므로 Phase 7과
+    전체 SCM 제거는 계속 진행 중이다.
 - SCM의 남은 범용 cache 제거
 
 ### Phase 7. SCM 제거

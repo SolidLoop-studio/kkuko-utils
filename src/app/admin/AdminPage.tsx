@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
     Card,
     CardContent,
@@ -19,40 +19,13 @@ import {
     Users
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { SCM } from '../lib/supabaseClient';
+import FailModal from '@/src/app/components/FailModal';
+import { useAdminDashboardSummary } from '@/src/modules/admin-dashboard';
 
 const AdminDashboard = () => {
     const router = useRouter();
-    const [wordCount,setWordCount] = useState<number|null>(null);
-    const [waitRequestCount,setWaitRequestCount] = useState<number|null>(null);
-
-    const getWordCount = async () => {
-        const {count, error} = await SCM.get().wordsCount();
-        if (error){
-            console.log(error)
-        }
-        if (count){
-            setWordCount(count)
-        }
-    }
-
-    const getWaitRequestCount = async () => {
-        const {count, error} = await SCM.get().waitWordsCount();
-        if (error){
-            console.log(error)
-            
-        }
-        if (count){
-            setWaitRequestCount(count)
-        }else{
-            setWaitRequestCount(0);
-        }
-    }
-
-    useEffect(()=>{
-        getWordCount();
-        getWaitRequestCount();
-    },[])
+    const [isQueryErrorDismissed, setIsQueryErrorDismissed] = useState(false);
+    const { data: summary, error, isLoading } = useAdminDashboardSummary();
 
     const handleNavigation = (path: string) => {
         router.push(path)
@@ -118,12 +91,16 @@ const AdminDashboard = () => {
     const stats = [
         {
             title: '총 단어 수',
-            value: wordCount,
+            value: isLoading
+                ? '로딩 중...'
+                : summary?.totalWords.toLocaleString('ko-KR') ?? '—',
             icon: BookOpen,
         },
         {
             title: '처리 대기 요청',
-            value: waitRequestCount,
+            value: isLoading
+                ? '로딩 중...'
+                : summary?.pendingWordChanges.toLocaleString('ko-KR') ?? '—',
             icon: AlertCircle,
         },
     ];
@@ -145,7 +122,7 @@ const AdminDashboard = () => {
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">{stat.title}</p>
-                                        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stat.value===null ? "loading..." : stat.value}</p>
+                                        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stat.value}</p>
                                         <div className="flex items-center mt-2"></div>
                                     </div>
                                     <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -250,6 +227,12 @@ const AdminDashboard = () => {
                     </CardContent>
                 </Card>
             </div>
+            <FailModal
+                open={error !== null && !isQueryErrorDismissed}
+                title="관리자 대시보드 조회 오류"
+                description="관리자 대시보드 정보를 불러오는 중 오류가 발생했습니다."
+                onClose={() => setIsQueryErrorDismissed(true)}
+            />
         </div>
     );
 };

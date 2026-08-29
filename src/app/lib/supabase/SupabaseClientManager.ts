@@ -50,17 +50,6 @@ class GetManager implements IGetManager {
     public async wordsThemes(wordIds: number[]) {
         return await this.supabase.from('word_themes').select('*,themes(*),words(*)').in('word_id', wordIds);
     }
-    public async wordsCount() {
-        const { data, error } = await this.supabase.from('words_count').select('total_words').single();
-        if (error) return { count: null, error };
-        return { count: data?.total_words ?? 0, error: null };
-    }
-    public async waitWordsCount() {
-        const { count: count1, error: error1 } = await this.supabase.from('wait_words').select('word', { count: 'exact', head: true });
-        const { count: count2, error: error2 } = await this.supabase.from('word_themes_wait').select('word_id', { count: 'exact', head: true });
-        if (error1 || error2) return { count: null, error: error1 ?? error2 };
-        return { count: (count1 ?? 0) + (count2 ?? 0), error: null };
-    }
     public async wordsByWords(words: string[]) {
         return await this.supabase.rpc('get_words_with_themes', { words_input: words });
     }

@@ -22,8 +22,6 @@ export interface IGetManager{
     allThemes(): Promise<PostgrestSingleResponse<theme[]>>
     allWaitWords(c?:"add" | "delete"): Promise<PostgrestSingleResponse<(wait_word & {words: word | null; users: user | null})[]>>;
     wordsThemes(wordIds: number[]): Promise<PostgrestSingleResponse<{ theme_id: number; word_id: number; words: word; themes: theme}[]>>
-    wordsCount(): Promise<{count: number | null; error: PostgrestError | null}>;
-    waitWordsCount(): Promise<{count: number | null; error: PostgrestError | null}>;
     wordsByWords(words: string[]): Promise<PostgrestSingleResponse<(okWord&{wthemes: number[]})[]>>;
     wordsThemesByWordId(wordIds: number[]): Promise<PostgrestSingleResponse<{word_id: number, themes: theme}[]>>;
     allUser(sortField?: 'contribution' | 'month_contribution' | 'nickname', isAsc?: boolean): Promise<PostgrestSingleResponse<user[]>>;
