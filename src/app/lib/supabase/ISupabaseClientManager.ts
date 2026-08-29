@@ -41,8 +41,6 @@ export interface IDeleteManager{
     wordTheme(deleteQuery: { word_id: number, theme_id: number }[]): Promise<PostgrestSingleResponse<delete_word_themes_bulk>>;
     waitWordThemes(query:{word_id: number, theme_id: number}[]): Promise<PostgrestSingleResponse<undefined>>;
     waitWordsByWords(words: string[]): Promise<PostgrestSingleResponse<null>>;
-    logsByIds(ids: number[]): Promise<PostgrestSingleResponse<null>>;
-    docsLogsByIds(ids: number[]): Promise<PostgrestSingleResponse<null>>;
 }
 
 // update 관련 타입

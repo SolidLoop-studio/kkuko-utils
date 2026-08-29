@@ -12,7 +12,12 @@ export type {
     AdminLogsWordPageFilter,
     AdminWordLogsPageProjection,
 } from './application/admin-logs-page-query-types';
+export { DeleteAdminLogsService } from './application/delete-admin-logs';
 export { GetAdminLogsPageService } from './application/get-admin-logs-page';
+export {
+    useDeleteAdminLogs,
+    type AdminLogDeleteService,
+} from './presentation/use-delete-admin-logs';
 export {
     useAdminLogsInitial,
     type AdminLogsInitialQueryService,
@@ -21,3 +26,7 @@ export {
     useAdminLogsPage,
     type AdminLogsPageQueryService,
 } from './presentation/use-admin-logs-page';
+export type {
+    AdminLogCommandGateway,
+    DeleteAdminLogsCommand,
+} from './application/admin-log-command-ports';

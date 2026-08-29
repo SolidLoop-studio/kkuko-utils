@@ -2,13 +2,12 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { SCM } from '@/src/app/lib/supabaseClient';
 import type {
     AdminDocsLogEntry,
     AdminLogsPageQuery,
     AdminWordLogEntry,
 } from '@/src/modules/admin-logs';
-import { useAdminLogsPage } from '@/src/modules/admin-logs';
+import { useAdminLogsPage, useDeleteAdminLogs } from '@/src/modules/admin-logs';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/src/app/components/ui/card';
 import { Button } from '@/src/app/components/ui/button';
 import { Badge } from '@/src/app/components/ui/badge';
@@ -50,7 +49,14 @@ type AdminLogsTab = 'word_logs' | 'docs_logs';
 
 const stableDeleteError = (): ErrorMessage => ({
     ErrName: '관리자 로그 삭제 오류',
-    ErrMessage: '관리자 로그를 삭제하는 중 오류가 발생했습니다.',
+    ErrMessage: '선택한 로그를 삭제하는 중 오류가 발생했습니다.',
+    ErrStackRace: '',
+    inputValue: '',
+});
+
+const noSelectionError = (): ErrorMessage => ({
+    ErrName: '관리자 로그 삭제 오류',
+    ErrMessage: '선택된 로그가 없습니다.',
     ErrStackRace: '',
     inputValue: '',
 });
@@ -95,6 +101,7 @@ export default function AdminLogsHome({ allDocs }: AdminLogsHomeProps) {
             },
     };
     const { data, error, isFetching, refetch } = useAdminLogsPage(query);
+    const { deleteAdminLogs, isPending: isDeletePending } = useDeleteAdminLogs();
     const currentPageLogs = data?.items ?? [];
     const totalCount = data?.totalCount ?? 0;
     const totalPages = Math.ceil(totalCount / pageSize);
@@ -152,34 +159,24 @@ export default function AdminLogsHome({ allDocs }: AdminLogsHomeProps) {
     };
 
     const deleteSelectedLogs = async () => {
-        if (selectedTab === 'word_logs') {
-            if (selectedWordLogs.size === 0) {
-                alert('선택된 로그가 없습니다.');
-                return;
-            }
-
-            const { error: deleteError } = await SCM.delete().logsByIds(Array.from(selectedWordLogs));
-            if (deleteError) {
-                setErrorModalView(stableDeleteError());
-            } else {
-                clearSelection();
-                await refetch();
-            }
+        const selectedLogs = selectedTab === 'word_logs'
+            ? selectedWordLogs
+            : selectedDocsLogs;
+        if (selectedLogs.size === 0) {
+            setErrorModalView(noSelectionError());
             return;
         }
 
-        if (selectedDocsLogs.size === 0) {
-            alert('선택된 로그가 없습니다.');
-            return;
-        }
-
-        const { error: deleteError } = await SCM.delete().docsLogsByIds(Array.from(selectedDocsLogs));
-        if (deleteError) {
+        const result = await deleteAdminLogs({
+            kind: selectedTab === 'word_logs' ? 'word' : 'docs',
+            ids: Array.from(selectedLogs),
+        });
+        if (!result.ok) {
             setErrorModalView(stableDeleteError());
-        } else {
-            clearSelection();
-            await refetch();
+            return;
         }
+
+        clearSelection();
     };
 
     const formatDate = (dateStr: string) => {
@@ -424,9 +421,10 @@ export default function AdminLogsHome({ allDocs }: AdminLogsHomeProps) {
                                             variant="outline"
                                             className="bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800"
                                             onClick={() => void deleteSelectedLogs()}
+                                            disabled={isDeletePending}
                                         >
                                             <Trash2 className="w-4 h-4 mr-2" />
-                                            선택 삭제
+                                            {isDeletePending ? '삭제 중...' : '선택 삭제'}
                                         </Button>
                                     </div>
                                 </div>

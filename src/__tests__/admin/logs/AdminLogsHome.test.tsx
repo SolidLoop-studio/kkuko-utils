@@ -12,31 +12,21 @@ Object.defineProperties(HTMLElement.prototype, {
 });
 
 jest.mock('../../../modules/admin-logs', () => ({
+    useDeleteAdminLogs: jest.fn(),
     useAdminLogsPage: jest.fn(),
-}));
-
-jest.mock('../../../app/lib/supabaseClient', () => ({
-    SCM: {
-        get: jest.fn(() => {
-            throw new Error('AdminLogsHome must not use legacy SCM reads');
-        }),
-        delete: () => ({
-            logsByIds: jest.fn().mockResolvedValue({ error: null }),
-            docsLogsByIds: jest.fn().mockResolvedValue({ error: null }),
-        }),
-    },
 }));
 
 import type {
     AdminLogsPageProjection,
     AdminLogsPageQuery,
 } from '@/src/modules/admin-logs';
-import { useAdminLogsPage } from '@/src/modules/admin-logs';
-import { SCM } from '../../../app/lib/supabaseClient';
+import { useAdminLogsPage, useDeleteAdminLogs } from '@/src/modules/admin-logs';
+import { err, ok } from '@/src/shared/application/result';
 import AdminLogsHome from '../../../app/admin/logs/AdminLogsHome';
 
 const mockUseAdminLogsPage = useAdminLogsPage as jest.MockedFunction<typeof useAdminLogsPage>;
-const mockLegacyGet = SCM.get as jest.MockedFunction<typeof SCM.get>;
+const mockUseDeleteAdminLogs = useDeleteAdminLogs as jest.MockedFunction<typeof useDeleteAdminLogs>;
+const mockDeleteAdminLogs = jest.fn();
 
 const wordItem = {
     id: 11,
@@ -100,10 +90,16 @@ describe('AdminLogsHome', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockSuccessfulQuery();
+        mockDeleteAdminLogs.mockImplementation(async (command) => ok({
+            deletedIds: [...command.ids],
+        }));
+        mockUseDeleteAdminLogs.mockReturnValue({
+            deleteAdminLogs: mockDeleteAdminLogs,
+            isPending: false,
+        });
     });
 
-    test('keeps direct Supabase and legacy SCM reads out of the screen source', () => {
-        // SCM itself remains allowed for the Task 3 deletion migration.
+    test('keeps direct Supabase and legacy SCM access out of the screen source', () => {
         const source = require('fs').readFileSync(
             require('path').resolve(process.cwd(), 'src/app/admin/logs/AdminLogsHome.tsx'),
             'utf8',
@@ -115,9 +111,12 @@ describe('AdminLogsHome', () => {
             /(?<!\bArray)\.from\s*\(/,
             /\.rpc\s*\(/,
             /\bPostgrestError\b/,
-            /\bSCM\s*\.\s*get\s*\(/,
+            /\bSCM\b/,
             /\blogsByFilter\b/,
             /\bdocsLogsByFilter\b/,
+            /\blogsByIds\b/,
+            /\bdocsLogsByIds\b/,
+            /\balert\s*\(/,
         ];
 
         for (const forbidden of forbiddenReadCoupling) {
@@ -175,7 +174,6 @@ describe('AdminLogsHome', () => {
             filter: { kind: 'docs', type: 'all' },
         }));
         expect(screen.getByRole('checkbox', { name: '로그 21 선택' })).not.toBeChecked();
-        expect(mockLegacyGet).not.toHaveBeenCalled();
     });
 
     test('converts non-empty date inputs to ISO and requests 150 rows from page one', async () => {
@@ -215,9 +213,76 @@ describe('AdminLogsHome', () => {
         expect(screen.getByRole('button', { name: /로딩/ })).toBeDisabled();
         expect(screen.getByText('관리자 로그를 불러오는 중 오류가 발생했습니다.')).toBeInTheDocument();
         expect(screen.queryByText(/private database detail|PostgREST|Supabase/)).not.toBeInTheDocument();
-        expect(mockLegacyGet).not.toHaveBeenCalled();
 
         await user.click(screen.getByRole('button', { name: 'Close' }));
         expect(screen.queryByText('관리자 로그를 불러오는 중 오류가 발생했습니다.')).not.toBeInTheDocument();
+    });
+
+    test('renders a Modal instead of submitting when no log is selected', async () => {
+        // Break caught: using alert or issuing an empty delete command from the screen.
+        const user = userEvent.setup();
+        renderHome();
+
+        await user.click(screen.getByRole('button', { name: '선택 삭제' }));
+
+        expect(screen.getByText('선택된 로그가 없습니다.')).toBeInTheDocument();
+        expect(mockDeleteAdminLogs).not.toHaveBeenCalled();
+    });
+
+    test('keeps the word-log selection and renders only the stable Modal on failure', async () => {
+        // Break caught: clearing selection on failure or exposing returned private diagnostics.
+        const user = userEvent.setup();
+        mockDeleteAdminLogs.mockResolvedValue(err({
+            kind: 'infrastructure',
+            message: 'private PostgREST policy detail',
+        }));
+        renderHome();
+        const rowCheckbox = screen.getByRole('checkbox', { name: '로그 11 선택' });
+
+        await user.click(rowCheckbox);
+        await user.click(screen.getByRole('button', { name: '선택 삭제' }));
+
+        await waitFor(() => expect(mockDeleteAdminLogs).toHaveBeenCalledWith({
+            kind: 'word',
+            ids: [11],
+        }));
+        expect(rowCheckbox).toBeChecked();
+        expect(screen.getByText('선택한 로그를 삭제하는 중 오류가 발생했습니다.')).toBeInTheDocument();
+        expect(screen.queryByText(/private|PostgREST/)).not.toBeInTheDocument();
+    });
+
+    test('clears the word-log selection only after successful deletion', async () => {
+        // Break caught: clearing optimistically before success or directly refetching around the command hook.
+        const user = userEvent.setup();
+        const refetch = mockSuccessfulQuery();
+        renderHome();
+        const rowCheckbox = screen.getByRole('checkbox', { name: '로그 11 선택' });
+
+        await user.click(rowCheckbox);
+        await user.click(screen.getByRole('button', { name: '선택 삭제' }));
+
+        await waitFor(() => expect(mockDeleteAdminLogs).toHaveBeenCalledWith({
+            kind: 'word',
+            ids: [11],
+        }));
+        await waitFor(() => expect(rowCheckbox).not.toBeChecked());
+        expect(refetch).not.toHaveBeenCalled();
+    });
+
+    test('submits the selected docs-log command and clears it after success', async () => {
+        // Break caught: routing the docs tab through the word-log command or retaining committed selection.
+        const user = userEvent.setup();
+        renderHome();
+
+        await user.click(screen.getByRole('tab', { name: '문서 로그' }));
+        const rowCheckbox = await screen.findByRole('checkbox', { name: '로그 21 선택' });
+        await user.click(rowCheckbox);
+        await user.click(screen.getByRole('button', { name: '선택 삭제' }));
+
+        await waitFor(() => expect(mockDeleteAdminLogs).toHaveBeenCalledWith({
+            kind: 'docs',
+            ids: [21],
+        }));
+        await waitFor(() => expect(rowCheckbox).not.toBeChecked());
     });
 });
