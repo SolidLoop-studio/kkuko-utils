@@ -4,9 +4,7 @@ import type { Database } from '@/src/app/types/database.types'
 type wait_word = Database['public']['Tables']['wait_words']['Row']
 type theme = Database['public']['Tables']['themes']['Row']
 type word = Database['public']['Tables']['words']['Row']
-type docs = Database['public']['Tables']['docs']['Row']
 type user = Database['public']['Tables']['users']['Row'];
-type docs_log = Database['public']['Tables']['docs_logs']['Row'];
 type log = Database['public']['Tables']['logs']['Row'];
 type okWord = Omit<word, 'mission_mark'> & { mission_mark?: number; };
 
@@ -31,7 +29,6 @@ export interface IGetManager{
     waitWordsCount(): Promise<{count: number | null; error: PostgrestError | null}>;
     wordsByWords(words: string[]): Promise<PostgrestSingleResponse<(okWord&{wthemes: number[]})[]>>;
     logsByFilter({filterState, filterType, from, to}:{filterState?: "approved" | "rejected" | "pending" | "all", filterType: "delete" | "add" | "all", from: number, to: number}): Promise<PostgrestSingleResponse<(log & {make_by_user: { nickname: string; } | null; processed_by_user: { nickname: string | null } | null;})[]>>
-    docsLogsByFilter({ docsName, logType, from, to }: { docsName?: string; logType: 'add' | 'delete' | 'all'; from: number; to: number; }): Promise<PostgrestSingleResponse<(docs_log & { docs: docs; users: { nickname: string } | null })[]>>;
     wordsThemesByWordId(wordIds: number[]): Promise<PostgrestSingleResponse<{word_id: number, themes: theme}[]>>;
     allUser(sortField?: 'contribution' | 'month_contribution' | 'nickname', isAsc?: boolean): Promise<PostgrestSingleResponse<user[]>>;
     letterCountInfo(): Promise<{data: {firstLetterCounts: Record<string, {count: number; k_count: number; n_count: number}>; lastLetterCounts: Record<string, {count: number; k_count: number; n_count: number}>;}, error: null}|{data: null; error: PostgrestError}>;

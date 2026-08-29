@@ -7,7 +7,7 @@ const adminLogsInitialError = () => ({
     message: '관리자 로그를 불러오는 중 오류가 발생했습니다.',
 });
 
-/** 관리자 로그 화면의 초기 projection을 안전한 공개 경계로 조회합니다. */
+/** 관리자 로그 화면의 초기 문서 선택지를 안전한 공개 경계로 조회합니다. */
 export class GetAdminLogsInitialService {
     constructor(private readonly gateway: AdminLogsInitialQueryGateway) {}
 

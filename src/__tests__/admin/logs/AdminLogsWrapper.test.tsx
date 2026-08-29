@@ -5,40 +5,12 @@ jest.mock('../../../modules/admin-logs', () => ({
     useAdminLogsInitial: jest.fn(),
 }));
 
-jest.mock('../../../app/lib/supabaseClient', () => ({
-    SCM: {
-        get: () => ({
-            logsByFilter: jest.fn().mockResolvedValue({ data: [], error: null }),
-            docsLogsByFilter: jest.fn().mockResolvedValue({ data: [], error: null }),
-            allDocs: jest.fn().mockResolvedValue({ data: [], error: null }),
-        }),
-    },
-}));
-
 jest.mock('../../../app/admin/logs/AdminLogsHome', () => ({
     __esModule: true,
-    default: ({ initialWordLogs, initialDocsLogs, allDocs }: {
-        initialWordLogs: Array<{
-            word: string;
-            r_type: string;
-            created_at: string;
-            make_by_user: { nickname: string } | null;
-        }>;
-        initialDocsLogs: Array<{
-            word: string;
-            docs: { name: string } | null;
-            users: { nickname: string } | null;
-            date: string;
-        }>;
+    default: ({ allDocs }: {
         allDocs: Array<{ name: string; typez: string }>;
     }) => (
         <div>
-            <span>{initialWordLogs.map((log) => (
-                `${log.word}:${log.r_type}:${log.make_by_user?.nickname ?? 'N/A'}:${log.created_at}`
-            )).join('|')}</span>
-            <span>{initialDocsLogs.map((log) => (
-                `${log.word}:${log.docs?.name ?? 'N/A'}:${log.users?.nickname ?? 'N/A'}:${log.date}`
-            )).join('|')}</span>
             <span>{allDocs.map((docs) => `${docs.name}:${docs.typez}`).join('|')}</span>
         </div>
     ),
@@ -64,7 +36,7 @@ describe('AdminLogsWrapper', () => {
     });
 
     test('preserves the existing LoadingPage while the initial query loads', () => {
-        // Break caught: rendering the administration screen before all three initial projections arrive.
+        // Break caught: rendering the administration screen before document choices arrive.
         store.dispatch(resetLoadingState());
         mockUseAdminLogsInitial.mockReturnValue({
             isLoading: true,
@@ -75,27 +47,10 @@ describe('AdminLogsWrapper', () => {
         expect(screen.getByRole('heading', { name: '문서 요청 목록 로딩 중' })).toBeInTheDocument();
     });
 
-    test('passes the initial projection to AdminLogsHome using its existing prop shape', () => {
-        // Break caught: leaking camelCase DTOs into the legacy home or omitting the narrow document choices.
+    test('passes only document choices to AdminLogsHome', () => {
+        // Break caught: retaining duplicated initial log rows after the page query owns them.
         mockUseAdminLogsInitial.mockReturnValue({
             data: {
-                wordLogs: [{
-                    id: 11,
-                    word: '가나',
-                    state: 'approved',
-                    requestType: 'add',
-                    requesterNickname: '신청자',
-                    processorNickname: null,
-                    createdAt: '2026-08-29T00:00:00.000Z',
-                }],
-                docsLogs: [{
-                    id: 21,
-                    word: '다라',
-                    documentName: null,
-                    actorNickname: null,
-                    type: 'delete',
-                    occurredAt: '2026-08-28T00:00:00.000Z',
-                }],
                 documentChoices: [{ id: 31, name: '주제 문서', type: 'theme' }],
             },
             error: null,
@@ -104,8 +59,6 @@ describe('AdminLogsWrapper', () => {
 
         renderWrapper();
 
-        expect(screen.getByText('가나:add:신청자:2026-08-29T00:00:00.000Z')).toBeInTheDocument();
-        expect(screen.getByText('다라:N/A:N/A:2026-08-28T00:00:00.000Z')).toBeInTheDocument();
         expect(screen.getByText('주제 문서:theme')).toBeInTheDocument();
     });
 

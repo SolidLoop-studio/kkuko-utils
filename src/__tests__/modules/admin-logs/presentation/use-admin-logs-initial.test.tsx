@@ -13,8 +13,6 @@ import { useAdminLogsInitial } from '@/src/modules/admin-logs/presentation/use-a
 import { err, ok, type Result } from '@/src/shared/application/result';
 
 const projection: AdminLogsInitialProjection = {
-    wordLogs: [],
-    docsLogs: [],
     documentChoices: [{ id: 31, name: '주제 문서', type: 'theme' }],
 };
 

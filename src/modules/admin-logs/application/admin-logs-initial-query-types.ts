@@ -28,7 +28,5 @@ export interface AdminLogsDocumentChoice {
 }
 
 export interface AdminLogsInitialProjection {
-    wordLogs: AdminWordLogEntry[];
-    docsLogs: AdminDocsLogEntry[];
     documentChoices: AdminLogsDocumentChoice[];
 }

@@ -4,23 +4,6 @@ import type { AdminLogsInitialProjection } from '@/src/modules/admin-logs/applic
 import { err, ok, type Result } from '@/src/shared/application/result';
 
 const projection: AdminLogsInitialProjection = {
-    wordLogs: [{
-        id: 11,
-        word: '가나',
-        state: 'approved',
-        requestType: 'add',
-        requesterNickname: '신청자',
-        processorNickname: '관리자',
-        createdAt: '2026-08-29T00:00:00.000Z',
-    }],
-    docsLogs: [{
-        id: 21,
-        word: '다라',
-        documentName: '주제 문서',
-        actorNickname: null,
-        type: 'delete',
-        occurredAt: '2026-08-28T00:00:00.000Z',
-    }],
     documentChoices: [{ id: 31, name: '주제 문서', type: 'theme' }],
 };
 
@@ -31,8 +14,8 @@ const createGateway = (
 });
 
 describe('GetAdminLogsInitialService', () => {
-    test('returns the narrow initial administrator-log projection', async () => {
-        // Break caught: skipping the gateway or reshaping the projection above Application.
+    test('returns only the initial document choices', async () => {
+        // Break caught: keeping log rows in the initial query after page queries own them.
         const gateway = createGateway();
 
         await expect(new GetAdminLogsInitialService(gateway).get()).resolves.toEqual(ok(projection));

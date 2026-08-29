@@ -17,3 +17,7 @@ export {
     useAdminLogsInitial,
     type AdminLogsInitialQueryService,
 } from './presentation/use-admin-logs-initial';
+export {
+    useAdminLogsPage,
+    type AdminLogsPageQueryService,
+} from './presentation/use-admin-logs-page';
