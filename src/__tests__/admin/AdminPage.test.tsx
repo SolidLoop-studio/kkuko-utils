@@ -58,6 +58,19 @@ describe('AdminDashboard', () => {
         expect(screen.getByText('17')).toBeInTheDocument();
     });
 
+    test('renders exact zero values in both statistic cards', () => {
+        // Break caught: treating zero as absent and replacing it with a dash or loading copy.
+        setSummaryQuery({
+            data: { totalWords: 0, pendingWordChanges: 0 },
+        });
+
+        render(<AdminDashboard />);
+
+        expect(screen.getAllByText('0')).toHaveLength(2);
+        expect(screen.queryByText('—')).not.toBeInTheDocument();
+        expect(screen.queryByText('로딩 중...')).not.toBeInTheDocument();
+    });
+
     test('opens the project failure Modal with fixed Korean copy and no raw query diagnostics', () => {
         // Break caught: logging/rendering a backend error or replacing the project Modal with inline text.
         setSummaryQuery({

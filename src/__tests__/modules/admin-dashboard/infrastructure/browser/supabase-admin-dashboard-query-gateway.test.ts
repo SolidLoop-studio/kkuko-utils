@@ -78,17 +78,29 @@ describe('SupabaseAdminDashboardQueryGateway', () => {
         ]);
     });
 
-    test('starts all three database reads before waiting for any result', async () => {
-        // Break caught: sequential awaits that make dashboard latency the sum of all three reads.
-        const calls: string[] = [];
-        const resolvers = new Map<TableName, (value: unknown) => void>();
-        const requests = new Map<TableName, Promise<unknown>>();
+    test('executes all three database reads before waiting for any result', async () => {
+        // Break caught: constructing all requests first but assimilating/awaiting their thenables sequentially.
+        const constructionCalls: string[] = [];
+        const executionCalls: string[] = [];
+        const requests = new Map<TableName, {
+            then(onFulfilled: (value: unknown) => void): void;
+            resolve(value: unknown): void;
+        }>();
         for (const table of ['words_count', 'wait_words', 'word_themes_wait'] as const) {
-            requests.set(table, new Promise((resolve) => resolvers.set(table, resolve)));
+            let onFulfilled: ((value: unknown) => void) | undefined;
+            requests.set(table, {
+                then(handler) {
+                    executionCalls.push(table);
+                    onFulfilled = handler;
+                },
+                resolve(value) {
+                    onFulfilled?.(value);
+                },
+            });
         }
         const from = jest.fn((table: TableName) => ({
             select: jest.fn(() => {
-                calls.push(`select:${table}`);
+                constructionCalls.push(table);
                 return table === 'words_count'
                     ? { single: () => requests.get(table) }
                     : requests.get(table);
@@ -99,15 +111,20 @@ describe('SupabaseAdminDashboardQueryGateway', () => {
         const resultPromise = gateway.loadSummary();
         await Promise.resolve();
 
-        expect(calls).toEqual([
-            'select:words_count',
-            'select:wait_words',
-            'select:word_themes_wait',
+        expect(constructionCalls).toEqual([
+            'words_count',
+            'wait_words',
+            'word_themes_wait',
+        ]);
+        expect(executionCalls).toEqual([
+            'words_count',
+            'wait_words',
+            'word_themes_wait',
         ]);
 
-        resolvers.get('words_count')?.({ data: { total_words: 9 }, error: null });
-        resolvers.get('wait_words')?.({ data: null, count: 2, error: null });
-        resolvers.get('word_themes_wait')?.({ data: null, count: 3, error: null });
+        requests.get('words_count')?.resolve({ data: { total_words: 9 }, error: null });
+        requests.get('wait_words')?.resolve({ data: null, count: 2, error: null });
+        requests.get('word_themes_wait')?.resolve({ data: null, count: 3, error: null });
         await expect(resultPromise).resolves.toEqual(ok({
             totalWords: 9,
             pendingWordChanges: 5,
