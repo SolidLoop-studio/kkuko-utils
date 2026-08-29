@@ -124,7 +124,8 @@ export class SupabaseWordLogQueryGateway implements WordLogQueryGateway {
             let request = this.client
                 .from('logs')
                 .select('id, created_at, word, make_by, processed_by, state, r_type, make_by_user:users!logs_make_by_fkey(nickname), processed_by_user:users!logs_processed_by_fkey(nickname)', { count: 'exact' })
-                .order('created_at', { ascending: false });
+                .order('created_at', { ascending: false })
+                .order('id', { ascending: false });
 
             if (query.state !== 'all') request = request.eq('state', query.state);
             if (query.requestType !== 'all') request = request.eq('r_type', query.requestType);

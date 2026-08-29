@@ -66,6 +66,7 @@ describe('LogsHome', () => {
             error: null,
             isLoading: false,
             isFetching: false,
+            isPlaceholderData: false,
             refetch,
         } as unknown as ReturnType<typeof useWordLogPage>));
     });
@@ -122,6 +123,31 @@ describe('LogsHome', () => {
             state: 'pending',
             requestType: 'delete',
         }));
+    });
+
+    test('keeps pagination metadata but hides stale rows during an uncached page transition', async () => {
+        // Break caught: rendering `2 / 0` metadata or presenting page-one rows as page two while it loads.
+        const user = userEvent.setup();
+        mockUseWordLogPage.mockImplementation((currentQuery) => ({
+            data: currentQuery.page === 1
+                ? projectionFor(currentQuery)
+                : projectionFor({ ...currentQuery, page: 1 }),
+            error: null,
+            isLoading: false,
+            isFetching: currentQuery.page === 2,
+            isPlaceholderData: currentQuery.page === 2,
+            refetch: jest.fn(),
+        } as unknown as ReturnType<typeof useWordLogPage>));
+        render(<LogsHome />);
+
+        expect(screen.getByText('가나')).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: '다음' }));
+
+        expect(lastQuery().page).toBe(2);
+        expect(screen.getByText('2 / 3 페이지')).toBeInTheDocument();
+        expect(screen.getByText('(31-60 / 61)')).toBeInTheDocument();
+        expect(screen.getAllByTestId('word-log-skeleton')).toHaveLength(30);
+        expect(screen.queryByText('가나')).not.toBeInTheDocument();
     });
 
     test('renders an empty page and bounds pagination from exact totalCount', () => {

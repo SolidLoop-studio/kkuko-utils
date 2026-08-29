@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
 
 jest.mock(
@@ -40,7 +40,9 @@ const createWrapper = () => {
     return { queryClient, QueryWrapper };
 };
 
-const mockService = (handler: () => Promise<Result<WordLogPageProjection>>) => {
+const mockService = (
+    handler: (query: WordLogPageQuery) => Promise<Result<WordLogPageProjection>>,
+) => {
     const get = jest.fn(handler);
     jest.mocked(createBrowserWordLogServices).mockReturnValue({
         wordLogPageQueryService: { get },
@@ -59,6 +61,42 @@ describe('useWordLogPage', () => {
         expect(get).toHaveBeenCalledWith(query);
         expect(wordLogQueryKeys.page(query)).toEqual(['word-logs', 'page', query]);
         expect(queryClient.getQueryData(wordLogQueryKeys.page(query))).toEqual(projection);
+    });
+
+    test('keeps prior metadata as placeholder data while an uncached page request is pending', async () => {
+        // Break caught: dropping exact-count metadata during a key transition before the new page resolves.
+        const firstQuery: WordLogPageQuery = { ...query, page: 1 };
+        const firstProjection: WordLogPageProjection = {
+            ...projection,
+            totalCount: 61,
+            page: 1,
+        };
+        let resolveSecondRequest: ((value: Result<WordLogPageProjection>) => void) | undefined;
+        const secondRequest = new Promise<Result<WordLogPageProjection>>((resolve) => {
+            resolveSecondRequest = resolve;
+        });
+        mockService(async (requestedQuery) => (
+            requestedQuery.page === 1 ? ok(firstProjection) : secondRequest
+        ));
+        const { QueryWrapper } = createWrapper();
+        const { result, rerender } = renderHook(
+            ({ currentQuery }) => useWordLogPage(currentQuery),
+            { initialProps: { currentQuery: firstQuery }, wrapper: QueryWrapper },
+        );
+
+        await waitFor(() => expect(result.current.data).toEqual(firstProjection));
+        rerender({ currentQuery: query });
+
+        await waitFor(() => expect(result.current.isPlaceholderData).toBe(true));
+        expect(result.current.data).toEqual(firstProjection);
+        expect(result.current.isFetching).toBe(true);
+
+        await act(async () => {
+            resolveSecondRequest?.(ok(projection));
+            await secondRequest;
+        });
+        await waitFor(() => expect(result.current.data).toEqual(projection));
+        expect(result.current.isPlaceholderData).toBe(false);
     });
 
     test('exposes an Application error without retrying', async () => {

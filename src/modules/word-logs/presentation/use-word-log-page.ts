@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useState } from 'react';
 import type { ApplicationError } from '@/src/shared/application/application-error';
 import type { Result } from '@/src/shared/application/result';
@@ -51,6 +51,7 @@ export const useWordLogPage = (
     return useQuery<WordLogPageProjection, ApplicationError>({
         queryKey: wordLogQueryKeys.page(query),
         queryFn: () => unwrapPage(() => service.get(query)),
+        placeholderData: keepPreviousData,
         retry: false,
         staleTime: 5 * 60 * 1000,
     });

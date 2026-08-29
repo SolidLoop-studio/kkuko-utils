@@ -30,6 +30,8 @@ const projection: WordLogPageProjection = {
     pageSize: 30,
 };
 
+const largestSafeRangePage = Math.floor(Number.MAX_SAFE_INTEGER / query.pageSize);
+
 const createGateway = (
     result: Result<WordLogPageProjection> = ok(projection),
 ): jest.Mocked<WordLogQueryGateway> => ({
@@ -57,6 +59,36 @@ describe('GetWordLogPageService', () => {
         const gateway = createGateway();
 
         await expect(new GetWordLogPageService(gateway).get(invalidQuery)).resolves.toEqual(err({
+            kind: 'validation',
+            message: '올바른 로그 조회 조건이 필요합니다.',
+        }));
+        expect(gateway.loadPage).not.toHaveBeenCalled();
+    });
+
+    test('accepts the largest page whose inclusive range offsets are safe integers', async () => {
+        // Break caught: rejecting a page whose derived `from` and `to` offsets remain safe.
+        const boundaryQuery: WordLogPageQuery = { ...query, page: largestSafeRangePage };
+        const boundaryProjection: WordLogPageProjection = {
+            ...projection,
+            page: largestSafeRangePage,
+        };
+        const gateway = createGateway(ok(boundaryProjection));
+
+        await expect(new GetWordLogPageService(gateway).get(boundaryQuery)).resolves.toEqual(
+            ok(boundaryProjection),
+        );
+        expect(gateway.loadPage).toHaveBeenCalledWith(boundaryQuery);
+    });
+
+    test('rejects the first page whose inclusive to offset is unsafe', async () => {
+        // Break caught: forwarding a safe page number that produces an imprecise database range.
+        const gateway = createGateway();
+        const firstUnsafeRangeQuery: WordLogPageQuery = {
+            ...query,
+            page: largestSafeRangePage + 1,
+        };
+
+        await expect(new GetWordLogPageService(gateway).get(firstUnsafeRangeQuery)).resolves.toEqual(err({
             kind: 'validation',
             message: '올바른 로그 조회 조건이 필요합니다.',
         }));

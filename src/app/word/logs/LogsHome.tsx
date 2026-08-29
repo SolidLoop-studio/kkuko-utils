@@ -32,7 +32,14 @@ export default function LogPage() {
         state: filterState,
         requestType: filterType,
     };
-    const { data, error, isLoading, isFetching, refetch } = useWordLogPage(query);
+    const {
+        data,
+        error,
+        isLoading,
+        isFetching,
+        isPlaceholderData,
+        refetch,
+    } = useWordLogPage(query);
     const logs = data?.items ?? [];
     const totalCount = data?.totalCount ?? 0;
     const totalPages = Math.ceil(totalCount / itemsPerPage);
@@ -130,7 +137,7 @@ export default function LogPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {isLoading ? (
+                        {isLoading || isPlaceholderData ? (
                             Array.from({ length: itemsPerPage }).map((_, index) => (
                                 <TableRow key={index} data-testid="word-log-skeleton">
                                     <TableCell><Skeleton /></TableCell>

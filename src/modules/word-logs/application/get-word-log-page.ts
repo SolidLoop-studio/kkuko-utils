@@ -12,6 +12,15 @@ const validationError = () => ({
     message: '올바른 로그 조회 조건이 필요합니다.',
 });
 
+const hasSafeInclusiveRange = (query: WordLogPageQuery): boolean => {
+    const from = (query.page - 1) * query.pageSize;
+    const to = from + query.pageSize - 1;
+    return Number.isSafeInteger(from)
+        && from >= 0
+        && Number.isSafeInteger(to)
+        && to >= from;
+};
+
 const isValidQuery = (query: WordLogPageQuery): boolean => (
     Number.isSafeInteger(query.page)
     && query.page > 0
@@ -23,6 +32,7 @@ const isValidQuery = (query: WordLogPageQuery): boolean => (
     && (query.requestType === 'all'
         || query.requestType === 'add'
         || query.requestType === 'delete')
+    && hasSafeInclusiveRange(query)
 );
 
 const matchesQuery = (

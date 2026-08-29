@@ -97,6 +97,7 @@ describe('SupabaseWordLogQueryGateway', () => {
             'from:logs',
             'select:id, created_at, word, make_by, processed_by, state, r_type, make_by_user:users!logs_make_by_fkey(nickname), processed_by_user:users!logs_processed_by_fkey(nickname):count=exact',
             'order:created_at:false',
+            'order:id:false',
             'eq:state:approved',
             'eq:r_type:add',
             'range:30:59',
