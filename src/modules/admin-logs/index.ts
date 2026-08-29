@@ -4,6 +4,15 @@ export type {
     AdminLogsInitialProjection,
     AdminWordLogEntry,
 } from './application/admin-logs-initial-query-types';
+export type {
+    AdminDocsLogsPageProjection,
+    AdminLogsDocsPageFilter,
+    AdminLogsPageProjection,
+    AdminLogsPageQuery,
+    AdminLogsWordPageFilter,
+    AdminWordLogsPageProjection,
+} from './application/admin-logs-page-query-types';
+export { GetAdminLogsPageService } from './application/get-admin-logs-page';
 export {
     useAdminLogsInitial,
     type AdminLogsInitialQueryService,
