@@ -41,8 +41,8 @@ const parseAcceptedWords = (response: unknown): string[] | null => {
 
     const words: string[] = [];
     for (const row of response.data) {
-        if (!isRecord(row) || typeof row.word !== 'string' || !hasCombinerLength(row.word)) return null;
-        words.push(row.word);
+        if (!isRecord(row) || typeof row.word !== 'string') return null;
+        if (hasCombinerLength(row.word)) words.push(row.word);
     }
     return words;
 };
@@ -83,10 +83,7 @@ export class SupabaseWordCombinerCandidateQueryGateway implements WordCombinerCa
             }
             const englishWords = parseEnglishWords(await englishResponse.data.text());
 
-            const uniqueWords = new Set<string>(acceptedWords);
-            for (const word of englishWords) uniqueWords.add(word);
-
-            return ok([...uniqueWords]
+            return ok([...acceptedWords, ...englishWords]
                 .sort(compareWords)
                 .map((word) => ({ word })));
         } catch {

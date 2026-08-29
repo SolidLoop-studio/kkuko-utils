@@ -1046,8 +1046,8 @@ Notifications:
   - 알 수 없는 DB 행과 GitHub JSON은 adapter에서 검증해 camelCase projection으로 변환하며, 한 소스의 실패가 다른 소스의 성공 결과를 숨기지 않는다.
   - `ReleaseNote`의 직접 `SCM`·`fetch` 의존성과 대체된 `releaseNote` legacy getter를 제거했다.
 - word combiner가 필요한 DB 조회만 `word-catalog` query로 이동 (완료)
-  - `WordCombinerCandidate`는 현재 조합기가 소비하는 `word`만 노출한다. accepted 5·6글자 단어와 공개 영문 목록을 accepted 우선으로 중복 제거한 뒤 결정적으로 정렬하며, 현재 `lenf` 경계가 사용하지 않던 pending add/delete는 조회하지 않는다.
-  - browser Supabase adapter가 `words` length filter와 Storage 파일 읽기를 소유하고, `useWordCombinerCandidates`가 React Query cache·loading·안정 오류를 소유한다. 기존 조합기는 빈 목록에서도 그대로 동작한다.
+  - `WordCombinerCandidate`는 현재 조합기가 소비하는 `word`만 노출한다. accepted 5·6글자 단어와 공개 영문 목록의 중복 occurrence를 그대로 보존한 채 결정적으로 정렬하며, 현재 `lenf` 경계가 사용하지 않던 pending add/delete는 조회하지 않는다.
+  - browser Supabase adapter가 `words` length filter와 Storage 파일 읽기를 소유하고, `useWordCombinerCandidates`가 React Query cache·loading·안정 오류를 소유한다. 기존 조합기는 빈 목록에서도 그대로 동작한다. `words` 조회는 기존과 같은 단일 요청이므로 configured PostgREST row cap을 유지하며, 이 slice에는 pagination을 추가하지 않았다.
   - 대체된 `allWords` getter와 전용 memory cache, presentation의 인위적 delay를 제거했다. 이 slice는 database migration이나 cloud rollout을 수행하지 않았다.
 - admin dashboard count를 작은 admin projection query로 이동
 - SCM의 남은 범용 cache 제거

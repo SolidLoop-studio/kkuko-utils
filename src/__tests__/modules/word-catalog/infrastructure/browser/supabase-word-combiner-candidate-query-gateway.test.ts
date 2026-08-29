@@ -105,16 +105,39 @@ describe('SupabaseWordCombinerCandidateQueryGateway', () => {
         ]);
     });
 
-    test('keeps the accepted word once when the English source contains duplicates and returns stable ordering', async () => {
+    test('preserves duplicate occurrences across accepted and English sources while sorting deterministically', async () => {
         const { client } = createClient({
-            words: queryResponse([{ word: '타파하가나다' }, { word: '가나다라마' }]),
+            words: queryResponse([
+                { word: '타파하가나다' },
+                { word: '가나다라마' },
+                { word: '가나다라마' },
+            ]),
             englishText: '가나다라마\n타파하가나다\n바사아자차카\n바사아자차카',
         });
 
         await expect(new SupabaseWordCombinerCandidateQueryGateway(client).load()).resolves.toEqual(ok([
             { word: '가나다라마' },
+            { word: '가나다라마' },
+            { word: '가나다라마' },
+            { word: '바사아자차카' },
             { word: '바사아자차카' },
             { word: '타파하가나다' },
+            { word: '타파하가나다' },
+        ]));
+    });
+
+    test('filters a valid string row individually when its JavaScript UTF-16 length is not 5 or 6', async () => {
+        const { client } = createClient({
+            words: queryResponse([
+                { word: '😀가나다라마' },
+                { word: '가나다라마' },
+            ]),
+            englishText: '바사아자차카',
+        });
+
+        await expect(new SupabaseWordCombinerCandidateQueryGateway(client).load()).resolves.toEqual(ok([
+            { word: '가나다라마' },
+            { word: '바사아자차카' },
         ]));
     });
 
