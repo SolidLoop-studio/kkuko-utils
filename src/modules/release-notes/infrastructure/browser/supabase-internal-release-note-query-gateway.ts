@@ -3,6 +3,7 @@ import { err, ok, type Result } from '@/src/shared/application/result';
 import { browserSupabaseClient } from '@/src/shared/infrastructure/supabase/browser-client';
 import type { InternalReleaseNoteQueryGateway } from '../../application/release-note-query-ports';
 import type { InternalReleaseNote } from '../../application/release-note-query-types';
+import { isValidReleaseTimestamp } from './release-timestamp';
 
 interface QueryResponse {
     data?: unknown;
@@ -34,16 +35,12 @@ const isPositiveSafeInteger = (value: unknown): value is number => (
     typeof value === 'number' && Number.isSafeInteger(value) && value > 0
 );
 
-const isValidDateString = (value: unknown): value is string => (
-    typeof value === 'string' && !Number.isNaN(Date.parse(value))
-);
-
 const parseRow = (value: unknown): InternalReleaseNote | null => {
     if (!isRecord(value)
         || !isPositiveSafeInteger(value.id)
         || typeof value.title !== 'string'
         || typeof value.content !== 'string'
-        || !isValidDateString(value.created_at)
+        || !isValidReleaseTimestamp(value.created_at)
         || (typeof value.link !== 'string' && value.link !== null)) {
         return null;
     }

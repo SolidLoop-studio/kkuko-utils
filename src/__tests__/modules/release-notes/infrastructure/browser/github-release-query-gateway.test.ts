@@ -5,7 +5,7 @@ const githubRow = {
     id: 11,
     name: null,
     body: null,
-    published_at: '2026-08-30T02:00:00.000Z',
+    published_at: '2026-08-30T06:30:00.456-04:30',
     html_url: 'https://github.com/SolidLoop-studio/kkuko-utils/releases/tag/v2',
     tag_name: 'v2',
 };
@@ -28,7 +28,7 @@ describe('GithubReleaseQueryGateway', () => {
             id: 11,
             name: '',
             body: '',
-            publishedAt: '2026-08-30T02:00:00.000Z',
+            publishedAt: '2026-08-30T06:30:00.456-04:30',
             htmlUrl: 'https://github.com/SolidLoop-studio/kkuko-utils/releases/tag/v2',
             tagName: 'v2',
         }]));
@@ -42,6 +42,9 @@ describe('GithubReleaseQueryGateway', () => {
         ['non-array JSON', githubRow],
         ['malformed row', [{ ...githubRow, html_url: 42 }]],
         ['invalid publication date', [{ ...githubRow, published_at: 'not-a-date' }]],
+        ['a parseable non-timestamp', [{ ...githubRow, published_at: '0' }]],
+        ['an impossible calendar date', [{ ...githubRow, published_at: '2026-02-30T01:00:00Z' }]],
+        ['an impossible time', [{ ...githubRow, published_at: '2026-08-30T24:01:00Z' }]],
     ])('rejects %s without exposing the unknown JSON', async (_label, payload) => {
         // Break caught: casting unknown GitHub JSON directly into the UI model.
         const fetcher = jest.fn(async () => ({ ok: true, json: async () => payload }));

@@ -13,7 +13,7 @@ const row = {
     id: 3,
     title: '업데이트',
     content: '변경 내용',
-    created_at: '2026-08-30T01:00:00.000Z',
+    created_at: '2026-08-30T10:00:00.123+09:00',
     link: 'https://example.com/release',
 };
 
@@ -53,7 +53,7 @@ describe('SupabaseInternalReleaseNoteQueryGateway', () => {
             id: 3,
             title: '업데이트',
             content: '변경 내용',
-            createdAt: '2026-08-30T01:00:00.000Z',
+            createdAt: '2026-08-30T10:00:00.123+09:00',
             link: 'https://example.com/release',
         }]));
         expect(calls).toEqual([
@@ -66,6 +66,9 @@ describe('SupabaseInternalReleaseNoteQueryGateway', () => {
     test.each([
         ['malformed row', { data: [{ ...row, id: '3' }], error: null }],
         ['invalid date', { data: [{ ...row, created_at: 'not-a-date' }], error: null }],
+        ['a parseable non-timestamp', { data: [{ ...row, created_at: '0' }], error: null }],
+        ['an impossible calendar date', { data: [{ ...row, created_at: '2026-02-30T01:00:00Z' }], error: null }],
+        ['an impossible time', { data: [{ ...row, created_at: '2026-08-30T24:01:00Z' }], error: null }],
         ['non-array data', { data: row, error: null }],
         ['returned Supabase error', { data: null, error: { message: 'private PostgREST detail' } }],
     ])('maps %s to one stable public error', async (_label, response) => {

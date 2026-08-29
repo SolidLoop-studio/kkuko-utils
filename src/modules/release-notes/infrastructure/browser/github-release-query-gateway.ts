@@ -2,6 +2,7 @@ import type { ApplicationError } from '@/src/shared/application/application-erro
 import { err, ok, type Result } from '@/src/shared/application/result';
 import type { GithubReleaseQueryGateway as GithubReleaseQueryGatewayPort } from '../../application/release-note-query-ports';
 import type { GithubReleaseNote } from '../../application/release-note-query-types';
+import { isValidReleaseTimestamp } from './release-timestamp';
 
 const GITHUB_RELEASES_URL = 'https://api.github.com/repos/SolidLoop-studio/kkuko-utils/releases';
 
@@ -28,10 +29,6 @@ const isPositiveSafeInteger = (value: unknown): value is number => (
     typeof value === 'number' && Number.isSafeInteger(value) && value > 0
 );
 
-const isValidDateString = (value: unknown): value is string => (
-    typeof value === 'string' && !Number.isNaN(Date.parse(value))
-);
-
 const isNullableString = (value: unknown): value is string | null => (
     typeof value === 'string' || value === null
 );
@@ -41,7 +38,7 @@ const parseRow = (value: unknown): GithubReleaseNote | null => {
         || !isPositiveSafeInteger(value.id)
         || !isNullableString(value.name)
         || !isNullableString(value.body)
-        || !isValidDateString(value.published_at)
+        || !isValidReleaseTimestamp(value.published_at)
         || typeof value.html_url !== 'string'
         || typeof value.tag_name !== 'string') {
         return null;
