@@ -177,26 +177,6 @@ class GetManager implements IGetManager {
             }, error: null
         }
     }
-    public async logsByFilter({ filterState, filterType, from, to }: { filterState: 'approved' | 'rejected' | 'pending' | 'all'; filterType: 'delete' | 'add' | 'all'; from: number; to: number; }) {
-        let query = this.supabase
-            .from('logs')
-            .select(`
-                *,
-                make_by_user:users!logs_make_by_fkey(nickname),
-                processed_by_user:users!logs_processed_by_fkey(nickname)
-            `, { count: 'exact' })
-            .order('created_at', { ascending: false });
-
-        if (filterState !== "all") {
-            query = query.eq('state', filterState);
-        }
-        if (filterType !== "all") {
-            query = query.eq('r_type', filterType);
-        }
-        query = query.range(from, to);
-
-        return await query;
-    }
     public async wordsThemesByWordId(wordIds: number[]) {
         return await this.supabase.from('word_themes').select('word_id, themes(*)').in('word_id', wordIds);
     }

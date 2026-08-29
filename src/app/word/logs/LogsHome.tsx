@@ -1,190 +1,94 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/src/app/components/ui/table";
-import { Button } from "@/src/app/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/src/app/components/ui/select";
-import { useSelector } from 'react-redux';
-import { RootState } from "@/src/app/store/store";
+import { useState } from "react";
 import { useRouter } from 'next/navigation';
-import { SCM } from '@/src/app/lib/supabaseClient';
+import { useSelector } from 'react-redux';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
+import { Button } from "@/src/app/components/ui/button";
 import ErrorModal from "@/src/app/components/ErrModal";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/src/app/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/src/app/components/ui/table";
+import { RootState } from "@/src/app/store/store";
+import {
+    useWordLogPage,
+    type WordLogRequestType,
+    type WordLogState,
+} from '@/src/modules/word-logs';
 
-interface LogItem {
-    id: number;
-    created_at: string;
-    word: string;
-    processed_by: string | null;
-    make_by: string | null;
-    state: "approved" | "rejected" | "pending";
-    r_type: "add" | "delete";
-    make_by_user: {
-        nickname: string;
-    } | null;
-    processed_by_user: {
-        nickname: string | null;
-    } | null;
-}
-
-interface CachedData {
-    logs: LogItem[];
-    totalCount: number;
-    timestamp: number;
-}
+const itemsPerPage = 30 as const;
 
 export default function LogPage() {
     const [page, setPage] = useState(1);
-    const [filterState, setFilterState] = useState<string>("all");
-    const [filterType, setFilterType] = useState<string>("all");
-    const [logs, setLogs] = useState<LogItem[]>([]);
-    const [totalCount, setTotalCount] = useState(0);
-    const [isLoading, setIsLoading] = useState(true);
-    const [errorModalView, setErrorModalView] = useState<ErrorMessage | null>(null);
-    
-    // 캐시 저장소 (Map으로 여러 페이지 캐싱)
-    const [cache, setCache] = useState<Map<string, CachedData>>(new Map());
-    
+    const [filterState, setFilterState] = useState<WordLogState | 'all'>('all');
+    const [filterType, setFilterType] = useState<WordLogRequestType | 'all'>('all');
+    const [isQueryErrorDismissed, setIsQueryErrorDismissed] = useState(false);
     const user = useSelector((state: RootState) => state.user);
     const router = useRouter();
     const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-    const itemsPerPage = 30;
-    const cacheExpireTime = 5 * 60 * 1000; // 5분 캐시 유효시간
-
-    // 캐시 키 생성
-    const getCacheKey = (page: number, filterState: string, filterType: string): string => {
-        return `${page}-${filterState}-${filterType}`;
+    const query = {
+        page,
+        pageSize: itemsPerPage,
+        state: filterState,
+        requestType: filterType,
     };
-
-    // 캐시에서 데이터 가져오기
-    const getCachedData = (cacheKey: string): CachedData | null => {
-        const cached = cache.get(cacheKey);
-        if (cached && Date.now() - cached.timestamp < cacheExpireTime) {
-            return cached;
-        }
-        return null;
-    };
-
-    // 캐시에 데이터 저장
-    const setCachedData = (cacheKey: string, data: CachedData) => {
-        setCache(prev => new Map(prev.set(cacheKey, data)));
-    };
-
-    const fetchLogs = useCallback(async (
-        currentPage: number, 
-        currentFilterState: "approved" | "rejected" | "pending" | "all", 
-        currentFilterType: "delete" | "add" | "all",
-        forceRefresh = false
-    ) => {
-        const cacheKey = getCacheKey(currentPage, currentFilterState, currentFilterType);
-        
-        // 강제 새로고침이 아니면 캐시 확인
-        if (!forceRefresh) {
-            const cachedData = getCachedData(cacheKey);
-            if (cachedData) {
-                setLogs(cachedData.logs);
-                setTotalCount(cachedData.totalCount);
-                setIsLoading(false);
-                return;
-            }
-        }
-
-        setIsLoading(true);
-
-        try {
-            const from = (currentPage - 1) * itemsPerPage;
-            const to = from + itemsPerPage - 1;
-
-            const { data: LogsData, error: LogsDataError, count } = await SCM.get().logsByFilter({
-                filterState: currentFilterState,
-                filterType: currentFilterType,
-                from, to
-            });
-
-            if (LogsDataError) {
-                setErrorModalView({
-                    ErrName: LogsDataError.name,
-                    ErrMessage: LogsDataError.message,
-                    ErrStackRace: LogsDataError.stack,
-                    inputValue: "/word/logs"
-                });
-                return;
-            }
-
-            const logsData = LogsData || [];
-            const totalCountData = count || 0;
-
-            // 캐시에 저장
-            setCachedData(cacheKey, {
-                logs: logsData,
-                totalCount: totalCountData,
-                timestamp: Date.now()
-            });
-
-            setLogs(logsData);
-            setTotalCount(totalCountData);
-        } catch (error) {
-            console.error('로그 fetch 오류:', error);
-            setErrorModalView({
-                ErrName: 'Fetch Error',
-                ErrMessage: '로그를 불러오는 중 오류가 발생했습니다.',
-                ErrStackRace: '',
-                inputValue: "/word/logs"
-            });
-        } finally {
-            setIsLoading(false);
-        }
-    }, [cache, itemsPerPage]);
-
-    // 초기 로드 및 필터/페이지 변경 시 데이터 fetch
-    useEffect(() => {
-        fetchLogs(page, filterState as "all" | "approved" | "rejected" | "pending", filterType as "add" | "delete" | "all");
-    }, [page, filterState, filterType, fetchLogs]);
-
-    // 필터 변경 시 첫 페이지로 이동
-    const handleFilterChange = (newFilterState: string, newFilterType: string) => {
-        setPage(1);
-        if (newFilterState !== undefined) setFilterState(newFilterState);
-        if (newFilterType !== undefined) setFilterType(newFilterType);
-    };
-
-    // 새로고침 함수
-    const handleRefresh = () => {
-        fetchLogs(page, filterState as "all" | "approved" | "rejected" | "pending", filterType as "add" | "delete" | "all", true);
-    };
-
+    const { data, error, isLoading, isFetching, refetch } = useWordLogPage(query);
+    const logs = data?.items ?? [];
+    const totalCount = data?.totalCount ?? 0;
     const totalPages = Math.ceil(totalCount / itemsPerPage);
+    const queryError = error === null || isQueryErrorDismissed
+        ? null
+        : {
+            ErrName: '로그 조회 오류',
+            ErrMessage: error.message,
+            ErrStackRace: '',
+            inputValue: '/word/logs',
+        };
+
+    const changeState = (state: WordLogState | 'all') => {
+        setPage(1);
+        setIsQueryErrorDismissed(false);
+        setFilterState(state);
+    };
+
+    const changeRequestType = (requestType: WordLogRequestType | 'all') => {
+        setPage(1);
+        setIsQueryErrorDismissed(false);
+        setFilterType(requestType);
+    };
+
+    const changePage = (nextPage: number) => {
+        if (nextPage < 1 || nextPage > totalPages) return;
+        setIsQueryErrorDismissed(false);
+        setPage(nextPage);
+    };
 
     return (
         <div className="p-6 max-w-6xl mx-auto text-gray-800 dark:text-gray-100 bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 min-h-screen">
-            {/* Error Modal */}
-            {errorModalView && (
+            {queryError && (
                 <ErrorModal
-                    error={errorModalView}
-                    onClose={() => setErrorModalView(null)}
+                    error={queryError as ErrorMessage}
+                    onClose={() => setIsQueryErrorDismissed(true)}
                 />
             )}
 
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold">단어 추가/삭제 로그</h1>
-                <Button 
-                    variant="outline" 
-                    onClick={handleRefresh}
-                    disabled={isLoading}
+                <Button
+                    variant="outline"
+                    onClick={() => {
+                        setIsQueryErrorDismissed(false);
+                        void refetch();
+                    }}
+                    disabled={isFetching}
                     className="border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:border-blue-300 dark:hover:border-blue-600"
                 >
                     새로고침
                 </Button>
             </div>
 
-            {/* 필터링 섹션 */}
             <div className="flex gap-4 mb-4">
-                <Select 
-                    value={filterState} 
-                    onValueChange={(v) => handleFilterChange(v, filterType)}
-                >
+                <Select value={filterState} onValueChange={changeState}>
                     <SelectTrigger className="w-[160px] bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-800 dark:text-gray-100 hover:border-blue-300 dark:hover:border-blue-600">
                         <SelectValue placeholder="상태 선택" />
                     </SelectTrigger>
@@ -196,10 +100,7 @@ export default function LogPage() {
                     </SelectContent>
                 </Select>
 
-                <Select 
-                    value={filterType} 
-                    onValueChange={(v) => handleFilterChange(filterState, v)}
-                >
+                <Select value={filterType} onValueChange={changeRequestType}>
                     <SelectTrigger className="w-[160px] bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-800 dark:text-gray-100 hover:border-blue-300 dark:hover:border-blue-600">
                         <SelectValue placeholder="요청 타입 선택" />
                     </SelectTrigger>
@@ -230,8 +131,8 @@ export default function LogPage() {
                     </TableHeader>
                     <TableBody>
                         {isLoading ? (
-                            Array.from({ length: 30 }).map((_, idx) => (
-                                <TableRow key={idx}>
+                            Array.from({ length: itemsPerPage }).map((_, index) => (
+                                <TableRow key={index} data-testid="word-log-skeleton">
                                     <TableCell><Skeleton /></TableCell>
                                     <TableCell><Skeleton width={120} /></TableCell>
                                     <TableCell><Skeleton width={180} /></TableCell>
@@ -245,80 +146,84 @@ export default function LogPage() {
                             <TableRow>
                                 <TableCell colSpan={7} className="text-center py-8 text-gray-500 dark:text-gray-400">
                                     조건에 맞는 로그가 없습니다.
-                            </TableCell>
+                                </TableCell>
                             </TableRow>
                         ) : (
                             logs.map((log) => {
-                                const isMyRequest = log.make_by === user.uuid;
-                                const utcCreat_at = new Date(log.created_at);
-                                const localTime = utcCreat_at.toLocaleString(undefined, { timeZone: userTimeZone });
+                                const isMyRequest = log.requesterId === user.uuid;
+                                const localTime = new Date(log.createdAt).toLocaleString(undefined, {
+                                    timeZone: userTimeZone,
+                                });
+                                const isWordLink = log.requestType === 'add'
+                                    || (log.requestType === 'delete' && log.state === 'rejected');
 
                                 return (
                                     <TableRow key={log.id} className={isMyRequest ? "bg-blue-50 dark:bg-blue-900/20" : ""}>
                                         <TableCell>{log.id}</TableCell>
                                         <TableCell>{localTime}</TableCell>
-                                        <TableCell 
-                                            className={(log.r_type === "add" || (log.r_type === "delete" && log.state === "rejected")) 
-                                                ? "text-blue-600 underline hover:cursor-pointer dark:text-blue-400" 
+                                        <TableCell
+                                            className={isWordLink
+                                                ? "text-blue-600 underline hover:cursor-pointer dark:text-blue-400"
                                                 : ""}
                                             onClick={() => {
-                                                if (log.r_type === "add" || (log.r_type === "delete" && log.state === "rejected")) {
-                                                    router.push(`/word/search/${log.word}`);
-                                                }
+                                                if (isWordLink) router.push(`/word/search/${log.word}`);
                                             }}
                                         >
                                             {log.word}
                                         </TableCell>
-                                        <TableCell 
-                                            className={log.make_by_user ? `text-blue-600 underline hover:cursor-pointer dark:text-blue-400` : ""} 
-                                            onClick={() => { 
-                                                if (log.make_by_user) { 
-                                                    router.push(`/profile/${log.make_by_user?.nickname}`); 
-                                                } 
+                                        <TableCell
+                                            className={log.requesterNickname
+                                                ? 'text-blue-600 underline hover:cursor-pointer dark:text-blue-400'
+                                                : ''}
+                                            onClick={() => {
+                                                if (log.requesterNickname) {
+                                                    router.push(`/profile/${log.requesterNickname}`);
+                                                }
                                             }}
                                         >
-                                            {log.make_by_user?.nickname || "-"}
+                                            {log.requesterNickname || '-'}
                                         </TableCell>
-                                        <TableCell 
-                                            className={log.processed_by_user ? `text-blue-600 underline hover:cursor-pointer dark:text-blue-400` : ""} 
-                                            onClick={() => { 
-                                                if (log.processed_by_user) { 
-                                                    router.push(`/profile/${log.processed_by_user?.nickname}`); 
-                                                } 
+                                        <TableCell
+                                            className={log.processorNickname
+                                                ? 'text-blue-600 underline hover:cursor-pointer dark:text-blue-400'
+                                                : ''}
+                                            onClick={() => {
+                                                if (log.processorNickname) {
+                                                    router.push(`/profile/${log.processorNickname}`);
+                                                }
                                             }}
                                         >
-                                            {log.processed_by_user?.nickname || "-"}
+                                            {log.processorNickname || '-'}
                                         </TableCell>
                                         <TableCell>
-                                            {log.state === "approved" ? (
+                                            {log.state === 'approved' ? (
                                                 <span className="text-green-600 dark:text-green-400 font-semibold">승인</span>
-                                            ) : log.state === "rejected" ? (
+                                            ) : log.state === 'rejected' ? (
                                                 <span className="text-red-600 dark:text-red-400 font-semibold">거절</span>
                                             ) : (
                                                 <span className="text-yellow-600 dark:text-yellow-400 font-semibold">대기중</span>
                                             )}
                                         </TableCell>
                                         <TableCell>
-                                            {log.r_type === "add" ? (
+                                            {log.requestType === 'add' ? (
                                                 <span className="text-blue-600 dark:text-blue-400">추가</span>
                                             ) : (
                                                 <span className="text-orange-600 dark:text-orange-400">삭제</span>
                                             )}
                                         </TableCell>
                                     </TableRow>
-                                )
+                                );
                             })
                         )}
                     </TableBody>
                 </Table>
             </div>
 
-            {/* 페이지네이션 */}
             <div className="flex justify-between items-center mt-6">
                 <Button
                     variant="outline"
-                    disabled={page === 1 || isLoading}
-                    onClick={() => setPage((prev) => prev - 1)}
+                    disabled={page === 1 || isFetching}
+                    onClick={() => changePage(page - 1)}
                     className="border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:border-blue-300 dark:hover:border-blue-600"
                 >
                     이전
@@ -335,14 +240,13 @@ export default function LogPage() {
 
                 <Button
                     variant="outline"
-                    disabled={page >= totalPages || isLoading}
-                    onClick={() => setPage((prev) => prev + 1)}
+                    disabled={page >= totalPages || isFetching}
+                    onClick={() => changePage(page + 1)}
                     className="border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:border-blue-300 dark:hover:border-blue-600"
                 >
                     다음
                 </Button>
             </div>
         </div>
-    )
-
+    );
 }

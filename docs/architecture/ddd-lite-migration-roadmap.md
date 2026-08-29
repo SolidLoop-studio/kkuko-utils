@@ -949,8 +949,10 @@ query는 문서 필터 선택지만 조회하며, 대체된 `SCM.get().allDocs`�
 `AdminLogsHome`의 탭·필터·날짜·pagination 서버 상태는 `AdminLogsPageQuery`, browser Supabase gateway,
 `useAdminLogsPage` React Query hook이 소유한다. 화면은 서버가 반환한 page item과 exact
 `totalCount`를 사용하고 `datetime-local`을 ISO 경계로 변환하며, 더 이상 `logsByFilter`·
-`docsLogsByFilter`로 읽지 않는다. 대체된 `docsLogsByFilter`는 제거했고, `logsByFilter`는 공개
-`LogsHome`이 이전되는 후속 slice까지만 유지한다. 선택 삭제는 양의 safe integer ID와 중복을
+`docsLogsByFilter`로 읽지 않는다. 공개 `LogsHome`도 상태·요청 유형·30개 page 범위를
+`WordLogPageQuery`로 검증하고, unknown Supabase row를 camelCase projection으로 변환하는 browser
+gateway와 `useWordLogPage` React Query hook을 사용한다. 두 화면이 대체한 `docsLogsByFilter`와
+`logsByFilter`는 모두 제거되었다. 선택 삭제는 양의 safe integer ID와 중복을
 Application에서 검증하고, browser Supabase command gateway가 종류별 `logs`·`docs_logs` 삭제 행의
 ID를 정확히 확인한다. `useDeleteAdminLogs`는 겹치는 제출을 합치고 성공한 경우에만 admin log page
 query를 무효화한다. 화면은 실패 시 선택을 보존하며 선택 없음과 안정적인 삭제 오류를 Modal로
@@ -1128,7 +1130,8 @@ Notifications:
 | 관리자 docs 요청 moderation | 완료 | 승인·반려 mutation과 대기 요청 목록 query 이전 완료; migration cloud rollout은 사용자/운영자 실행 대기 |
 | 사용자 단어 요청 | 부분 완료 | Phase 2 mutation 코드 이전은 완료; 단일·대량 추가 요청을 포함한 관련 cloud migration rollout은 사용자/운영자 실행 대기 |
 | word-catalog 조회 | 완료 | 브라우저 검색·자동완성, 단어 상세 query, 고급 검색 Route Handler, 다운로드, 통계, 랜덤 연결 단어 query 완료 |
-| docs context | 부분 완료 | 공개 목록·로그·정보·본문, 관리자 대기 요청 목록/moderation, `WordsDocsHome` 중복 조회·생성 요청, `DocsDataPage` best-effort 조회 수 기록, `DocsDataHome` 멱등 즐겨찾기와 semantic marker bulk query, `AdminLogsWrapper` 문서 선택지 초기 projection, `AdminLogsHome` 탭·필터·날짜·pagination page query와 선택 삭제 command 이전 완료; immutable mission reference catalog가 mission child의 `isSpecial`, family별 RPC, 대상 글자와 remapped-PK child page coverage를 소유하고 presentation의 legacy parent ID gating을 제거함; `letterDocs`·`waitDocs`·`docView`·`starDocs`·`startDocs`, read-side `docsLastUpdate(id)`·`allDocs`·`docsLogsByFilter`, delete-side `logsByIds`·`docsLogsByIds` 제거. `logsByFilter`는 공개 `LogsHome` 이전까지 유지하며 Phase 0B cloud rollout도 사용자/운영자 통제 대기 상태. 다음 경계는 실제 소비자 검사 후 지정 |
+| 공개 단어 로그 조회 | 완료 | `LogsHome`의 상태·요청 유형·30개 서버 pagination을 Application 검증, exact count/newest-first browser gateway, React Query hook으로 이전하고 `logsByFilter` 제거 |
+| docs context | 부분 완료 | 공개 목록·로그·정보·본문, 관리자 대기 요청 목록/moderation, `WordsDocsHome` 중복 조회·생성 요청, `DocsDataPage` best-effort 조회 수 기록, `DocsDataHome` 멱등 즐겨찾기와 semantic marker bulk query, `AdminLogsWrapper` 문서 선택지 초기 projection, `AdminLogsHome` 탭·필터·날짜·pagination page query와 선택 삭제 command 이전 완료; immutable mission reference catalog가 mission child의 `isSpecial`, family별 RPC, 대상 글자와 remapped-PK child page coverage를 소유하고 presentation의 legacy parent ID gating을 제거함; `letterDocs`·`waitDocs`·`docView`·`starDocs`·`startDocs`, read-side `docsLastUpdate(id)`·`allDocs`·`docsLogsByFilter`, delete-side `logsByIds`·`docsLogsByIds` 제거. Phase 0B cloud rollout은 사용자/운영자 통제 대기 상태이며 다음 경계는 실제 소비자 검사 후 지정 |
 | identity/profile | 완료 | Auth session·Google login·상태 listener·logout, 현재 사용자 공개 profile query, nickname availability/registration, ProfileHome nickname search, profile main summary·월간 rank·최근 5개월 contribution, 즐겨찾기 문서·단어 요청·처리 요청 activity query, profile nickname 변경 command의 Application/gateway/hook·안정 오류·성공 UI 흐름 이전 완료. 관찰된 identity/profile presentation의 legacy SCM 소비자는 0개이며, 대체된 `usersLikeByNickname`·`userByNickname`·`monthlyConRankByUserId`·`monthlyContributionsByUserId`·`starredDocsById`·`requestsListById`·`logsListById`·`usersByNickname` getter를 제거함. nickname update slice는 database/cloud rollout을 수행하지 않음 |
 | notifications/storage | 완료 | 활성 목록·최신 모달 query와 browser/server adapter, React Query cache/dismissal 정책, server-safe 상세·metadata·편집 query, 관리자 create/update/delete command 및 이미지 Storage 경계 완료. 새 upload는 DB 저장 실패 시 best-effort로 제거하고, DB가 검증해 반환한 managed replace/remove/delete 대상은 DB 성공 뒤 fresh zero-reference 결과일 때만 best-effort로 제거한다. shared·external·stale·uncertain URL은 보존한다. form은 PostgREST 오류나 `alert`를 노출하지 않는다. 이 no-migration guarded 정책은 concurrency-proof garbage collection이 아니며 database migration·cloud rollout은 수행하지 않았다. 이는 notification sub-boundary 완료만 뜻하며 전체 SCM 제거는 별도 작업이다. |
 | SCM 최종 제거 | 대기 | 모든 context 이전 후 실행 |
