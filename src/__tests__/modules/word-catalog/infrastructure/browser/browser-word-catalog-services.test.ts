@@ -6,6 +6,7 @@ import { SearchWordsService } from '../../../../../modules/word-catalog/applicat
 import { GetWordDetailService } from '../../../../../modules/word-catalog/application/get-word-detail';
 import { GetWordDownloadService } from '../../../../../modules/word-catalog/application/get-word-download';
 import { GetWordStatisticsService } from '../../../../../modules/word-catalog/application/get-word-statistics';
+import { GetWordCombinerCandidatesService } from '../../../../../modules/word-catalog/application/get-word-combiner-candidates';
 import { createBrowserWordCatalogServices } from '../../../../../modules/word-catalog/infrastructure/browser/browser-word-catalog-services';
 
 describe('browser word catalog services', () => {
@@ -62,6 +63,9 @@ describe('browser word catalog services', () => {
         expect(first.wordStatisticsService).toBeInstanceOf(GetWordStatisticsService);
         expect(second.wordStatisticsService).toBeInstanceOf(GetWordStatisticsService);
         expect(first.wordStatisticsService).not.toBe(second.wordStatisticsService);
+        expect(first.wordCombinerCandidateService).toBeInstanceOf(GetWordCombinerCandidatesService);
+        expect(second.wordCombinerCandidateService).toBeInstanceOf(GetWordCombinerCandidatesService);
+        expect(first.wordCombinerCandidateService).not.toBe(second.wordCombinerCandidateService);
         await expect(first.searchWordsService.suggest(' 가 ')).resolves.toEqual({
             ok: true,
             value: ['가나', '가나다'],

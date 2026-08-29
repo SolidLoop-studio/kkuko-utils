@@ -1,20 +1,8 @@
 import { ISupabaseClientManager, IAddManager, IGetManager, IDeleteManager, IUpdateManager } from './ISupabaseClientManager';
-import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/src/app/types/database.types';
-import { StorageError } from '@supabase/storage-js';
 
 const CACHE_DURATION = 10 * 60 * 1000;
-
-function storageErrorToPostgresError(storageError: StorageError): PostgrestError {
-    return {
-        name: storageError.name ?? "storage_error",
-        message: storageError.message ?? 'Unknown storage error',
-        details: "",
-        hint: "null",
-        code: '500',
-    }
-
-}
 
 class AddManager implements IAddManager {
     constructor(private readonly supabase: SupabaseClient<Database>) { }
@@ -37,7 +25,6 @@ class AddManager implements IAddManager {
 class GetManager implements IGetManager {
     constructor(private readonly supabase: SupabaseClient<Database>) { }
 
-    private wordsCache: Record<string, { data: { word: string, noin_canuse: boolean, k_canuse: boolean, status: "ok" | "add" | "delete" }[], time: number }> = {};
     private wordFirstLetterCountsCache: Record<string, {
         count: number;
         k_count: number;
@@ -62,68 +49,6 @@ class GetManager implements IGetManager {
     }
     public async wordsThemes(wordIds: number[]) {
         return await this.supabase.from('word_themes').select('*,themes(*),words(*)').in('word_id', wordIds);
-    }
-    public async allWords({ includeAddReq = false, includeDeleteReq = false, includeInjung = true, includeNoInjung = true, onlyWordChain = true, lenf = false }: {
-        includeAddReq?: boolean;
-        includeDeleteReq?: boolean;
-        includeInjung?: boolean;
-        includeNoInjung?: boolean;
-        onlyWordChain?: boolean;
-        lenf?: boolean;
-    }) {
-        const cacheKey = () => `iar-${includeAddReq}/idr-${includeDeleteReq}/iin-${includeInjung}/ini-${includeNoInjung}/ow-${onlyWordChain}/len-${lenf}`;
-
-        const key = cacheKey();
-        const know = Date.now();
-        if (this.wordsCache[key] && know - this.wordsCache[key].time < CACHE_DURATION) {
-            return { data: this.wordsCache[key].data, error: null }
-        }
-
-        // 단어조합기 전용
-        if (lenf) {
-            const { data: wordsData, error: wordsError } = await this.supabase.from('words').select('word, noin_canuse, k_canuse').in('length', [5, 6]);
-            const { data: engData, error: engError } = await this.supabase.storage.from('public_img').download('txt/eng_len_6_words.txt')
-            if (wordsError) return { data: null, error: wordsError }
-            if (engError) return { data: null, error: storageErrorToPostgresError(engError) }
-
-            const engText = await engData.text();
-            const now = Date.now();
-            const data = [
-                ...wordsData.map(({ word, noin_canuse, k_canuse }) => ({ word, noin_canuse, k_canuse, status: "ok" as const })),
-                ...engText.split(/\r?\n/).map(word => ({ word: word.trim(), noin_canuse: false, k_canuse: true, status: "ok" as const }))
-            ]
-            this.wordsCache[key] = {
-                data,
-                time: now
-            }
-            return { data, error: null }
-        }
-
-        let query = this.supabase.from('words').select('word, noin_canuse, k_canuse')
-        if (includeInjung && includeNoInjung) { }
-        else if (includeInjung || !includeNoInjung) {
-            query = query.eq('noin_canuse', false);
-        }
-        else if (includeNoInjung && !includeInjung) {
-            query = query.eq('noin_canuse', true);
-        }
-        if (onlyWordChain) query = query.eq('k_canuse', true);
-        const { data: wordsData, error: wordsError } = await query;
-        if (wordsError) return { data: null, error: wordsError }
-
-        const { data: waitWordsData, error: waitWordsError } = await this.supabase.from('wait_words').select('word,request_type');
-        if (waitWordsError) return { data: null, error: waitWordsError }
-
-        const now = Date.now();
-        const data = [
-            ...wordsData.map(({ word, noin_canuse, k_canuse }) => ({ word, noin_canuse, k_canuse, status: "ok" as const })),
-            ...waitWordsData.map(({ word, request_type }) => ({ word, noin_canuse: false, k_canuse: true, status: request_type }))
-        ]
-        this.wordsCache[key] = {
-            data,
-            time: now
-        }
-        return { data, error: null }
     }
     public async wordsCount() {
         const { data, error } = await this.supabase.from('words_count').select('total_words').single();

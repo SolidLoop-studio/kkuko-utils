@@ -18,5 +18,9 @@ export const wordCatalogQueryKeys = {
         filter,
     ] as const,
     statistics: () => [...wordCatalogQueryKeys.all, 'statistics'] as const,
+    wordCombinerCandidates: () => [
+        ...wordCatalogQueryKeys.all,
+        'word-combiner-candidates',
+    ] as const,
     themes: () => [...wordCatalogQueryKeys.all, 'themes'] as const,
 };

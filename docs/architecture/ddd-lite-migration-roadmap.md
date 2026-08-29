@@ -1045,9 +1045,12 @@ Notifications:
   - 내부 Supabase 릴리즈와 GitHub Releases를 각각 독립 Application query, browser Infrastructure gateway, React Query cache로 분리했다.
   - 알 수 없는 DB 행과 GitHub JSON은 adapter에서 검증해 camelCase projection으로 변환하며, 한 소스의 실패가 다른 소스의 성공 결과를 숨기지 않는다.
   - `ReleaseNote`의 직접 `SCM`·`fetch` 의존성과 대체된 `releaseNote` legacy getter를 제거했다.
-- word combiner가 필요한 DB 조회만 `word-catalog` query로 이동
+- word combiner가 필요한 DB 조회만 `word-catalog` query로 이동 (완료)
+  - `WordCombinerCandidate`는 현재 조합기가 소비하는 `word`만 노출한다. accepted 5·6글자 단어와 공개 영문 목록을 accepted 우선으로 중복 제거한 뒤 결정적으로 정렬하며, 현재 `lenf` 경계가 사용하지 않던 pending add/delete는 조회하지 않는다.
+  - browser Supabase adapter가 `words` length filter와 Storage 파일 읽기를 소유하고, `useWordCombinerCandidates`가 React Query cache·loading·안정 오류를 소유한다. 기존 조합기는 빈 목록에서도 그대로 동작한다.
+  - 대체된 `allWords` getter와 전용 memory cache, presentation의 인위적 delay를 제거했다. 이 slice는 database migration이나 cloud rollout을 수행하지 않았다.
 - admin dashboard count를 작은 admin projection query로 이동
-- SCM의 인위적 delay와 범용 cache 제거
+- SCM의 남은 범용 cache 제거
 
 ### Phase 7. SCM 제거
 
@@ -1132,7 +1135,7 @@ Notifications:
 | docs 내부 관리자 단어 moderation | 완료 | 기존 요청 moderation RPC 재사용; 직접 삭제 cloud migration은 사용자/운영자 통제 rollout 대기 |
 | 관리자 docs 요청 moderation | 완료 | 승인·반려 mutation과 대기 요청 목록 query 이전 완료; migration cloud rollout은 사용자/운영자 실행 대기 |
 | 사용자 단어 요청 | 부분 완료 | Phase 2 mutation 코드 이전은 완료; 단일·대량 추가 요청을 포함한 관련 cloud migration rollout은 사용자/운영자 실행 대기 |
-| word-catalog 조회 | 완료 | 브라우저 검색·자동완성, 단어 상세 query, 고급 검색 Route Handler, 다운로드, 통계, 랜덤 연결 단어 query 완료 |
+| word-catalog 조회 | 완료 | 브라우저 검색·자동완성, 단어 상세 query, 고급 검색 Route Handler, 다운로드, 통계, 랜덤 연결 단어와 word combiner 후보 query 완료 |
 | 공개 단어 로그 조회 | 완료 | `LogsHome`의 상태·요청 유형·30개 서버 pagination을 Application 검증, exact count/newest-first browser gateway, React Query hook으로 이전하고 `logsByFilter` 제거 |
 | docs context | 부분 완료 | 공개 목록·로그·정보·본문, 관리자 대기 요청 목록/moderation, `WordsDocsHome` 중복 조회·생성 요청, `DocsDataPage` best-effort 조회 수 기록, `DocsDataHome` 멱등 즐겨찾기와 semantic marker bulk query, `AdminLogsWrapper` 문서 선택지 초기 projection, `AdminLogsHome` 탭·필터·날짜·pagination page query와 선택 삭제 command 이전 완료; immutable mission reference catalog가 mission child의 `isSpecial`, family별 RPC, 대상 글자와 remapped-PK child page coverage를 소유하고 presentation의 legacy parent ID gating을 제거함; `letterDocs`·`waitDocs`·`docView`·`starDocs`·`startDocs`, read-side `docsLastUpdate(id)`·`allDocs`·`docsLogsByFilter`, delete-side `logsByIds`·`docsLogsByIds` 제거. Phase 0B cloud rollout은 사용자/운영자 통제 대기 상태이며 다음 경계는 실제 소비자 검사 후 지정 |
 | identity/profile | 완료 | Auth session·Google login·상태 listener·logout, 현재 사용자 공개 profile query, nickname availability/registration, ProfileHome nickname search, profile main summary·월간 rank·최근 5개월 contribution, 즐겨찾기 문서·단어 요청·처리 요청 activity query, profile nickname 변경 command의 Application/gateway/hook·안정 오류·성공 UI 흐름 이전 완료. 관찰된 identity/profile presentation의 legacy SCM 소비자는 0개이며, 대체된 `usersLikeByNickname`·`userByNickname`·`monthlyConRankByUserId`·`monthlyContributionsByUserId`·`starredDocsById`·`requestsListById`·`logsListById`·`usersByNickname` getter를 제거함. nickname update slice는 database/cloud rollout을 수행하지 않음 |
