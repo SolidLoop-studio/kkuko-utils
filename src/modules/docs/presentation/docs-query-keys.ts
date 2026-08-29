@@ -9,4 +9,10 @@ export const docsQueryKeys = {
     letterDuplicate: (docsName: string) => [
         'docs', 'letter', 'duplicate', docsName,
     ] as const,
+    isLogsQueryKey: (queryKey: readonly unknown[]) => (
+        queryKey.length === 3
+        && queryKey[0] === 'docs'
+        && typeof queryKey[1] === 'number'
+        && queryKey[2] === 'logs'
+    ),
 };

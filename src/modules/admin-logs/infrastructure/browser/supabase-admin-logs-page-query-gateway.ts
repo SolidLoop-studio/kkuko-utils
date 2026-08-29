@@ -178,7 +178,8 @@ export class SupabaseAdminLogsPageQueryGateway implements AdminLogsPageQueryGate
         let request = this.client
             .from('logs')
             .select('id, word, state, r_type, created_at, make_by_user:users!logs_make_by_fkey(nickname), processed_by_user:users!logs_processed_by_fkey(nickname)', { count: 'exact' })
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .order('id', { ascending: false });
 
         if (query.filter.kind !== 'word') return err(publicInfrastructureError());
         if (query.filter.state !== 'all') request = request.eq('state', query.filter.state);
@@ -212,7 +213,8 @@ export class SupabaseAdminLogsPageQueryGateway implements AdminLogsPageQueryGate
                     : 'id, word, type, date, docs(name), users(nickname)',
                 { count: 'exact' },
             )
-            .order('date', { ascending: false });
+            .order('date', { ascending: false })
+            .order('id', { ascending: false });
 
         if (documentName !== undefined) request = request.eq('docs.name', documentName);
         if (query.filter.type !== 'all') request = request.eq('type', query.filter.type);

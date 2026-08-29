@@ -2,6 +2,9 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
+import { docsQueryKeys } from '@/src/modules/docs/presentation/docs-query-keys';
+import { identityQueryKeys } from '@/src/modules/identity/presentation/identity-query-keys';
+import { wordLogQueryKeys } from '@/src/modules/word-logs/presentation/word-log-query-keys';
 import type { ApplicationError } from '@/src/shared/application/application-error';
 import { err, type Result } from '@/src/shared/application/result';
 import type {
@@ -20,7 +23,7 @@ const deleteInfrastructureError = (): ApplicationError => ({
     message: '선택한 로그를 삭제하는 중 오류가 발생했습니다.',
 });
 
-/** 관리자 로그 선택 삭제와 성공 시 page query cache 무효화를 연결합니다. */
+/** 관리자 로그 선택 삭제와 성공 시 관련 projection cache 무효화를 연결합니다. */
 export const useDeleteAdminLogs = (): {
     deleteAdminLogs(command: DeleteAdminLogsCommand): Promise<DeleteAdminLogsResult>;
     isPending: boolean;
@@ -42,11 +45,21 @@ export const useDeleteAdminLogs = (): {
                 return err(deleteInfrastructureError());
             }
         },
-        onSuccess: async (result) => {
+        onSuccess: async (result, command) => {
             if (result.ok) {
-                await queryClient.invalidateQueries({
-                    queryKey: adminLogsQueryKeys.pages,
-                });
+                const siblingInvalidation = command.kind === 'word'
+                    ? queryClient.invalidateQueries({ queryKey: wordLogQueryKeys.pages })
+                    : queryClient.invalidateQueries({
+                        predicate: ({ queryKey }) => docsQueryKeys.isLogsQueryKey(queryKey),
+                    });
+
+                await Promise.all([
+                    queryClient.invalidateQueries({ queryKey: adminLogsQueryKeys.pages }),
+                    siblingInvalidation,
+                    queryClient.invalidateQueries({
+                        queryKey: identityQueryKeys.profileProcessedRequestsRoot,
+                    }),
+                ]);
             }
         },
     });
