@@ -102,6 +102,29 @@ describe('AdminLogsHome', () => {
         mockSuccessfulQuery();
     });
 
+    test('keeps direct Supabase and legacy SCM reads out of the screen source', () => {
+        // SCM itself remains allowed for the Task 3 deletion migration.
+        const source = require('fs').readFileSync(
+            require('path').resolve(process.cwd(), 'src/app/admin/logs/AdminLogsHome.tsx'),
+            'utf8',
+        );
+        const forbiddenReadCoupling = [
+            /@supabase\/supabase-js/,
+            /\bbrowserSupabaseClient\b/,
+            /\bcreateBrowserClient\b/,
+            /(?<!\bArray)\.from\s*\(/,
+            /\.rpc\s*\(/,
+            /\bPostgrestError\b/,
+            /\bSCM\s*\.\s*get\s*\(/,
+            /\blogsByFilter\b/,
+            /\bdocsLogsByFilter\b/,
+        ];
+
+        for (const forbidden of forbiddenReadCoupling) {
+            expect(source).not.toMatch(forbidden);
+        }
+    });
+
     test('renders server page items and totalCount with bounded navigation', async () => {
         // Break caught: slicing an initial 1,000-row array locally or enabling navigation outside server bounds.
         const user = userEvent.setup();
