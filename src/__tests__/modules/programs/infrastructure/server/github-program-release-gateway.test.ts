@@ -31,4 +31,48 @@ describe('GithubProgramReleaseGateway', () => {
         expect(result).toEqual({ ok: false, error: expect.objectContaining({ kind: 'infrastructure' }) });
         if (!result.ok) expect(result.error.message).not.toContain('secret');
     });
+
+    it('maps a valid latest release and includes an optional GitHub token', async () => {
+        const originalToken = process.env.GITHUB_TOKEN;
+        process.env.GITHUB_TOKEN = 'test-token';
+        const fetcher = jest.fn().mockResolvedValue({ ok: true, json: async () => validRelease() });
+
+        const result = await new GithubProgramReleaseGateway(fetcher).latest('owner/repo');
+
+        expect(result).toEqual({ ok: true, value: expect.objectContaining({ tagName: 'v1.0.0', assets: [expect.objectContaining({ browserDownloadUrl: 'https://example.com/setup.exe' })] }) });
+        expect(fetcher).toHaveBeenCalledWith(
+            'https://api.github.com/repos/owner/repo/releases/latest',
+            { headers: { Accept: 'application/vnd.github.v3+json', 'User-Agent': 'kkuko-utils', Authorization: 'token test-token' }, next: { revalidate: 300 } },
+        );
+        if (originalToken === undefined) delete process.env.GITHUB_TOKEN;
+        else process.env.GITHUB_TOKEN = originalToken;
+    });
+
+    it('omits authorization when GitHub token is unavailable', async () => {
+        const originalToken = process.env.GITHUB_TOKEN;
+        delete process.env.GITHUB_TOKEN;
+        const fetcher = jest.fn().mockResolvedValue({ ok: true, json: async () => validRelease() });
+
+        await new GithubProgramReleaseGateway(fetcher).latest('owner/repo');
+
+        expect(fetcher.mock.calls[0][1].headers).not.toHaveProperty('Authorization');
+        if (originalToken !== undefined) process.env.GITHUB_TOKEN = originalToken;
+    });
+
+    it.each([
+        ['non-2xx', () => ({ ok: false, json: async () => ({ message: 'secret' }) })],
+        ['invalid release', () => ({ ok: true, json: async () => ({ id: 'bad' }) })],
+        ['thrown fetch', () => { throw new Error('secret'); }],
+    ])('returns a safe result when latest receives %s', async (_, response) => {
+        const result = await new GithubProgramReleaseGateway(jest.fn().mockImplementation(response)).latest('owner/repo');
+        expect(result).toEqual({ ok: false, error: expect.objectContaining({ kind: 'infrastructure' }) });
+        if (!result.ok) expect(result.error.message).not.toContain('secret');
+    });
+});
+
+const validRelease = () => ({
+    id: 3, tag_name: 'v1.0.0', name: null, body: null,
+    published_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-02T00:00:00Z',
+    html_url: 'https://github.com/owner/repo/releases/tag/v1.0.0', prerelease: false, draft: false,
+    assets: [{ id: 8, name: 'setup.exe', download_count: 4, size: 9, browser_download_url: 'https://example.com/setup.exe', content_type: 'application/octet-stream' }],
 });

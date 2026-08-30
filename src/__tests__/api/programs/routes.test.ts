@@ -1,4 +1,4 @@
-import { ok } from '../../../shared/application/result';
+import { err, ok } from '../../../shared/application/result';
 import type { NextRequest } from 'next/server';
 
 const mockCreateServerProgramsServices = jest.fn();
@@ -16,6 +16,7 @@ const request = (url: string): NextRequest => ({ nextUrl: new URL(url) } as unkn
 
 describe('program routes', () => {
     beforeEach(() => {
+        mockCreateServerProgramsServices.mockClear();
         mockCreateServerProgramsServices.mockReturnValue({
             programsService: {
                 list: jest.fn().mockResolvedValue(ok([program])),
@@ -61,5 +62,84 @@ describe('program routes', () => {
         expect(response.status).toBe(400);
         expect(await response.json()).toEqual({ error: 'Invalid release pagination' });
         expect(mockCreateServerProgramsServices).not.toHaveBeenCalled();
+    });
+
+    it('keeps all public success envelopes and presenter timestamps', async () => {
+        const listRoute = await import('../../../app/api/programs/route');
+        const infoRoute = await import('../../../app/api/programs/info/route');
+        const releasesRoute = await import('../../../app/api/programs/releases/[repo]/route');
+        const latestRoute = await import('../../../app/api/programs/releases/[repo]/latest/route');
+
+        const [listResponse, infoResponse, releasesResponse, latestResponse] = await Promise.all([
+            listRoute.GET(request('http://localhost/api/programs?category=tool')),
+            infoRoute.GET(request('http://localhost/api/programs/info?id=7')),
+            releasesRoute.GET(request('http://localhost/api/programs/releases/owner%2Frepo?page=1&per_page=1'), { params: Promise.resolve({ repo: 'owner%2Frepo' }) }),
+            latestRoute.GET(request('http://localhost/api/programs/releases/owner%2Frepo/latest'), { params: Promise.resolve({ repo: 'owner%2Frepo' }) }),
+        ]);
+
+        await expect(listResponse.json()).resolves.toEqual({ programs: [expect.objectContaining({ github_repo: 'owner/repo', updated_at: '2026-01-02' })] });
+        await expect(infoResponse.json()).resolves.toEqual({ data: expect.objectContaining({ readme_path: 'README.md', updated_at: '2026-01-02' }) });
+        await expect(releasesResponse.json()).resolves.toEqual({ releases: [expect.objectContaining({ tag_name: 'v1', published_at: '2026-01-01', updated_at: '2026-01-02' })], has_more: true });
+        await expect(latestResponse.json()).resolves.toEqual({ release: expect.objectContaining({ html_url: 'https://example.com', updated_at: '2026-01-02' }) });
+    });
+
+    it('returns the stable not-found response for missing program info', async () => {
+        mockCreateServerProgramsServices.mockReturnValue({
+            programsService: { list: jest.fn(), byId: jest.fn().mockResolvedValue(ok(null)), releases: jest.fn(), latestRelease: jest.fn() },
+        });
+        const { GET } = await import('../../../app/api/programs/info/route');
+
+        const response = await GET(request('http://localhost/api/programs/info?id=7'));
+
+        expect(response.status).toBe(404);
+        await expect(response.json()).resolves.toEqual({ error: 'Program not found' });
+    });
+
+    it('suppresses upstream diagnostics in all 502 route responses', async () => {
+        mockCreateServerProgramsServices.mockReturnValue({
+            programsService: {
+                list: jest.fn().mockResolvedValue(err({ kind: 'infrastructure', message: 'GitHub database secret' })),
+                byId: jest.fn().mockResolvedValue(err({ kind: 'infrastructure', message: 'GitHub database secret' })),
+                releases: jest.fn().mockResolvedValue(err({ kind: 'infrastructure', message: 'GitHub database secret' })),
+                latestRelease: jest.fn().mockResolvedValue(err({ kind: 'infrastructure', message: 'GitHub database secret' })),
+            },
+        });
+        const listRoute = await import('../../../app/api/programs/route');
+        const infoRoute = await import('../../../app/api/programs/info/route');
+        const releasesRoute = await import('../../../app/api/programs/releases/[repo]/route');
+        const latestRoute = await import('../../../app/api/programs/releases/[repo]/latest/route');
+        const responses = await Promise.all([
+            listRoute.GET(request('http://localhost/api/programs')),
+            infoRoute.GET(request('http://localhost/api/programs/info?id=7')),
+            releasesRoute.GET(request('http://localhost/api/programs/releases/owner%2Frepo'), { params: Promise.resolve({ repo: 'owner%2Frepo' }) }),
+            latestRoute.GET(request('http://localhost/api/programs/releases/owner%2Frepo/latest'), { params: Promise.resolve({ repo: 'owner%2Frepo' }) }),
+        ]);
+
+        await Promise.all(responses.map(async (response) => {
+            expect(response.status).toBe(502);
+            expect(JSON.stringify(await response.json())).not.toContain('secret');
+        }));
+    });
+
+    it('suppresses thrown diagnostics in all 500 route responses', async () => {
+        const throwsSecret = () => { throw new Error('GitHub database secret'); };
+        mockCreateServerProgramsServices.mockReturnValue({
+            programsService: { list: throwsSecret, byId: throwsSecret, releases: throwsSecret, latestRelease: throwsSecret },
+        });
+        const listRoute = await import('../../../app/api/programs/route');
+        const infoRoute = await import('../../../app/api/programs/info/route');
+        const releasesRoute = await import('../../../app/api/programs/releases/[repo]/route');
+        const latestRoute = await import('../../../app/api/programs/releases/[repo]/latest/route');
+        const responses = await Promise.all([
+            listRoute.GET(request('http://localhost/api/programs')),
+            infoRoute.GET(request('http://localhost/api/programs/info?id=7')),
+            releasesRoute.GET(request('http://localhost/api/programs/releases/owner%2Frepo'), { params: Promise.resolve({ repo: 'owner%2Frepo' }) }),
+            latestRoute.GET(request('http://localhost/api/programs/releases/owner%2Frepo/latest'), { params: Promise.resolve({ repo: 'owner%2Frepo' }) }),
+        ]);
+
+        await Promise.all(responses.map(async (response) => {
+            expect(response.status).toBe(500);
+            expect(JSON.stringify(await response.json())).not.toContain('secret');
+        }));
     });
 });

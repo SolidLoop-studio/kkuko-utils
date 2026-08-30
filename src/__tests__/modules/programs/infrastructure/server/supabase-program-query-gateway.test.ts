@@ -23,4 +23,27 @@ describe('SupabaseProgramQueryGateway', () => {
         const result = await new SupabaseProgramQueryGateway({ from: () => ({ select }) } as never).list('all');
         expect(result).toEqual({ ok: false, error: expect.objectContaining({ kind: 'infrastructure' }) });
     });
+
+    it('returns null for a PostgREST not-found response', async () => {
+        const single = jest.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116', message: 'row secret' } });
+        const eq = jest.fn().mockReturnValue({ single });
+        const gateway = new SupabaseProgramQueryGateway({ from: () => ({ select: () => ({ eq }) }) } as never);
+
+        await expect(gateway.findById(7)).resolves.toEqual({ ok: true, value: null });
+        expect(eq).toHaveBeenCalledWith('id', 7);
+    });
+
+    it.each([
+        ['returned error', () => ({ data: null, error: { code: 'PGRST999', message: 'database secret' } })],
+        ['thrown error', () => { throw new Error('database secret'); }],
+        ['invalid row', () => ({ data: { id: 'wrong' }, error: null })],
+    ])('returns a safe infrastructure error when findById has a %s', async (_, response) => {
+        const single = jest.fn().mockImplementation(response);
+        const eq = jest.fn().mockReturnValue({ single });
+        const gateway = new SupabaseProgramQueryGateway({ from: () => ({ select: () => ({ eq }) }) } as never);
+
+        const result = await gateway.findById(7);
+        expect(result).toEqual({ ok: false, error: expect.objectContaining({ kind: 'infrastructure' }) });
+        if (!result.ok) expect(result.error.message).not.toContain('secret');
+    });
 });
