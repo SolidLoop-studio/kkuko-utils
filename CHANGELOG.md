@@ -1,3 +1,200 @@
+# [v1.11.0](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.10.0...v1.11.0) - 2026-08-30
+
+## fix
+- ([c585e65](https://github.com/SolidLoop-studio/kkuko-utils/commit/c585e65)) - normalize item timestamp responses
+- ([f839525](https://github.com/SolidLoop-studio/kkuko-utils/commit/f839525)) - separate list and modal queries
+- ([f8fe976](https://github.com/SolidLoop-studio/kkuko-utils/commit/f8fe976)) - refresh profile favorites after update
+- ([38874e4](https://github.com/SolidLoop-studio/kkuko-utils/commit/38874e4)) - 비로그인시 발생하는 무한루프 버그 수정
+- ([6cc4b8b](https://github.com/SolidLoop-studio/kkuko-utils/commit/6cc4b8b)) - preserve server error status contract
+- ([16a31dc](https://github.com/SolidLoop-studio/kkuko-utils/commit/16a31dc)) - harden boundary verification
+- ([0b1f1bd](https://github.com/SolidLoop-studio/kkuko-utils/commit/0b1f1bd)) - reject malformed user list input
+- ([d41eaa9](https://github.com/SolidLoop-studio/kkuko-utils/commit/d41eaa9)) - satisfy public request boundary test
+- ([8e6014a](https://github.com/SolidLoop-studio/kkuko-utils/commit/8e6014a)) - type theme query mocks
+- ([4f3502f](https://github.com/SolidLoop-studio/kkuko-utils/commit/4f3502f)) - stabilize empty theme state
+- ([6f0460b](https://github.com/SolidLoop-studio/kkuko-utils/commit/6f0460b)) - stabilize pagination and caches
+- ([46fad37](https://github.com/SolidLoop-studio/kkuko-utils/commit/46fad37)) - preserve candidate semantics
+- ([6ce8c8f](https://github.com/SolidLoop-studio/kkuko-utils/commit/6ce8c8f)) - validate release timestamps
+- ([6385066](https://github.com/SolidLoop-studio/kkuko-utils/commit/6385066)) - stabilize public log pagination
+- ([ab5c023](https://github.com/SolidLoop-studio/kkuko-utils/commit/ab5c023)) - propagate refreshed nickname cookies
+- ([2dffb82](https://github.com/SolidLoop-studio/kkuko-utils/commit/2dffb82)) - bind browser fetch for nickname registration
+- ([70e2c49](https://github.com/SolidLoop-studio/kkuko-utils/commit/70e2c49)) - harden profile summary boundaries
+- ([1ab27b8](https://github.com/SolidLoop-studio/kkuko-utils/commit/1ab27b8)) - harden notification image storage
+- ([73458c2](https://github.com/SolidLoop-studio/kkuko-utils/commit/73458c2)) - preserve semantic mission identity across docs
+- ([d08fd2a](https://github.com/SolidLoop-studio/kkuko-utils/commit/d08fd2a)) - stabilize pending moderation request identity
+- ([6a5059a](https://github.com/SolidLoop-studio/kkuko-utils/commit/6a5059a)) - harden notification detail requests
+- ([ae04470](https://github.com/SolidLoop-studio/kkuko-utils/commit/ae04470)) - harden notification dismissal storage
+- ([a3292ff](https://github.com/SolidLoop-studio/kkuko-utils/commit/a3292ff)) - harden nickname registration route
+- ([4dcefbf](https://github.com/SolidLoop-studio/kkuko-utils/commit/4dcefbf)) - harden identity auth lifecycle
+- ([fcf0011](https://github.com/SolidLoop-studio/kkuko-utils/commit/fcf0011)) - harden direct word addition boundary
+- ([e6fd334](https://github.com/SolidLoop-studio/kkuko-utils/commit/e6fd334)) - preserve pending queue on refetch failure
+- ([d1f41f6](https://github.com/SolidLoop-studio/kkuko-utils/commit/d1f41f6)) - recognize remapped docs marker parents
+- ([16da415](https://github.com/SolidLoop-studio/kkuko-utils/commit/16da415)) - harden docs favorite command boundary
+- ([9f37ad1](https://github.com/SolidLoop-studio/kkuko-utils/commit/9f37ad1)) - harden docs application writes
+- ([b6d2302](https://github.com/SolidLoop-studio/kkuko-utils/commit/b6d2302)) - harden docs request boundary
+- ([6a7f3d7](https://github.com/SolidLoop-studio/kkuko-utils/commit/6a7f3d7)) - harden docs query refresh handling
+- ([8763855](https://github.com/SolidLoop-studio/kkuko-utils/commit/8763855)) - harden docs content refresh lifecycle
+- ([f91ed28](https://github.com/SolidLoop-studio/kkuko-utils/commit/f91ed28)) - preserve docs content refresh state
+- ([29243cc](https://github.com/SolidLoop-studio/kkuko-utils/commit/29243cc)) - preserve missing letter docs count
+- ([010507f](https://github.com/SolidLoop-studio/kkuko-utils/commit/010507f)) - name docs loading visibility flag
+- ([8b3c1ee](https://github.com/SolidLoop-studio/kkuko-utils/commit/8b3c1ee)) - show docs query loading state
+- ([814138a](https://github.com/SolidLoop-studio/kkuko-utils/commit/814138a)) - synchronize pending docs request cache
+- ([0a6e0be](https://github.com/SolidLoop-studio/kkuko-utils/commit/0a6e0be)) - preserve advanced search filters
+- ([72f8e39](https://github.com/SolidLoop-studio/kkuko-utils/commit/72f8e39)) - preserve advanced search options
+- ([2dd0fb9](https://github.com/SolidLoop-studio/kkuko-utils/commit/2dd0fb9)) - preserve word detail count parity
+- ([c419a21](https://github.com/SolidLoop-studio/kkuko-utils/commit/c419a21)) - guard word detail wiki link state
+- ([f366d92](https://github.com/SolidLoop-studio/kkuko-utils/commit/f366d92)) - harden word detail query errors
+- ([e0b00ff](https://github.com/SolidLoop-studio/kkuko-utils/commit/e0b00ff)) - document word detail query gateway
+- ([39b7f81](https://github.com/SolidLoop-studio/kkuko-utils/commit/39b7f81)) - preserve unlimited word search limits
+- ([6f9b7fd](https://github.com/SolidLoop-studio/kkuko-utils/commit/6f9b7fd)) - stabilize word theme request resolution
+- ([1529c94](https://github.com/SolidLoop-studio/kkuko-utils/commit/1529c94)) - clarify admin word deletion
+- ([d9af954](https://github.com/SolidLoop-studio/kkuko-utils/commit/d9af954)) - cover word info mutation boundaries
+- ([54ad25f](https://github.com/SolidLoop-studio/kkuko-utils/commit/54ad25f)) - guard inherited theme request error codes
+- ([9cfe776](https://github.com/SolidLoop-studio/kkuko-utils/commit/9cfe776)) - harden atomic word theme requests
+- ([10fa9fe](https://github.com/SolidLoop-studio/kkuko-utils/commit/10fa9fe)) - sanitize inherited word request error keys
+- ([230db6c](https://github.com/SolidLoop-studio/kkuko-utils/commit/230db6c)) - lock docs user word request actions
+- ([17b04f1](https://github.com/SolidLoop-studio/kkuko-utils/commit/17b04f1)) - validate docs moderation response ids
+- ([e5332f8](https://github.com/SolidLoop-studio/kkuko-utils/commit/e5332f8)) - address docs moderation final review
+- ([a940167](https://github.com/SolidLoop-studio/kkuko-utils/commit/a940167)) - stabilize docs word moderation transitions
+- ([69327be](https://github.com/SolidLoop-studio/kkuko-utils/commit/69327be)) - guard docs moderation actions
+- ([a1d4a8d](https://github.com/SolidLoop-studio/kkuko-utils/commit/a1d4a8d)) - sanitize unexpected direct deletion errors
+- ([7b172ed](https://github.com/SolidLoop-studio/kkuko-utils/commit/7b172ed)) - correct word request moderation boundaries
+- ([32d0530](https://github.com/SolidLoop-studio/kkuko-utils/commit/32d0530)) - preserve word request moderation attribution
+- ([427608a](https://github.com/SolidLoop-studio/kkuko-utils/commit/427608a)) - validate word moderation command payloads
+- ([1d0a9b2](https://github.com/SolidLoop-studio/kkuko-utils/commit/1d0a9b2)) - limit affected deletion documents
+- ([f88ce31](https://github.com/SolidLoop-studio/kkuko-utils/commit/f88ce31)) - restore deletion dialog focus
+- ([f01d1a6](https://github.com/SolidLoop-studio/kkuko-utils/commit/f01d1a6)) - lock deletion dialogs while active
+- ([3a1b5ea](https://github.com/SolidLoop-studio/kkuko-utils/commit/3a1b5ea)) - keep deletion jobs resumable
+- ([ae79f5a](https://github.com/SolidLoop-studio/kkuko-utils/commit/ae79f5a)) - preserve requests for undeleted words
+- ([51d433d](https://github.com/SolidLoop-studio/kkuko-utils/commit/51d433d)) - harden word approval batch search path
+- ([92a246f](https://github.com/SolidLoop-studio/kkuko-utils/commit/92a246f)) - harden resumable word approval recovery
+- ([c65201e](https://github.com/SolidLoop-studio/kkuko-utils/commit/c65201e)) - harden word approval UI state
+- ([64855f4](https://github.com/SolidLoop-studio/kkuko-utils/commit/64855f4)) - expose word approval query errors
+- ([b8d0778](https://github.com/SolidLoop-studio/kkuko-utils/commit/b8d0778)) - harden word approval batch migration
+- ([d7731f0](https://github.com/SolidLoop-studio/kkuko-utils/commit/d7731f0)) - verify word approval completion before cleanup
+- ([7c817b3](https://github.com/SolidLoop-studio/kkuko-utils/commit/7c817b3)) - enforce application layer import boundary
+- ([2147eb8](https://github.com/SolidLoop-studio/kkuko-utils/commit/2147eb8)) - term
+
+## refactor
+- ([334ce3f](https://github.com/SolidLoop-studio/kkuko-utils/commit/334ce3f)) - complete ddd-lite migration
+- ([cf14cda](https://github.com/SolidLoop-studio/kkuko-utils/commit/cf14cda)) - replace server manager gateways
+- ([3a315a0](https://github.com/SolidLoop-studio/kkuko-utils/commit/3a315a0)) - isolate authenticated gateway
+- ([8fdeb53](https://github.com/SolidLoop-studio/kkuko-utils/commit/8fdeb53)) - isolate user list projection
+- ([0b54ac4](https://github.com/SolidLoop-studio/kkuko-utils/commit/0b54ac4)) - isolate public request query
+- ([c8d9c46](https://github.com/SolidLoop-studio/kkuko-utils/commit/c8d9c46)) - reuse catalog theme query
+- ([e4c6564](https://github.com/SolidLoop-studio/kkuko-utils/commit/e4c6564)) - isolate count projection
+- ([27a4390](https://github.com/SolidLoop-studio/kkuko-utils/commit/27a4390)) - use catalog query
+- ([238474f](https://github.com/SolidLoop-studio/kkuko-utils/commit/238474f)) - isolate data gateways
+- ([99bcfcd](https://github.com/SolidLoop-studio/kkuko-utils/commit/99bcfcd)) - migrate public log query
+- ([7413422](https://github.com/SolidLoop-studio/kkuko-utils/commit/7413422)) - migrate selected deletion
+- ([b38bab1](https://github.com/SolidLoop-studio/kkuko-utils/commit/b38bab1)) - migrate filters and pagination
+- ([35a82c4](https://github.com/SolidLoop-studio/kkuko-utils/commit/35a82c4)) - migrate profile summary query
+- ([2b31123](https://github.com/SolidLoop-studio/kkuko-utils/commit/2b31123)) - migrate profile nickname search query
+- ([274852f](https://github.com/SolidLoop-studio/kkuko-utils/commit/274852f)) - retire legacy notification write storage
+- ([18b776d](https://github.com/SolidLoop-studio/kkuko-utils/commit/18b776d)) - clarify notification cleanup candidate
+- ([a0e354f](https://github.com/SolidLoop-studio/kkuko-utils/commit/a0e354f)) - complete notification delete image cleanup
+- ([42ff32d](https://github.com/SolidLoop-studio/kkuko-utils/commit/42ff32d)) - migrate notification write form
+- ([0072064](https://github.com/SolidLoop-studio/kkuko-utils/commit/0072064)) - migrate notification delete command
+- ([ff612b2](https://github.com/SolidLoop-studio/kkuko-utils/commit/ff612b2)) - complete semantic mission child docs query
+- ([7cbf456](https://github.com/SolidLoop-studio/kkuko-utils/commit/7cbf456)) - route mission child docs semantically
+- ([a5b0a4a](https://github.com/SolidLoop-studio/kkuko-utils/commit/a5b0a4a)) - share docs mission reference catalog
+- ([5e45364](https://github.com/SolidLoop-studio/kkuko-utils/commit/5e45364)) - define semantic mission child references
+- ([dec730e](https://github.com/SolidLoop-studio/kkuko-utils/commit/dec730e)) - migrate notification detail query
+- ([b4d8bcd](https://github.com/SolidLoop-studio/kkuko-utils/commit/b4d8bcd)) - migrate notification list query
+- ([e4f9ab3](https://github.com/SolidLoop-studio/kkuko-utils/commit/e4f9ab3)) - migrate nickname registration boundary
+- ([d31c5e7](https://github.com/SolidLoop-studio/kkuko-utils/commit/d31c5e7)) - separate identity auth boundary
+- ([cfe8c2c](https://github.com/SolidLoop-studio/kkuko-utils/commit/cfe8c2c)) - make direct word addition atomic
+- ([4c61f09](https://github.com/SolidLoop-studio/kkuko-utils/commit/4c61f09)) - migrate pending word moderation query
+- ([f5d335d](https://github.com/SolidLoop-studio/kkuko-utils/commit/f5d335d)) - reuse catalog theme query in moderation
+- ([b27e91f](https://github.com/SolidLoop-studio/kkuko-utils/commit/b27e91f)) - migrate docs marker query boundary
+- ([ac09444](https://github.com/SolidLoop-studio/kkuko-utils/commit/ac09444)) - migrate docs favorite command boundary
+- ([f1b3596](https://github.com/SolidLoop-studio/kkuko-utils/commit/f1b3596)) - migrate docs view command boundary
+- ([3a30725](https://github.com/SolidLoop-studio/kkuko-utils/commit/3a30725)) - migrate docs creation request boundary
+- ([120625d](https://github.com/SolidLoop-studio/kkuko-utils/commit/120625d)) - resolve mission parents by semantic code
+- ([2957760](https://github.com/SolidLoop-studio/kkuko-utils/commit/2957760)) - resolve mission docs by semantic code
+- ([f250959](https://github.com/SolidLoop-studio/kkuko-utils/commit/f250959)) - resolve long-word docs by semantic code
+- ([e757c23](https://github.com/SolidLoop-studio/kkuko-utils/commit/e757c23)) - migrate docs content query
+- ([b26f5c2](https://github.com/SolidLoop-studio/kkuko-utils/commit/b26f5c2)) - migrate docs info query
+- ([02bc974](https://github.com/SolidLoop-studio/kkuko-utils/commit/02bc974)) - migrate docs log query
+- ([2cfa07b](https://github.com/SolidLoop-studio/kkuko-utils/commit/2cfa07b)) - migrate docs list query
+- ([4109af4](https://github.com/SolidLoop-studio/kkuko-utils/commit/4109af4)) - migrate docs request duplicate query
+- ([531b4d4](https://github.com/SolidLoop-studio/kkuko-utils/commit/531b4d4)) - migrate pending docs request query
+- ([8863eec](https://github.com/SolidLoop-studio/kkuko-utils/commit/8863eec)) - migrate word statistics to word catalog
+- ([83d870e](https://github.com/SolidLoop-studio/kkuko-utils/commit/83d870e)) - add word statistics query service
+- ([ef00abd](https://github.com/SolidLoop-studio/kkuko-utils/commit/ef00abd)) - migrate word downloads to word catalog
+- ([9c14e4f](https://github.com/SolidLoop-studio/kkuko-utils/commit/9c14e4f)) - add word download query service
+- ([5b494bc](https://github.com/SolidLoop-studio/kkuko-utils/commit/5b494bc)) - retire legacy advanced word search
+- ([ca4db5b](https://github.com/SolidLoop-studio/kkuko-utils/commit/ca4db5b)) - migrate advanced word search route
+- ([69bd7c0](https://github.com/SolidLoop-studio/kkuko-utils/commit/69bd7c0)) - retire legacy word detail queries
+- ([427a58b](https://github.com/SolidLoop-studio/kkuko-utils/commit/427a58b)) - migrate word detail queries
+- ([378d7b4](https://github.com/SolidLoop-studio/kkuko-utils/commit/378d7b4)) - retire legacy word suggestion query
+- ([309dbaf](https://github.com/SolidLoop-studio/kkuko-utils/commit/309dbaf)) - migrate browser word search queries
+- ([8e02ece](https://github.com/SolidLoop-studio/kkuko-utils/commit/8e02ece)) - remove migrated word info mutations
+- ([67c96b9](https://github.com/SolidLoop-studio/kkuko-utils/commit/67c96b9)) - migrate word info mutations
+- ([348faca](https://github.com/SolidLoop-studio/kkuko-utils/commit/348faca)) - migrate docs user word request actions
+- ([1d16fdd](https://github.com/SolidLoop-studio/kkuko-utils/commit/1d16fdd)) - migrate docs request moderation actions
+- ([e6ad890](https://github.com/SolidLoop-studio/kkuko-utils/commit/e6ad890)) - remove docs moderation legacy paths
+- ([8c81b60](https://github.com/SolidLoop-studio/kkuko-utils/commit/8c81b60)) - migrate docs word moderation actions
+- ([a4d742a](https://github.com/SolidLoop-studio/kkuko-utils/commit/a4d742a)) - migrate admin word request moderation
+- ([012d603](https://github.com/SolidLoop-studio/kkuko-utils/commit/012d603)) - migrate bulk word deletion
+- ([8a46f55](https://github.com/SolidLoop-studio/kkuko-utils/commit/8a46f55)) - remove replaced word approval queries
+- ([94b52ef](https://github.com/SolidLoop-studio/kkuko-utils/commit/94b52ef)) - use resumable word approval workflow
+- ([1cc481b](https://github.com/SolidLoop-studio/kkuko-utils/commit/1cc481b)) - extract word approval domain rules
+- ([6ac775f](https://github.com/SolidLoop-studio/kkuko-utils/commit/6ac775f)) - add data access application boundary
+
+## feat
+- ([2dc12bb](https://github.com/SolidLoop-studio/kkuko-utils/commit/2dc12bb)) - add filtered page query
+- ([d90ecca](https://github.com/SolidLoop-studio/kkuko-utils/commit/d90ecca)) - migrate initial projection
+- ([593c098](https://github.com/SolidLoop-studio/kkuko-utils/commit/593c098)) - migrate profile nickname update
+- ([829ead5](https://github.com/SolidLoop-studio/kkuko-utils/commit/829ead5)) - migrate profile processed activity query
+- ([ed0e61a](https://github.com/SolidLoop-studio/kkuko-utils/commit/ed0e61a)) - migrate profile word request query
+- ([0d291ce](https://github.com/SolidLoop-studio/kkuko-utils/commit/0d291ce)) - migrate profile favorite docs query
+- ([a3ee7a5](https://github.com/SolidLoop-studio/kkuko-utils/commit/a3ee7a5)) - expose notification write hook
+- ([a81c645](https://github.com/SolidLoop-studio/kkuko-utils/commit/a81c645)) - guard notification image cleanup
+- ([ffa34d1](https://github.com/SolidLoop-studio/kkuko-utils/commit/ffa34d1)) - isolate notification image storage
+- ([38846d5](https://github.com/SolidLoop-studio/kkuko-utils/commit/38846d5)) - add notification write gateway
+- ([59290ab](https://github.com/SolidLoop-studio/kkuko-utils/commit/59290ab)) - define notification write cleanup policy
+- ([3dc524a](https://github.com/SolidLoop-studio/kkuko-utils/commit/3dc524a)) - expose notification delete hook
+- ([876819c](https://github.com/SolidLoop-studio/kkuko-utils/commit/876819c)) - add notification delete gateway
+- ([e351ec4](https://github.com/SolidLoop-studio/kkuko-utils/commit/e351ec4)) - define notification delete command
+- ([f579bd5](https://github.com/SolidLoop-studio/kkuko-utils/commit/f579bd5)) - add required docs reference resolver
+- ([ffc4905](https://github.com/SolidLoop-studio/kkuko-utils/commit/ffc4905)) - add docs semantic reference codes
+- ([d648f65](https://github.com/SolidLoop-studio/kkuko-utils/commit/d648f65)) - expose word detail query hooks
+- ([e2f7d1c](https://github.com/SolidLoop-studio/kkuko-utils/commit/e2f7d1c)) - add connected word query service
+- ([7c8b3d9](https://github.com/SolidLoop-studio/kkuko-utils/commit/7c8b3d9)) - map supabase word detail projection
+- ([603fcd1](https://github.com/SolidLoop-studio/kkuko-utils/commit/603fcd1)) - define word detail query contract
+- ([51b5e42](https://github.com/SolidLoop-studio/kkuko-utils/commit/51b5e42)) - add word catalog browser queries
+- ([4c38c0c](https://github.com/SolidLoop-studio/kkuko-utils/commit/4c38c0c)) - define word catalog search queries
+- ([5c572b4](https://github.com/SolidLoop-studio/kkuko-utils/commit/5c572b4)) - migrate user word addition requests
+- ([e01ddaf](https://github.com/SolidLoop-studio/kkuko-utils/commit/e01ddaf)) - add word info mutation actions
+- ([d0e29ee](https://github.com/SolidLoop-studio/kkuko-utils/commit/d0e29ee)) - add word theme request use case
+- ([c5548c7](https://github.com/SolidLoop-studio/kkuko-utils/commit/c5548c7)) - add atomic word theme requests
+- ([c481507](https://github.com/SolidLoop-studio/kkuko-utils/commit/c481507)) - add atomic user word request RPCs
+- ([15e3ee5](https://github.com/SolidLoop-studio/kkuko-utils/commit/15e3ee5)) - add browser user word request services
+- ([73e45ae](https://github.com/SolidLoop-studio/kkuko-utils/commit/73e45ae)) - add user word request application contract
+- ([1d19beb](https://github.com/SolidLoop-studio/kkuko-utils/commit/1d19beb)) - add docs request moderation hook
+- ([c3ab995](https://github.com/SolidLoop-studio/kkuko-utils/commit/c3ab995)) - add atomic docs request moderation
+- ([bf52585](https://github.com/SolidLoop-studio/kkuko-utils/commit/bf52585)) - define docs request moderation contracts
+- ([09d9ebe](https://github.com/SolidLoop-studio/kkuko-utils/commit/09d9ebe)) - add docs word moderation hook
+- ([a4d5bc0](https://github.com/SolidLoop-studio/kkuko-utils/commit/a4d5bc0)) - connect direct word deletion gateway
+- ([308357e](https://github.com/SolidLoop-studio/kkuko-utils/commit/308357e)) - add atomic direct word deletion
+- ([9ea5abb](https://github.com/SolidLoop-studio/kkuko-utils/commit/9ea5abb)) - resolve docs word mutation targets
+- ([e075553](https://github.com/SolidLoop-studio/kkuko-utils/commit/e075553)) - define docs word moderation contracts
+- ([39674f4](https://github.com/SolidLoop-studio/kkuko-utils/commit/39674f4)) - add word request moderation hook
+- ([537e77a](https://github.com/SolidLoop-studio/kkuko-utils/commit/537e77a)) - connect word request moderation RPCs
+- ([f38a94b](https://github.com/SolidLoop-studio/kkuko-utils/commit/f38a94b)) - add atomic word request moderation RPCs
+- ([b6b42de](https://github.com/SolidLoop-studio/kkuko-utils/commit/b6b42de)) - add word request moderation contracts
+- ([9476dd2](https://github.com/SolidLoop-studio/kkuko-utils/commit/9476dd2)) - expose word deletion hook
+- ([cc6bc25](https://github.com/SolidLoop-studio/kkuko-utils/commit/cc6bc25)) - connect word deletion infrastructure
+- ([fe1c657](https://github.com/SolidLoop-studio/kkuko-utils/commit/fe1c657)) - add transactional word deletion RPC
+- ([3d65b80](https://github.com/SolidLoop-studio/kkuko-utils/commit/3d65b80)) - orchestrate resumable word deletion
+- ([d280522](https://github.com/SolidLoop-studio/kkuko-utils/commit/d280522)) - add word deletion domain
+- ([0d709a7](https://github.com/SolidLoop-studio/kkuko-utils/commit/0d709a7)) - expose browser word approval workflow
+- ([c8a10ed](https://github.com/SolidLoop-studio/kkuko-utils/commit/c8a10ed)) - connect word approval rpc gateway
+- ([2e6dd54](https://github.com/SolidLoop-studio/kkuko-utils/commit/2e6dd54)) - add atomic word approval batch rpc
+- ([54072ab](https://github.com/SolidLoop-studio/kkuko-utils/commit/54072ab)) - persist pending word approval jobs
+- ([ecbd90f](https://github.com/SolidLoop-studio/kkuko-utils/commit/ecbd90f)) - orchestrate resumable word approval batches
+- ([ce47ce5](https://github.com/SolidLoop-studio/kkuko-utils/commit/ce47ce5)) - define resumable word approval contracts
+
 # [v1.10.0](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.9.1...v1.10.0) - 2026-08-19
 
 ## fix
