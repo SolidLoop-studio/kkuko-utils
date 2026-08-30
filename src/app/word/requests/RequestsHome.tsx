@@ -86,7 +86,7 @@ export default function RequestsHome() {
                     </TableHeader>
                     <TableBody>
                         {isLoading ? (
-                            Array.from({ length: pageSize }).map((_, index) => (
+                            Array(pageSize).fill(null).map((_, index) => (
                                 <TableRow key={index}>
                                     <TableCell><Skeleton width={20} /></TableCell>
                                     <TableCell><Skeleton width={150} /></TableCell>

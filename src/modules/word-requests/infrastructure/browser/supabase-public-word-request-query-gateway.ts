@@ -39,6 +39,10 @@ const isPositiveSafeInteger = (value: unknown): value is number => (
     typeof value === 'number' && Number.isSafeInteger(value) && value > 0
 );
 
+const isNonNegativeSafeInteger = (value: unknown): value is number => (
+    typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+);
+
 const isNullableString = (value: unknown): value is string | null => (
     typeof value === 'string' || value === null
 );
@@ -106,7 +110,7 @@ export class SupabasePublicWordRequestQueryGateway implements PublicWordRequestP
             const response = await query
                 .order('requested_at', { ascending: true })
                 .range(from, to);
-            if (!isRecord(response) || response.error !== null || !Number.isSafeInteger(response.count) || response.count < 0) {
+            if (!isRecord(response) || response.error !== null || !isNonNegativeSafeInteger(response.count)) {
                 return err(publicWordRequestError());
             }
             const items = parseRows(response.data);

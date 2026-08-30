@@ -3,6 +3,13 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useSelector } from 'react-redux';
 
+Object.defineProperties(HTMLElement.prototype, {
+    hasPointerCapture: { value: jest.fn(() => false), configurable: true },
+    setPointerCapture: { value: jest.fn(), configurable: true },
+    releasePointerCapture: { value: jest.fn(), configurable: true },
+    scrollIntoView: { value: jest.fn(), configurable: true },
+});
+
 jest.mock('react-redux', () => ({ useSelector: jest.fn() }));
 jest.mock('next/navigation', () => ({ useRouter: jest.fn() }));
 jest.mock('react-loading-skeleton', () => ({ __esModule: true, default: () => <span data-testid="skeleton" /> }));
@@ -138,7 +145,7 @@ describe('RequestsHome', () => {
         expect(screen.getByText('나비').closest('tr')).toHaveClass('bg-blue-50');
 
         await user.click(screen.getByText('나비'));
-        await user.click(screen.getByText('요청자'));
+        await user.click(screen.getByRole('cell', { name: '요청자' }));
         expect(push).toHaveBeenNthCalledWith(1, '/word/search/나비');
         expect(push).toHaveBeenNthCalledWith(2, '/profile/요청자');
     });
