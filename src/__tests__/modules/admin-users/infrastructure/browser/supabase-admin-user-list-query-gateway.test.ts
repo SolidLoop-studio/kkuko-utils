@@ -122,6 +122,16 @@ describe('SupabaseAdminUserListQueryGateway', () => {
         await expect(gateway.loadList({ field: 'contribution', direction: 'desc' })).resolves.toEqual(stableError);
     });
 
+    test.each([
+        ['a whitespace-only identifier', { ...validResponse.data[0], id: '   ' }],
+        ['a whitespace-only nickname', { ...validResponse.data[0], nickname: '\t' }],
+    ])('maps %s to a stable public error', async (_description, row) => {
+        // Break caught: allowing visually blank IDs or nicknames to reach profile navigation and screen rendering.
+        const { gateway } = createGateway({ data: [row], error: null });
+
+        await expect(gateway.loadList({ field: 'contribution', direction: 'desc' })).resolves.toEqual(stableError);
+    });
+
     test('maps a returned Supabase error to a stable public error', async () => {
         // Break caught: leaking a returned PostgREST diagnostic beyond Infrastructure.
         const { gateway } = createGateway({ data: null, error: { message: 'private policy detail' } });

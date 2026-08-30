@@ -14,6 +14,7 @@ const validationError = () => ({
 
 const roles: readonly AdminUserRole[] = ['guest', 'r1', 'r2', 'r3', 'r4', 'admin'];
 const itemKeys = ['id', 'nickname', 'role', 'contribution', 'monthContribution'];
+const sortKeys = ['field', 'direction'];
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
     typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -21,6 +22,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> => (
 
 const isValidSort = (sort: unknown): sort is AdminUserListSort => (
     isRecord(sort)
+    && Object.keys(sort).length === sortKeys.length
+    && sortKeys.every((key) => Object.prototype.hasOwnProperty.call(sort, key))
     && (sort.field === 'contribution' || sort.field === 'monthContribution' || sort.field === 'nickname')
     && (sort.direction === 'asc' || sort.direction === 'desc')
 );
@@ -30,9 +33,9 @@ const isValidItem = (item: unknown): item is AdminUserListItem => {
     if (!itemKeys.every((key) => Object.prototype.hasOwnProperty.call(item, key))) return false;
 
     return typeof item.id === 'string'
-        && item.id.length > 0
+        && item.id.trim().length > 0
         && typeof item.nickname === 'string'
-        && item.nickname.length > 0
+        && item.nickname.trim().length > 0
         && roles.includes(item.role as AdminUserRole)
         && typeof item.contribution === 'number'
         && Number.isFinite(item.contribution)

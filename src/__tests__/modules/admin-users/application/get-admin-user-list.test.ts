@@ -64,10 +64,21 @@ describe('GetAdminUserListService', () => {
         expect(gateway.loadList).not.toHaveBeenCalled();
     });
 
+    test('rejects a sort object with extra own properties before calling Infrastructure', async () => {
+        // Break caught: accepting an input shape wider than the exact Application sort contract.
+        const gateway = createGateway();
+        const sort = { ...contributionSort, unexpected: true };
+
+        await expect(new GetAdminUserListService(gateway).get(sort as AdminUserListSort)).resolves.toEqual(validationError);
+        expect(gateway.loadList).not.toHaveBeenCalled();
+    });
+
     const malformedProjectionCases: Array<[unknown[]]> = [
         [[{ ...projection[0], role: 'owner' }]],
         [[{ ...projection[0], monthContribution: -1 }]],
         [[{ ...projection[0], nickname: '' }]],
+        [[{ ...projection[0], id: '   ' }]],
+        [[{ ...projection[0], nickname: '\t' }]],
         [[{ ...projection[0], extra: 'database field' }]],
     ];
 

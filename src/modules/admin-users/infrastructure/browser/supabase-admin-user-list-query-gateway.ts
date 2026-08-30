@@ -53,9 +53,9 @@ const normalizeRole = (value: unknown): AdminUserRole => (
 const parseItem = (row: unknown): AdminUserListItem | null => {
     if (!isRecord(row)
         || typeof row.id !== 'string'
-        || row.id.length === 0
+        || row.id.trim().length === 0
         || typeof row.nickname !== 'string'
-        || row.nickname.length === 0
+        || row.nickname.trim().length === 0
         || !isNonNegativeFiniteNumber(row.contribution)
         || !isNonNegativeFiniteNumber(row.month_contribution)) {
         return null;
