@@ -16,7 +16,17 @@ const LEGACY_MANAGER_PATHS = [
 ];
 
 const GENERATED_DATABASE_TYPES_PATH = 'src/app/types/database.types.ts';
+const GENERATED_DATABASE_TYPES_MODULE_PATH = 'src/app/types/database.types';
 const TRANSITIONAL_ALIAS_PATH = 'src/app/lib/supabaseClient';
+const LEGACY_MANAGER_MODULE_PATHS = new Set([
+    'src/app/lib/supabase/SupabaseClientManager',
+    'src/app/lib/supabase/ISupabaseClientManager',
+]);
+const AUTH_ROUTE_HANDLERS = new Set([
+    'src/app/api/auth/callback/route.ts',
+    'src/app/api/auth/set_nickname/route.ts',
+    'src/app/api/auth/update_nickname/route.ts',
+]);
 
 function toPosixPath(filePath) {
     return filePath.split(sep).join('/');
@@ -24,6 +34,12 @@ function toPosixPath(filePath) {
 
 function normalizeFilePath(filePath) {
     return toPosixPath(filePath).replace(/^\.\//, '');
+}
+
+function canonicalizeModulePath(modulePath) {
+    return normalizeFilePath(modulePath)
+        .replace(/\.(?:ts|tsx)$/, '')
+        .replace(/\/index$/, '');
 }
 
 function getLine(sourceFile, node) {
@@ -41,15 +57,15 @@ function isProductionSource(filePath) {
 
 function getModulePath(filePath, specifier) {
     if (specifier.startsWith('.')) {
-        return normalizeFilePath(join(dirname(filePath), specifier));
+        return canonicalizeModulePath(join(dirname(filePath), specifier));
     }
 
     if (specifier.startsWith('@/')) {
         if (specifier.startsWith('@/src/')) {
-            return normalizeFilePath(specifier.slice(2));
+            return canonicalizeModulePath(specifier.slice(2));
         }
 
-        return normalizeFilePath(join('src', specifier.slice(2)));
+        return canonicalizeModulePath(join('src', specifier.slice(2)));
     }
 
     return specifier;
@@ -68,7 +84,7 @@ function isNextImport(specifier) {
 }
 
 function isGeneratedDatabaseTypesImport(modulePath) {
-    return modulePath === GENERATED_DATABASE_TYPES_PATH.replace(/\.ts$/, '');
+    return modulePath === GENERATED_DATABASE_TYPES_MODULE_PATH;
 }
 
 function isInfrastructureImport(modulePath) {
@@ -79,16 +95,14 @@ function isInfrastructureImport(modulePath) {
 }
 
 function isSharedSupabaseInfrastructureImport(modulePath) {
-    return modulePath.startsWith('src/shared/infrastructure/supabase/');
+    return (
+        modulePath === 'src/shared/infrastructure/supabase' ||
+        modulePath.startsWith('src/shared/infrastructure/supabase/')
+    );
 }
 
 function isLegacyAliasImport(modulePath) {
-    return (
-        modulePath === TRANSITIONAL_ALIAS_PATH ||
-        modulePath === `${TRANSITIONAL_ALIAS_PATH}.ts` ||
-        modulePath.includes('/supabase/SupabaseClientManager') ||
-        modulePath.includes('/supabase/ISupabaseClientManager')
-    );
+    return modulePath === TRANSITIONAL_ALIAS_PATH || LEGACY_MANAGER_MODULE_PATHS.has(modulePath);
 }
 
 function isModuleDomainOrApplication(filePath) {
@@ -105,7 +119,7 @@ function isPresentation(filePath) {
 }
 
 function isAuthRoute(filePath) {
-    return /^src\/app\/api\/auth\/.+\/route\.ts$/.test(filePath);
+    return AUTH_ROUTE_HANDLERS.has(filePath);
 }
 
 function isRouteHandler(filePath) {
@@ -150,8 +164,32 @@ function isForbiddenPresentationImport(specifier, modulePath) {
     return (
         isSupabaseImport(specifier) ||
         isGeneratedDatabaseTypesImport(modulePath) ||
-        isSharedSupabaseInfrastructureImport(modulePath)
+        isSharedSupabaseInfrastructureImport(modulePath) ||
+        isLegacyAliasImport(modulePath)
     );
+}
+
+function getImportSpecifier(node) {
+    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
+        return {
+            specifier: node.moduleSpecifier.text,
+            specifierNode: node.moduleSpecifier,
+        };
+    }
+
+    if (
+        ts.isCallExpression(node) &&
+        node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+        node.arguments.length >= 1 &&
+        ts.isStringLiteral(node.arguments[0])
+    ) {
+        return {
+            specifier: node.arguments[0].text,
+            specifierNode: node.arguments[0],
+        };
+    }
+
+    return undefined;
 }
 
 /**
@@ -179,16 +217,17 @@ export function analyzeSources(sources) {
         const isClientComponent = hasUseClientDirective(sourceFile);
 
         const visit = (node) => {
-            if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
-                const specifier = node.moduleSpecifier.text;
+            const importSpecifier = getImportSpecifier(node);
+            if (importSpecifier) {
+                const { specifier, specifierNode } = importSpecifier;
                 const modulePath = getModulePath(filePath, specifier);
 
-                if (modulePath === TRANSITIONAL_ALIAS_PATH && filePath !== `${TRANSITIONAL_ALIAS_PATH}.ts`) {
+                if (modulePath === TRANSITIONAL_ALIAS_PATH && filePath !== 'src/app/lib/supabaseClient.ts') {
                     diagnostics.push(
                         createDiagnostic(
                             filePath,
                             sourceFile,
-                            node.moduleSpecifier,
+                            specifierNode,
                             'no-transitional-supabase-alias',
                             'Production code must not import the transitional supabaseClient alias.',
                         ),
@@ -200,7 +239,7 @@ export function analyzeSources(sources) {
                         createDiagnostic(
                             filePath,
                             sourceFile,
-                            node.moduleSpecifier,
+                            specifierNode,
                             'domain-application-import',
                             'Domain and Application layers may not import framework or Infrastructure dependencies.',
                         ),
@@ -223,7 +262,7 @@ export function analyzeSources(sources) {
                         createDiagnostic(
                             filePath,
                             sourceFile,
-                            node.moduleSpecifier,
+                            specifierNode,
                             'presentation-import',
                             'Presentation code must not import Supabase clients, generated database types, or Infrastructure modules.',
                         ),

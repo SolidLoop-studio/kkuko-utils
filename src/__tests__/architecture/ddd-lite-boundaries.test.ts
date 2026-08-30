@@ -56,6 +56,12 @@ describe('DDD-lite architecture boundaries', () => {
                 message: 'Production code must not import the transitional supabaseClient alias.',
             },
             {
+                filePath: 'src/app/example.tsx',
+                line: 1,
+                rule: 'presentation-import',
+                message: 'Presentation code must not import Supabase clients, generated database types, or Infrastructure modules.',
+            },
+            {
                 filePath: 'src/modules/catalog/application/query.ts',
                 line: 1,
                 rule: 'domain-application-import',
@@ -76,13 +82,117 @@ describe('DDD-lite architecture boundaries', () => {
         ]);
     });
 
-    it('allows Supabase infrastructure and the existing auth Route Handler exception', () => {
+    it('allows Supabase infrastructure and only the three approved auth Route Handlers', () => {
         const diagnostics = analyzeSources({
             'src/modules/catalog/infrastructure/browser/gateway.ts': "import { createBrowserClient } from '@supabase/ssr';",
             'src/app/api/auth/callback/route.ts': "import type { Database } from '@/src/app/types/database.types';",
+            'src/app/api/auth/set_nickname/route.ts': "import type { Database } from '@/src/app/types/database.types';",
+            'src/app/api/auth/update_nickname/route.ts': "import type { Database } from '@/src/app/types/database.types';",
         });
 
         expect(diagnostics).toEqual([]);
+    });
+
+    it('rejects an unapproved auth Route Handler exception', () => {
+        const diagnostics = analyzeSources({
+            'src/app/api/auth/unapproved/route.ts': "import type { Database } from '@/src/app/types/database.types';",
+        });
+
+        expect(diagnostics).toEqual([
+            {
+                filePath: 'src/app/api/auth/unapproved/route.ts',
+                line: 1,
+                rule: 'presentation-import',
+                message: 'Presentation code must not import Supabase clients, generated database types, or Infrastructure modules.',
+            },
+        ]);
+    });
+
+    it('canonicalizes extension and index import spellings before applying layer restrictions', () => {
+        const diagnostics = analyzeSources({
+            'src/app/alias.ts': "import '@/src/app/lib/supabaseClient/index.ts';",
+            'src/app/generated.ts': "import type { Database } from '@/src/app/types/database.types/index.ts';",
+            'src/app/shared.ts': "import '@/src/shared/infrastructure/supabase/index.ts';",
+            'src/modules/catalog/application/legacy.ts': "import '@/src/app/lib/supabase/SupabaseClientManager/index.ts';",
+        });
+
+        expect(diagnostics).toEqual([
+            {
+                filePath: 'src/app/alias.ts',
+                line: 1,
+                rule: 'no-transitional-supabase-alias',
+                message: 'Production code must not import the transitional supabaseClient alias.',
+            },
+            {
+                filePath: 'src/app/alias.ts',
+                line: 1,
+                rule: 'presentation-import',
+                message: 'Presentation code must not import Supabase clients, generated database types, or Infrastructure modules.',
+            },
+            {
+                filePath: 'src/app/generated.ts',
+                line: 1,
+                rule: 'presentation-import',
+                message: 'Presentation code must not import Supabase clients, generated database types, or Infrastructure modules.',
+            },
+            {
+                filePath: 'src/app/shared.ts',
+                line: 1,
+                rule: 'presentation-import',
+                message: 'Presentation code must not import Supabase clients, generated database types, or Infrastructure modules.',
+            },
+            {
+                filePath: 'src/modules/catalog/application/legacy.ts',
+                line: 1,
+                rule: 'domain-application-import',
+                message: 'Domain and Application layers may not import framework or Infrastructure dependencies.',
+            },
+        ]);
+    });
+
+    it('applies import restrictions to dynamic imports without mistaking ordinary calls for imports', () => {
+        const diagnostics = analyzeSources({
+            'src/app/dynamic.ts': [
+                "import('@/src/app/lib/supabaseClient.ts');",
+                "import('@/src/app/types/database.types.ts');",
+                "import('@/src/shared/infrastructure/supabase');",
+                "loader.import('@supabase/supabase-js');",
+            ].join('\n'),
+            'src/modules/catalog/application/dynamic.ts': "import('@supabase/supabase-js');",
+        });
+
+        expect(diagnostics).toEqual([
+            {
+                filePath: 'src/app/dynamic.ts',
+                line: 1,
+                rule: 'no-transitional-supabase-alias',
+                message: 'Production code must not import the transitional supabaseClient alias.',
+            },
+            {
+                filePath: 'src/app/dynamic.ts',
+                line: 1,
+                rule: 'presentation-import',
+                message: 'Presentation code must not import Supabase clients, generated database types, or Infrastructure modules.',
+            },
+            {
+                filePath: 'src/app/dynamic.ts',
+                line: 2,
+                rule: 'presentation-import',
+                message: 'Presentation code must not import Supabase clients, generated database types, or Infrastructure modules.',
+            },
+            {
+                filePath: 'src/app/dynamic.ts',
+                line: 3,
+                rule: 'presentation-import',
+                message: 'Presentation code must not import Supabase clients, generated database types, or Infrastructure modules.',
+            },
+            {
+                filePath: 'src/modules/catalog/application/dynamic.ts',
+                line: 1,
+                rule: 'domain-application-import',
+                message: 'Domain and Application layers may not import framework or Infrastructure dependencies.',
+            },
+        ]);
     });
 
     it('reports direct query and RPC calls only in real Client Components', () => {
