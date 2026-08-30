@@ -7,8 +7,6 @@ import Link from "next/link";
 import { FileText, Edit, Trash2, AlertCircle, CheckCircle, Info, Loader2 } from "lucide-react";
 import { useSelector } from 'react-redux';
 import { RootState } from "@/src/app/store/store";
-import useSWR from "swr";
-import { fetcher } from "../../lib";
 import Spinner from "@/src/app/components/Spinner";
 import ErrorModal from "@/src/app/components/ErrModal";
 import WordThemeEditModal from "./WordhemeEditModal";
@@ -21,6 +19,7 @@ import  DuemRaw,{ reverDuemLaw } from '@/src/app/lib/hangulUtils';
 import WordSearchBar from "./SearchBar";
 import type { ApplicationError } from "@/src/shared/application/application-error";
 import { useWordInfoMutations } from "./use-word-info-mutations";
+import { useWordThemes, type WordThemeSummary } from "@/src/modules/word-catalog";
 
 export interface WordInfoProps {
     word: string;
@@ -51,7 +50,11 @@ export interface WordInfoProps {
 
 const WordInfo = ({ wordInfo }: { wordInfo: WordInfoProps }) => {
     const user = useSelector((state: RootState) => state.user);
-    const { data, error, isLoading } = useSWR("themes", fetcher);
+    const {
+        data: themes = [],
+        error: themesError,
+        isLoading,
+    } = useWordThemes(true);
     const {
         requestDeletion,
         cancelRequest,
@@ -102,20 +105,22 @@ const WordInfo = ({ wordInfo }: { wordInfo: WordInfoProps }) => {
     };
 
     useEffect(() => {
-        if (!error) return;
+        if (!themesError) return;
         setErrorModalView({
-            ErrMessage: "An error occurred while fetching data.",
-            ErrName: "ErrorFetchingData",
+            ErrMessage: "주제 정보를 불러오는 중 오류가 발생했습니다.",
+            ErrName: "ThemeLoadError",
             ErrStackRace: "",
             inputValue: "themes fetch"
         });
-    }, [error]);
+    }, [themesError]);
 
     useEffect(() => {
-        if (!data) return;
-        const newTopicsKo = data.reduce((acc, d) => ({ ...acc, [d.name]: d.code }), {});
+        const newTopicsKo = themes.reduce<Record<string, string>>((acc, d: WordThemeSummary) => ({
+            ...acc,
+            [d.name]: d.code,
+        }), {});
         setTopicsKo(newTopicsKo);
-    }, [data]);
+    }, [themes]);
 
     const injungTheme = Object.entries(topicsKo)
         .filter(([label]) => !noInjungTopic.includes(label))

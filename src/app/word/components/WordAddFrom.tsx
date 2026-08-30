@@ -14,12 +14,10 @@ import {
 import { Badge } from "@/src/app/components/ui/badge";
 import { ChevronDown, Save, Search, AlertTriangle, X, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/src/app/components/ui/card";
-import useSWR from "swr";
 import ErrorModal from "@/src/app/components/ErrModal";
-import { fetcher } from "../lib";
-import { PostgrestError } from "@supabase/supabase-js";
 import HelpModal from "@/src/app/components/HelpModal";
 import { calculateKoreanInitials, filterKoreanText } from "@/src/app/lib/lib";
+import { useWordThemes, type WordThemeSummary } from "@/src/modules/word-catalog";
 
 type TopicItemProps = {
     label: string;
@@ -232,7 +230,11 @@ const WordAddForm = ({ saveFn, initWord = "", initThemes = [] }: WordAddFormProp
     const [searchTermOther, setSearchTermOther] = useState("");
     const [invalidWord, setInvalidWord] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    const { data, error, isLoading } = useSWR("themes", fetcher);
+    const {
+        data: themes = [],
+        error: themesError,
+        isLoading: areThemesLoading,
+    } = useWordThemes(true);
     const [topicInfo, setTopicInfo] = useState<TopicInfo>({
         topicsCode: {},
         topicsKo: {},
@@ -241,24 +243,23 @@ const WordAddForm = ({ saveFn, initWord = "", initThemes = [] }: WordAddFormProp
     const [errorModalView, setErrorModalView] = useState<ErrorMessage | null>(null);
 
     useEffect(() => {
-        if (error) {
+        if (themesError) {
             setErrorModalView({
-                ErrMessage: "An error occurred while fetching data.",
-                ErrName: "ErrorFetchingData",
+                ErrMessage: "주제 정보를 불러오는 중 오류가 발생했습니다.",
+                ErrName: "ThemeLoadError",
                 ErrStackRace: "",
                 inputValue: "themes fetch"
             });
         }
-    }, [error]);
+    }, [themesError]);
 
     // Transform API data into usable format
     useEffect(() => {
-        if (!data) return;
         const newTopicsCode: Record<string, string> = {};
         const newTopicsKo: Record<string, string> = {};
         const newTopicID: Record<string, number> = {};
 
-        data.forEach((d: { code: string, name: string, id: number }) => {
+        themes.forEach((d: WordThemeSummary) => {
             newTopicsCode[d.code] = d.name;
             newTopicsKo[d.name] = d.code;
             newTopicID[d.code] = d.id;
@@ -269,11 +270,7 @@ const WordAddForm = ({ saveFn, initWord = "", initThemes = [] }: WordAddFormProp
             topicsKo: newTopicsKo,
             topicsID: newTopicID
         });
-    }, [data]);
-
-    useEffect(() => {
-        setIsSaving(isLoading);
-    }, [isLoading]);
+    }, [themes]);
 
     // Group topics into categories
     const groupedTopics = useMemo(() => {
@@ -348,7 +345,7 @@ const WordAddForm = ({ saveFn, initWord = "", initThemes = [] }: WordAddFormProp
 
     // Handle word save
     const onSave = async () => {
-        if (isSaving) return;
+        if (isSaving || areThemesLoading) return;
 
         setIsSaving(true);
 
@@ -357,14 +354,13 @@ const WordAddForm = ({ saveFn, initWord = "", initThemes = [] }: WordAddFormProp
             setWord("");
             setSelectedTopics([]);
         
-        } catch (error) {
-            if (error instanceof PostgrestError)
-                setErrorModalView({
-                    ErrName: error.name || "Unknown Error",
-                    ErrMessage: error.message || "An unknown error occurred",
-                    ErrStackRace: error.code || "",
-                    inputValue: `word: ${word}, selected themes: ${selectedTopics.join(", ")}`
-                });
+        } catch (_error: unknown) {
+            setErrorModalView({
+                ErrName: "WordSaveError",
+                ErrMessage: "단어 저장 중 오류가 발생했습니다.",
+                ErrStackRace: "",
+                inputValue: `word: ${word}, selected themes: ${selectedTopics.join(", ")}`
+            });
         } finally {
             setIsSaving(false);
         }
@@ -577,7 +573,7 @@ const WordAddForm = ({ saveFn, initWord = "", initThemes = [] }: WordAddFormProp
                     <Button
                         className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:text-gray-500 dark:disabled:text-gray-400"
                         onClick={onSave}
-                        disabled={word.length === 0 || invalidWord || isSaving}
+                        disabled={word.length === 0 || invalidWord || isSaving || areThemesLoading}
                     >
                         <Save className="mr-2 h-4 w-4" />
                         단어 저장

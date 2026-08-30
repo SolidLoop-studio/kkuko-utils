@@ -5,11 +5,9 @@ import WordAddForm from "@/src/app/word/components/WordAddFrom";
 import { disassemble } from "es-hangul";
 import ErrorModal from "@/src/app/components/ErrModal";
 import { Edit2, Plus, Save, X, FileText, Trash2, FileSpreadsheet, AlertCircle, Check} from "lucide-react";
-import useSWR from "swr";
 import Spinner from "@/src/app/components/Spinner";
 import CompleteModal from "@/src/app/components/CompleteModal";
 import { Alert, AlertDescription } from '@/src/app/components/ui/alert';
-import { fetcher } from "../lib";
 import * as XLSX from 'xlsx';
 import ProgressModal from "@/src/app/components/ProgressModal";
 import { useSelector } from "react-redux";
@@ -17,6 +15,7 @@ import { RootState } from "@/src/app/store/store";
 import LoginRequiredModal from "@/src/app/components/LoginRequiredModal";
 import HelpModal from '@/src/app/components/HelpModal';
 import { useUserWordRequests } from '@/src/modules/word-requests';
+import { useWordThemes, type WordThemeSummary } from '@/src/modules/word-catalog';
 
 interface WordEntry {
     id: string;
@@ -56,7 +55,11 @@ export default function WordsAddPage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const parentRef = useRef<HTMLDivElement>(null);
     const [topicsCodeName, setTopicCodeName] = useState<Record<string, string>>({});
-    const { data, error, isLoading } = useSWR("topics", fetcher);
+    const {
+        data: themes = [],
+        error: themesError,
+        isLoading,
+    } = useWordThemes(true);
     const [completeMessage, setCompleteMessage] = useState<string | null>(null);
     const [progressMessage, setProgressMessage] = useState<{ task: string, progress: number } | null>(null);
     const user = useSelector((state: RootState) => state.user);
@@ -87,17 +90,25 @@ export default function WordsAddPage() {
     });
 
     useEffect(() => {
-        if (data) {
-            const topicsCode: Record<string, string> = {};
-            const topicsName: Record<string, string> = {};
-            for (const topic of data) {
-                topicsCode[topic.code] = topic.name;
-                topicsName[topic.name] = topic.code;
-            }
-            setTopicCodeName(topicsCode);
-            setTopicNameCode(topicsName);
+        const topicsCode: Record<string, string> = {};
+        const topicsName: Record<string, string> = {};
+        for (const topic of themes as WordThemeSummary[]) {
+            topicsCode[topic.code] = topic.name;
+            topicsName[topic.name] = topic.code;
         }
-    }, [data, error, isLoading]);
+        setTopicCodeName(topicsCode);
+        setTopicNameCode(topicsName);
+    }, [themes]);
+
+    useEffect(() => {
+        if (!themesError) return;
+        seterrorModalView({
+            ErrName: "ThemeLoadError",
+            ErrMessage: "주제 정보를 불러오는 중 오류가 발생했습니다.",
+            ErrStackRace: "",
+            inputValue: "themes fetch",
+        });
+    }, [themesError]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFiles = Array.from(e.target.files || []);

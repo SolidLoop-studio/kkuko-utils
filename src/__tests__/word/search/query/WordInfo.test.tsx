@@ -1,11 +1,11 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { useSelector } from 'react-redux';
-import useSWR from 'swr';
 
 import WordInfo, {
     type WordInfoProps,
 } from '../../../../app/word/search/[query]/WordInfo';
+import { useWordThemes } from '../../../../modules/word-catalog';
 import { useWordInfoMutations } from '../../../../app/word/search/[query]/use-word-info-mutations';
 import { err, ok } from '../../../../shared/application/result';
 
@@ -16,10 +16,7 @@ jest.mock('react-redux', () => ({
     useSelector: jest.fn(),
 }));
 
-jest.mock('swr', () => ({
-    __esModule: true,
-    default: jest.fn(),
-}));
+jest.mock('../../../../modules/word-catalog', () => ({ useWordThemes: jest.fn() }));
 
 jest.mock('next/navigation', () => ({
     useRouter: () => ({ back: routerBack }),
@@ -31,7 +28,6 @@ jest.mock('../../../../app/word/search/[query]/use-word-info-mutations', () => (
 
 jest.mock('../../../../app/word/search/[query]/SearchBar', () => () => null);
 jest.mock('../../../../app/components/Spinner', () => () => <div>loading</div>);
-jest.mock('../../../../app/word/lib', () => ({ fetcher: jest.fn() }));
 jest.mock('../../../../app/lib/supabaseClient', () => ({
     SCM: {
         add: () => ({
@@ -211,11 +207,11 @@ beforeEach(() => {
     jest.mocked(useSelector).mockImplementation((selector) => selector({
         user: currentUser,
     } as never));
-    jest.mocked(useSWR).mockImplementation(() => ({
+    jest.mocked(useWordThemes).mockImplementation(() => ({
         data: currentThemes,
         error: undefined,
         isLoading: false,
-    } as ReturnType<typeof useSWR>));
+    } as unknown as ReturnType<typeof useWordThemes>));
     jest.mocked(useWordInfoMutations).mockImplementation(() => ({
         requestDeletion,
         cancelRequest,
@@ -241,6 +237,20 @@ beforeEach(() => {
 });
 
 describe('WordInfo mutations', () => {
+    it('shows a safe Korean error when the catalog theme query fails', async () => {
+        jest.mocked(useWordThemes).mockReturnValue({
+            data: undefined,
+            error: { kind: 'infrastructure', message: 'raw SDK diagnostic' },
+            isLoading: false,
+        } as unknown as ReturnType<typeof useWordThemes>);
+
+        renderWordInfo();
+
+        const alert = await screen.findByRole('alert');
+        expect(alert).toHaveTextContent('주제 정보를 불러오는 중 오류가 발생했습니다.');
+        expect(alert).not.toHaveTextContent('raw SDK diagnostic');
+    });
+
     it('renders connection counts and disables both connections while lookup is pending', () => {
         const wordInfo = createWordInfo();
         const view = renderWordInfo(wordInfo);
