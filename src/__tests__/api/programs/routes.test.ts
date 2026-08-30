@@ -1,4 +1,5 @@
 import { ok } from '../../../shared/application/result';
+import type { NextRequest } from 'next/server';
 
 const mockCreateServerProgramsServices = jest.fn();
 jest.mock('@/modules/programs/infrastructure/server/server-program-services', () => ({
@@ -10,7 +11,8 @@ jest.mock('next/server', () => ({
 
 const program = { id: 7, name: 'Tool', description: 'desc', githubRepo: 'owner/repo', category: 'tool' as const, tags: ['tag'], isActive: true, createdAt: '2026-01-01', readmePath: 'README.md', updatedAt: '2026-01-02' };
 const release = { id: 1, tagName: 'v1', name: 'v1', body: '', publishedAt: '2026-01-01', updatedAt: '2026-01-02', assets: [], htmlUrl: 'https://example.com', prerelease: false, draft: false };
-const request = (url: string) => ({ nextUrl: new URL(url) });
+/** Route tests only exercise URL parsing; this is the minimal NextRequest surface. */
+const request = (url: string): NextRequest => ({ nextUrl: new URL(url) } as unknown as NextRequest);
 
 describe('program routes', () => {
     beforeEach(() => {
