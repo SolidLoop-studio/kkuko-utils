@@ -10,6 +10,13 @@ export type {
     UserWordRequestResult,
 } from './application/user-word-request-types';
 export type {
+    PublicWordRequestPageProjection,
+    PublicWordRequestProjection,
+    PublicWordRequestQueryInput,
+    PublicWordRequestStatus,
+} from './application/public-word-request-query-types';
+export { usePublicWordRequestPage } from './presentation/use-public-word-request-page';
+export type {
     RequestedWordThemeChange,
     RequestWordThemeChangesCommand,
     RequestWordThemeChangesResult,
