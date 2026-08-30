@@ -7,78 +7,59 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useSelector } from 'react-redux';
 import { RootState } from "@/src/app/store/store";
 import { useRouter } from 'next/navigation';
-import { SCM } from '@/src/app/lib/supabaseClient';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import ErrorModal from "@/src/app/components/ErrModal";
+import {
+    type PublicWordRequestStatus,
+    usePublicWordRequestPage,
+} from "@/src/modules/word-requests";
 
-interface RequestItem {
-    id: number;
-    request_type: "add" | "delete";
-    requested_at: string;
-    requested_by: string | null;
-    status: "approved" | "rejected" | "pending";
-    word: string;
-    word_id: number | null;
-    users: {nickname: string} | null
-}
+const pageSize = 30;
 
-export default function RequestsPage() {
+const errorModal = {
+    ErrName: 'ApplicationError',
+    ErrMessage: '단어 요청 목록을 불러오는 중 오류가 발생했습니다.',
+    ErrStackRace: '',
+    inputValue: '/word/requests',
+};
+
+export default function RequestsHome() {
     const [page, setPage] = useState(1);
-    const [filterStatus, setFilterStatus] = useState<string>("all");
-    const [requests, setRequests] = useState<RequestItem[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [errorModalView, setErrorModalView] = useState<ErrorMessage | null>(null);
+    const [filterStatus, setFilterStatus] = useState<PublicWordRequestStatus>('all');
+    const [isErrorModalDismissed, setIsErrorModalDismissed] = useState(false);
+    const { data, error, isLoading } = usePublicWordRequestPage({ page, status: filterStatus });
     const user = useSelector((state: RootState) => state.user);
     const router = useRouter();
-
     const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const totalCount = data?.totalCount ?? 0;
+    const totalPages = Math.ceil(totalCount / pageSize);
+    const displayPage = totalPages === 0 ? 0 : page;
 
     useEffect(() => {
-        const fetchRequests = async () => {
-            setIsLoading(true);
-            const { data, error } = await SCM.get().allWaitWords();
+        if (error) setIsErrorModalDismissed(false);
+    }, [error]);
 
-            if (error) {
-                setErrorModalView({
-                    ErrName: error.name,
-                    ErrMessage: error.message,
-                    ErrStackRace: error.stack,
-                    inputValue: "/word/open-db-requests"
-                });
-                return;
-            } else {
-                setRequests(data);
-            }
-            setIsLoading(false);
-        };
-
-        fetchRequests();
-    }, []);
-
-    const itemsPerPage = 30;
-
-    const filteredRequests = requests.filter((request) => {
-        return filterStatus === "all" || request.status === filterStatus;
-    });
-
-    const startIdx = (page - 1) * itemsPerPage;
-    const currentRequests = filteredRequests.slice(startIdx, startIdx + itemsPerPage);
-    const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
+    useEffect(() => {
+        if (totalPages > 0 && page > totalPages) setPage(totalPages);
+    }, [page, totalPages]);
 
     return (
         <div className="p-6 max-w-6xl mx-auto min-h-screen text-gray-800 dark:text-gray-100 bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800">
-            {errorModalView && (
+            {error && !isErrorModalDismissed && (
                 <ErrorModal
-                    error={errorModalView}
-                    onClose={() => setErrorModalView(null)}
+                    error={errorModal}
+                    onClose={() => setIsErrorModalDismissed(true)}
                 />
             )}
 
             <h1 className="text-3xl font-bold mb-6">추가/삭제 요청</h1>
 
             <div className="flex gap-4 mb-4">
-                <Select value={filterStatus} onValueChange={(v) => { setPage(1); setFilterStatus(v); }}>
+                <Select value={filterStatus} onValueChange={(value) => {
+                    setPage(1);
+                    setFilterStatus(value as PublicWordRequestStatus);
+                }}>
                     <SelectTrigger className="w-[160px] bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-800 dark:text-gray-100 hover:border-blue-300 dark:hover:border-blue-600">
                         <SelectValue placeholder="상태 선택" />
                     </SelectTrigger>
@@ -105,8 +86,8 @@ export default function RequestsPage() {
                     </TableHeader>
                     <TableBody>
                         {isLoading ? (
-                            Array.from({ length: itemsPerPage }).map((_, idx) => (
-                                <TableRow key={idx}>
+                            Array(pageSize).fill(null).map((_, index) => (
+                                <TableRow key={index}>
                                     <TableCell><Skeleton width={20} /></TableCell>
                                     <TableCell><Skeleton width={150} /></TableCell>
                                     <TableCell><Skeleton width={80} /></TableCell>
@@ -116,41 +97,41 @@ export default function RequestsPage() {
                                 </TableRow>
                             ))
                         ) : (
-                            currentRequests.map((req) => {
-                                const isMyRequest = req.requested_by === user.uuid;
-                                const localTime = new Date(req.requested_at).toLocaleString(undefined, { timeZone: userTimeZone });
+                            data?.items.map((request) => {
+                                const isMyRequest = request.requestedBy === user.uuid;
+                                const localTime = new Date(request.requestedAt).toLocaleString(undefined, { timeZone: userTimeZone });
 
                                 return (
-                                    <TableRow key={req.id} className={isMyRequest ? "bg-blue-50 dark:bg-blue-900/20" : ""}>
-                                        <TableCell>{req.id}</TableCell>
+                                    <TableRow key={request.id} className={isMyRequest ? "bg-blue-50 dark:bg-blue-900/20" : ""}>
+                                        <TableCell>{request.id}</TableCell>
                                         <TableCell
                                             className="text-blue-600 dark:text-blue-400 underline hover:cursor-pointer"
-                                            onClick={() => router.push(`/word/search/${req.word}`)}
+                                            onClick={() => router.push(`/word/search/${request.word}`)}
                                         >
-                                            {req.word}
+                                            {request.word}
                                         </TableCell>
                                         <TableCell>
-                                            {req.request_type === "add" ? (
+                                            {request.requestType === "add" ? (
                                                 <span className="text-blue-600 dark:text-blue-400">추가</span>
                                             ) : (
                                                 <span className="text-orange-600 dark:text-orange-400">삭제</span>
                                             )}
                                         </TableCell>
                                         <TableCell
-                                            className={req.requested_by ? "text-blue-600 dark:text-blue-400 underline hover:cursor-pointer" : ""}
+                                            className={request.requesterNickname ? "text-blue-600 dark:text-blue-400 underline hover:cursor-pointer" : ""}
                                             onClick={() => {
-                                                if (req.users) {
-                                                    router.push(`/profile/${req.users?.nickname}`)
+                                                if (request.requesterNickname) {
+                                                    router.push(`/profile/${request.requesterNickname}`);
                                                 }
                                             }}
                                         >
-                                            {req.users?.nickname || "-"}
+                                            {request.requesterNickname || "-"}
                                         </TableCell>
                                         <TableCell>{localTime}</TableCell>
                                         <TableCell>
-                                            {req.status === "approved" ? (
+                                            {request.status === "approved" ? (
                                                 <span className="text-green-600 dark:text-green-400 font-semibold">승인</span>
-                                            ) : req.status === "rejected" ? (
+                                            ) : request.status === "rejected" ? (
                                                 <span className="text-red-600 dark:text-red-400 font-semibold">거절</span>
                                             ) : (
                                                 <span className="text-yellow-600 dark:text-yellow-400 font-semibold">대기중</span>
@@ -164,25 +145,24 @@ export default function RequestsPage() {
                 </Table>
             </div>
 
-            {/* 페이지네이션 */}
             <div className="flex justify-between items-center mt-6">
                 <Button
                     variant="outline"
-                    disabled={page === 1 || isLoading}
-                    onClick={() => setPage((prev) => prev - 1)}
+                    disabled={page <= 1 || totalPages === 0 || isLoading}
+                    onClick={() => setPage((previous) => previous - 1)}
                     className="border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:border-blue-300 dark:hover:border-blue-600"
                 >
                     이전
                 </Button>
 
                 <span className="text-gray-600 dark:text-gray-300">
-                    {page} / {totalPages} 페이지
+                    {displayPage} / {totalPages} 페이지
                 </span>
 
                 <Button
                     variant="outline"
-                    disabled={page === totalPages || isLoading}
-                    onClick={() => setPage((prev) => prev + 1)}
+                    disabled={totalPages === 0 || page >= totalPages || isLoading}
+                    onClick={() => setPage((previous) => previous + 1)}
                     className="border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:border-blue-300 dark:hover:border-blue-600"
                 >
                     다음
@@ -190,5 +170,4 @@ export default function RequestsPage() {
             </div>
         </div>
     );
-
 }

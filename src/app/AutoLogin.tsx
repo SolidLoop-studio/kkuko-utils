@@ -1,39 +1,36 @@
 "use client";
 
-import { useEffect } from "react";
-import { SCM } from "./lib/supabaseClient";
+import { useEffect, useRef } from "react";
 import { useDispatch } from "react-redux";
+import { useAuthSession } from "@/src/modules/identity";
 import type { AppDispatch } from "./store/store";
 import { userAction } from "./store/slice";
 
 const AutoLogin = () => {
-    const dispatch = useDispatch<AppDispatch>()
+    const dispatch = useDispatch<AppDispatch>();
+    const { restore } = useAuthSession();
+    const restorePromiseRef = useRef<ReturnType<typeof restore> | null>(null);
+
     useEffect(() => {
-        const checkSession = async () => {
-            const { data, error } = await SCM.get().session();
+        let isActive = true;
+        restorePromiseRef.current ??= restore();
 
-            if (!data || !data.session || error) return;
+        void restorePromiseRef.current.then((result) => {
+            if (!isActive || !result.ok || !result.value.profile) return;
+            const profile = result.value.profile;
+            dispatch(userAction.setInfo({
+                username: profile.nickname,
+                role: profile.role,
+                uuid: profile.id,
+            }));
+        });
 
-            const { data: dbdata, error: err } = await SCM.get().userById(data.session.user.id);
-            
-            if (err || !dbdata) return;
-
-            dispatch(
-                userAction.setInfo({
-                    username: dbdata.nickname,
-                    role: dbdata.role ?? "guest",
-                    uuid: dbdata.id,
-                })
-            );
-        }
-        try{
-            checkSession();
-        }catch{
-            
-        }
-    })
+        return () => {
+            isActive = false;
+        };
+    }, [dispatch, restore]);
 
     return null;
-}
+};
 
 export default AutoLogin;

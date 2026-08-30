@@ -1,45 +1,73 @@
 "use client";
-import { useState, lazy, Suspense, useCallback, useMemo } from "react";
+import { useState, lazy, Suspense, useCallback, useEffect, useMemo } from "react";
 import { useReactTable, getCoreRowModel, getSortedRowModel, ColumnDef, SortingState } from "@tanstack/react-table";
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
-import type { WordData } from "@/src/app/types/type";
 import { useSelector } from 'react-redux';
 import { RootState } from "@/src/app/store/store";
 import ErrorModal from "@/src/app/components/ErrModal";
 import type { ErrorMessage } from "@/src/app/types/type";
-import type { PostgrestError } from "@supabase/supabase-js";
 import Spinner from "@/src/app/components/Spinner";
 import CompleteModal from "@/src/app/components/CompleteModal";
 import Link from "next/link";
 import { memo } from "react";
-import { useWorkFunc } from "./TableWorkFunc";
+import { useDocsWordModeration } from "@/src/modules/word-moderation";
+import type { ApplicationError } from "@/src/shared/application/application-error";
+import type { DocsWordMutationTarget } from "@/src/modules/word-moderation";
+import { useUserWordRequestActions } from "./use-user-word-request-actions";
+import type { DocsWordAdminAction, DocsWordData } from "./docs-word-data";
 
 const WorkModal = lazy(() => import("./WorkModal"));
+
+type RequestModerationTarget = Exclude<DocsWordMutationTarget, { kind: "registered-word" }>;
+
+const isRequestTargetForRow = (
+    row: DocsWordData,
+): row is DocsWordData & { mutationTarget: RequestModerationTarget } => {
+    const target = row.mutationTarget;
+    if (target?.kind === "word-request") return target.requestType === row.status;
+    if (target?.kind === "theme-change") return target.type === row.status;
+    return false;
+};
+
+const getAdminErrorMessage = (error: ApplicationError) => {
+    switch (error.kind) {
+        case "validation":
+            return error.message;
+        case "conflict":
+            return "요청 목록이 변경되었습니다. 새로고침 후 다시 시도해 주세요.";
+        case "unauthorized":
+            return "로그인이 필요합니다.";
+        case "forbidden":
+            return "관리자 권한이 필요합니다.";
+        case "not-found":
+        case "infrastructure":
+            return "문서 단어 처리 중 오류가 발생했습니다.";
+    }
+};
 
 const Table = ({ 
     initialData, 
     isMission = { m: false, t: null }, // m: 미션여부, t: 미션 글자
-    isLong = false
+    isLong = false,
+    onAdminActionComplete,
 }: {
-    initialData: WordData[],
+    initialData: DocsWordData[],
     isMission?: { m: false, t: null } | { m: true, t: string } 
-    isLong?: boolean
+    isLong?: boolean,
+    onAdminActionComplete(action: DocsWordAdminAction, row: DocsWordData): Promise<boolean>,
 }) => {
-    const [data] = useState(initialData);
+    const data = initialData;
     
     // isMission.m이 true일 때는 포함개수 기준 내림차순으로 기본 정렬
     const [sorting, setSorting] = useState<SortingState>(
         isMission.m ? [{ id: "count", desc: true }] : isLong ? [{ id: "length", desc: true }] : []
     );
     
-    const [modal, setModal] = useState<{ 
-        word: string, 
-        status: "add" | "delete" | "ok", 
-        requer: string 
-    } | null>(null);
+    const [modal, setModal] = useState<DocsWordData | null>(null);
     
     const [errorModalView, seterrorModalView] = useState<ErrorMessage | null>(null);
     const [isProcessing, setIsProcessing] = useState<boolean>(false);
+    const [isAdminTransitionPending, setIsAdminTransitionPending] = useState(false);
     const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
     const user = useSelector((state: RootState) => state.user);
 
@@ -49,7 +77,7 @@ const Table = ({
         return (word.match(new RegExp(char, 'g')) || []).length;
     }, []);
 
-    const columns: ColumnDef<WordData>[] = useMemo(() => [
+    const columns: ColumnDef<DocsWordData>[] = useMemo(() => [
         {
             accessorFn: (row) => 
                 isMission.m && isMission.t 
@@ -170,8 +198,8 @@ const Table = ({
         onSortingChange: setSorting,
     });
 
-    const openWork = useCallback((word: string, status: "add" | "delete" | "ok", requer: string) => {
-        setModal({ word, status, requer });
+    const openWork = useCallback((row: DocsWordData) => {
+        setModal(row);
     }, []);
 
     const closeWork = () => {
@@ -183,27 +211,96 @@ const Table = ({
         setIsCompleteModalOpen(true);
     };
 
-    const makeError = (error: PostgrestError) => {
+    const makeError = (error: ApplicationError) => {
         closeWork();
         seterrorModalView({
-            ErrName: error.name,
+            ErrName: 'UserWordRequestError',
             ErrMessage: error.message,
-            ErrStackRace: error.stack,
-            inputValue: null
+            ErrStackRace: error.code,
+            inputValue: null,
         });
-        setIsProcessing(false);
     };
 
-    const { 
-        AddAccept, 
-        AddReject, 
-        DeleteAccept, 
-        DeleteReject, 
-        CancelAddRequest, 
-        CancelDeleteRequest, 
-        RequestDelete, 
-        DeleteByAdmin, 
-    } = useWorkFunc({ makeError, setIsProcessing, user, CompWork: CompleWork, isProcessing });
+    const {
+        approve,
+        reject,
+        deleteDirectly,
+        isPending: isAdminMutationPending,
+        error: adminMutationError,
+        clearError,
+    } = useDocsWordModeration();
+    const {
+        cancelAddRequest,
+        cancelDeleteRequest,
+        requestDelete,
+    } = useUserWordRequestActions({
+        makeError,
+        setIsProcessing,
+        completeWork: CompleWork,
+        isProcessing,
+    });
+
+    const showAdminError = useCallback((error: ApplicationError) => {
+        seterrorModalView({
+            ErrName: "DocsWordModerationError",
+            ErrMessage: getAdminErrorMessage(error),
+            ErrStackRace: null,
+            inputValue: null,
+        });
+    }, []);
+
+    useEffect(() => {
+        if (adminMutationError !== null) showAdminError(adminMutationError);
+    }, [adminMutationError, showAdminError]);
+
+    const completeAdminAction = async (
+        action: DocsWordAdminAction,
+        row: DocsWordData,
+    ) => {
+        await onAdminActionComplete(action, row);
+        closeWork();
+    };
+
+    const runRequestModeration = async (
+        action: "approve" | "reject",
+        row: DocsWordData,
+    ) => {
+        if (!isRequestTargetForRow(row)) return;
+
+        clearError();
+        setIsAdminTransitionPending(true);
+        try {
+            const result = await (action === "approve"
+                ? approve(row.mutationTarget)
+                : reject(row.mutationTarget));
+            if (!result.ok) {
+                showAdminError(result.error);
+                return;
+            }
+            await completeAdminAction(action, row);
+        } finally {
+            setIsAdminTransitionPending(false);
+        }
+    };
+
+    const runDirectDeletion = async (row: DocsWordData) => {
+        if (row.status !== "ok" || row.mutationTarget?.kind !== "registered-word") return;
+
+        clearError();
+        setIsAdminTransitionPending(true);
+        try {
+            const result = await deleteDirectly(row.mutationTarget);
+            if (!result.ok) {
+                showAdminError(result.error);
+                return;
+            }
+            await completeAdminAction("delete-directly", row);
+        } finally {
+            setIsAdminTransitionPending(false);
+        }
+    };
+
+    const isSaving = isAdminMutationPending || isAdminTransitionPending || isProcessing;
 
     return (
         <div className="w-full mx-auto">
@@ -256,8 +353,8 @@ const Table = ({
                                             {openWork !== undefined && user.uuid && (
                                                 <button
                                                     className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 transition"
-                                                    onClick={user.uuid !== undefined ? 
-                                                        () => openWork(wordData.word, wordData.status, wordData.maker ?? "") : 
+                                                    onClick={user.uuid !== undefined ?
+                                                        () => openWork(wordData) :
                                                         undefined
                                                     }
                                                 >
@@ -290,27 +387,43 @@ const Table = ({
                     </div>
                 }>
                     <WorkModal
-                        isSaving={isProcessing}
+                        isSaving={isSaving}
                         onClose={closeWork}
                         word={modal.word}
                         status={modal.status}
                         isAdmin={user.role === "admin"}
-                        isRequester={user.uuid === modal.requer}
-                        onAddAccept={() => AddAccept(modal.word)}
-                        onDeleteAccept={() => DeleteAccept(modal.word)}
-                        onAddReject={() => AddReject(modal.word)}
-                        onDeleteReject={() => DeleteReject(modal.word)}
-                        onCancelAddRequest={() => CancelAddRequest(modal.word)}
-                        onCancelDeleteRequest={() => CancelDeleteRequest(modal.word)}
-                        onDelete={() => DeleteByAdmin(modal.word)}
-                        onRequestDelete={() => RequestDelete(modal.word)}
+                        isRequester={
+                            modal.mutationTarget?.kind === "word-request"
+                            && user.uuid === modal.maker
+                        }
+                        onAddAccept={isRequestTargetForRow(modal) && modal.status === "add"
+                            ? () => runRequestModeration("approve", modal)
+                            : undefined}
+                        onDeleteAccept={isRequestTargetForRow(modal) && modal.status === "delete"
+                            ? () => runRequestModeration("approve", modal)
+                            : undefined}
+                        onAddReject={isRequestTargetForRow(modal) && modal.status === "add"
+                            ? () => runRequestModeration("reject", modal)
+                            : undefined}
+                        onDeleteReject={isRequestTargetForRow(modal) && modal.status === "delete"
+                            ? () => runRequestModeration("reject", modal)
+                            : undefined}
+                        onCancelAddRequest={() => cancelAddRequest(modal.word)}
+                        onCancelDeleteRequest={() => cancelDeleteRequest(modal.word)}
+                        onDelete={modal.status === "ok" && modal.mutationTarget?.kind === "registered-word"
+                            ? () => runDirectDeletion(modal)
+                            : undefined}
+                        onRequestDelete={() => requestDelete(modal.word)}
                     />
                 </Suspense>
             )}
 
             {errorModalView && (
                 <ErrorModal
-                    onClose={() => seterrorModalView(null)}
+                    onClose={() => {
+                        seterrorModalView(null);
+                        clearError();
+                    }}
                     error={errorModalView}
                 />
             )}

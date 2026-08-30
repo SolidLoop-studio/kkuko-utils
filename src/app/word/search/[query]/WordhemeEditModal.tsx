@@ -19,6 +19,7 @@ interface EditModalProps {
     onSave: (newThemes: string[], delThemes: string[]) => Promise<void>;
     injungTheme: string[];
     noInjungTheme: string[];
+    isSaving: boolean;
 }
 
 interface AccordionProps {
@@ -56,7 +57,7 @@ const Accordion = ({ title, icon, children }: AccordionProps) => {
     );
 };
 
-const WordThemeEditModal = ({ isOpen, onClose, wordInfo, onSave, injungTheme, noInjungTheme }: EditModalProps) => {
+const WordThemeEditModal = ({ isOpen, onClose, wordInfo, onSave, injungTheme, noInjungTheme, isSaving }: EditModalProps) => {
     // 선택된 주제들을 관리하는 상태
     const [selectedSeniorTopics, setSelectedSeniorTopics] = useState<string[]>(
         // 초기값: ok 상태인 주제 중 노인정 주제에 해당하는 것들
@@ -101,6 +102,8 @@ const WordThemeEditModal = ({ isOpen, onClose, wordInfo, onSave, injungTheme, no
 
     // 저장 핸들러
     const handleSave = async () => {
+        if (isSaving) return;
+
         const newThemes: string[] = [];
         for (const topic of selectedSeniorTopics) {
             if (!wordInfo.topic.ok.includes(topic)) {
@@ -271,7 +274,10 @@ const WordThemeEditModal = ({ isOpen, onClose, wordInfo, onSave, injungTheme, no
                         취소
                     </Button>
                     <Button
-                        onClick={()=> setConfirmModalOpen(true)}
+                        disabled={isSaving}
+                        onClick={() => {
+                            if (!isSaving) setConfirmModalOpen(true);
+                        }}
                         className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white flex items-center gap-2"
                     >
                         <Save size={16} />

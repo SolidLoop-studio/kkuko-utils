@@ -7,21 +7,19 @@ import Link from "next/link";
 import { FileText, Edit, Trash2, AlertCircle, CheckCircle, Info, Loader2 } from "lucide-react";
 import { useSelector } from 'react-redux';
 import { RootState } from "@/src/app/store/store";
-import useSWR from "swr";
-import { fetcher } from "../../lib";
 import Spinner from "@/src/app/components/Spinner";
 import ErrorModal from "@/src/app/components/ErrModal";
 import WordThemeEditModal from "./WordhemeEditModal";
 import { noInjungTopic } from "../../const";
 import CompleteModal from "@/src/app/components/CompleteModal";
-import { SCM } from "@/src/app/lib/supabaseClient"
 import ConfirmModal from "@/src/app/components/ConfirmModal";
 import { josa } from "es-hangul";
 import { useRouter } from 'next/navigation'
 import  DuemRaw,{ reverDuemLaw } from '@/src/app/lib/hangulUtils';
 import WordSearchBar from "./SearchBar";
-import { PostgrestError } from "@supabase/supabase-js";
-import { DocsLogData } from "@/src/app/types/type";
+import type { ApplicationError } from "@/src/shared/application/application-error";
+import { useWordInfoMutations } from "./use-word-info-mutations";
+import { useWordThemes, type WordThemeSummary } from "@/src/modules/word-catalog";
 
 export interface WordInfoProps {
     word: string;
@@ -35,8 +33,9 @@ export interface WordInfoProps {
     };
     isChainable: boolean;
     isSeniorApproved: boolean;
-    goFirstLetterWords: () => Promise<number>;
-    goLastLetterWords: () => Promise<number>;
+    goFirstLetterWords: number;
+    goLastLetterWords: number;
+    isConnectionLoading: boolean;
     status: "ok" | "추가요청" | "삭제요청";
     dbId: number;
     documents: { doc_id: number; doc_name: string }[];
@@ -45,44 +44,51 @@ export interface WordInfoProps {
     requestTime?: string;
     moreExplanation?: React.ReactNode;
     goFirstLetterWord: (f: string[]) => Promise<void>;
-    goLastLetterWord: (l: string[]) => Promise<void>
+    goLastLetterWord: (l: string[]) => Promise<void>;
+    reloadWordInfo: () => void;
 }
 
 const WordInfo = ({ wordInfo }: { wordInfo: WordInfoProps }) => {
     const user = useSelector((state: RootState) => state.user);
-    const { data, error, isLoading } = useSWR("themes", fetcher);
+    const {
+        data: themes,
+        error: themesError,
+        isLoading,
+    } = useWordThemes(true);
+    const {
+        requestDeletion,
+        cancelRequest,
+        requestThemeChanges,
+        deleteDirectly,
+        isPending,
+    } = useWordInfoMutations();
     const [errorModalView, setErrorModalView] = useState<ErrorMessage | null>(null);
-    const [topicInfo, setTopicInfo] = useState<{ topicsCode: Record<string, string>, topicsKo: Record<string, string>, topicsID: Record<string, number> }>({ topicsCode: {}, topicsKo: {}, topicsID: {} })
+    const [topicsKo, setTopicsKo] = useState<Record<string, string>>({});
     const [editModalOpen, setEditModalOpen] = useState(false);
-    const [completeModalOpen, setCompleteModalOpen] = useState<{ word: string, isOpen: boolean, addThemes: string[], delThemes: string[], s: "t" } | { word: string, work: "dr" | "ca", s: "r" } | null>(null);
+    const [completeModalOpen, setCompleteModalOpen] = useState<
+        | { word: string; addThemes: string[]; delThemes: string[]; s: "t" }
+        | {
+            word: string;
+            work: "direct-delete" | "request-delete" | "cancel-add" | "cancel-delete";
+            s: "r";
+        }
+        | null
+    >(null);
     const [conFirmModalOpen, setConFirmModalOpen] = useState(false);
     const router = useRouter();
     const fir1 = reverDuemLaw(wordInfo.word[0]);
     const las1 = [DuemRaw(wordInfo.word[wordInfo.word.length - 1])];
-    const [goFirstLetterWords, setGoFirstLetterWords] = useState<number | null>(null);
-    const [goLastLetterWords, setGoLastLetterWords] = useState<number | null>(null);
+    const goFirstLetterWords = wordInfo.goFirstLetterWords;
+    const goLastLetterWords = wordInfo.goLastLetterWords;
 
-    const makeError = (error: PostgrestError, inputValue?: string) => {
+    const makeError = (error: ApplicationError, inputValue: string) => {
         setErrorModalView({
             ErrMessage: error.message,
-            ErrName: error.name,
-            ErrStackRace: error.code,
-            inputValue: inputValue ?? "/word/search"
+            ErrName: `ApplicationError:${error.kind}`,
+            ErrStackRace: error.code ?? '',
+            inputValue,
         });
     }
-
-    useEffect(()=>{
-        const gf = async () => {
-            const s = await wordInfo.goFirstLetterWords();
-            setGoFirstLetterWords(s)
-        }
-        const gl = async () => {
-            const s = await wordInfo.goLastLetterWords();
-            setGoLastLetterWords(s);
-        }
-        gf();
-        gl();
-    },[])
 
     // 상태에 따른 스타일 설정
     const getStatusBadge = () => {
@@ -98,28 +104,31 @@ const WordInfo = ({ wordInfo }: { wordInfo: WordInfoProps }) => {
         }
     };
 
-    if (error) {
+    useEffect(() => {
+        if (!themesError) return;
         setErrorModalView({
-            ErrMessage: "An error occurred while fetching data.",
-            ErrName: "ErrorFetchingData",
+            ErrMessage: "주제 정보를 불러오는 중 오류가 발생했습니다.",
+            ErrName: "ThemeLoadError",
             ErrStackRace: "",
             inputValue: "themes fetch"
         });
-    }
+    }, [themesError]);
 
     useEffect(() => {
-        if (!data) return;
-        const newTopicsCode = data.reduce((acc, d) => ({ ...acc, [d.code]: d.name }), {});
-        const newTopicsKo = data.reduce((acc, d) => ({ ...acc, [d.name]: d.code }), {});
-        const newTopicID = data.reduce((acc, d) => ({ ...acc, [d.code]: d.id }), {});
-        setTopicInfo({ topicsCode: newTopicsCode, topicsKo: newTopicsKo, topicsID: newTopicID })
-    }, [data]);
+        if (!themes) return;
 
-    const injungTheme = Object.entries(topicInfo.topicsKo)
+        const newTopicsKo = themes.reduce<Record<string, string>>((acc, d: WordThemeSummary) => ({
+            ...acc,
+            [d.name]: d.code,
+        }), {});
+        setTopicsKo(newTopicsKo);
+    }, [themes]);
+
+    const injungTheme = Object.entries(topicsKo)
         .filter(([label]) => !noInjungTopic.includes(label))
         .sort((a, b) => a[0].localeCompare(b[0]))
         .map((lable) => lable[0]);
-    const noInjungTheme = Object.entries(topicInfo.topicsKo)
+    const noInjungTheme = Object.entries(topicsKo)
         .filter(([label]) => noInjungTopic.includes(label))
         .sort((a, b) => a[0].localeCompare(b[0]))
         .map((lable) => lable[0])
@@ -143,130 +152,112 @@ const WordInfo = ({ wordInfo }: { wordInfo: WordInfoProps }) => {
     };
 
     const handleThemeEditSave = async (newThemes: string[], delThemes: string[]) => {
-        const delThemesQuery = delThemes.map((theme) => ({ word_id: wordInfo.dbId, theme_id: topicInfo.topicsID[topicInfo.topicsKo[theme]], typez: "delete" as const, req_by: user.uuid ?? null }));
-        const newThemesQuery = newThemes.map((theme) => ({ word_id: wordInfo.dbId, theme_id: topicInfo.topicsID[topicInfo.topicsKo[theme]], typez: "add" as const, req_by: user.uuid ?? null }));
-
-        const { data: editRequestData, error: editRequestError } = await SCM.add().wordThemesReq([...delThemesQuery, ...newThemesQuery]);
-        if (editRequestError) {
-            makeError(editRequestError, "theme edit save");
+        const requestedThemes = [...delThemes, ...newThemes];
+        const unknownTheme = requestedThemes.find((theme) => !topicsKo[theme]);
+        if (unknownTheme) {
+            makeError({
+                kind: 'validation',
+                message: '선택한 주제 정보를 확인할 수 없습니다.',
+                field: 'themes',
+                code: 'UNKNOWN_THEME',
+            }, "theme edit save");
             return;
         }
 
-        const addThemesA = editRequestData.filter((item) => item.typez === "add").map((item) => item.themes.name);
-        const delThemesA = editRequestData.filter((item) => item.typez === "delete").map((item) => item.themes.name);
+        if (requestedThemes.length === 0) {
+            setCompleteModalOpen({
+                word: wordInfo.word,
+                addThemes: [],
+                delThemes: [],
+                s: "t",
+            });
+            return;
+        }
 
-        wordInfo.topic.ok = wordInfo.topic.ok.filter((t) => !addThemesA.includes(t) && !delThemesA.includes(t));
-        wordInfo.topic.waitAdd = [...new Set([...wordInfo.topic.waitAdd, ...addThemesA])].sort((a, b) => a.localeCompare(b, "ko"));
-        wordInfo.topic.waitDel = [...new Set([...wordInfo.topic.waitDel, ...delThemesA])].sort((a, b) => a.localeCompare(b, "ko"));
+        const result = await requestThemeChanges({
+            word: wordInfo.word,
+            changes: [
+                ...delThemes.map((theme) => ({
+                    themeCode: topicsKo[theme],
+                    type: 'delete' as const,
+                })),
+                ...newThemes.map((theme) => ({
+                    themeCode: topicsKo[theme],
+                    type: 'add' as const,
+                })),
+            ],
+        });
+        if (!result.ok) {
+            makeError(result.error, "theme edit save");
+            return;
+        }
 
-        setCompleteModalOpen({ word: wordInfo.word, isOpen: true, addThemes: addThemesA, delThemes: delThemesA, s: "t" });
-
+        setCompleteModalOpen({
+            word: wordInfo.word,
+            addThemes: result.value.changes
+                .filter((item) => item.type === "add")
+                .map((item) => item.themeName),
+            delThemes: result.value.changes
+                .filter((item) => item.type === "delete")
+                .map((item) => item.themeName),
+            s: "t",
+        });
     }
 
     const onCompleteModalClose = () => {
-        if (completeModalOpen?.s === "r" && completeModalOpen?.work === "ca" && wordInfo.status === "추가요청") {
+        const isCanceledAddRequest = completeModalOpen?.s === "r"
+            && completeModalOpen.work === "cancel-add";
+        setCompleteModalOpen(null);
+        if (isCanceledAddRequest) {
             router.back();
             return;
         }
-        setCompleteModalOpen(null);
-
+        wordInfo.reloadWordInfo();
     }
 
     const onCancelOrDeleteRequest = async () => {
-        setConFirmModalOpen(false)
-        if (wordInfo.status === "ok" && user.uuid && ['admin','r4'].includes(user.role)) {
-            const { error : deleteError } = await SCM.delete().wordById(wordInfo.dbId);
-            if (deleteError) {
-                makeError(deleteError, "delete word");
-                return;
-            }
+        setConFirmModalOpen(false);
+        if (!user.uuid) return;
 
-            const { error: addLogError } = await SCM.add().wordLog([{
-                word: wordInfo.word,
-                make_by: user.uuid,
-                processed_by: user.uuid,
-                r_type: "delete",
-                state: "approved"
-            }]);
-            if (addLogError) {
-                makeError(addLogError, "delete word log");
-                return;
-            }
-
-            const {data: docsData, error: docsError} = await SCM.get().allDocs();
-            if (docsError) {
-                makeError(docsError, "get all docs for word delete");
-                return;
-            }
-            const docsLogQuery: DocsLogData[] = [];
-
-            const connectedLetterDocs = docsData.filter((doc) => doc.typez === "letter" && doc.name === wordInfo.word[wordInfo.word.length - 1]);
-            for (const doc of connectedLetterDocs) {
-                docsLogQuery.push({
-                    docs_id: doc.id,
-                    add_by: user.uuid,
-                    type: "delete",
-                    word: wordInfo.word,
-                });
-            }
-
-            const connectedThemeDocs = docsData.filter((doc) => doc.typez === "theme" && wordInfo.topic.ok.includes(doc.name));
-            for (const doc of connectedThemeDocs) {
-                docsLogQuery.push({
-                    docs_id: doc.id,
-                    add_by: user.uuid,
-                    type: "delete",
-                    word: wordInfo.word,
-                });
-            }
-
-            if (docsLogQuery.length > 0) {
-                const { error: addDocsLogError } = await SCM.add().docsLog(docsLogQuery);
-                if (addDocsLogError) {
-                    makeError(addDocsLogError, "add docs log for word delete");
+        if (wordInfo.status === "ok") {
+            if (user.role === 'admin') {
+                const result = await deleteDirectly(wordInfo.dbId);
+                if (!result.ok) {
+                    makeError(result.error, "delete word");
                     return;
                 }
+                setCompleteModalOpen({
+                    word: wordInfo.word,
+                    work: "direct-delete",
+                    s: "r",
+                });
+                return;
             }
-            await SCM.update().docsLastUpdate(docsLogQuery.map(d => d.docs_id));
 
-            setCompleteModalOpen({ word: wordInfo.word, work: "dr", s: "r" });
-
-        }
-        else if (wordInfo.status === "ok" && user.uuid) {
-            const { data: requestDeleteData, error: requestDeleteError } = await SCM.add().waitWord({
+            const result = await requestDeletion({ word: wordInfo.word });
+            if (!result.ok) {
+                makeError(result.error, "delete request");
+                return;
+            }
+            setCompleteModalOpen({
                 word: wordInfo.word,
-                request_type: "delete" as const,
-                requested_by: user.uuid,
-                word_id: wordInfo.dbId
-            })
-
-            if (requestDeleteError) {
-                makeError(requestDeleteError, "delete request");
-                return;
-            };
-            if (!requestDeleteData) return;
-
-            wordInfo.status = "삭제요청"
-            wordInfo.requestTime = requestDeleteData.requested_at;
-            setCompleteModalOpen({ word: wordInfo.word, work: "dr", s: "r" });
+                work: "request-delete",
+                s: "r",
+            });
+            return;
         }
-        else if (wordInfo.status !== "ok" && user.uuid && wordInfo.requester_uuid === user.uuid) {
-            const { error: requestCancelError } = await SCM.delete().waitWordByWord(wordInfo.word);
-            if (requestCancelError) {
-                makeError(requestCancelError, "cancel request");
-                return;
-            };
-            if (wordInfo.status === "삭제요청") {
-                wordInfo.status = "ok"
-                const { data: originData, error: originDataError } = await SCM.get().wordInfoByWord(wordInfo.word);
-                if (originDataError) {
-                    makeError(originDataError, "cancel request");
-                    return;
-                }
 
-                wordInfo.requestTime = originData?.added_at;
+        if (wordInfo.requester_uuid === user.uuid) {
+            const result = await cancelRequest({ word: wordInfo.word });
+            if (!result.ok) {
+                makeError(result.error, "cancel request");
+                return;
             }
-            setCompleteModalOpen({ word: wordInfo.word, work: "ca", s: "r" })
+            setCompleteModalOpen({
+                word: wordInfo.word,
+                work: wordInfo.status === "추가요청" ? "cancel-add" : "cancel-delete",
+                s: "r",
+            });
         }
     }
 
@@ -304,13 +295,13 @@ const WordInfo = ({ wordInfo }: { wordInfo: WordInfoProps }) => {
                             </div>
                             <div className="flex gap-2">
                                 {(wordInfo.status === "ok" && user.uuid) &&
-                                    <Button variant="secondary" className="flex items-center gap-1" onClick={() => setEditModalOpen(true)}>
+                                    <Button variant="secondary" className="flex items-center gap-1" disabled={isPending} onClick={() => setEditModalOpen(true)}>
                                         <Edit size={16} /> 수정
                                     </Button>
                                 }
                                 {((wordInfo.status === "ok" && user.uuid) || (wordInfo.status !== "ok" && wordInfo.requester_uuid === user.uuid)) &&
-                                    (<Button variant="destructive" className="flex items-center gap-1" onClick={() => setConFirmModalOpen(true)}>
-                                        <Trash2 size={16} /> {wordInfo.status === "ok" ? "삭제요청" : "요청취소"}
+                                    (<Button variant="destructive" className="flex items-center gap-1" disabled={isPending} onClick={() => setConFirmModalOpen(true)}>
+                                        <Trash2 size={16} /> {wordInfo.status === "ok" ? user.role === 'admin' ? "삭제" : "삭제요청" : "요청취소"}
                                     </Button>)
                                 }
                             </div>
@@ -321,17 +312,14 @@ const WordInfo = ({ wordInfo }: { wordInfo: WordInfoProps }) => {
                 <Card className="mb-6 shadow-md border-none overflow-hidden dark:bg-gray-800">
                     <CardContent className="py-4 flex items-center justify-center gap-6">
                         {/* 첫 글자로 시작하는 단어 버튼 */}
-                        {goFirstLetterWords===null ? (
-                            <div className="flex items-center gap-1 text-red-400 border border-red-200 rounded-md px-3 py-2 dark:text-red-300 dark:border-red-700">
-                                <Loader2 size={16} className="animate-spin" />
-                                <span className="font-bold text-sm">로드중</span>
-                            </div>
-                        ) : (goFirstLetterWords > 0 ? (
+                        {goFirstLetterWords > 0 ? (
                             <Button
                                 variant="outline"
                                 className="flex items-center gap-1 text-green-600 border-green-300 hover:bg-green-50 dark:text-green-400 dark:border-green-700 dark:hover:bg-green-900"
+                                disabled={wordInfo.isConnectionLoading}
                                 onClick={()=>{wordInfo.goFirstLetterWord(fir1)}}
                             >
+                                {wordInfo.isConnectionLoading && <Loader2 size={16} className="animate-spin" />}
                                 <span className="font-bold">&lt;{wordInfo.word[0]}</span>
                                 <span className="text-sm ml-1">({goFirstLetterWords})</span>
                             </Button>
@@ -340,7 +328,7 @@ const WordInfo = ({ wordInfo }: { wordInfo: WordInfoProps }) => {
                                 <AlertCircle size={16} />
                                 <span className="font-bold">&lt;{wordInfo.word[0]}</span>
                             </div>
-                        ))}
+                        )}
 
                         {/* 연결 표시 */}
                         <div className="flex items-center">
@@ -348,17 +336,14 @@ const WordInfo = ({ wordInfo }: { wordInfo: WordInfoProps }) => {
                         </div>
 
                         {/* 마지막 글자로 끝나는 단어 버튼 */}
-                        {goLastLetterWords === null ? (
-                            <div className="flex items-center gap-1 text-red-400 border border-red-200 rounded-md px-3 py-2 dark:text-red-300 dark:border-red-700">
-                                <Loader2 size={16} className="animate-spin" />
-                                <span className="font-bold text-sm">로드중</span>
-                            </div>
-                        ) : goLastLetterWords > 0 ? (
+                        {goLastLetterWords > 0 ? (
                             <Button
                                 variant="outline"
                                 className="flex items-center gap-1 text-blue-600 border-blue-300 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-700 dark:hover:bg-blue-900"
+                                disabled={wordInfo.isConnectionLoading}
                                 onClick={()=>{wordInfo.goLastLetterWord(las1)}}
                             >
+                                {wordInfo.isConnectionLoading && <Loader2 size={16} className="animate-spin" />}
                                 <span className="font-bold">{wordInfo.word[wordInfo.word.length - 1]}&gt;</span>
                                 <span className="text-sm ml-1">({goLastLetterWords})</span>
                             </Button>
@@ -561,23 +546,31 @@ const WordInfo = ({ wordInfo }: { wordInfo: WordInfoProps }) => {
             </div>
             {errorModalView &&
                 <ErrorModal error={errorModalView} onClose={() => { setErrorModalView(null) }} />}
-            {editModalOpen && <WordThemeEditModal wordInfo={wordInfo} onClose={() => setEditModalOpen(false)} isOpen={editModalOpen} onSave={handleThemeEditSave} injungTheme={injungTheme} noInjungTheme={noInjungTheme} />}
+            {editModalOpen && <WordThemeEditModal wordInfo={wordInfo} onClose={() => setEditModalOpen(false)} isOpen={editModalOpen} onSave={handleThemeEditSave} injungTheme={injungTheme} noInjungTheme={noInjungTheme} isSaving={isPending} />}
             {completeModalOpen &&<CompleteModal
                 open={completeModalOpen !== null}
                 onClose={onCompleteModalClose}
                 title={completeModalOpen.s === "t"
                     ? `단어 "${completeModalOpen.word}"에 대한 주제 수정 완료`
-                    : `${josa(wordInfo.word, "을/를")} ${completeModalOpen.work === "dr"
-                        ? (['admin','r4'].includes(user.role) && wordInfo.status === "ok" ? "삭제를" : "삭제 요청을")
-                        : (wordInfo.status === "추가요청" ? "추가 요청 취소를" : "삭제 요청 취소를")
-                    } 하였습니다 ${completeModalOpen.work === "dr" && ['admin','r4'].includes(user.role) && wordInfo.status === "ok" ? "(새로고침을 한번 해주세요.)" : ""}`}
+                    : `${josa(wordInfo.word, "을/를")} ${completeModalOpen.work === "direct-delete"
+                        ? "삭제를"
+                        : completeModalOpen.work === "request-delete"
+                            ? "삭제 요청을"
+                            : completeModalOpen.work === "cancel-add"
+                                ? "추가 요청 취소를"
+                                : "삭제 요청 취소를"
+                    } 하였습니다`}
                 description={completeModalOpen.s === "t" ? `주제 수정이 요청이 완료되었습니다. ${completeModalOpen.addThemes.length > 0 ? `추가 요청된 주제: ${completeModalOpen.addThemes.join(", ")}` : ``} ${completeModalOpen.delThemes.length > 0 ? `삭제 요청된 주제: ${completeModalOpen.delThemes.join(", ")}` : ``}` : ``}
                 />
             }
             {conFirmModalOpen &&
                 <ConfirmModal
-                    title={`"${wordInfo.word}"${josa(wordInfo.word, "을/를")[wordInfo.word.length]} ${wordInfo.status === "ok" ? (['admin','r4'].includes(user.role)) ? "삭제" : "삭제 요청" : `${wordInfo.status === "삭제요청" ? "삭제" : "추가"} 요청 취소`}를 하시겠습니까?`}
-                    description={"요청후 취소 할 수 " + (wordInfo.status === "ok" ? "있습니다." : "없습니다.")}
+                    title={`"${wordInfo.word}"${josa(wordInfo.word, "을/를")[wordInfo.word.length]} ${wordInfo.status === "ok" ? user.role === 'admin' ? "삭제" : "삭제 요청" : `${wordInfo.status === "삭제요청" ? "삭제" : "추가"} 요청 취소`}를 하시겠습니까?`}
+                    description={wordInfo.status === "ok"
+                        ? user.role === 'admin'
+                            ? "삭제 후 복구할 수 없습니다."
+                            : "요청후 취소 할 수 있습니다."
+                        : "요청후 취소 할 수 없습니다."}
                     open={conFirmModalOpen}
                     onClose={() => setConFirmModalOpen(false)}
                     onConfirm={onCancelOrDeleteRequest}

@@ -1,12 +1,6 @@
-import { Database } from '@/src/app/types/database.types';
+import type { WordSearchMode, WordThemeSummary } from '@/src/modules/word-catalog';
 
-export type GameMode = 'kor-start' | 'kor-end' | 'kung' | 'hunmin' | 'jaqi';
-export type Theme = Database['public']['Tables']['themes']['Row'];
-
-export interface SearchResult {
-    word: string;
-    nextWordCount: number;
-}
+export type GameMode = WordSearchMode;
 
 export interface SearchState {
     mode: GameMode;
@@ -22,5 +16,5 @@ export interface SearchState {
     ingjung: boolean;
     simpleQuery: string;
     displayLimit: string;
-    selectedTheme: { id: number; name: string } | null;
+    selectedTheme: WordThemeSummary | null;
 }

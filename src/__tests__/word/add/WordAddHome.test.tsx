@@ -1,0 +1,209 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { ReactNode } from 'react';
+import { useSelector } from 'react-redux';
+
+import WordAddHome from '../../../app/word/add/WordAddHome';
+import { useWordThemes } from '../../../modules/word-catalog';
+import { useDirectWordAddition } from '../../../modules/word-moderation';
+import { useUserWordRequests } from '../../../modules/word-requests';
+import { err, ok } from '../../../shared/application/result';
+
+const legacyWaitWord = jest.fn();
+const legacyWaitWordThemes = jest.fn();
+const requestAddition = jest.fn();
+const addDirectly = jest.fn();
+
+jest.mock('react-redux', () => ({ useSelector: jest.fn() }));
+jest.mock('../../../modules/word-catalog', () => ({ useWordThemes: jest.fn() }));
+jest.mock('../../../modules/word-moderation', () => ({ useDirectWordAddition: jest.fn() }));
+jest.mock('../../../modules/word-requests', () => ({ useUserWordRequests: jest.fn() }));
+jest.mock('../../../app/lib/supabaseClient', () => ({
+    SCM: {
+        add: () => ({
+            waitWord: legacyWaitWord,
+            waitWordThemes: legacyWaitWordThemes,
+        }),
+    },
+}));
+jest.mock('../../../app/word/components/WordAddFrom', () => ({
+    __esModule: true,
+    default: ({ saveFn }: { saveFn: (word: string, themes: string[]) => Promise<void> }) => (
+        <button onClick={() => saveFn('가방', ['animal', 'place'])}>테스트 저장</button>
+    ),
+}));
+jest.mock('../../../app/components/CompleteModal', () => ({
+    __esModule: true,
+    default: ({ title, description }: { title: string; description: string }) => (
+        <div role="dialog"><span>{title}</span><span>{description}</span></div>
+    ),
+}));
+jest.mock('../../../app/components/FailModal', () => ({
+    __esModule: true,
+    default: ({ description }: { description: string }) => <div role="status">{description}</div>,
+}));
+jest.mock('../../../app/components/ErrModal', () => ({
+    __esModule: true,
+    default: ({ error }: { error: ErrorMessage }) => (
+        <div role="alert">{error.ErrName}|{error.ErrMessage}|{error.ErrStackRace}</div>
+    ),
+}));
+jest.mock('../../../app/components/LoginRequiredModal', () => ({
+    __esModule: true,
+    default: ({ children }: { children?: ReactNode }) => <>{children}</>,
+}));
+
+beforeEach(() => {
+    jest.clearAllMocks();
+    jest.mocked(useSelector).mockImplementation((selector) => selector({
+        user: { uuid: 'user-1', role: 'r1' },
+    } as never));
+    jest.mocked(useWordThemes).mockReturnValue({
+        data: [
+            { id: 1, code: 'animal', name: '동물' },
+            { id: 2, code: 'place', name: '지명' },
+        ],
+    } as ReturnType<typeof useWordThemes>);
+    jest.mocked(useDirectWordAddition).mockReturnValue({
+        addDirectly,
+        isPending: false,
+        error: null,
+        clearError: jest.fn(),
+    });
+    jest.mocked(useUserWordRequests).mockReturnValue({
+        requestAddition,
+        requestAdditions: jest.fn(),
+        requestDeletion: jest.fn(),
+        cancel: jest.fn(),
+        isPending: false,
+        error: null,
+        clearError: jest.fn(),
+    });
+    requestAddition.mockResolvedValue(ok({
+        requestId: 10,
+        word: '가방',
+        requestType: 'add',
+        themes: [
+            { themeCode: 'animal', themeName: '동물' },
+            { themeCode: 'place', themeName: '지명' },
+        ],
+    }));
+    addDirectly.mockResolvedValue(ok({
+        wordId: 31,
+        word: '가방',
+        noinCanUse: false,
+        themeIds: [1, 2],
+        affectedDocsIds: [10, 20],
+    }));
+});
+
+describe('WordAddHome theme loading', () => {
+    it('renders while themes are loading without repeated state updates', () => {
+        jest.mocked(useWordThemes).mockReturnValue({
+            data: undefined,
+        } as ReturnType<typeof useWordThemes>);
+
+        render(<WordAddHome />);
+
+        expect(screen.getByRole('button', { name: '테스트 저장' })).toBeInTheDocument();
+    });
+});
+
+describe('WordAddHome direct administrator addition', () => {
+    it.each(['admin', 'r4'])('routes %s additions through the atomic feature hook', async (role) => {
+        jest.mocked(useSelector).mockImplementation((selector) => selector({
+            user: { uuid: 'admin-user', role },
+        } as never));
+        render(<WordAddHome />);
+
+        fireEvent.click(screen.getByRole('button', { name: '테스트 저장' }));
+
+        await waitFor(() => expect(addDirectly).toHaveBeenCalledWith({
+            word: '가방',
+            themeCodes: ['animal', 'place'],
+        }));
+        expect(requestAddition).not.toHaveBeenCalled();
+        expect(await screen.findByRole('dialog')).toHaveTextContent('동물, 지명');
+    });
+
+    it('shows duplicate additions in the existing failure modal', async () => {
+        jest.mocked(useSelector).mockImplementation((selector) => selector({
+            user: { uuid: 'admin-user', role: 'admin' },
+        } as never));
+        addDirectly.mockResolvedValue(err({
+            kind: 'conflict',
+            message: '이미 존재하는 단어입니다.',
+        }));
+        render(<WordAddHome />);
+
+        fireEvent.click(screen.getByRole('button', { name: '테스트 저장' }));
+
+        expect(await screen.findByRole('status')).toHaveTextContent('이미 존재하는 단어입니다.');
+    });
+
+    it('shows stable direct-addition application errors without raw database text', async () => {
+        jest.mocked(useSelector).mockImplementation((selector) => selector({
+            user: { uuid: 'admin-user', role: 'r4' },
+        } as never));
+        addDirectly.mockResolvedValue(err({
+            kind: 'infrastructure',
+            message: '단어 추가 처리 중 오류가 발생했습니다.',
+            code: 'XX999',
+        }));
+        render(<WordAddHome />);
+
+        fireEvent.click(screen.getByRole('button', { name: '테스트 저장' }));
+
+        const alert = await screen.findByRole('alert');
+        expect(alert).toHaveTextContent(
+            'ApplicationError:infrastructure|단어 추가 처리 중 오류가 발생했습니다.|',
+        );
+        expect(alert).not.toHaveTextContent('XX999');
+        expect(alert).not.toHaveTextContent('P0001');
+    });
+});
+
+describe('WordAddHome user addition request', () => {
+    it('submits through the feature hook and renders returned theme names', async () => {
+        render(<WordAddHome />);
+
+        fireEvent.click(screen.getByRole('button', { name: '테스트 저장' }));
+
+        await waitFor(() => expect(requestAddition).toHaveBeenCalledWith({
+            word: '가방',
+            themeCodes: ['animal', 'place'],
+        }));
+        expect(await screen.findByRole('dialog')).toHaveTextContent('동물, 지명');
+        expect(legacyWaitWord).not.toHaveBeenCalled();
+        expect(legacyWaitWordThemes).not.toHaveBeenCalled();
+    });
+
+    it('shows a conflict as a safe failure message', async () => {
+        requestAddition.mockResolvedValue(err({
+            kind: 'conflict',
+            message: '이미 요청이 들어온 단어입니다.',
+        }));
+        render(<WordAddHome />);
+
+        fireEvent.click(screen.getByRole('button', { name: '테스트 저장' }));
+
+        expect(await screen.findByRole('status')).toHaveTextContent('이미 요청이 들어온 단어입니다.');
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('shows stable application error fields', async () => {
+        requestAddition.mockResolvedValue(err({
+            kind: 'infrastructure',
+            message: '데이터 처리 중 오류가 발생했습니다.',
+            code: 'P0001',
+        }));
+        render(<WordAddHome />);
+
+        fireEvent.click(screen.getByRole('button', { name: '테스트 저장' }));
+
+        const alert = await screen.findByRole('alert');
+        expect(alert).toHaveTextContent(
+            'ApplicationError:infrastructure|데이터 처리 중 오류가 발생했습니다.|',
+        );
+        expect(alert).not.toHaveTextContent('P0001');
+    });
+});

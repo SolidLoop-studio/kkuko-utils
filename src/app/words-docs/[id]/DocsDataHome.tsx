@@ -1,9 +1,9 @@
 "use client";
 import React, { useRef, useState, useEffect, useMemo } from "react";
+import { useQueryClient } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import WordsTableBody from "./WordsTableBody";
 import Link from "next/link";
-import type { WordData } from "@/src/app/types/type";
 import { DefaultDict } from "@/src/app/lib/collections";
 import "react-loading-skeleton/dist/skeleton.css";
 import {
@@ -18,24 +18,35 @@ import {
     Loader2,
     Calendar,
 } from "lucide-react";
-import { SCM } from "@/src/app/lib/supabaseClient";
 import { useSelector } from "react-redux";
 import { RootState } from "@/src/app/store/store";
 import LoginRequiredModal from "@/src/app/components/LoginRequiredModal";
-import type { PostgrestError } from "@supabase/supabase-js";
 import ErrorModal from "@/src/app/components/ErrModal";
+import CompleteModal from "@/src/app/components/CompleteModal";
 import ToC from "./TableOfContents";
+import { createBrowserWordModerationServices } from "@/src/modules/word-moderation/infrastructure/browser/browser-word-moderation-services";
+import type { DocsWordMutationTarget } from "@/src/modules/word-moderation";
+import { useDocsFavorite, useDocsMarkers } from "@/src/modules/docs";
+import { identityQueryKeys } from "@/src/modules/identity/presentation/identity-query-keys";
+import type { ApplicationError } from "@/src/shared/application/application-error";
+import {
+    DOCS_WORD_TARGET_REFRESH_ERROR_MESSAGE,
+    type DocsWordAdminAction,
+    type DocsWordData,
+} from "./docs-word-data";
 
 interface DocsPageProp {
     id: number;
-    data: WordData[];
+    isMissionParent?: boolean;
+    data: DocsWordData[];
     metaData: {
         title: string;
         lastUpdate: string;
         typez: "letter" | "theme" | "ect"
     };
     starCount: string[];
-    isSpecial?: boolean;
+    missionCharacter?: string | null;
+    onContentRefresh?: () => Promise<DocsWordData[] | null>;
 }
 
 interface VirtualTocItem {
@@ -47,19 +58,65 @@ type TabType = "all" | "mission" | "long";
 
 const MISSION_CHARS = "가나다라마바사아자차카타파하";
 
-const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp) => {
+const isSameMutationTarget = (
+    left: DocsWordMutationTarget | null,
+    right: DocsWordMutationTarget | null,
+) => {
+    if (left === null || right === null) return left === right;
+    if (left.kind !== right.kind) return false;
+
+    if (left.kind === "word-request" && right.kind === "word-request") {
+        return left.requestId === right.requestId
+            && left.requestType === right.requestType
+            && left.selectedThemeIds.length === right.selectedThemeIds.length
+            && left.selectedThemeIds.every((themeId, index) => themeId === right.selectedThemeIds[index]);
+    }
+    if (left.kind === "theme-change" && right.kind === "theme-change") {
+        return left.wordId === right.wordId
+            && left.themeId === right.themeId
+            && left.type === right.type;
+    }
+    if (left.kind === "registered-word" && right.kind === "registered-word") {
+        return left.wordId === right.wordId;
+    }
+
+    return false;
+};
+
+const isSameDocsWordRow = (left: DocsWordData, right: DocsWordData) => (
+    left.word === right.word
+    && left.status === right.status
+    && left.maker === right.maker
+    && isSameMutationTarget(left.mutationTarget, right.mutationTarget)
+);
+
+const DocsDataHome = ({
+    id,
+    isMissionParent = false,
+    data,
+    metaData,
+    starCount,
+    missionCharacter = null,
+    onContentRefresh,
+}: DocsPageProp) => {
     const parentRef = useRef<HTMLDivElement>(null);
+    const isFavoriteSubmissionPendingRef = useRef(false);
     const [tocList, setTocList] = useState<string[]>([]);
-    const [wordsData] = useState<WordData[]>(data);
+    const [wordsData, setWordsData] = useState<DocsWordData[]>(data);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [isTabSwitching, setIsTabSwitching] = useState<boolean>(false);
     const [activeTab, setActiveTab] = useState<TabType>("all");
-        const user = useSelector((state: RootState) => state.user);
-        const specialIds = [208, 223, 238];
+    const user = useSelector((state: RootState) => state.user);
     const [isUserStarreda, setIsUserStarreda] = useState<boolean>(false);
     const [loginNeedModalOpen, setLoginNeedModalOpen] = useState<boolean>(false);
     const [errorModalView, setErrorModalView] = useState<ErrorMessage | null>(null);
-    const [charLastUpdates, setCharLastUpdates] = useState<Record<number, string | null>>({});
+    const [isAdminCompleteModalOpen, setIsAdminCompleteModalOpen] = useState(false);
+    const {
+        setFavorite,
+        isPending: isFavoritePending,
+    } = useDocsFavorite();
+    const queryClient = useQueryClient();
+    const { data: docsMarkers } = useDocsMarkers(id, isMissionParent);
 
     // 유저 즐겨찾기 상태 업데이트
     useEffect(() => {
@@ -68,13 +125,22 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
         }
     }, [user, starCount])
 
+    useEffect(() => {
+        setWordsData((currentRows) => (
+            currentRows.length === data.length
+            && currentRows.every((row, index) => isSameDocsWordRow(row, data[index]))
+                ? currentRows
+                : data
+        ));
+    }, [data]);
+
     // 미션 단어 미리 구하기
     const mission = useMemo(() => {
-        const m2gr = new DefaultDict<string, WordData[]>(() => []);
-        const m1gr = new DefaultDict<string, WordData[]>(() => []);
+        const m2gr = new DefaultDict<string, DocsWordData[]>(() => []);
+        const m1gr = new DefaultDict<string, DocsWordData[]>(() => []);
 
         MISSION_CHARS.split('').forEach(char => {
-            data.forEach(item => {
+            wordsData.forEach(item => {
                 const count = (item.word.match(new RegExp(char, 'g')) || []).length;
                 if (count > 1) {
                     m2gr.get(char).push(item);
@@ -85,10 +151,10 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
             })
         });
         return { m2gr, m1gr }
-    }, [data])
+    }, [wordsData])
 
     // 탭별 데이터 필터링
-    const getFilteredData = (tabType: TabType): WordData[] => {
+    const getFilteredData = (tabType: TabType): DocsWordData[] => {
         switch (tabType) {
             case "all":
                 return wordsData;
@@ -96,9 +162,9 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
                 return wordsData.filter(item => item.word.length >= 9);
             case "mission":
                 const { m1gr, m2gr } = mission;
-                const m: WordData[] = [];
+                const m: DocsWordData[] = [];
                 MISSION_CHARS.split('').forEach(char => {
-                    const missionWords: WordData[] = m2gr.get(char).length > 8 ? m2gr.get(char) : [...m2gr.get(char), ...m1gr.get(char)];
+                    const missionWords: DocsWordData[] = m2gr.get(char).length > 8 ? m2gr.get(char) : [...m2gr.get(char), ...m1gr.get(char)];
                     m.push(...missionWords);
                 });
                 return [...new Set(m)];
@@ -109,13 +175,13 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
 
     const filteredData = useMemo(() => getFilteredData(activeTab), [activeTab, wordsData]);
 
-    const groupWordsBySyllable = (data: WordData[]) => {
-        const grouped = new DefaultDict<string, WordData[]>(() => []);
+    const groupWordsBySyllable = (data: DocsWordData[]) => {
+        const grouped = new DefaultDict<string, DocsWordData[]>(() => []);
 
         if (activeTab === "mission") {
             MISSION_CHARS.split('').forEach(char => {
                 const { m1gr, m2gr } = mission;
-                const missionWords: WordData[] = m2gr.get(char).length > 8 ? m2gr.get(char) : [...m2gr.get(char), ...m1gr.get(char)];
+                const missionWords: DocsWordData[] = m2gr.get(char).length > 8 ? m2gr.get(char) : [...m2gr.get(char), ...m1gr.get(char)];
                 if (missionWords.length > 0) {
                     grouped.get(`${char}`).push(...missionWords);
                 }
@@ -143,33 +209,7 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
     }, [filteredData, activeTab]);
 
 
-    useEffect(() => {
-        if (![208,223,238].includes(id)) return;
-
-        let mounted = true;
-        const fetchUpdates = async () => {
-            const chars = MISSION_CHARS.split('');
-            const results = await Promise.all(chars.map(async (_c, index) => {
-                const docId = id + index + 1;
-                try {
-                    const res = await SCM.get().docsLastUpdate(docId);
-                    return { docId, last: res.data?.last_update ?? null };
-                } catch {
-                    return { docId, last: null };
-                }
-            }));
-
-            if (!mounted) return;
-            const map: Record<number, string | null> = {};
-            results.forEach(r => { map[r.docId] = r.last; });
-            setCharLastUpdates(map);
-        };
-
-        fetchUpdates();
-        return () => { mounted = false; };
-    }, [id]);
-
-    const updateToc = (data: WordData[]): string[] => {
+    const updateToc = (data: DocsWordData[]): string[] => {
         if (activeTab === "mission") {
             const { m1gr, m2gr } = mission;
             return MISSION_CHARS.split('').filter(char => {
@@ -261,24 +301,121 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
         if (!user.uuid) {
             return setLoginNeedModalOpen(true);
         }
-        if (isUserStarreda) {
-            const { error } = await SCM.delete().startDocs({ docsId: id, userId: user.uuid });
-            if (error) return makeError(error)
-        } else {
-            const { error } = await SCM.add().starDocs({ docsId: id, userId: user.uuid });
-            if (error) return makeError(error);
+        if (isFavoritePending || isFavoriteSubmissionPendingRef.current) {
+            return;
         }
 
-        setIsUserStarreda(!isUserStarreda)
-    }
+        const nextIsStarred = !isUserStarreda;
+        isFavoriteSubmissionPendingRef.current = true;
+        try {
+            const result = await setFavorite({ docsId: id, isStarred: nextIsStarred });
+            if (!result.ok) {
+                if (result.error.kind === 'unauthorized') {
+                    setLoginNeedModalOpen(true);
+                } else {
+                    showFavoriteError(result.error);
+                }
+                return;
+            }
+            void queryClient.invalidateQueries({
+                queryKey: identityQueryKeys.profileFavoriteDocs(user.uuid),
+            });
+            setIsUserStarreda(nextIsStarred);
+        } finally {
+            isFavoriteSubmissionPendingRef.current = false;
+        }
+    };
 
-    const makeError = (error: PostgrestError) => {
+    const showFavoriteError = (error: ApplicationError) => {
         setErrorModalView({
-            ErrName: error.name,
+            ErrName: 'DocsFavoriteError',
             ErrMessage: error.message,
-            ErrStackRace: error.stack,
+            ErrStackRace: null,
             inputValue: null
         });
+    };
+
+    const showTargetRefreshError = () => {
+        setErrorModalView({
+            ErrName: "DocsWordTargetRefreshError",
+            ErrMessage: DOCS_WORD_TARGET_REFRESH_ERROR_MESSAGE,
+            ErrStackRace: null,
+            inputValue: null,
+        });
+    };
+
+    const transitionRowToOk = async (row: DocsWordData): Promise<boolean> => {
+        let registeredTarget: Extract<DocsWordMutationTarget, { kind: "registered-word" }> | null = null;
+
+        try {
+            const targetResult = await createBrowserWordModerationServices()
+                .docsWordMutationTargetService
+                .get({
+                    docsId: id,
+                    rows: [{ word: row.word, status: "ok" }],
+                });
+            const target = targetResult.ok && targetResult.value.targets.length === 1
+                ? targetResult.value.targets[0]
+                : null;
+            if (target?.kind === "registered-word") {
+                registeredTarget = target;
+            }
+        } catch {
+            registeredTarget = null;
+        }
+
+        setWordsData((currentRows) => currentRows.map((currentRow) => (
+            isSameDocsWordRow(currentRow, row)
+                ? {
+                    word: currentRow.word,
+                    status: "ok" as const,
+                    maker: undefined,
+                    mutationTarget: registeredTarget,
+                }
+                : currentRow
+        )));
+
+        if (registeredTarget === null) {
+            showTargetRefreshError();
+            return false;
+        }
+
+        return true;
+    };
+
+    const handleAdminActionComplete = async (
+        action: DocsWordAdminAction,
+        row: DocsWordData,
+    ): Promise<boolean> => {
+        if (onContentRefresh !== undefined) {
+            const refreshedRows = await onContentRefresh();
+            if (refreshedRows === null) {
+                showTargetRefreshError();
+                return false;
+            }
+            setWordsData(refreshedRows);
+            setIsAdminCompleteModalOpen(true);
+            return true;
+        }
+
+        const isTransitionToOk = (action === "approve" && row.status === "add")
+            || (action === "reject" && row.status === "delete");
+        if (isTransitionToOk) {
+            const didTransition = await transitionRowToOk(row);
+            if (!didTransition) return false;
+        } else {
+            const shouldRemove = (action === "reject" && row.status === "add")
+                || (action === "approve" && row.status === "delete")
+                || (action === "delete-directly" && row.status === "ok");
+            if (!shouldRemove) return false;
+
+            setWordsData((currentRows) => currentRows.filter(
+                (currentRow) => !isSameDocsWordRow(currentRow, row),
+            ));
+        }
+
+        setIsAdminCompleteModalOpen(true);
+        return true;
     };
 
     const handleTocClick = (index: number) => {
@@ -349,8 +486,9 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
                                     className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 ${isUserStarreda
                                             ? "bg-yellow-400 text-yellow-900 hover:bg-yellow-300"
                                             : "bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm"
-                                        }`}
+                                    }`}
                                     onClick={handleDocsStar}
+                                    disabled={isFavoritePending}
                                 >
                                     <Star
                                         className="w-5 h-5"
@@ -359,7 +497,7 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
                                     <span>{currentStarCount}</span>
                                 </button>
 
-                                {!specialIds.includes(id) && (
+                                {!isMissionParent && (
                                     <>
                                         <Link href={`/words-docs/${id}/info`}>
                                             <button className="px-6 py-3 bg-white/20 text-white rounded-xl font-medium hover:bg-white/30 transition-all duration-200 flex items-center gap-2 backdrop-blur-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
@@ -389,7 +527,7 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
                     </div>
 
                     {/* 탭 네비게이션 */}
-                    {metaData.typez !== "ect" && !specialIds.includes(id) && (
+                    {metaData.typez !== "ect" && !isMissionParent && (
                         <div className="px-8 pt-6 pb-2 overflow-x-auto">
                             <nav className="flex space-x-1" aria-label="Tabs">
                                 {(["all", "mission", "long"] as TabType[]).map((tab) => (
@@ -422,7 +560,7 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
                 </div>
 
                 {/* 목차 섹션 */}
-                {!isTabSwitching && !specialIds.includes(id) && (
+                {!isTabSwitching && !isMissionParent && (
                     <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg border-0 p-6 mb-8">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
@@ -439,28 +577,36 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
                 )}
 
                 {/* 컨텐츠 섹션 */}
-                {specialIds.includes(id) ? (
+                {isMissionParent ? (
                     <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg border-0 p-8">
                         <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">미션글자</h2>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                            {["가", "나", "다", "라", "마", "바", "사", "아", "자", "차", "카", "타", "파", "하"].map((char, index) => (
-                                <Link
-                                    key={char}
-                                    href={`/words-docs/${id + index + 1}`}
-                                    className="flex items-center justify-center p-6 bg-gray-50 dark:bg-gray-800 rounded-xl hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors duration-200 group"
-                                >
-                                    <span className="text-2xl font-bold text-gray-700 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">
-                                        {char}
-                                    </span>
-                                    <div className="mt-2 text-center">
-                                        {charLastUpdates[id + index + 1] ? (
-                                            <span className="text-xs text-gray-500 dark:text-gray-400">{new Date(charLastUpdates[id + index + 1] as string).toLocaleString(undefined, { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone })}</span>
-                                        ) : (
-                                            <span className="text-xs text-gray-400">업데이트 정보 없음</span>
-                                        )}
-                                    </div>
-                                </Link>
-                            ))}
+                            {MISSION_CHARS.split('').map((char, index) => {
+                                const marker = docsMarkers?.[index] ?? null;
+                                const cardContent = (
+                                    <>
+                                        <span className="text-2xl font-bold text-gray-700 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                                            {char}
+                                        </span>
+                                        <div className="mt-2 text-center">
+                                            {marker?.lastUpdatedAt ? (
+                                                <span className="text-xs text-gray-500 dark:text-gray-400">{new Date(marker.lastUpdatedAt).toLocaleString(undefined, { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone })}</span>
+                                            ) : (
+                                                <span className="text-xs text-gray-400">업데이트 정보 없음</span>
+                                            )}
+                                        </div>
+                                    </>
+                                );
+                                const cardClassName = "flex items-center justify-center p-6 bg-gray-50 dark:bg-gray-800 rounded-xl hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors duration-200 group";
+
+                                return marker === null ? (
+                                    <div key={char} className={cardClassName}>{cardContent}</div>
+                                ) : (
+                                    <Link key={char} href={`/words-docs/${marker.docsId}`} className={cardClassName}>
+                                        {cardContent}
+                                    </Link>
+                                );
+                            })}
                         </div>
                     </div>
                 ) : (
@@ -535,12 +681,13 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
                                             >
                                                 <div className="mb-8">
                                                     <WordsTableBody
-                                                        key={`${activeTab}-${item.title}-${item.data.length}`}
+                                                        key={`${activeTab}-${item.title}`}
                                                         title={item.title}
                                                         initialData={item.data || []}
                                                         isMission={activeTab === "mission"}
                                                         isLong={activeTab === "long" || metaData.title.includes("긴단어")}
-                                                        isSp={isSpecial ? { m: metaData.title[metaData.title.length - 1] } : undefined}
+                                                        isSp={missionCharacter === null ? undefined : { m: missionCharacter }}
+                                                        onAdminActionComplete={handleAdminActionComplete}
                                                     />
                                                 </div>
                                             </div>
@@ -560,6 +707,12 @@ const DocsDataHome = ({ id, data, metaData, starCount, isSpecial }: DocsPageProp
                 <ErrorModal
                     onClose={() => setErrorModalView(null)}
                     error={errorModalView}
+                />
+            )}
+            {isAdminCompleteModalOpen && (
+                <CompleteModal
+                    open={isAdminCompleteModalOpen}
+                    onClose={() => setIsAdminCompleteModalOpen(false)}
                 />
             )}
         </div>

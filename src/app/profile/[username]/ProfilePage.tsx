@@ -35,18 +35,23 @@ import { useRouter } from "next/navigation";
 import ErrorModal from "@/src/app/components/ErrModal";
 import { AppDispatch, RootState } from "@/src/app/store/store";
 import { useDispatch, useSelector } from "react-redux";
-import type { PostgrestError } from "@supabase/supabase-js";
-import { SCM } from "@/src/app/lib/supabaseClient";
 import { userAction } from "@/src/app/store/slice";
 import CompleteModal from "@/src/app/components/CompleteModal";
 import { ScrollArea } from "@/src/app/components/ui/scroll-area";
 import { Separator } from "@radix-ui/react-select";
-import axios, { isAxiosError } from "axios";
 import { Progress } from '@/src/app/components/ui/progress';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import Link from "next/link";
+import {
+    useProfileFavoriteDocs,
+    useProfileProcessedRequests,
+    useProfileNicknameUpdate,
+    useProfileSummary,
+    useProfileWordRequests,
+    type IdentityRole,
+} from "@/src/modules/identity";
+import type { ApplicationError } from "@/src/shared/application/application-error";
 
-type role = "r1" | "r2" | "r3" | "r4" | "admin";
 type status = "pending" | "approved" | "rejected";
 type ttype = "add" | "delete";
 
@@ -54,39 +59,16 @@ type userInfo = {
     id: string;
     nickname: string;
     contribution: number;
-    role: role;
+    role: IdentityRole;
     month_contribution: number;
 };
-
-type waitWordList = {
-    id: number;
-    word: string;
-    request_type: ttype;
-    requested_at: string;
-    status: status;
-}[];
-
-type logList = {
-    id: number;
-    word: string;
-    created_at: string;
-    state: status;
-    r_type: ttype;
-}[];
-
-type starredDocsList = {
-    id: number;
-    name: string;
-    last_update: string;
-    typez: string;
-}[];
 
 // 로딩 중 표시해줄 더미 데이터 목록들
 const dummyUser = {
     id: "123e4567-e89b-12d3-a456-426614174000",
     nickname: "dummyUser",
     contribution: 245,
-    role: "r3" as role,
+    role: "r3" as IdentityRole,
     month_contribution: 42,
     month_contribution_rank: 4,
 };
@@ -118,16 +100,18 @@ const TabSkeleton = () => (
 );
 
 const ProfilePage = ({ userName }: { userName: string }) => {
+    const summaryQuery = useProfileSummary(userName);
+    const favoriteDocsQuery = useProfileFavoriteDocs(summaryQuery.data?.id ?? "");
+    const processedRequestsQuery = useProfileProcessedRequests(summaryQuery.data?.id ?? "");
+    const wordRequestsQuery = useProfileWordRequests(summaryQuery.data?.id ?? "");
+    const nicknameUpdate = useProfileNicknameUpdate();
     const [user, setUser] = useState<
         userInfo & { month_contribution_rank: number }
     >(dummyUser);
-    const [waitWords, setWaitWords] = useState<waitWordList>([]);
-    const [logs, setLogs] = useState<logList>([]);
-    const [starredDocs, setStarredDocs] = useState<starredDocsList>([]);
     const [isEditing, setIsEditing] = useState<boolean>(false);
     const [newNickname, setNewNickname] = useState<string>(user.nickname);
     const [nicknameError, setNicknameError] = useState<string>("");
-    const [loading, setLoading] = useState<string | null>("유저 데이터 가져 오는 중...");
+    const [loading, setLoading] = useState<string | null>(null);
     const [errorModalView, seterrorModalView] = useState<ErrorMessage | null>(null);
     const router = useRouter();
     const userReudx = useSelector((state: RootState) => state.user);
@@ -135,112 +119,73 @@ const ProfilePage = ({ userName }: { userName: string }) => {
     const [complete, setComplete] = useState<string | null>(null);
     const [isAdmin, setIsAdmin] = useState<boolean>(false);
     const [monthlyContributions, setMonthlyContributions] = useState<{ month: string, contribution: number }[]>(dummyMonthlyData);
-    const [tabsLoading, setTabsLoading] = useState({
-        starred: true,
-        requests: true,
-        processed: true
-    });
 
     // 자신 프로필 인지 체크 (닉네임 변경 ui표시 여부 결정)
     const isOwnProfile = user.id === userReudx.uuid;
 
     // 오류 처리 함수
-    const makeError = (error: PostgrestError) => {
+    const makeError = (error: ApplicationError) => {
         seterrorModalView({
-            ErrName: error.name,
+            ErrName: "nickname update",
             ErrMessage: error.message,
-            ErrStackRace: error.code,
-            inputValue: "admin",
+            ErrStackRace: error.code ?? "",
+            inputValue: newNickname,
         });
         setLoading(null);
     };
 
     useEffect(() => {
-        const getData = async () => {
-            // 유저 기본 데이터 가져오기
-            const { data: getUserData, error: getUserError } = await SCM.get().userByNickname(userName);
-            if (getUserError) {
-                return makeError(getUserError);
-            }
-            if (!getUserData) {
-                return makeError({
-                    name: "unknown",
-                    details: "",
-                    code: "EEE1",
-                    hint: "",
-                    message: "알수 없는 에러",
-                });
-            }
-            // 이번달 기여도 랭킹 가져오기
-            const { data: mcrankData, error: mcrankError } = await SCM.get().monthlyConRankByUserId(getUserData.id);
-            if (mcrankError) {
-                return makeError(mcrankError);
-            }
-            setNewNickname(getUserData.nickname);
-            setUser({ ...getUserData, month_contribution_rank: mcrankData });
-            setIsAdmin(getUserData.role === "admin");
-            const {data: monthlyContributionsData, error: monthlyContributionsError} = await SCM.get().monthlyContributionsByUserId(getUserData.id);
-            if (monthlyContributionsError) return makeError(monthlyContributionsError);
+        const summary = summaryQuery.data;
+        if (!summary) return;
 
-            const now = new Date();
+        setNewNickname(summary.nickname);
+        setUser({
+            id: summary.id,
+            nickname: summary.nickname,
+            contribution: summary.totalContribution,
+            role: summary.role,
+            month_contribution: summary.monthlyContribution,
+            month_contribution_rank: summary.monthlyContributionRank,
+        });
+        setIsAdmin(summary.role === "admin");
+        setMonthlyContributions(summary.recentMonthlyContributions);
 
-            // 최근 5개월 구하기 (가장 오래된 달부터 정렬)
-            const recentMonths = Array.from({ length: 5 }, (_, i) => {
-            const date = new Date(now.getFullYear(), now.getMonth() - 4 + i); // 5개월 전부터 현재까지
-            return `${date.getFullYear()}-${date.getMonth() + 1}`;
-            });
+    }, [summaryQuery.data]);
 
-            // DB에서 가져온 기여도 데이터를 Map으로 변환 (month: contribution)
-            const contributionMap = new Map(
-            monthlyContributionsData.map(({ contribution, month }) => {
-                const formattedMonth = `${new Date(month).getFullYear()}-${new Date(month).getMonth() + 1}`;
-                return [formattedMonth, contribution];
-            })
-            );
-
-            // 현재 달 데이터 추가
-            contributionMap.set(
-                `${now.getFullYear()}-${now.getMonth() + 1}`,
-                getUserData.month_contribution
-            );
-
-            // 최종 배열 구성 (누락된 달은 0으로 채움)
-            const filledContributions = recentMonths.map(month => ({
-                month,
-                contribution: contributionMap.get(month) ?? 0,
-            }));
-
-            setMonthlyContributions(filledContributions);
-
-            setLoading(null);
-            await loadTabsData(getUserData.id);
-        };
-        getData();
-        
-    }, []);
+    useEffect(() => {
+        if (!summaryQuery.error) return;
+        seterrorModalView({
+            ErrName: "profile summary",
+            ErrMessage: summaryQuery.error.message,
+            ErrStackRace: "",
+            inputValue: "admin",
+        });
+    }, [summaryQuery.error]);
 
     // 등급에 따름 이름
-    const getRoleName = (role: role) => {
-        const roleNames = {
+    const getRoleName = (role: IdentityRole) => {
+        const roleNames: Record<IdentityRole, string> = {
+            guest: "게스트",
             r1: "새싹",
             r2: "일반",
             r3: "활동가",
             r4: "베테랑",
             admin: "관리자",
         };
-        return roleNames[role] || role;
+        return roleNames[role];
     };
 
     // 등급에 따른 색깔
-    const getRoleColor = (role: role) => {
-        const roleColors = {
+    const getRoleColor = (role: IdentityRole) => {
+        const roleColors: Record<IdentityRole, string> = {
+            guest: "bg-gray-100 text-gray-800",
             r1: "bg-green-100 text-green-800",
             r2: "bg-blue-100 text-blue-800",
             r3: "bg-purple-100 text-purple-800",
             r4: "bg-orange-100 text-orange-800",
             admin: "bg-red-100 text-red-800",
         };
-        return roleColors[role] || "bg-gray-100 text-gray-800";
+        return roleColors[role];
     };
 
     // 이번달 기여도 랭크 글자의 색깔
@@ -250,104 +195,6 @@ const ProfilePage = ({ userName }: { userName: string }) => {
         if (rank === 2) return "bg-gray-300 text-black";
         if (rank === 3) return "bg-orange-400 text-black";
         return "bg-black text-white";
-    };
-
-    // tap 부분 데이터 레이지 로딩
-    const loadTabsData = async (userId: string) => {
-        // 즐겨찾기 문서 로딩
-        const loadStarredDocs = async () => {
-            try {
-                const { data, error } = await SCM.get().starredDocsById(userId);
-                
-                if (error) throw error;
-                
-                setStarredDocs(
-                    data.map(({ docs: { name, typez, last_update, id } }) => ({
-                        name,
-                        id,
-                        typez,
-                        last_update,
-                    }))
-                );
-            } catch (error) {
-                console.error('즐겨찾기 문서 로딩 실패:', error);
-            } finally {
-                setTabsLoading(prev => ({ ...prev, starred: false }));
-            }
-        };
-
-        // 요청 내역 로딩
-        const loadRequests = async () => {
-            try {
-                const { data, error } = await SCM.get().requestsListById(userId);
-                
-                if (error) throw error;
-                setWaitWords(data);
-            } catch (error) {
-                console.error('요청 내역 로딩 실패:', error);
-            } finally {
-                setTabsLoading(prev => ({ ...prev, requests: false }));
-            }
-        };
-
-        // 처리 내역 로딩
-        const loadProcessed = async () => {
-            try {
-                const { data, error } = await SCM.get().logsListById(userId);
-                
-                if (error) throw error;
-                setLogs(data);
-            } catch (error) {
-                console.error('처리 내역 로딩 실패:', error);
-            } finally {
-                setTabsLoading(prev => ({ ...prev, processed: false }));
-            }
-        };
-
-        // 병렬로 모든 탭 데이터 로딩
-        Promise.all([
-            loadStarredDocs(),
-            loadRequests(),
-            loadProcessed()
-        ]);
-    };
-
-    // 닉네임 업데이트 처리하는 함수
-    const updateNickname = async (updateNickname: string) => {
-        try {
-            // api로 업데이트 요청 날리고 적절하게 반환값 가공
-            const res = await axios.post<
-                { data: null; error: PostgrestError } | { data: userInfo; error: null }
-            >("/api/auth/update_nickname", {
-                nickname: updateNickname,
-            });
-            const { data, error } = res.data;
-            return { data, error };
-        } catch (error) {
-            if (isAxiosError(error)) {
-                return {
-                    data: null,
-                    error: {
-                        name: "update fail",
-                        details: "",
-                        code: "EEE4",
-                        hint: "",
-                        message: error.message,
-                    },
-                };
-            } else {
-                return {
-                    data: null,
-                    error: {
-                        name: "unknown",
-                        details: "",
-                        code: "EEE4",
-                        hint: "",
-                        message: "알수 없는 에러",
-                    },
-                };
-            }
-        }
     };
 
     // 요청 / 처리 상태 아이콘
@@ -402,41 +249,29 @@ const ProfilePage = ({ userName }: { userName: string }) => {
         }
 
         setLoading("닉네임 변경 처리중...");
-        const { data: existingUser, error: existingUserError } = await SCM.get().usersByNickname(newNickname);
+        const result = await nicknameUpdate.updateProfileNickname(newNickname);
+        if (!result.ok) {
+            setLoading(null);
+            if (result.error.kind === "validation" || result.error.kind === "conflict") {
+                setNicknameError(result.error.message);
+                return;
+            }
+            makeError(result.error);
+            return;
+        }
 
-        if (existingUserError) {
-            return makeError(existingUserError);
-        }
-        if (existingUser.length > 0) {
-            setNicknameError("이미 존재하는 닉네임 입니다.");
-        } else {
-            // 존재하는 닉네임이 아니면 업데이트 처리
-            const { data: updateNicknameData, error: updateNicknameError } =
-                await updateNickname(newNickname);
-            if (updateNicknameError) {
-                return makeError(updateNicknameError);
-            }
-            if (!updateNicknameData) {
-                return makeError({
-                    name: "unknown",
-                    details: "",
-                    code: "EEE2",
-                    hint: "",
-                    message: "알수 없는 에러",
-                });
-            }
-            setUser((prev) => ({ ...prev, nickname: updateNicknameData.nickname }));
-            dispatch(
-                userAction.setInfo({
-                    username: updateNicknameData.nickname,
-                    role: updateNicknameData.role,
-                    uuid: updateNicknameData.id,
-                })
-            );
-            setComplete(
-                `${updateNicknameData.nickname}으로 닉네임이 정상적으로 변경되었습니다!`
-            );
-        }
+        const updateNicknameData = result.value;
+        setUser((prev) => ({ ...prev, nickname: updateNicknameData.nickname }));
+        dispatch(
+            userAction.setInfo({
+                username: updateNicknameData.nickname,
+                role: updateNicknameData.role,
+                uuid: updateNicknameData.id,
+            })
+        );
+        setComplete(
+            `${updateNicknameData.nickname}으로 닉네임이 정상적으로 변경되었습니다!`
+        );
         setLoading(null);
     };
 
@@ -447,8 +282,18 @@ const ProfilePage = ({ userName }: { userName: string }) => {
     };
 
     // 다음 등급까지의 진행도 얻는 함수
-    const getRoleProgress = (role: role, contribution: number) => {
+    const getRoleProgress = (role: IdentityRole, contribution: number) => {
         switch (role) {
+            case 'guest':
+                return {
+                    current: contribution,
+                    target: contribution,
+                    nextRole: null,
+                    nextRoleName: null,
+                    showProgress: false,
+                    maxLevel: false,
+                    adminLevel: false,
+                };
             case 'r1':
                 return {
                     current: contribution,
@@ -484,14 +329,6 @@ const ProfilePage = ({ userName }: { userName: string }) => {
                     showProgress: false,
                     adminLevel: true
                 };
-            default:
-                return {
-                    current: 0,
-                    target: 500,
-                    nextRole: 'r2',
-                    nextRoleName: '일반',
-                    showProgress: true
-                };
         }
     };
 
@@ -519,7 +356,11 @@ const ProfilePage = ({ userName }: { userName: string }) => {
                                             <p className="text-sm text-red-500">{nicknameError}</p>
                                         )}
                                         <div className="flex gap-2 justify-center">
-                                            <Button size="sm" onClick={handleNicknameUpdate}>
+                                            <Button
+                                                size="sm"
+                                                onClick={handleNicknameUpdate}
+                                                disabled={nicknameUpdate.isPending}
+                                            >
                                                 저장
                                             </Button>
                                             <Button
@@ -542,6 +383,7 @@ const ProfilePage = ({ userName }: { userName: string }) => {
                                             <Button
                                                 size="sm"
                                                 variant="ghost"
+                                                aria-label="닉네임 수정"
                                                 onClick={() => setIsEditing(true)}
                                             >
                                                 <Edit3 className="h-4 w-4" />
@@ -690,16 +532,20 @@ const ProfilePage = ({ userName }: { userName: string }) => {
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <ScrollArea className="h-[400px]">
-                                        {tabsLoading.starred ? <TabSkeleton /> :
+                                        {favoriteDocsQuery.isPending ? <TabSkeleton /> :
                                             (
                                             <div className="p-4">
-                                                {starredDocs.length === 0 ? (
+                                                {favoriteDocsQuery.error ? (
+                                                    <p className="text-center text-muted-foreground dark:text-gray-400 py-8">
+                                                        {favoriteDocsQuery.error.message}
+                                                    </p>
+                                                ) : (favoriteDocsQuery.data?.length ?? 0) === 0 ? (
                                                     <p className="text-center text-muted-foreground dark:text-gray-400 py-8">
                                                         즐겨찾기한 문서가 없습니다.
                                                     </p>
                                                 ) : (
                                                     <div className="space-y-3">
-                                                        {starredDocs.map((doc, index) => (
+                                                        {favoriteDocsQuery.data?.map((doc, index) => (
                                                             <Link href={`/words-docs/${doc.id}`} key={doc.id}>
                                                                 <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 dark:hover:bg-gray-700 transition-colors cursor-pointer">
                                                                     <div className="flex items-center gap-3">
@@ -707,14 +553,14 @@ const ProfilePage = ({ userName }: { userName: string }) => {
                                                                         <div>
                                                                             <p className="font-medium text-gray-900 dark:text-gray-100">{doc.name}</p>
                                                                             <p className="text-sm text-muted-foreground dark:text-gray-400">
-                                                                                {formatTimeAgo(doc.last_update)}에
+                                                                                {formatTimeAgo(doc.lastUpdatedAt)}에
                                                                                 업데이트
                                                                             </p>
                                                                         </div>
                                                                     </div>
-                                                                    <Badge variant="outline">{doc.typez}</Badge>
+                                                                    <Badge variant="outline">{doc.type}</Badge>
                                                                 </div>
-                                                                {index < starredDocs.length - 1 && (
+                                                                {index < (favoriteDocsQuery.data?.length ?? 0) - 1 && (
                                                                     <Separator className="my-2" />
                                                                 )}
                                                             </Link>
@@ -740,18 +586,22 @@ const ProfilePage = ({ userName }: { userName: string }) => {
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <ScrollArea className="h-[400px]">
-                                        {tabsLoading.requests ? <TabSkeleton /> : (<div className="p-4">
-                                            {waitWords.length === 0 ? (
+                                        {wordRequestsQuery.isPending ? <TabSkeleton /> : (<div className="p-4">
+                                            {wordRequestsQuery.error ? (
+                                                <p className="text-center text-muted-foreground dark:text-gray-400 py-8">
+                                                    {wordRequestsQuery.error.message}
+                                                </p>
+                                            ) : (wordRequestsQuery.data?.length ?? 0) === 0 ? (
                                                 <p className="text-center text-muted-foreground dark:text-gray-400 py-8">
                                                     요청 내역이 없습니다.
                                                 </p>
                                             ) : (
                                                 <div className="space-y-3">
-                                                    {waitWords.map((item, index) => (
+                                                    {wordRequestsQuery.data?.map((item, index) => (
                                                         <div key={item.id}>
                                                             <div className="flex items-center justify-between p-3 border rounded-lg">
                                                                 <div className="flex items-center gap-3">
-                                                                    {item.request_type === "add" ? (
+                                                                    {item.requestType === "add" ? (
                                                                         <Plus className="h-4 w-4 text-green-500" />
                                                                     ) : (
                                                                         <Trash2 className="h-4 w-4 text-red-500" />
@@ -759,8 +609,8 @@ const ProfilePage = ({ userName }: { userName: string }) => {
                                                                     <div>
                                                                         <p className="font-medium text-gray-900 dark:text-gray-100">{item.word}</p>
                                                                         <p className="text-sm text-muted-foreground dark:text-gray-400">
-                                                                            {getRequestTypeText(item.request_type)}{" "}
-                                                                            요청 • {formatTimeAgo(item.requested_at)}
+                                                                            {getRequestTypeText(item.requestType)}{" "}
+                                                                            요청 • {formatTimeAgo(item.requestedAt)}
                                                                         </p>
                                                                     </div>
                                                                 </div>
@@ -771,7 +621,7 @@ const ProfilePage = ({ userName }: { userName: string }) => {
                                                                     </span>
                                                                 </div>
                                                             </div>
-                                                            {index < waitWords.length - 1 && (
+                                                            {index < (wordRequestsQuery.data?.length ?? 0) - 1 && (
                                                                 <Separator className="my-2" />
                                                             )}
                                                         </div>
@@ -795,38 +645,42 @@ const ProfilePage = ({ userName }: { userName: string }) => {
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <ScrollArea className="h-[400px]">
-                                        {tabsLoading.processed ? <TabSkeleton /> : (<div className="p-4">
-                                            {logs.length === 0 ? (
+                                        {processedRequestsQuery.isPending ? <TabSkeleton /> : (<div className="p-4">
+                                            {processedRequestsQuery.error ? (
+                                                <p className="text-center text-muted-foreground dark:text-gray-400 py-8">
+                                                    {processedRequestsQuery.error.message}
+                                                </p>
+                                            ) : (processedRequestsQuery.data?.length ?? 0) === 0 ? (
                                                 <p className="text-center text-muted-foreground dark:text-gray-400 py-8">
                                                     처리된 요청이 없습니다.
                                                 </p>
                                             ) : (
                                                 <div className="space-y-3">
-                                                    {logs.map((log, index) => (
-                                                        <div key={log.id}>
+                                                    {processedRequestsQuery.data?.map((item, index) => (
+                                                        <div key={item.id}>
                                                             <div className="flex items-center justify-between p-3 border rounded-lg">
                                                                 <div className="flex items-center gap-3">
-                                                                    {log.r_type === "add" ? (
+                                                                    {item.requestType === "add" ? (
                                                                         <Plus className="h-4 w-4 text-green-500" />
                                                                     ) : (
                                                                         <Trash2 className="h-4 w-4 text-red-500" />
                                                                     )}
                                                                     <div>
-                                                                        <p className="font-medium text-gray-900 dark:text-gray-100">{log.word}</p>
+                                                                        <p className="font-medium text-gray-900 dark:text-gray-100">{item.word}</p>
                                                                         <p className="text-sm text-muted-foreground dark:text-gray-400">
-                                                                            {getRequestTypeText(log.r_type)} •{" "}
-                                                                            {formatTimeAgo(log.created_at)}
+                                                                            {getRequestTypeText(item.requestType)} •{" "}
+                                                                            {formatTimeAgo(item.createdAt)}
                                                                         </p>
                                                                     </div>
                                                                 </div>
                                                                 <div className="flex items-center gap-2">
-                                                                    {getStatusIcon(log.state)}
+                                                                    {getStatusIcon(item.state)}
                                                                     <span className="text-sm text-gray-900 dark:text-gray-100">
-                                                                        {getStatusText(log.state)}
+                                                                        {getStatusText(item.state)}
                                                                     </span>
                                                                 </div>
                                                             </div>
-                                                            {index < logs.length - 1 && (
+                                                            {index < (processedRequestsQuery.data?.length ?? 0) - 1 && (
                                                                 <Separator className="my-2" />
                                                             )}
                                                         </div>
@@ -842,13 +696,13 @@ const ProfilePage = ({ userName }: { userName: string }) => {
                 </div>
             </div>
             {/* 로딩 오버레이 */}
-            {loading && (
+            {(summaryQuery.isPending ? "유저 데이터 가져 오는 중..." : loading) && (
                 <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
                     <Card className="p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                         <div className="flex items-center space-x-3">
                             <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
                             <span className="text-slate-700 dark:text-slate-300">
-                                {loading}
+                                {summaryQuery.isPending ? "유저 데이터 가져 오는 중..." : loading}
                             </span>
                         </div>
                     </Card>

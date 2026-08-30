@@ -1,14 +1,10 @@
 "use client";
 
-import { useEffect, useState, useMemo, useRef } from "react";
-import { SCM } from "@/src/app/lib/supabaseClient";
+import { useState, useMemo, useRef } from "react";
 import { BarChart3, TrendingUp, Loader2, AlertCircle, Search, ArrowUpDown } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import type { Database } from "@/src/app/types/database.types";
 import Link from 'next/link';
-
-type word_first_letter_counts = Database['public']['Tables']['word_first_letter_counts']['Row'];
-type word_last_letter_counts = Database['public']['Tables']['word_last_letter_counts']['Row'];
+import { useWordStatistics } from '../../../modules/word-catalog';
 
 type ViewMode = 'first' | 'last' | 'len3';
 type SortField = 'letter' | 'k_count' | 'n_count';
@@ -16,10 +12,10 @@ type SortOrder = 'asc' | 'desc';
 type CompareOperator = '=' | '>' | '<' | '>=' | '<=';
 
 export function WordStatsHome() {
-    const [firstLetterCounts, setFirstLetterCounts] = useState<word_first_letter_counts[]>([]);
-    const [lastLetterCounts, setLastLetterCounts] = useState<word_last_letter_counts[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const { data: statistics, isLoading, error } = useWordStatistics();
+    const firstLetterCounts = statistics?.firstLetter ?? [];
+    const lastLetterCounts = statistics?.lastLetter ?? [];
+    const threeLetterCounts = statistics?.threeLetter ?? [];
     
     // 필터 및 정렬 상태
     const [viewMode, setViewMode] = useState<ViewMode>('first');
@@ -31,31 +27,6 @@ export function WordStatsHome() {
     
     // 가상 스크롤을 위한 ref
     const parentRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                setLoading(true);
-                const { data, error } = await SCM.get().wordState();
-                
-                if (error) {
-                    setError(error.message);
-                    return;
-                }
-                
-                if (data) {
-                    setFirstLetterCounts(data.firstLetterCounts);
-                    setLastLetterCounts(data.lastLetterCounts);
-                }
-            } catch (err) {
-                setError(err instanceof Error ? err.message : "데이터를 불러오는데 실패했습니다.");
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchData();
-    }, []);
 
     // 필터링 및 정렬 로직
     const filteredAndSortedData = useMemo(() => {
@@ -69,27 +40,27 @@ export function WordStatsHome() {
 
         if (viewMode === 'first') {
             data = firstLetterCounts.map(item => ({
-                letter: item.first_letter,
-                k_count: item.k_count,
-                n_count: item.n_count,
-                k_updated: item.k_count_updated_at,
-                n_updated: item.n_count_updated_at,
+                letter: item.letter,
+                k_count: item.acknowledgedCount,
+                n_count: item.notAcknowledgedCount,
+                k_updated: item.acknowledgedUpdatedAt,
+                n_updated: item.notAcknowledgedUpdatedAt,
             }));
         } else if (viewMode === 'last') {
             data = lastLetterCounts.map(item => ({
-                letter: item.last_letter,
-                k_count: item.k_count,
-                n_count: item.n_count,
-                k_updated: item.k_count_updated_at,
-                n_updated: item.n_count_updated_at,
+                letter: item.letter,
+                k_count: item.acknowledgedCount,
+                n_count: item.notAcknowledgedCount,
+                k_updated: item.acknowledgedUpdatedAt,
+                n_updated: item.notAcknowledgedUpdatedAt,
             }));
         } else if (viewMode === 'len3') {
-            data = firstLetterCounts.map(item => ({
-                letter: item.first_letter,
-                k_count: item.len3_k_count,
-                n_count: item.len3_n_count,
-                k_updated: item.len3_k_count_updated_at,
-                n_updated: item.len3_n_count_updated_at,
+            data = threeLetterCounts.map(item => ({
+                letter: item.letter,
+                k_count: item.acknowledgedCount,
+                n_count: item.notAcknowledgedCount,
+                k_updated: item.acknowledgedUpdatedAt,
+                n_updated: item.notAcknowledgedUpdatedAt,
             }));
         }
 
@@ -132,7 +103,7 @@ export function WordStatsHome() {
         });
 
         return data;
-    }, [firstLetterCounts, lastLetterCounts, viewMode, searchLetter, countFilter, compareOp, sortField, sortOrder]);
+    }, [firstLetterCounts, lastLetterCounts, threeLetterCounts, viewMode, searchLetter, countFilter, compareOp, sortField, sortOrder]);
 
     // 가상 스크롤러 설정
     const virtualizer = useVirtualizer({
@@ -154,7 +125,7 @@ export function WordStatsHome() {
         });
     };
 
-    if (loading) {
+    if (isLoading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 flex items-center justify-center">
                 <div className="text-center">
@@ -170,7 +141,7 @@ export function WordStatsHome() {
             <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 flex items-center justify-center">
                 <div className="text-center">
                     <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-                    <p className="text-red-600 dark:text-red-400">{error}</p>
+                    <p className="text-red-600 dark:text-red-400">데이터를 불러오는 중 오류가 발생했습니다.</p>
                 </div>
             </div>
         );

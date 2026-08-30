@@ -4,14 +4,15 @@ import ProgressBar from "@/src/app/components/ProgressBar";
 import { useDispatch, useSelector } from 'react-redux';
 import { updateLoadingState } from '@/src/app/store/slice';
 import type { RootState } from '@/src/app/store/store';
+import { useCallback } from 'react';
 
 export const useLoadingState = () => {
     const dispatch = useDispatch();
     const loadingState = useSelector((state: RootState) => state.loading);
 
-    const updateState = (progress: number, task: string) => {
+    const updateState = useCallback((progress: number, task: string) => {
         dispatch(updateLoadingState({ progress, task }));
-    };
+    }, [dispatch]);
 
     return {
         loadingState,
@@ -19,10 +20,14 @@ export const useLoadingState = () => {
     };
 };
 
-export default function LoadingPage({ title }: { title: string }) {
+export default function LoadingPage({ title, isForcedVisible = false }: { title: string; isForcedVisible?: boolean }) {
     const { loadingState } = useLoadingState();
+    const isForcedLoading = isForcedVisible && !loadingState.isLoading;
+    const isVisible = loadingState.isLoading || isForcedVisible;
+    const progress = isForcedLoading ? 0 : loadingState.progress;
+    const task = isForcedLoading ? '로딩 중...' : loadingState.currentTask;
 
-    if (loadingState.isLoading) {
+    if (isVisible) {
         return (
             <div className="flex flex-col items-center justify-center p-8 bg-white dark:bg-gray-900 rounded-lg shadow min-h-screen min-w-full text-gray-800 dark:text-gray-100">
                 <h2 className="text-xl font-bold mb-4">
@@ -30,12 +35,12 @@ export default function LoadingPage({ title }: { title: string }) {
                 </h2>
                 <div className="w-full max-w-md mb-4">
                     <ProgressBar
-                        completed={loadingState.progress}
-                        label={`${loadingState.progress}% 완료`}
+                        completed={progress}
+                        label={`${progress}% 완료`}
                     />
                 </div>
                 <p className="text-gray-600 dark:text-gray-400 mt-2">
-                    {loadingState.currentTask}
+                    {task}
                 </p>
                 <div className="mt-4">
                     <Spinner />

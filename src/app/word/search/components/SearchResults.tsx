@@ -2,11 +2,12 @@ import { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { BookOpen, ArrowRight, Search, Loader2 } from 'lucide-react';
-import { GameMode, SearchResult } from '../types';
+import type { WordSearchResult } from '@/src/modules/word-catalog';
+import { GameMode } from '../types';
 import { countMissionChars } from '../utils';
 
 interface SearchResultsProps {
-    results: SearchResult[];
+    results: WordSearchResult[];
     searchPerformed: boolean;
     loading: boolean;
     mission: string;

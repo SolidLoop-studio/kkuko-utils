@@ -29,7 +29,7 @@ const TermsOfService = () => {
           <CardHeader>
             <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 mb-2">
               <Calendar className="h-4 w-4" />
-              <span>최종 수정일: 2026년 7월 22일</span>
+              <span>최종 수정일: 2026년 8월 20일</span>
             </div>
             <CardTitle className="text-xl text-slate-800 dark:text-slate-200">
               제1조 (목적)
@@ -225,6 +225,10 @@ const TermsOfService = () => {
                   8. 이용자는 타인의 저작권, 상표권, 데이터베이스제작자권리 및 그 밖의
                   지적재산권을 침해하는 콘텐츠를 게시하거나 서비스를 통하여 이용해서는
                   안 됩니다.
+                </p>
+
+                <p>
+                  9. 제3자 또는 공공 출처에서 유래한 데이터는 서비스 제공자가 권리를 보유하지 않을 수 있으며, 이용자는 해당 데이터의 이용에 따른 법적 책임을 부담합니다.
                 </p>
               </div>
             </div>

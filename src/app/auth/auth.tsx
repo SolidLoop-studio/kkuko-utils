@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import type { AppDispatch } from "../store/store";
@@ -14,7 +13,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src
 import { Alert, AlertDescription } from "@/src/app/components/ui/alert";
 import ErrorModal from '../components/ErrModal';
 import type { ErrorMessage } from "@/src/app/types/type";
-import { SCM } from "@/src/app/lib/supabaseClient";
+import type { ApplicationError } from "@/src/shared/application/application-error";
+import { useAuthSession, useNicknameRegistration } from "@/src/modules/identity";
+
+const toErrorMessage = (error: ApplicationError): ErrorMessage => ({
+    ErrName: "인증 오류",
+    ErrMessage: error.message,
+    ErrStackRace: null,
+    inputValue: null,
+});
 
 const AuthPage = () => {
     const router = useRouter();
@@ -24,125 +31,77 @@ const AuthPage = () => {
     const [nicknameError, setNicknameError] = useState("");
     const dispatch = useDispatch<AppDispatch>();
     const [errorModalView, setErrorModalView] = useState<ErrorMessage | null>(null);
+    const { listen, signInWithGoogle: startGoogleLogin } = useAuthSession();
+    const { registerNickname, isPending: isRegisteringNickname } = useNicknameRegistration();
+    const isLoading = loading || isRegisteringNickname;
 
     useEffect(() => {
-        
-        const checkUser = async (session: Session | null) => {
-            if (!session) {
+        setLoading(true);
+        const subscriptionResult = listen((result) => {
+            if (!result.ok) {
+                setErrorModalView(toErrorMessage(result.error));
                 setLoading(false);
                 return;
             }
-
-            const { data, error: err } = await SCM.get().userById(session.user.id);
-    
-            if (err) {
-                setErrorModalView({
-                    ErrName: err.name ?? null,
-                    ErrMessage: err.message ?? null,
-                    ErrStackRace: err.stack ?? null,
-                    inputValue: null
-                });
+            if (!result.value.isAuthenticated) {
+                setIsNewUser(false);
+                setLoading(false);
                 return;
             }
-    
-            if (!data) {
+            const profile = result.value.profile;
+            if (!profile) {
                 setIsNewUser(true);
                 setLoading(false);
             } else {
-                dispatch(
-                    userAction.setInfo({
-                        username: data.nickname,
-                        role: data.role ?? "guest",
-                    })
-                );
-                if (data.role === "admin"){
+                setIsNewUser(false);
+                dispatch(userAction.setInfo({
+                    username: profile.nickname,
+                    role: profile.role,
+                    uuid: profile.id,
+                }));
+                if (profile.role === "admin"){
                     router.push("/admin");
                 } else {
-                    router.push(`/profile/${data.nickname}`);
+                    router.push(`/profile/${profile.nickname}`);
                 }
-
             }
-    
-        };
-        setLoading(true);
-        const { data: authListener } = SCM.onAuthStateChange(checkUser);
+        });
+        if (!subscriptionResult.ok) {
+            setErrorModalView(toErrorMessage(subscriptionResult.error));
+            setLoading(false);
+            return;
+        }
         return () => {
-            authListener.subscription.unsubscribe();
+            subscriptionResult.value.unsubscribe();
         };
-    }, [router, dispatch]);
+    }, [router, dispatch, listen]);
     
 
     const signInWithGoogle = async () => {
-        const { error: err } = await SCM.loginByGoogle(location.origin);
-        if (err) {
-            if (err instanceof Error) {
-                setErrorModalView({
-                    ErrName: err.name,
-                    ErrMessage: err.message,
-                    ErrStackRace: err.stack,
-                    inputValue: null
-                });
-
-            } else {
-                setErrorModalView({
-                    ErrName: null,
-                    ErrMessage: null,
-                    ErrStackRace: err as string,
-                    inputValue: null
-                });
-            }
+        const result = await startGoogleLogin(location.origin);
+        if (!result.ok) {
+            setErrorModalView(toErrorMessage(result.error));
         }
     };
 
     const completeSignup = async () => {
-        setLoading(true);
         setNicknameError("");
 
-        const session = await SCM.get().session();
-        if (!session.data.session) {
-            setLoading(false);
-            return;
-        }
-
-        // 닉네임 중복 확인
-        const { data: checkData, error: checkErr } = await SCM.get().usersByNickname(nickname);
-        if (checkErr) {
-            setErrorModalView({
-                ErrName: checkErr.name,
-                ErrMessage: checkErr.message,
-                ErrStackRace: checkErr.stack,
-                inputValue: null
-            });
-
-            setLoading(false);
-            return;
-        }
-        if (checkData.length > 0) {
-            setNicknameError("이미 사용 중인 닉네임입니다.");
-            setLoading(false);
-            return;
-        }
-
-        // 닉네임 등록
-        const { data, error:err } = await SCM.add().nickname(nickname)
-
-        if (err) {
-            setErrorModalView({
-                ErrName: err.name,
-                ErrMessage: err.message,
-                ErrStackRace: err.stack,
-                inputValue: null
-            });
-            
-            setLoading(false);
+        const result = await registerNickname(nickname);
+        if (!result.ok) {
+            if (result.error.kind === 'validation' || result.error.kind === 'conflict') {
+                setNicknameError(result.error.message);
+            } else {
+                setErrorModalView(toErrorMessage(result.error));
+            }
             return;
         }
 
         dispatch(
             userAction.setInfo({
-                username: data.nickname,
-                role: data.role ?? "guest",
-                uuid: data.id,
+                username: result.value.nickname,
+                role: result.value.role,
+                uuid: result.value.id,
             })
         );
         router.push("/");
@@ -183,7 +142,7 @@ const AuthPage = () => {
                                             value={nickname}
                                             onChange={(e) => setNickname(e.target.value)}
                                             className="pl-10 h-12 bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            disabled={loading}
+                                            disabled={isLoading}
                                         />
                                     </div>
                                     {nicknameError && (
@@ -198,10 +157,10 @@ const AuthPage = () => {
                                 
                                 <Button
                                     onClick={completeSignup}
-                                    disabled={!nickname.trim() || loading}
+                                    disabled={!nickname.trim() || isLoading}
                                     className="w-full h-12 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {loading ? (
+                                    {isLoading ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                             가입 중...
@@ -239,7 +198,7 @@ const AuthPage = () => {
                         ) : (
                             <Button
                                 onClick={signInWithGoogle}
-                                disabled={loading}
+                                disabled={isLoading}
                                 className="w-full h-12 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 hover:border-slate-400 font-medium transition-all duration-200 shadow-sm"
                                 variant="outline"
                             >
@@ -250,7 +209,7 @@ const AuthPage = () => {
                 </Card>
 
                 {/* 로딩 오버레이 */}
-                {loading && (
+                {isLoading && (
                     <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
                         <Card className="p-6">
                             <div className="flex items-center space-x-3">

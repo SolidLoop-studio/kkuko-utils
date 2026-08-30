@@ -1,0 +1,63 @@
+import { CheckNicknameAvailabilityService } from '../../application/check-nickname-availability';
+import { GetCurrentUserProfileService } from '../../application/get-current-user-profile';
+import { GetProfileSummaryService } from '../../application/get-profile-summary';
+import { GetProfileFavoriteDocsService } from '../../application/get-profile-favorite-docs';
+import { GetProfileProcessedRequestsService } from '../../application/get-profile-processed-requests';
+import { GetProfileWordRequestsService } from '../../application/get-profile-word-requests';
+import { ManageAuthSessionService } from '../../application/manage-auth-session';
+import { RegisterNicknameService } from '../../application/register-nickname';
+import { SearchProfilesByNicknameService } from '../../application/search-profiles-by-nickname';
+import { UpdateProfileNicknameService } from '../../application/update-profile-nickname';
+import { SupabaseAuthGateway } from './supabase-auth-gateway';
+import { SupabaseCurrentUserProfileQueryGateway } from './supabase-current-user-profile-query-gateway';
+import { SupabaseNicknameCommandGateway } from './supabase-nickname-command-gateway';
+import { SupabaseNicknameQueryGateway } from './supabase-nickname-query-gateway';
+import { SupabaseProfileSearchQueryGateway } from './supabase-profile-search-query-gateway';
+import { SupabaseProfileSummaryQueryGateway } from './supabase-profile-summary-query-gateway';
+import { SupabaseProfileFavoriteDocsQueryGateway } from './supabase-profile-favorite-docs-query-gateway';
+import { SupabaseProfileProcessedRequestsQueryGateway } from './supabase-profile-processed-requests-query-gateway';
+import { SupabaseProfileWordRequestsQueryGateway } from './supabase-profile-word-requests-query-gateway';
+import { SupabaseProfileNicknameCommandGateway } from './supabase-profile-nickname-command-gateway';
+
+export interface BrowserIdentityServices {
+    authSessionService: ManageAuthSessionService;
+    checkNicknameAvailabilityService: CheckNicknameAvailabilityService;
+    currentUserProfileQueryService: GetCurrentUserProfileService;
+    profileSearchQueryService: SearchProfilesByNicknameService;
+    profileSummaryQueryService: GetProfileSummaryService;
+    profileFavoriteDocsQueryService: GetProfileFavoriteDocsService;
+    profileProcessedRequestsQueryService: GetProfileProcessedRequestsService;
+    profileWordRequestsQueryService: GetProfileWordRequestsService;
+    registerNicknameService: RegisterNicknameService;
+    profileNicknameUpdateService: UpdateProfileNicknameService;
+}
+
+/** 브라우저 identity 기능에 필요한 작은 인증·프로필·닉네임 서비스를 조합합니다. */
+export const createBrowserIdentityServices = (): BrowserIdentityServices => ({
+    authSessionService: new ManageAuthSessionService(new SupabaseAuthGateway()),
+    checkNicknameAvailabilityService: new CheckNicknameAvailabilityService(
+        new SupabaseNicknameQueryGateway(),
+    ),
+    currentUserProfileQueryService: new GetCurrentUserProfileService(
+        new SupabaseCurrentUserProfileQueryGateway(),
+    ),
+    profileSearchQueryService: new SearchProfilesByNicknameService(
+        new SupabaseProfileSearchQueryGateway(),
+    ),
+    profileSummaryQueryService: new GetProfileSummaryService(
+        new SupabaseProfileSummaryQueryGateway(),
+    ),
+    profileFavoriteDocsQueryService: new GetProfileFavoriteDocsService(
+        new SupabaseProfileFavoriteDocsQueryGateway(),
+    ),
+    profileProcessedRequestsQueryService: new GetProfileProcessedRequestsService(
+        new SupabaseProfileProcessedRequestsQueryGateway(),
+    ),
+    profileWordRequestsQueryService: new GetProfileWordRequestsService(
+        new SupabaseProfileWordRequestsQueryGateway(),
+    ),
+    registerNicknameService: new RegisterNicknameService(new SupabaseNicknameCommandGateway()),
+    profileNicknameUpdateService: new UpdateProfileNicknameService(
+        new SupabaseProfileNicknameCommandGateway(),
+    ),
+});

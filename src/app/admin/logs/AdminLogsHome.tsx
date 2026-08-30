@@ -1,17 +1,22 @@
 'use client'
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { SCM } from "@/src/app/lib/supabaseClient";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/src/app/components/ui/card";
-import { Button } from "@/src/app/components/ui/button";
-import { Badge } from "@/src/app/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/src/app/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/src/app/components/ui/table";
-import { Checkbox } from "@/src/app/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/src/app/components/ui/select";
-import { Input } from "@/src/app/components/ui/input";
-import { Label } from "@/src/app/components/ui/label";
+import type {
+    AdminDocsLogEntry,
+    AdminLogsPageQuery,
+    AdminWordLogEntry,
+} from '@/src/modules/admin-logs';
+import { useAdminLogsPage, useDeleteAdminLogs } from '@/src/modules/admin-logs';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/src/app/components/ui/card';
+import { Button } from '@/src/app/components/ui/button';
+import { Badge } from '@/src/app/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/src/app/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/src/app/components/ui/table';
+import { Checkbox } from '@/src/app/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/src/app/components/ui/select';
+import { Input } from '@/src/app/components/ui/input';
+import { Label } from '@/src/app/components/ui/label';
 import {
     Pagination,
     PaginationContent,
@@ -19,9 +24,8 @@ import {
     PaginationLink,
     PaginationNext,
     PaginationPrevious,
-} from "@/src/app/components/ui/pagination";
-import { ArrowLeft, Filter, Trash2 } from "lucide-react";
-import { PostgrestError } from '@supabase/supabase-js';
+} from '@/src/app/components/ui/pagination';
+import { ArrowLeft, Filter, Trash2 } from 'lucide-react';
 import ErrorModal from '@/src/app/components/ErrModal';
 
 type ErrorMessage = {
@@ -31,267 +35,150 @@ type ErrorMessage = {
     inputValue: string;
 };
 
-type WordLog = {
-    id: number;
-    word: string;
-    processed_by: string | null;
-    make_by: string | null;
-    state: "approved" | "rejected" | "pending";
-    r_type: "add" | "delete";
-    created_at: string;
-    make_by_user: { nickname: string } | null;
-    processed_by_user: { nickname: string | null } | null;
-}
-
-type DocsLog = {
-    id: number;
-    docs_id: number;
-    word: string;
-    add_by: string | null;
-    type: "add" | "delete";
-    date: string;
-    docs: {
-        id: number;
-        name: string;
-        typez: "letter" | "theme" | "ect";
-        duem: boolean;
-        maker: string | null;
-        created_at: string;
-        last_update: string;
-        views: number;
-        is_hidden: boolean;
-    };
-    users: { nickname: string } | null;
-}
-
 type Docs = {
     id: number;
     name: string;
-    typez: "letter" | "theme" | "ect";
-    duem: boolean;
-    maker: string | null;
-    created_at: string;
-    last_update: string;
-    views: number;
-    is_hidden: boolean;
-    users: {
-        id: string;
-        nickname: string;
-        contribution: number;
-        month_contribution: number;
-        role: "r1" | "r2" | "r3" | "r4" | "admin";
-    } | null;
-}
+    typez: 'letter' | 'theme' | 'ect';
+};
 
 interface AdminLogsHomeProps {
-    initialWordLogs: WordLog[];
-    initialDocsLogs: DocsLog[];
     allDocs: Docs[];
 }
 
-export default function AdminLogsHome({ initialWordLogs, initialDocsLogs, allDocs }: AdminLogsHomeProps) {
-    const [selectedTab, setSelectedTab] = useState<string>("word_logs");
+type AdminLogsTab = 'word_logs' | 'docs_logs';
+
+const stableDeleteError = (): ErrorMessage => ({
+    ErrName: '관리자 로그 삭제 오류',
+    ErrMessage: '선택한 로그를 삭제하는 중 오류가 발생했습니다.',
+    ErrStackRace: '',
+    inputValue: '',
+});
+
+const noSelectionError = (): ErrorMessage => ({
+    ErrName: '관리자 로그 삭제 오류',
+    ErrMessage: '선택된 로그가 없습니다.',
+    ErrStackRace: '',
+    inputValue: '',
+});
+
+const toIsoDate = (value: string): string | undefined => (
+    value === '' ? undefined : new Date(value).toISOString()
+);
+
+export default function AdminLogsHome({ allDocs }: AdminLogsHomeProps) {
+    const [selectedTab, setSelectedTab] = useState<AdminLogsTab>('word_logs');
     const [selectedWordLogs, setSelectedWordLogs] = useState<Set<number>>(new Set());
     const [selectedDocsLogs, setSelectedDocsLogs] = useState<Set<number>>(new Set());
-    const [currentPage, setCurrentPage] = useState<number>(1);
-    const [allSelected, setAllSelected] = useState<boolean>(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [allSelected, setAllSelected] = useState(false);
     const [errorModalView, setErrorModalView] = useState<ErrorMessage | null>(null);
-    const [loading, setLoading] = useState<boolean>(false);
-    
-    // 필터 상태
-    const [wordLogState, setWordLogState] = useState<"all" | "approved" | "rejected" | "pending">("all");
-    const [wordLogType, setWordLogType] = useState<"all" | "add" | "delete">("all");
-    const [docsLogType, setDocsLogType] = useState<"all" | "add" | "delete">("all");
-    const [selectedDocsName, setSelectedDocsName] = useState<string>("all");
-    const [dateFromFilter, setDateFromFilter] = useState<string>("");
-    const [dateToFilter, setDateToFilter] = useState<string>("");
-    
-    // 로그 데이터 상태
-    const [wordLogs, setWordLogs] = useState<WordLog[]>(initialWordLogs);
-    const [docsLogs, setDocsLogs] = useState<DocsLog[]>(initialDocsLogs);
-    
-    // 페이지 크기 - 날짜 필터가 적용되면 150개, 아니면 30개
-    const isDateFilterApplied = dateFromFilter || dateToFilter;
-    const PAGE_SIZE = isDateFilterApplied ? 150 : 30;
+    const [isQueryErrorDismissed, setIsQueryErrorDismissed] = useState(false);
 
-    // 현재 표시할 로그들 (날짜 필터링 적용)
-    const getFilteredLogs = (): (WordLog | DocsLog)[] => {
-        let logs: (WordLog | DocsLog)[] = selectedTab === "word_logs" ? wordLogs : docsLogs;
-        
-        // 날짜 범위 필터링 적용
-        if (dateFromFilter || dateToFilter) {
-            logs = logs.filter((log) => {
-                const logDate = new Date(selectedTab === "word_logs" ? (log as WordLog).created_at : (log as DocsLog).date);
-                const fromDate = dateFromFilter ? new Date(dateFromFilter) : null;
-                const toDate = dateToFilter ? new Date(dateToFilter) : null;
-                
-                if (fromDate && logDate < fromDate) return false;
-                if (toDate && logDate > toDate) return false;
-                return true;
-            });
-        }
-        
-        return logs;
+    const [wordLogState, setWordLogState] = useState<'all' | 'approved' | 'rejected' | 'pending'>('all');
+    const [wordLogType, setWordLogType] = useState<'all' | 'add' | 'delete'>('all');
+    const [docsLogType, setDocsLogType] = useState<'all' | 'add' | 'delete'>('all');
+    const [selectedDocsName, setSelectedDocsName] = useState('all');
+    const [dateFromFilter, setDateFromFilter] = useState('');
+    const [dateToFilter, setDateToFilter] = useState('');
+
+    const isDateFilterApplied = dateFromFilter !== '' || dateToFilter !== '';
+    const pageSize = isDateFilterApplied ? 150 : 30;
+    const query: AdminLogsPageQuery = {
+        page: currentPage,
+        pageSize,
+        ...(toIsoDate(dateFromFilter) === undefined
+            ? {}
+            : { fromDate: toIsoDate(dateFromFilter) }),
+        ...(toIsoDate(dateToFilter) === undefined
+            ? {}
+            : { toDate: toIsoDate(dateToFilter) }),
+        filter: selectedTab === 'word_logs'
+            ? { kind: 'word', state: wordLogState, requestType: wordLogType }
+            : {
+                kind: 'docs',
+                ...(selectedDocsName === 'all' ? {} : { documentName: selectedDocsName }),
+                type: docsLogType,
+            },
     };
-    
-    const currentLogs = getFilteredLogs();
-    const totalPages = Math.ceil(currentLogs.length / PAGE_SIZE);
-    const startIndex = (currentPage - 1) * PAGE_SIZE;
-    const currentPageLogs = currentLogs.slice(startIndex, startIndex + PAGE_SIZE);
+    const { data, error, isFetching, refetch } = useAdminLogsPage(query);
+    const { deleteAdminLogs, isPending: isDeletePending } = useDeleteAdminLogs();
+    const currentPageLogs = data?.items ?? [];
+    const totalCount = data?.totalCount ?? 0;
+    const totalPages = Math.ceil(totalCount / pageSize);
 
-    // 전체 선택 토글
-    const toggleSelectAll = () => {
-        if (selectedTab === "word_logs") {
-            if (allSelected) {
-                setSelectedWordLogs(new Set());
-                setAllSelected(false);
-            } else {
-                const newSelected = new Set<number>();
-                (currentPageLogs as WordLog[]).forEach(log => newSelected.add(log.id));
-                setSelectedWordLogs(newSelected);
-                setAllSelected(true);
-            }
-        } else {
-            if (allSelected) {
-                setSelectedDocsLogs(new Set());
-                setAllSelected(false);
-            } else {
-                const newSelected = new Set<number>();
-                (currentPageLogs as DocsLog[]).forEach(log => newSelected.add(log.id));
-                setSelectedDocsLogs(newSelected);
-                setAllSelected(true);
-            }
-        }
-    };
-
-    // 개별 로그 선택 토글
-    const toggleLog = (id: number) => {
-        if (selectedTab === "word_logs") {
-            const newSelected = new Set(selectedWordLogs);
-            if (newSelected.has(id)) {
-                newSelected.delete(id);
-                setAllSelected(false);
-            } else {
-                newSelected.add(id);
-                if (newSelected.size === currentPageLogs.length) {
-                    setAllSelected(true);
-                }
-            }
-            setSelectedWordLogs(newSelected);
-        } else {
-            const newSelected = new Set(selectedDocsLogs);
-            if (newSelected.has(id)) {
-                newSelected.delete(id);
-                setAllSelected(false);
-            } else {
-                newSelected.add(id);
-                if (newSelected.size === currentPageLogs.length) {
-                    setAllSelected(true);
-                }
-            }
-            setSelectedDocsLogs(newSelected);
-        }
-    };
-
-    const makeError = (error: PostgrestError) => {
-        setErrorModalView({
-            ErrName: error.name,
-            ErrMessage: error.message,
-            ErrStackRace: error.code,
-            inputValue: ""
-        });
-    }
-
-    // 로그 데이터 새로고침
-    const refreshLogs = async () => {
-        setLoading(true);
-        try {
-            if (selectedTab === "word_logs") {
-                const { data, error } = await SCM.get().logsByFilter({
-                    filterState: wordLogState, 
-                    filterType: wordLogType, 
-                    from: 0, 
-                    to: 999 
-                });
-                if (error) {
-                    makeError(error);
-                } else {
-                    setWordLogs(data || []);
-                }
-            } else {
-                const { data, error } = await SCM.get().docsLogsByFilter({ 
-                    docsName: selectedDocsName !== "all" ? selectedDocsName : undefined,
-                    logType: docsLogType, 
-                    from: 0, 
-                    to: 999 
-                });
-                if (error) {
-                    makeError(error);
-                } else {
-                    setDocsLogs(data || []);
-                }
-            }
-        } catch (err) {
-            console.error("로그 새로고침 중 오류:", err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // 선택한 로그 삭제
-    const deleteSelectedLogs = async () => {
-        if (selectedTab === "word_logs") {
-            if (selectedWordLogs.size === 0) {
-                alert("선택된 로그가 없습니다.");
-                return;
-            }
-            
-            const { error } = await SCM.delete().logsByIds(Array.from(selectedWordLogs));
-            if (error) {
-                makeError(error);
-            } else {
-                setSelectedWordLogs(new Set());
-                setAllSelected(false);
-                await refreshLogs();
-            }
-        } else {
-            if (selectedDocsLogs.size === 0) {
-                alert("선택된 로그가 없습니다.");
-                return;
-            }
-            
-            const { error } = await SCM.delete().docsLogsByIds(Array.from(selectedDocsLogs));
-            if (error) {
-                makeError(error);
-            } else {
-                setSelectedDocsLogs(new Set());
-                setAllSelected(false);
-                await refreshLogs();
-            }
-        }
-    };
-
-    // 필터 변경시 로그 새로고침
-    useEffect(() => {
-        refreshLogs();
-    }, [wordLogState, wordLogType, docsLogType, selectedDocsName]);
-
-    // 날짜 필터 변경이나 페이지 변경시 선택 상태 초기화 및 첫 페이지로 이동
-    useEffect(() => {
+    const clearSelection = () => {
         setSelectedWordLogs(new Set());
         setSelectedDocsLogs(new Set());
         setAllSelected(false);
+    };
+
+    const resetQueryWindow = () => {
+        clearSelection();
+        setIsQueryErrorDismissed(false);
         setCurrentPage(1);
-    }, [selectedTab, dateFromFilter, dateToFilter]);
+    };
 
-    // 페이지 변경시에만 선택 상태 초기화
-    useEffect(() => {
-        setSelectedWordLogs(new Set());
-        setSelectedDocsLogs(new Set());
-        setAllSelected(false);
-    }, [currentPage]);
+    const changePage = (page: number) => {
+        if (page < 1 || page > totalPages || page === currentPage) return;
+        clearSelection();
+        setIsQueryErrorDismissed(false);
+        setCurrentPage(page);
+    };
 
-    // 날짜 포맷 함수
+    const toggleSelectAll = () => {
+        if (allSelected) {
+            clearSelection();
+            return;
+        }
+
+        const selected = new Set(currentPageLogs.map((log) => log.id));
+        if (selectedTab === 'word_logs') {
+            setSelectedWordLogs(selected);
+        } else {
+            setSelectedDocsLogs(selected);
+        }
+        setAllSelected(true);
+    };
+
+    const toggleLog = (id: number) => {
+        const selectedLogs = selectedTab === 'word_logs' ? selectedWordLogs : selectedDocsLogs;
+        const nextSelected = new Set(selectedLogs);
+        if (nextSelected.has(id)) {
+            nextSelected.delete(id);
+            setAllSelected(false);
+        } else {
+            nextSelected.add(id);
+            setAllSelected(nextSelected.size === currentPageLogs.length);
+        }
+
+        if (selectedTab === 'word_logs') {
+            setSelectedWordLogs(nextSelected);
+        } else {
+            setSelectedDocsLogs(nextSelected);
+        }
+    };
+
+    const deleteSelectedLogs = async () => {
+        const selectedLogs = selectedTab === 'word_logs'
+            ? selectedWordLogs
+            : selectedDocsLogs;
+        if (selectedLogs.size === 0) {
+            setErrorModalView(noSelectionError());
+            return;
+        }
+
+        const result = await deleteAdminLogs({
+            kind: selectedTab === 'word_logs' ? 'word' : 'docs',
+            ids: Array.from(selectedLogs),
+        });
+        if (!result.ok) {
+            setErrorModalView(stableDeleteError());
+            return;
+        }
+
+        clearSelection();
+    };
+
     const formatDate = (dateStr: string) => {
         const date = new Date(dateStr);
         return new Intl.DateTimeFormat('ko-KR', {
@@ -299,11 +186,10 @@ export default function AdminLogsHome({ initialWordLogs, initialDocsLogs, allDoc
             month: '2-digit',
             day: '2-digit',
             hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
         }).format(date);
     };
 
-    // 상태 뱃지 렌더링
     const renderStateBadge = (state: string) => {
         switch (state) {
             case 'approved':
@@ -317,7 +203,6 @@ export default function AdminLogsHome({ initialWordLogs, initialDocsLogs, allDoc
         }
     };
 
-    // 타입 뱃지 렌더링
     const renderTypeBadge = (type: string) => {
         switch (type) {
             case 'add':
@@ -329,19 +214,26 @@ export default function AdminLogsHome({ initialWordLogs, initialDocsLogs, allDoc
         }
     };
 
-    // 주제 문서 목록 (필터링용)
-    const themeDocs = allDocs.filter(doc => doc.typez === "theme");
+    const themeDocs = allDocs.filter((docs) => docs.typez === 'theme');
+    const queryError = error === null || isQueryErrorDismissed
+        ? null
+        : {
+            ErrName: '관리자 로그 조회 오류',
+            ErrMessage: error.message,
+            ErrStackRace: '',
+            inputValue: '',
+        };
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800">
             <div className="container mx-auto py-8">
-                <Link href={'/admin'} className="mb-4 flex">
+                <Link href="/admin" className="mb-4 flex">
                     <Button variant="outline">
                         <ArrowLeft />
                         관리자 대시보드로 이동
                     </Button>
                 </Link>
-                
+
                 <Card className="w-full bg-white dark:bg-gray-800 border border-transparent dark:border-gray-700 shadow-sm">
                     <CardHeader>
                         <CardTitle className="text-gray-900 dark:text-gray-100">로그 관리 페이지</CardTitle>
@@ -351,21 +243,32 @@ export default function AdminLogsHome({ initialWordLogs, initialDocsLogs, allDoc
                     </CardHeader>
 
                     <CardContent>
-                        <Tabs defaultValue="word_logs" value={selectedTab} onValueChange={setSelectedTab}>
+                        <Tabs
+                            value={selectedTab}
+                            onValueChange={(value) => {
+                                setSelectedTab(value as AdminLogsTab);
+                                resetQueryWindow();
+                            }}
+                        >
                             <TabsList className="mb-4">
                                 <TabsTrigger value="word_logs">단어 로그</TabsTrigger>
                                 <TabsTrigger value="docs_logs">문서 로그</TabsTrigger>
                             </TabsList>
 
-                            {/* 필터 섹션 */}
                             <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
                                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                                    {selectedTab === "word_logs" ? (
+                                    {selectedTab === 'word_logs' ? (
                                         <>
                                             <div>
                                                 <Label htmlFor="state-filter">상태</Label>
-                                                <Select value={wordLogState} onValueChange={(value: "all" | "approved" | "rejected" | "pending") => setWordLogState(value)}>
-                                                    <SelectTrigger>
+                                                <Select
+                                                    value={wordLogState}
+                                                    onValueChange={(value: 'all' | 'approved' | 'rejected' | 'pending') => {
+                                                        setWordLogState(value);
+                                                        resetQueryWindow();
+                                                    }}
+                                                >
+                                                    <SelectTrigger id="state-filter">
                                                         <SelectValue placeholder="상태 선택" />
                                                     </SelectTrigger>
                                                     <SelectContent>
@@ -378,8 +281,14 @@ export default function AdminLogsHome({ initialWordLogs, initialDocsLogs, allDoc
                                             </div>
                                             <div>
                                                 <Label htmlFor="type-filter">타입</Label>
-                                                <Select value={wordLogType} onValueChange={(value: "all" | "add" | "delete") => setWordLogType(value)}>
-                                                    <SelectTrigger>
+                                                <Select
+                                                    value={wordLogType}
+                                                    onValueChange={(value: 'all' | 'add' | 'delete') => {
+                                                        setWordLogType(value);
+                                                        resetQueryWindow();
+                                                    }}
+                                                >
+                                                    <SelectTrigger id="type-filter">
                                                         <SelectValue placeholder="타입 선택" />
                                                     </SelectTrigger>
                                                     <SelectContent>
@@ -394,15 +303,21 @@ export default function AdminLogsHome({ initialWordLogs, initialDocsLogs, allDoc
                                         <>
                                             <div>
                                                 <Label htmlFor="docs-filter">문서</Label>
-                                                <Select value={selectedDocsName} onValueChange={setSelectedDocsName}>
-                                                    <SelectTrigger>
+                                                <Select
+                                                    value={selectedDocsName}
+                                                    onValueChange={(value) => {
+                                                        setSelectedDocsName(value);
+                                                        resetQueryWindow();
+                                                    }}
+                                                >
+                                                    <SelectTrigger id="docs-filter">
                                                         <SelectValue placeholder="문서 선택" />
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         <SelectItem value="all">전체</SelectItem>
-                                                        {themeDocs.map(doc => (
-                                                            <SelectItem key={doc.id} value={doc.name}>
-                                                                {doc.name}
+                                                        {themeDocs.map((docs) => (
+                                                            <SelectItem key={docs.id} value={docs.name}>
+                                                                {docs.name}
                                                             </SelectItem>
                                                         ))}
                                                     </SelectContent>
@@ -410,8 +325,14 @@ export default function AdminLogsHome({ initialWordLogs, initialDocsLogs, allDoc
                                             </div>
                                             <div>
                                                 <Label htmlFor="docs-type-filter">타입</Label>
-                                                <Select value={docsLogType} onValueChange={(value: "all" | "add" | "delete") => setDocsLogType(value)}>
-                                                    <SelectTrigger>
+                                                <Select
+                                                    value={docsLogType}
+                                                    onValueChange={(value: 'all' | 'add' | 'delete') => {
+                                                        setDocsLogType(value);
+                                                        resetQueryWindow();
+                                                    }}
+                                                >
+                                                    <SelectTrigger id="docs-type-filter">
                                                         <SelectValue placeholder="타입 선택" />
                                                     </SelectTrigger>
                                                     <SelectContent>
@@ -426,32 +347,48 @@ export default function AdminLogsHome({ initialWordLogs, initialDocsLogs, allDoc
                                     <div>
                                         <Label htmlFor="date-from-filter">시작 날짜+시간</Label>
                                         <Input
+                                            id="date-from-filter"
                                             type="datetime-local"
                                             value={dateFromFilter}
-                                            onChange={(e) => setDateFromFilter(e.target.value)}
+                                            onChange={(event) => {
+                                                setDateFromFilter(event.target.value);
+                                                resetQueryWindow();
+                                            }}
                                             className="w-full"
                                         />
                                     </div>
                                     <div>
                                         <Label htmlFor="date-to-filter">종료 날짜+시간</Label>
                                         <Input
+                                            id="date-to-filter"
                                             type="datetime-local"
                                             value={dateToFilter}
-                                            onChange={(e) => setDateToFilter(e.target.value)}
+                                            onChange={(event) => {
+                                                setDateToFilter(event.target.value);
+                                                resetQueryWindow();
+                                            }}
                                             className="w-full"
                                         />
                                     </div>
                                     <div className="flex items-end gap-2">
-                                        <Button onClick={refreshLogs} disabled={loading} className="flex-1">
+                                        <Button
+                                            onClick={() => {
+                                                setIsQueryErrorDismissed(false);
+                                                void refetch();
+                                            }}
+                                            disabled={isFetching}
+                                            className="flex-1"
+                                        >
                                             <Filter className="w-4 h-4 mr-2" />
-                                            {loading ? "로딩..." : "필터 적용"}
+                                            {isFetching ? '로딩...' : '필터 적용'}
                                         </Button>
                                         {isDateFilterApplied && (
-                                            <Button 
-                                                variant="outline" 
+                                            <Button
+                                                variant="outline"
                                                 onClick={() => {
-                                                    setDateFromFilter("");
-                                                    setDateToFilter("");
+                                                    setDateFromFilter('');
+                                                    setDateToFilter('');
+                                                    resetQueryWindow();
                                                 }}
                                                 className="px-3"
                                                 title="날짜 필터 초기화"
@@ -461,12 +398,11 @@ export default function AdminLogsHome({ initialWordLogs, initialDocsLogs, allDoc
                                         )}
                                     </div>
                                 </div>
-                                
-                                {/* 필터 적용 상태 표시 */}
+
                                 {isDateFilterApplied && (
                                     <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
                                         <p className="text-sm text-blue-700 dark:text-blue-300">
-                                            📅 날짜 필터가 적용되어 페이지당 {PAGE_SIZE}개씩 표시됩니다.
+                                            📅 날짜 필터가 적용되어 페이지당 {pageSize}개씩 표시됩니다.
                                             {dateFromFilter && ` 시작: ${new Date(dateFromFilter).toLocaleString('ko-KR')}`}
                                             {dateToFilter && ` 종료: ${new Date(dateToFilter).toLocaleString('ko-KR')}`}
                                         </p>
@@ -477,17 +413,18 @@ export default function AdminLogsHome({ initialWordLogs, initialDocsLogs, allDoc
                             <TabsContent value={selectedTab}>
                                 <div className="flex justify-between items-center mb-4">
                                     <div className="text-sm text-gray-600 dark:text-gray-400">
-                                        전체 {selectedTab === "word_logs" ? wordLogs.length : docsLogs.length}개 중 {currentLogs.length}개 표시
-                                        {` (페이지당 ${PAGE_SIZE}개)`}
+                                        전체 {totalCount}개 중 {totalCount}개 표시
+                                        {` (페이지당 ${pageSize}개)`}
                                     </div>
                                     <div className="flex gap-2">
                                         <Button
                                             variant="outline"
                                             className="bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800"
-                                            onClick={deleteSelectedLogs}
+                                            onClick={() => void deleteSelectedLogs()}
+                                            disabled={isDeletePending}
                                         >
                                             <Trash2 className="w-4 h-4 mr-2" />
-                                            선택 삭제
+                                            {isDeletePending ? '삭제 중...' : '선택 삭제'}
                                         </Button>
                                     </div>
                                 </div>
@@ -505,7 +442,7 @@ export default function AdminLogsHome({ initialWordLogs, initialDocsLogs, allDoc
                                                 </TableHead>
                                                 <TableHead className="w-16 text-gray-700 dark:text-gray-200">ID</TableHead>
                                                 <TableHead className="w-36 text-gray-700 dark:text-gray-200">단어</TableHead>
-                                                {selectedTab === "word_logs" ? (
+                                                {selectedTab === 'word_logs' ? (
                                                     <>
                                                         <TableHead className="w-24 text-gray-700 dark:text-gray-200">상태</TableHead>
                                                         <TableHead className="w-24 text-gray-700 dark:text-gray-200">타입</TableHead>
@@ -525,50 +462,52 @@ export default function AdminLogsHome({ initialWordLogs, initialDocsLogs, allDoc
                                         <TableBody>
                                             {currentPageLogs.length === 0 ? (
                                                 <TableRow>
-                                                    <TableCell colSpan={selectedTab === "word_logs" ? 8 : 7} className="text-center py-4 text-gray-500 dark:text-gray-400">
+                                                    <TableCell colSpan={selectedTab === 'word_logs' ? 8 : 7} className="text-center py-4 text-gray-500 dark:text-gray-400">
                                                         로그가 없습니다.
                                                     </TableCell>
                                                 </TableRow>
-                                            ) : (
-                                                currentPageLogs.map((log) => (
-                                                    <TableRow key={`${selectedTab}-${log.id}`} className="hover:bg-gray-50 dark:hover:bg-gray-900">
-                                                        <TableCell>
-                                                            <Checkbox
-                                                                checked={selectedTab === "word_logs" ? selectedWordLogs.has(log.id) : selectedDocsLogs.has(log.id)}
-                                                                onCheckedChange={() => toggleLog(log.id)}
-                                                                aria-label={`로그 ${log.id} 선택`}
-                                                            />
-                                                        </TableCell>
-                                                        <TableCell className="text-gray-900 dark:text-gray-100">{log.id}</TableCell>
-                                                        <TableCell className="text-gray-900 dark:text-gray-100">{log.word}</TableCell>
-                                                        {selectedTab === "word_logs" ? (
-                                                            <>
-                                                                <TableCell>{renderStateBadge((log as WordLog).state)}</TableCell>
-                                                                <TableCell>{renderTypeBadge((log as WordLog).r_type)}</TableCell>
-                                                                <TableCell className="text-gray-900 dark:text-gray-100">
-                                                                    {(log as WordLog).make_by_user?.nickname || 'N/A'}
-                                                                </TableCell>
-                                                                <TableCell className="text-gray-900 dark:text-gray-100">
-                                                                    {(log as WordLog).processed_by_user?.nickname || 'N/A'}
-                                                                </TableCell>
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <TableCell className="text-gray-900 dark:text-gray-100">
-                                                                    {(log as DocsLog).docs.name}
-                                                                </TableCell>
-                                                                <TableCell>{renderTypeBadge((log as DocsLog).type)}</TableCell>
-                                                                <TableCell className="text-gray-900 dark:text-gray-100">
-                                                                    {(log as DocsLog).users?.nickname || 'N/A'}
-                                                                </TableCell>
-                                                            </>
-                                                        )}
-                                                        <TableCell className="text-gray-900 dark:text-gray-100">
-                                                            {formatDate(selectedTab === "word_logs" ? (log as WordLog).created_at : (log as DocsLog).date)}
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))
-                                            )}
+                                            ) : currentPageLogs.map((log) => (
+                                                <TableRow key={`${selectedTab}-${log.id}`} className="hover:bg-gray-50 dark:hover:bg-gray-900">
+                                                    <TableCell>
+                                                        <Checkbox
+                                                            checked={selectedTab === 'word_logs'
+                                                                ? selectedWordLogs.has(log.id)
+                                                                : selectedDocsLogs.has(log.id)}
+                                                            onCheckedChange={() => toggleLog(log.id)}
+                                                            aria-label={`로그 ${log.id} 선택`}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell className="text-gray-900 dark:text-gray-100">{log.id}</TableCell>
+                                                    <TableCell className="text-gray-900 dark:text-gray-100">{log.word}</TableCell>
+                                                    {selectedTab === 'word_logs' ? (
+                                                        <>
+                                                            <TableCell>{renderStateBadge((log as AdminWordLogEntry).state)}</TableCell>
+                                                            <TableCell>{renderTypeBadge((log as AdminWordLogEntry).requestType)}</TableCell>
+                                                            <TableCell className="text-gray-900 dark:text-gray-100">
+                                                                {(log as AdminWordLogEntry).requesterNickname || 'N/A'}
+                                                            </TableCell>
+                                                            <TableCell className="text-gray-900 dark:text-gray-100">
+                                                                {(log as AdminWordLogEntry).processorNickname || 'N/A'}
+                                                            </TableCell>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <TableCell className="text-gray-900 dark:text-gray-100">
+                                                                {(log as AdminDocsLogEntry).documentName ?? 'N/A'}
+                                                            </TableCell>
+                                                            <TableCell>{renderTypeBadge((log as AdminDocsLogEntry).type)}</TableCell>
+                                                            <TableCell className="text-gray-900 dark:text-gray-100">
+                                                                {(log as AdminDocsLogEntry).actorNickname || 'N/A'}
+                                                            </TableCell>
+                                                        </>
+                                                    )}
+                                                    <TableCell className="text-gray-900 dark:text-gray-100">
+                                                        {formatDate(selectedTab === 'word_logs'
+                                                            ? (log as AdminWordLogEntry).createdAt
+                                                            : (log as AdminDocsLogEntry).occurredAt)}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
                                         </TableBody>
                                     </Table>
                                 </div>
@@ -582,37 +521,39 @@ export default function AdminLogsHome({ initialWordLogs, initialDocsLogs, allDoc
                                 <PaginationContent>
                                     <PaginationItem>
                                         <PaginationPrevious
-                                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                            className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                            href="#"
+                                            onClick={(event) => {
+                                                event.preventDefault();
+                                                changePage(currentPage - 1);
+                                            }}
+                                            aria-disabled={currentPage <= 1}
+                                            tabIndex={currentPage <= 1 ? -1 : 0}
+                                            className={currentPage <= 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
                                         />
                                     </PaginationItem>
 
-                                    {/* 페이지네이션 렌더링 - 최대 5개 버튼 표시 */}
-                                    {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
-                                        let pageNum: number;
-
-                                        if (totalPages <= 5) {
-                                            // 5페이지 이하면 1부터 순차적으로
-                                            pageNum = i + 1;
-                                        } else if (currentPage <= 3) {
-                                            // 현재 페이지가 앞쪽이면 1~5 표시
-                                            pageNum = i + 1;
+                                    {Array.from({ length: Math.min(5, totalPages) }).map((_, index) => {
+                                        let pageNumber: number;
+                                        if (totalPages <= 5 || currentPage <= 3) {
+                                            pageNumber = index + 1;
                                         } else if (currentPage >= totalPages - 2) {
-                                            // 현재 페이지가 뒤쪽이면 마지막 5개 표시
-                                            pageNum = totalPages - 4 + i;
+                                            pageNumber = totalPages - 4 + index;
                                         } else {
-                                            // 중간이면 현재 페이지 중심으로 표시
-                                            pageNum = currentPage - 2 + i;
+                                            pageNumber = currentPage - 2 + index;
                                         }
 
                                         return (
-                                            <PaginationItem key={`p-${pageNum}`}>
+                                            <PaginationItem key={`p-${pageNumber}`}>
                                                 <PaginationLink
-                                                    isActive={currentPage === pageNum}
-                                                    onClick={() => setCurrentPage(pageNum)}
+                                                    href="#"
+                                                    isActive={currentPage === pageNumber}
+                                                    onClick={(event) => {
+                                                        event.preventDefault();
+                                                        changePage(pageNumber);
+                                                    }}
                                                     className="cursor-pointer"
                                                 >
-                                                    {pageNum}
+                                                    {pageNumber}
                                                 </PaginationLink>
                                             </PaginationItem>
                                         );
@@ -620,8 +561,16 @@ export default function AdminLogsHome({ initialWordLogs, initialDocsLogs, allDoc
 
                                     <PaginationItem>
                                         <PaginationNext
-                                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                            className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                            href="#"
+                                            onClick={(event) => {
+                                                event.preventDefault();
+                                                changePage(currentPage + 1);
+                                            }}
+                                            aria-disabled={totalPages === 0 || currentPage >= totalPages}
+                                            tabIndex={totalPages === 0 || currentPage >= totalPages ? -1 : 0}
+                                            className={totalPages === 0 || currentPage >= totalPages
+                                                ? 'pointer-events-none opacity-50'
+                                                : 'cursor-pointer'}
                                         />
                                     </PaginationItem>
                                 </PaginationContent>
@@ -629,8 +578,19 @@ export default function AdminLogsHome({ initialWordLogs, initialDocsLogs, allDoc
                         </div>
                     </CardFooter>
                 </Card>
-                
-                {errorModalView && <ErrorModal error={errorModalView} onClose={() => setErrorModalView(null)} />}
+
+                {(errorModalView ?? queryError) && (
+                    <ErrorModal
+                        error={(errorModalView ?? queryError) as ErrorMessage}
+                        onClose={() => {
+                            if (errorModalView !== null) {
+                                setErrorModalView(null);
+                            } else {
+                                setIsQueryErrorDismissed(true);
+                            }
+                        }}
+                    />
+                )}
             </div>
         </div>
     );

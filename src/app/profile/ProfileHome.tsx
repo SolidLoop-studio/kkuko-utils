@@ -5,20 +5,12 @@ import { Card, CardContent, CardHeader } from "@/src/app/components/ui/card";
 import { Input } from "@/src/app/components/ui/input";
 import { Button } from "@/src/app/components/ui/button";
 import { Badge } from "@/src/app/components/ui/badge";
-import { SCM } from "../lib/supabaseClient";
 import ErrorModal from "../components/ErrModal";
 import Link from "next/link";
-
-type role = "r1" | "r2" | "r3" | "r4" | "admin";
-type user = {
-  id: string;
-  nickname: string;
-  contribution: number;
-  month_contribution: number;
-  role: role;
-};
+import { type ProfileSearchItem, useProfileSearch } from "../../modules/identity";
 
 const roleLabels = {
+  guest: "게스트",
   r1: "새싹",
   r2: "일반",
   r3: "활동가",
@@ -27,6 +19,7 @@ const roleLabels = {
 };
 
 const roleVariants = {
+  guest: "secondary",
   r1: "secondary",
   r2: "default",
   r3: "outline",
@@ -34,7 +27,7 @@ const roleVariants = {
   admin: "default",
 } as const;
 
-const getRoleIcon = (role: role) => {
+const getRoleIcon = (role: ProfileSearchItem["role"]) => {
   switch (role) {
     case "admin":
       return <Crown className="w-4 h-4" />;
@@ -49,28 +42,24 @@ const getRoleIcon = (role: role) => {
 
 export default function ProfileHomePage() {
   const [searchInput, setSearchInput] = useState("");
-  const [resultUsers, setResultUsers] = useState<user[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [resultUsers, setResultUsers] = useState<ProfileSearchItem[]>([]);
   const [errorModalView, setErrorModalView] = useState<ErrorMessage | null>(null);
+  const { search, isPending } = useProfileSearch();
 
   const handleSearch = async () => {
-    setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1));
-    const { data, error } = await SCM.get().usersLikeByNickname(searchInput)
-    if (error){
-        setIsLoading(false);
-        setResultUsers([]);
-        setErrorModalView({
-            ErrName: error.name,
-            ErrMessage: error.message,
-            ErrStackRace: error.code,
-            inputValue: "유저 검색",
-        })
-        return
+    const result = await search(searchInput);
+    if (!result.ok) {
+      setResultUsers([]);
+      setErrorModalView({
+        ErrName: "Profile Search Error",
+        ErrMessage: result.error.message,
+        ErrStackRace: null,
+        inputValue: "유저 검색",
+      });
+      return;
     }
     setSearchInput("");
-    setResultUsers(data)
-    setIsLoading(false);
+    setResultUsers(result.value);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -106,6 +95,7 @@ export default function ProfileHomePage() {
                 <Button
                   onClick={handleSearch}
                   className="flex items-center gap-2"
+                  disabled={isPending}
                 >
                   <Search className="w-4 h-4" />
                   검색
@@ -138,7 +128,7 @@ export default function ProfileHomePage() {
                     <Badge variant={roleVariants[user.role]} className="mt-1">
                       <div className="flex items-center gap-1">
                         {getRoleIcon(user.role)}
-                        {roleLabels[user.role as role]}
+                        {roleLabels[user.role]}
                       </div>
                     </Badge>
                   </div>
@@ -153,7 +143,7 @@ export default function ProfileHomePage() {
                       총 기여도
                     </span>
                     <span className="font-semibold text-gray-900 dark:text-gray-100">
-                      {user.contribution.toLocaleString()}
+                      {user.totalContribution.toLocaleString()}
                     </span>
                   </div>
 
@@ -162,7 +152,7 @@ export default function ProfileHomePage() {
                       월간 기여도
                     </span>
                     <span className="font-semibold text-primary">
-                      {user.month_contribution.toLocaleString()}
+                      {user.monthlyContribution.toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -194,7 +184,7 @@ export default function ProfileHomePage() {
         )}
 
         {/* 로딩 오버레이 */}
-        {isLoading && (
+        {isPending && (
           <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
             <Card className="p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
               <div className="flex items-center space-x-3">

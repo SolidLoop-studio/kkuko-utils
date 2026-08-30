@@ -158,7 +158,7 @@ API 서버 로그를 조회합니다.
     id: string;
     name: string;
     description: string;
-    updatedAt: number;
+    updatedAt: number | string; // Unix epoch milliseconds
     group: string;
     options: {
       gEXP?: number; // 획득 경험치
@@ -194,7 +194,7 @@ API 서버 로그를 조회합니다.
     id: string;
     name: string;
     description: string;
-    updatedAt: number;
+    updatedAt: number | string; // Unix epoch milliseconds
     group: string;
     options: {
       gEXP?: number; // 획득 경험치
@@ -231,7 +231,7 @@ API 서버 로그를 조회합니다.
     id: string;
     name: string;
     description: string;
-    updatedAt: number;
+    updatedAt: number | string; // Unix epoch milliseconds
     group: string;
     options: {
       gEXP?: number; // 획득 경험치
@@ -281,7 +281,7 @@ Response (201)
   group: string;
   name: string;
   description: string;
-  updatedAt: number;
+  updatedAt: number | string; // Unix epoch milliseconds
   options: object;
 }
 ```
@@ -323,7 +323,7 @@ Response (201)
   group: string;
   name: string;
   description: string;
-  updatedAt: number;
+  updatedAt: number | string; // Unix epoch milliseconds
   options: object;
 }
 ```
@@ -686,7 +686,7 @@ No Content - 성공적으로 삭제됨
     id: string;
     name: string;
     description: string;
-    updatedAt: number;
+    updatedAt: number | string; // Unix epoch milliseconds
     group: string;
     options: {
       gEXP?: number; // 획득 경험치

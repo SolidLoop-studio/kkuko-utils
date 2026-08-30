@@ -1,46 +1,25 @@
+'use client';
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
 import Link from 'next/link';
-import { SCM } from '@/src/app/lib/supabaseClient';
+import { useWordSuggestions } from '@/src/modules/word-catalog';
 
 // 검색창 컴포넌트 (WordInfo 컴포넌트 내부에 추가)
 const WordSearchBar = () => {
     const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState<string[]>([]);
+    const [committedQuery, setCommittedQuery] = useState('');
     const [isSearchOpen, setIsSearchOpen] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
     const searchRef = useRef<HTMLDivElement>(null);
-
-    // 검색 함수 (실제 구현 시 연결할 함수)
-    const handleSearch = async (query: string): Promise<string[]> => {
-        const {data, error} = await SCM.get().wordsByQuery(query);
-        if (error) throw error
-        return data;
-    };
-
-    // 검색 실행
-    const performSearch = async (query: string) => {
-        if (query.trim() === '') {
-            setSearchResults([]);
-            return;
-        }
-
-        setIsLoading(true);
-        try {
-            const results = await handleSearch(query);
-            setSearchResults(results);
-        } catch (error) {
-            console.error('검색 오류:', error);
-            setSearchResults([]);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    const suggestionsQuery = useWordSuggestions(committedQuery);
+    const searchResults = suggestionsQuery.data ?? [];
+    const isLoading = suggestionsQuery.isFetching;
 
     // 검색어 변경 처리
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         setSearchQuery(value);
+        setCommittedQuery('');
         setIsSearchOpen(false);
     };
 
@@ -48,14 +27,14 @@ const WordSearchBar = () => {
     const handleSearchSubmit = (e?: React.FormEvent | React.KeyboardEvent) => {
         if (e) e.preventDefault();
         setIsSearchOpen(true);
-        performSearch(searchQuery);
+        setCommittedQuery(searchQuery.trim());
     };
 
     // 검색 결과 클릭 처리
     const handleResultClick = () => {
         setIsSearchOpen(false);
         setSearchQuery('');
-        setSearchResults([]);
+        setCommittedQuery('');
     };
 
     // 검색창 외부 클릭 감지
@@ -71,6 +50,12 @@ const WordSearchBar = () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, []);
+
+    useEffect(() => {
+        if (suggestionsQuery.error) {
+            console.error('검색 오류:', suggestionsQuery.error);
+        }
+    }, [suggestionsQuery.error]);
 
     return (
         <div className="max-w-4xl mx-auto mb-6" ref={searchRef}>
@@ -109,7 +94,7 @@ const WordSearchBar = () => {
                             type="button"
                             onClick={() => {
                                 setSearchQuery('');
-                                setSearchResults([]);
+                                setCommittedQuery('');
                                 setIsSearchOpen(false);
                             }}
                             className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"

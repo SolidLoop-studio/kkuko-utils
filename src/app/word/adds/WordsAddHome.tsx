@@ -5,20 +5,17 @@ import WordAddForm from "@/src/app/word/components/WordAddFrom";
 import { disassemble } from "es-hangul";
 import ErrorModal from "@/src/app/components/ErrModal";
 import { Edit2, Plus, Save, X, FileText, Trash2, FileSpreadsheet, AlertCircle, Check} from "lucide-react";
-import useSWR from "swr";
 import Spinner from "@/src/app/components/Spinner";
-import { chunk as chunkArray } from "es-toolkit";
 import CompleteModal from "@/src/app/components/CompleteModal";
 import { Alert, AlertDescription } from '@/src/app/components/ui/alert';
-import { fetcher } from "../lib";
 import * as XLSX from 'xlsx';
-import { PostgrestError } from "@supabase/supabase-js";
 import ProgressModal from "@/src/app/components/ProgressModal";
-import { SCM } from "@/src/app/lib/supabaseClient";
 import { useSelector } from "react-redux";
 import { RootState } from "@/src/app/store/store";
 import LoginRequiredModal from "@/src/app/components/LoginRequiredModal";
 import HelpModal from '@/src/app/components/HelpModal';
+import { useUserWordRequests } from '@/src/modules/word-requests';
+import { useWordThemes, type WordThemeSummary } from '@/src/modules/word-catalog';
 
 interface WordEntry {
     id: string;
@@ -58,13 +55,16 @@ export default function WordsAddPage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const parentRef = useRef<HTMLDivElement>(null);
     const [topicsCodeName, setTopicCodeName] = useState<Record<string, string>>({});
-    const [proWordsCount, setProWordsCount] = useState<number>(0);
-    const [chuckWordsBuN, setChuckWordsBuN] = useState<number>(0);
-    const { data, error, isLoading } = useSWR("topics", fetcher);
+    const {
+        data: themes,
+        error: themesError,
+        isLoading,
+    } = useWordThemes(true);
     const [completeMessage, setCompleteMessage] = useState<string | null>(null);
     const [progressMessage, setProgressMessage] = useState<{ task: string, progress: number } | null>(null);
     const user = useSelector((state: RootState) => state.user);
     const [loginNeedModalOpen, setLoginNeedModalOpen] = useState<boolean>(!user.uuid);
+    const { requestAdditions } = useUserWordRequests();
 
     // Format converter related states
     const [showMappingModal, setShowMappingModal] = useState<boolean>(false);
@@ -90,17 +90,27 @@ export default function WordsAddPage() {
     });
 
     useEffect(() => {
-        if (data) {
-            const topicsCode: Record<string, string> = {};
-            const topicsName: Record<string, string> = {};
-            for (const topic of data) {
-                topicsCode[topic.code] = topic.name;
-                topicsName[topic.name] = topic.code;
-            }
-            setTopicCodeName(topicsCode);
-            setTopicNameCode(topicsName);
+        if (!themes) return;
+
+        const topicsCode: Record<string, string> = {};
+        const topicsName: Record<string, string> = {};
+        for (const topic of themes as WordThemeSummary[]) {
+            topicsCode[topic.code] = topic.name;
+            topicsName[topic.name] = topic.code;
         }
-    }, [data, error, isLoading]);
+        setTopicCodeName(topicsCode);
+        setTopicNameCode(topicsName);
+    }, [themes]);
+
+    useEffect(() => {
+        if (!themesError) return;
+        seterrorModalView({
+            ErrName: "ThemeLoadError",
+            ErrMessage: "주제 정보를 불러오는 중 오류가 발생했습니다.",
+            ErrStackRace: "",
+            inputValue: "themes fetch",
+        });
+    }, [themesError]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFiles = Array.from(e.target.files || []);
@@ -495,144 +505,54 @@ export default function WordsAddPage() {
         }
     };
 
-    const makeError = (error: PostgrestError) => {
-        seterrorModalView({
-            ErrName: error.name,
-            ErrMessage: error.message,
-            ErrStackRace: error.stack,
-            ErrCode: error.code,
-            inputValue: '단어 대량 추가'
-        });
-        setProgressMessage(null);
-    }
-
     const handleSave = async () => {
         if (!fileContent || fileContent.length === 0) {
             return setErrorMessage("저장할 단어가 없습니다.");
         }
         if (!user.uuid) return setErrorMessage("로그인 하지 않은 유저입니다.")
         setIsSaving(true);
-        setProWordsCount(0);
-        setProgressMessage({ task: "작업 준비중...", progress: 1 });
-        console.log(fileContent);
+        setProgressMessage({
+            task: `대량 요청 준비중... 0 / ${fileContent.length}`,
+            progress: 0,
+        });
 
-        const addWaitWordThemeQuery: { wait_word_id: number, theme_id: number }[] = [];
-        const wordWaitThemeQuery: { word_id: number; theme_id: number; typez: 'add'; req_by: string | null; }[] = [];
-
-        const { data: themeData, error: themeError } = await SCM.get().allThemes()
-        if (themeError) return makeError(themeError);
-        const codeToId: { [key: string]: number } = {};
-        themeData.forEach(({ code, id }) => {
-            codeToId[code] = id;
-        })
-
-        setProgressMessage({ task: "기존 추가요청과 중복되는지 살펴보는 중...", progress: 15 });
-        const { data: waitWords, error: waitWordsError } = await SCM.get().allWaitWords("add");
-        if (waitWordsError) return makeError(waitWordsError);
-        const duplicateAddReqIds: number[] = [];
-        const duplicateAddReqMap: { [key: number]: string[] } = {}
-        fileContent.forEach(({ word, topics }) => {
-            for (const data of waitWords) {
-                if (data.word === word) {
-                    duplicateAddReqIds.push(data.id);
-                    duplicateAddReqMap[data.id] = topics;
-                }
+        try {
+            const result = await requestAdditions(
+                {
+                    entries: fileContent.map(({ word, topics }) => ({ word, themeCodes: topics })),
+                },
+                ({ completedWordCount, totalWordCount }) => {
+                    setProgressMessage({
+                        task: `대량 요청 처리중... ${completedWordCount} / ${totalWordCount}`,
+                        progress: completedWordCount === totalWordCount
+                            ? 100
+                            : Math.floor(completedWordCount / totalWordCount * 100),
+                    });
+                },
+            );
+            if (!result.ok) {
+                seterrorModalView({
+                    ErrName: `ApplicationError:${result.error.kind}`,
+                    ErrMessage: result.error.message,
+                    ErrStackRace: result.error.code,
+                    ErrCode: result.error.code,
+                    inputValue: '단어 대량 추가',
+                });
+                return;
             }
-        })
-        const existAddReqWordThemes: { [key: number]: string[] } = {};
-        for (const chuck of chunkArray(duplicateAddReqIds, 300)) {
-            const { data: addReqWordThemes, error: addReqWordThemesError } = await SCM.get().waitWordsThemes(chuck);
-            if (addReqWordThemesError) return makeError(addReqWordThemesError);
-            addReqWordThemes.forEach(({ wait_word_id, themes: { code } }) => {
-                existAddReqWordThemes[wait_word_id] = [...(existAddReqWordThemes[wait_word_id] ?? []), code];
-            })
+
+            const summary = result.value;
+            setCompleteMessage([
+                `신규 단어 요청 ${summary.createdWordRequestCount}개`,
+                `기존 요청 갱신 ${summary.updatedWordRequestCount}개`,
+                `등록 단어 주제 요청 ${summary.createdThemeChangeRequestCount}개`,
+                `변경 없음 ${summary.unchangedWordCount}개`,
+            ].join(', '));
+            setFileContent(null);
+        } finally {
+            setProgressMessage(null);
+            setIsSaving(false);
         }
-
-        duplicateAddReqIds.forEach((waitWordId) => {
-            const rt = duplicateAddReqMap[waitWordId] ?? []
-            const rat = new Set(existAddReqWordThemes[waitWordId] ?? [])
-
-            const difference = [...new Set(rt.filter(x => !rat.has(x)))];
-            if (difference.length > 0) {
-                difference.forEach((code) => {
-                    addWaitWordThemeQuery.push({ wait_word_id: waitWordId, theme_id: codeToId[code] })
-                })
-            }
-        })
-        setProgressMessage({ task: "기존 요청을 업데이트 하는중...", progress: 20 });
-        const { error: addReqWordThemesInsertError } = await SCM.add().waitWordThemes(addWaitWordThemeQuery);
-        if (addReqWordThemesInsertError) return makeError(addReqWordThemesInsertError);
-
-        setProgressMessage({ task: "이미 존재하는 단어인지 확인하는 중...", progress: 23 });
-        const exitsWords: { word: string, id: number }[] = []
-        const exitsWordMap: { [key: string]: number } = {}
-        for (const chuck of chunkArray(fileContent, 300)) {
-            const { data: exitsWordsData, error: exitsWordsError } = await SCM.get().wordsByWords(chuck.map(({ word }) => word));
-            if (exitsWordsError) return makeError(exitsWordsError);
-            exitsWords.push(...exitsWordsData)
-            exitsWordsData.forEach(({ word, id }) => {
-                exitsWordMap[word] = id;
-            })
-        }
-
-        const wordThemesMap: { [key: string]: string[] } = {};
-        for (const chuck of chunkArray(exitsWords, 300)) {
-            const { data: exitsWordThemesData, error: exitsWordThemesError } = await SCM.get().wordsThemes(chuck.map(({ id }) => id));
-            if (exitsWordThemesError) return makeError(exitsWordThemesError);
-            exitsWordThemesData.forEach(({ words: { word }, themes: { code } }) => {
-                wordThemesMap[word] = [...(wordThemesMap[word] || []), code];
-            })
-        }
-
-        for (const { word, topics } of fileContent) {
-            const wordId = exitsWordMap[word]
-            if (!wordId) continue;
-            const exitsTheme = new Set(wordThemesMap[word] ?? []);
-            const topicSet = topics ?? [];
-
-            const difference = [...new Set(topicSet.filter(x => !exitsTheme.has(x)))];
-            if (difference.length > 0) {
-                difference.forEach((code) => {
-                    wordWaitThemeQuery.push({ word_id: wordId, req_by: user.uuid ?? null, typez: "add", theme_id: codeToId[code] })
-                })
-            }
-        }
-        setProgressMessage({ task: "기존 단어에 대해서 주제 추가요청을 하는 중...", progress: 33 });
-        const { error: wordWaitThemeInsertError } = await SCM.add().wordThemesReq(wordWaitThemeQuery);
-        if (wordWaitThemeInsertError) return makeError(wordWaitThemeInsertError);
-
-        const kWord1 = new Set(exitsWords.map(({ word }) => word));
-        const kWord2 = new Set(waitWords.map(({ word }) => word));
-
-        const remainWord = fileContent.filter(({ word }) => !kWord1.has(word) && !kWord2.has(word));
-        const remainWordChunk = chunkArray(remainWord, 300);
-        setChuckWordsBuN(remainWordChunk.length);
-        for (const chuck of remainWordChunk) {
-            const waitWordsQuery: { word: string, requested_by: string | null, request_type: "add" }[] = [];
-            const waitWordsThemesQuery: { wait_word_id: number; theme_id: number; }[] = [];
-            const waitWordThemeMap: { [key: string]: string[] } = {};
-            chuck.forEach(({ word, topics }) => {
-                waitWordsQuery.push({ word, request_type: "add", requested_by: user.uuid ?? null });
-                waitWordThemeMap[word] = topics;
-            })
-            const { data: waitWordData, error: waitWordError } = await SCM.add().waitWords(waitWordsQuery);
-            if (waitWordError) return makeError(waitWordError);
-            waitWordData.forEach(({ word, id }) => {
-                const themes = waitWordThemeMap[word]
-                themes.forEach((code) => {
-                    waitWordsThemesQuery.push({ wait_word_id: id, theme_id: codeToId[code] })
-                })
-            })
-            setProgressMessage({ task: `추가요청 처리중... ${proWordsCount} / ${chuckWordsBuN}`, progress: 50 + Math.floor(proWordsCount / chuckWordsBuN * 50) });
-            const { error: waitWordsThemesError } = await SCM.add().waitWordThemes(waitWordsThemesQuery);
-            if (waitWordsThemesError) return makeError(waitWordsThemesError);
-            setProWordsCount(prev => prev + 1);
-        }
-
-        setCompleteMessage(`단어 추가 요청이 성공적으로 완료되었습니다. 총 ${remainWord.length ? remainWord.length + "개의 단어가 추가 요청" + (wordWaitThemeQuery.length ? "," : "") : ""} ${wordWaitThemeQuery.length ? wordWaitThemeQuery.length + "개의 단어의 주제 추가요청이 되었습니다." : ""} (이미 추가요청에 대한 업데이트요청은 집계되지 않습니다.)`);
-        setFileContent(null);
-        setProgressMessage(null);
-        setIsSaving(false);
     };
 
     const isValid = (entry: WordEntry) => {
@@ -916,7 +836,7 @@ export default function WordsAddPage() {
                             }`}
                     >
                         <Save size={20} />
-                        {isSaving ? `저장 중... ${proWordsCount} / ${chuckWordsBuN}` : "모든 단어 추가 요청"}
+                        {isSaving ? "저장 중..." : "모든 단어 추가 요청"}
                     </button>
 
                     {/* 가상화 리스트 */}

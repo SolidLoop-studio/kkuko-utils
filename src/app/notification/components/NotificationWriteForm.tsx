@@ -1,9 +1,13 @@
-import type { Database } from '@/src/app/types/database.types';
+import {
+    useSaveNotification,
+    type NotificationDetailProjection,
+    type NotificationImageChange,
+    type SaveNotificationCommand,
+} from '@/src/modules/notifications';
+import type { ApplicationError } from '@/src/shared/application/application-error';
 import { useEffect, useRef, useState } from 'react';
 import { format } from "date-fns";
-import { SCM } from '@/src/app/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
-import { PostgrestError } from "@supabase/supabase-js";
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/app/components/ui/card';
 import { Button } from "@/src/app/components/ui/button";
 import { ChevronLeft, Loader2, Upload, X } from 'lucide-react';
@@ -17,12 +21,46 @@ import Image from 'next/image';
 import { Textarea } from '@/src/app/components/ui/textarea';
 import CompleteModal from '@/src/app/components/CompleteModal';
 
-type NotificationType = Database['public']['Tables']['notification']['Row'];
-
 interface NotificationWriteProps {
-    notification?: NotificationType;
-    onError?: (error: PostgrestError) => void;
+    notification?: NotificationDetailProjection;
+    onError?: (error: ApplicationError) => void;
 }
+
+type LocalImageSelection =
+    | { kind: 'keep'; previewUrl: string | null; fileName: null }
+    | { kind: 'remove'; previewUrl: null; fileName: null }
+    | { kind: 'replace'; file: File; previewUrl: string; fileName: string };
+
+const initialImageSelection = (
+    notification?: NotificationDetailProjection,
+): LocalImageSelection => ({
+    kind: 'keep',
+    previewUrl: notification?.imageUrl ?? null,
+    fileName: null,
+});
+
+const titleValidationError = (): ApplicationError => ({
+    kind: 'validation',
+    field: 'title',
+    message: '공지사항 제목을 입력해주세요.',
+});
+
+const bodyValidationError = (): ApplicationError => ({
+    kind: 'validation',
+    field: 'body',
+    message: '공지사항 내용을 입력해주세요.',
+});
+
+const endDateValidationError = (): ApplicationError => ({
+    kind: 'validation',
+    field: 'endsAt',
+    message: '올바른 공지사항 종료일이 필요합니다.',
+});
+
+const saveInfrastructureError = (): ApplicationError => ({
+    kind: 'infrastructure',
+    message: '공지사항 저장에 실패했습니다.',
+});
 
 /**
  * 공지사항 작성 컴포넌트
@@ -31,58 +69,67 @@ interface NotificationWriteProps {
  */
 export default function NotificationWriteForm({ notification, onError }: NotificationWriteProps) {
     const router = useRouter();
-    const [isLoading, setIsLoading] = useState(false);
+    const { saveNotification, isPending } = useSaveNotification();
     const [title, setTitle] = useState(notification?.title || "");
     const [body, setBody] = useState(notification?.body || "");
     const [endDate, setEndDate] = useState(
-        notification ? format(new Date(notification.end_at), "yyyy-MM-dd") : ""
+        notification ? format(new Date(notification.endsAt), "yyyy-MM-dd") : ""
     );
-    const [isImportant, setIsImportant] = useState(notification?.is_important || false);
-    const [isModal, setIsModal] = useState(notification?.is_modal || false);
-    const [uploading, setUploading] = useState(false);
-    const [imageUrl, setImageUrl] = useState<string | null>(notification?.img || null);
-    const [fileName, setFileName] = useState<string | null>(null);
+    const [isImportant, setIsImportant] = useState(notification?.isImportant || false);
+    const [isModal, setIsModal] = useState(notification?.isModal || false);
+    const [imageSelection, setImageSelection] = useState<LocalImageSelection>(() => (
+        initialImageSelection(notification)
+    ));
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const ownedPreviewUrlRef = useRef<string | null>(null);
+    const isSubmittingRef = useRef(false);
     const [completeState, setCompleteState] = useState<{title: string; description: string} | null>(null)
 
     useEffect(() => {
-        if (notification) {
-            setTitle(notification.title);
-            setBody(notification.body);
-            setEndDate(format(new Date(notification.end_at), "yyyy-MM-dd"));
-            setIsImportant(notification.is_important || false);
-            setIsModal(notification.is_modal || false);
-            setImageUrl(notification.img);
+        if (ownedPreviewUrlRef.current !== null) {
+            URL.revokeObjectURL(ownedPreviewUrlRef.current);
+            ownedPreviewUrlRef.current = null;
         }
+        setTitle(notification?.title ?? "");
+        setBody(notification?.body ?? "");
+        setEndDate(notification ? format(new Date(notification.endsAt), "yyyy-MM-dd") : "");
+        setIsImportant(notification?.isImportant ?? false);
+        setIsModal(notification?.isModal ?? false);
+        setImageSelection(initialImageSelection(notification));
     }, [notification]);
 
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    useEffect(() => () => {
+        if (ownedPreviewUrlRef.current !== null) {
+            URL.revokeObjectURL(ownedPreviewUrlRef.current);
+            ownedPreviewUrlRef.current = null;
+        }
+    }, []);
+
+    const handleImageSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (isPending || isSubmittingRef.current) return;
         const file = e.target.files?.[0];
         if (!file) return;
 
-        try {
-            setUploading(true);
-            const path = `notifications/${Date.now()}_${file.name}`;
-            const { error: uploadError } = await SCM.uploadImage(file, path);
-
-            if (uploadError) throw uploadError;
-
-            const { data } = SCM.getPublicUrl(path);
-            if (data?.publicUrl) {
-                setImageUrl(data.publicUrl);
-                setFileName(file.name);
-            }
-        } catch (error) {
-            console.error("Image upload failed:", error);
-            onError?.(error as PostgrestError);
-        } finally {
-            setUploading(false);
+        const previewUrl = URL.createObjectURL(file);
+        if (ownedPreviewUrlRef.current !== null) {
+            URL.revokeObjectURL(ownedPreviewUrlRef.current);
         }
+        ownedPreviewUrlRef.current = previewUrl;
+        setImageSelection({
+            kind: 'replace',
+            file,
+            previewUrl,
+            fileName: file.name,
+        });
     };
 
-    const handleRemoveImage = async () => {
-        setImageUrl(null);
-        setFileName(null);
+    const handleRemoveImage = () => {
+        if (isPending || isSubmittingRef.current) return;
+        if (ownedPreviewUrlRef.current !== null) {
+            URL.revokeObjectURL(ownedPreviewUrlRef.current);
+            ownedPreviewUrlRef.current = null;
+        }
+        setImageSelection({ kind: 'remove', previewUrl: null, fileName: null });
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
@@ -90,48 +137,68 @@ export default function NotificationWriteForm({ notification, onError }: Notific
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!title.trim() || !body.trim() || (isModal && !endDate)) {
-            alert("제목, 내용, 종료일을 모두 입력해주세요.");
+        if (isPending || isSubmittingRef.current) return;
+
+        if (title.trim().length === 0) {
+            onError?.(titleValidationError());
+            return;
+        }
+        if (body.trim().length === 0) {
+            onError?.(bodyValidationError());
+            return;
+        }
+        if (isModal && endDate === "") {
+            onError?.(endDateValidationError());
             return;
         }
 
-        try {
-            setIsLoading(true);
-            let result;
+        const parsedEndDate = endDate === "" ? new Date(Date.now()) : new Date(endDate);
+        if (Number.isNaN(parsedEndDate.getTime())) {
+            onError?.(endDateValidationError());
+            return;
+        }
 
-            if (notification) {
-                // 수정
-                result = await SCM.update().notification(notification.id, {
-                    title,
-                    body,
-                    img: imageUrl,
-                    end_at: endDate === "" ? new Date(Date.now()).toISOString() : new Date(endDate).toISOString(),
-                    is_important: isImportant,
-                    is_modal: isModal,
-                });
-            } else {
-                // 추가
-                result = await SCM.add().notification({
-                    title,
-                    body,
-                    img: imageUrl,
-                    end_at: endDate === "" ? new Date(Date.now()).toISOString() : new Date(endDate).toISOString(),
-                    is_important: isImportant,
-                    is_modal: isModal,
-                });
+        const imageChange: NotificationImageChange = imageSelection.kind === 'replace'
+            ? { kind: 'replace', file: imageSelection.file }
+            : { kind: imageSelection.kind };
+        const endsAt = parsedEndDate.toISOString();
+        const command: SaveNotificationCommand = notification
+            ? {
+                mode: 'update',
+                id: notification.id,
+                expectedImageUrl: notification.imageUrl,
+                title,
+                body,
+                endsAt,
+                isImportant,
+                isModal,
+                imageChange,
             }
+            : {
+                mode: 'create',
+                title,
+                body,
+                endsAt,
+                isImportant,
+                isModal,
+                imageChange: imageChange.kind === 'remove' ? { kind: 'keep' } : imageChange,
+            };
 
-            if (result.error) throw result.error;
-            // show success modal
+        isSubmittingRef.current = true;
+        try {
+            const result = await saveNotification(command);
+            if (!result.ok) {
+                onError?.(result.error);
+                return;
+            }
             setCompleteState({
                 title: notification ? '공지사항이 수정되었습니다.' : '공지사항이 등록되었습니다.',
                 description: ''
             });
-        } catch (error) {
-            console.error("Notification submit failed:", error);
-            onError?.(error as PostgrestError);
+        } catch {
+            onError?.(saveInfrastructureError());
         } finally {
-            setIsLoading(false);
+            isSubmittingRef.current = false;
         }
     };
 
@@ -215,38 +282,45 @@ export default function NotificationWriteForm({ notification, onError }: Notific
                                     accept="image/*"
                                     className="hidden"
                                     ref={fileInputRef}
-                                    onChange={handleImageUpload}
+                                    onChange={handleImageSelection}
+                                    disabled={isPending}
                                 />
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    onClick={() => fileInputRef.current?.click()}
-                                    disabled={uploading}
+                                    onClick={() => {
+                                        if (!isPending && !isSubmittingRef.current) {
+                                            fileInputRef.current?.click();
+                                        }
+                                    }}
+                                    disabled={isPending}
                                 >
-                                    {uploading ? (
-                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    ) : (
-                                        <Upload className="w-4 h-4 mr-2" />
-                                    )}
+                                    <Upload className="w-4 h-4 mr-2" />
                                     이미지 선택
                                 </Button>
-                                {fileName && <span className="text-sm text-muted-foreground">{fileName}</span>}
-                                {imageUrl && (
+                                {imageSelection.fileName && (
+                                    <span className="text-sm text-muted-foreground">
+                                        {imageSelection.fileName}
+                                    </span>
+                                )}
+                                {imageSelection.previewUrl && (
                                     <Button
                                         type="button"
                                         variant="ghost"
                                         size="icon"
                                         onClick={handleRemoveImage}
+                                        disabled={isPending}
+                                        aria-label="이미지 제거"
                                         className="text-destructive hover:text-destructive/90"
                                     >
                                         <X className="w-4 h-4" />
                                     </Button>
                                 )}
                             </div>
-                            {imageUrl && (
+                            {imageSelection.previewUrl && (
                                 <div className="mt-2 relative w-full h-48 bg-muted rounded-md overflow-hidden">
                                     <Image
-                                        src={imageUrl}
+                                        src={imageSelection.previewUrl}
                                         alt="Preview"
                                         fill
                                         className="object-contain"
@@ -287,8 +361,8 @@ export default function NotificationWriteForm({ notification, onError }: Notific
                             <Link href={notification ? `/notification/${notification.id}` : "/notification"}>
                                 <Button type="button" variant="outline">취소</Button>
                             </Link>
-                            <Button type="submit" disabled={isLoading || uploading}>
-                                {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            <Button type="submit" disabled={isPending}>
+                                {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                                 {notification ? "수정하기" : "등록하기"}
                             </Button>
                         </div>

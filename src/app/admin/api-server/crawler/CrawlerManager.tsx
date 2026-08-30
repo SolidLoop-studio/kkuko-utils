@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { fetchCrawlerHealth, saveCrawlerSession, restartCrawler } from '../api';
-import type { ChannelHealth } from '../types';
+import { fetchCrawlerHealth, saveCrawlerSession, restartCrawler, type ChannelHealth } from '@/src/modules/admin-api-server';
 import { Button } from '@/src/app/components/ui/button';
 import ConfirmModal from '@/src/app/components/ConfirmModal';
 import CompleteModal from '@/src/app/components/CompleteModal';

@@ -1,23 +1,49 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/src/app/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/src/app/components/ui/card';
 import { Checkbox } from '@/src/app/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/src/app/components/ui/table';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/src/app/components/ui/pagination';
-import { SCM } from '@/src/app/lib/supabaseClient';
-import { PostgrestError } from '@supabase/supabase-js';
 import ErrorModal from '@/src/app/components/ErrModal';
 import Link from 'next/link';
+import {
+  useDocsRequestModeration,
+  type ApproveDocsRequestsCommand,
+  type DocsRequestModerationResult,
+} from '@/src/modules/docs';
+import type { ApplicationError } from '@/src/shared/application/application-error';
 
 type DocsWaitRequest = {id: number, req_at: string, docs_name: string, req_by: string | null, initial_consonant: boolean, req_byId: string | null}
 
-export default function DocsWaitManager({initialData}: {initialData?: DocsWaitRequest[]}) {
+type DocsWaitManagerProps = {
+  initialData?: DocsWaitRequest[];
+  onModerationSuccess?: (result: DocsRequestModerationResult) => void;
+};
+
+export default function DocsWaitManager({ initialData, onModerationSuccess }: DocsWaitManagerProps) {
   const [docsWaitRequests, setDocsWaitRequests] = useState<DocsWaitRequest[]>(initialData || []);
   const [selectedRequests, setSelectedRequests] = useState<Set<number>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [initialConsonantSettings, setInitialConsonantSettings] = useState<{ [key: number]: boolean }>({});
   const [showErrorMessage, setShowErrorMessage] = useState<ErrorMessage | null>(null);
+  const { approve, reject, isPending, clearError } = useDocsRequestModeration();
+
+  useEffect(() => {
+    const nextRequests = initialData || [];
+    const nextRequestIds = new Set(nextRequests.map(({ id }) => id));
+
+    setDocsWaitRequests(nextRequests);
+    setSelectedRequests(prev => new Set([...prev].filter(id => nextRequestIds.has(id))));
+    setInitialConsonantSettings(prev => {
+      const nextSettings: { [key: number]: boolean } = {};
+      Object.entries(prev).forEach(([requestId, value]) => {
+        const id = Number(requestId);
+        if (nextRequestIds.has(id)) nextSettings[id] = value;
+      });
+      return nextSettings;
+    });
+  }, [initialData]);
 
   const itemsPerPage = 10;
   const totalPages = Math.ceil(docsWaitRequests.length / itemsPerPage);
@@ -26,13 +52,39 @@ export default function DocsWaitManager({initialData}: {initialData?: DocsWaitRe
     currentPage * itemsPerPage
   );
 
-  const makeError = (error: PostgrestError) => {
+  const makeError = (error: ApplicationError) => {
+    const publicMessages = {
+      validation: error.message,
+      conflict: '요청 목록이 변경되었습니다. 새로고침 후 다시 시도해 주세요.',
+      unauthorized: '로그인이 필요합니다.',
+      forbidden: '관리자 권한이 필요합니다.',
+      infrastructure: '문서 요청 처리 중 오류가 발생했습니다.',
+    };
+    const publicMessage = error.kind in publicMessages
+      ? publicMessages[error.kind as keyof typeof publicMessages]
+      : publicMessages.infrastructure;
+
     setShowErrorMessage({
-      ErrName: error.name || "알 수 없음",
-      ErrMessage: error.message || "없음",
-      ErrStackRace: error.code || "알 수 없음",
+      ErrName: '요청 처리 오류',
+      ErrMessage: publicMessage,
+      ErrStackRace: undefined,
       inputValue: "admin/request-docs",
     });
+  };
+
+  const handleModerationSuccess = (result: DocsRequestModerationResult) => {
+    const processedRequestIds = new Set(result.processedRequestIds);
+    setDocsWaitRequests(prev => prev.filter(req => !processedRequestIds.has(req.id)));
+    setSelectedRequests(prev => new Set([...prev].filter(id => !processedRequestIds.has(id))));
+    setInitialConsonantSettings(prev => {
+      const newSettings = { ...prev };
+      processedRequestIds.forEach(id => delete newSettings[id]);
+      return newSettings;
+    });
+    setCurrentPage(1);
+    clearError();
+    setShowErrorMessage(null);
+    onModerationSuccess?.(result);
   };
 
   const formatDate = (dateString: string) => {
@@ -80,43 +132,27 @@ export default function DocsWaitManager({initialData}: {initialData?: DocsWaitRe
   const allSelected = currentRequests.length > 0 && selectedRequests.size === currentRequests.length;
 
   const approveSelected = async () => {
-    const insertQuery = Array.from(selectedRequests).map(id => {
-        const request = docsWaitRequests.find(req => req.id === id);
-        if (!request) return null;
+    const selectedIds = [...selectedRequests];
+    const command: ApproveDocsRequestsCommand = {
+      selections: selectedIds.map((requestId) => {
+        const request = docsWaitRequests.find(({ id }) => id === requestId);
         return {
-            name: request.docs_name,
-            maker: request.req_byId,
-            duem: initialConsonantSettings[id] || false,
-            typez: "letter"
+          requestId,
+          duem: initialConsonantSettings[requestId]
+            ?? request?.initial_consonant
+            ?? false,
         };
-    }).filter(item => item !== null) as { name: string; maker: string | null; duem: boolean; typez: "letter" }[];
-    if (insertQuery.length === 0) return;
-    const {error} = await SCM.add().docs(insertQuery);
-    if (error) return makeError(error);
-    const idsToRemove = Array.from(selectedRequests);
-    const {error: deleteError} = await SCM.delete().waitDocsByIds(idsToRemove);
-    if (deleteError) return makeError(deleteError);
-    setDocsWaitRequests(prev => prev.filter(req => !idsToRemove.includes(req.id)));
-    setSelectedRequests(new Set());
-    setInitialConsonantSettings(prev => {
-        const newSettings = {...prev};
-        idsToRemove.forEach(id => delete newSettings[id]);
-        return newSettings;
-        }
-    );
-    setCurrentPage(1); // 페이지 초기화
-    setShowErrorMessage(null); // 에러 메시지 초기화
-  }
+      }),
+    };
+    const result = await approve(command);
+    if (!result.ok) return makeError(result.error);
+    handleModerationSuccess(result.value);
+  };
 
   const rejectSelected = async () => {
-    const idsToReject = Array.from(selectedRequests);
-    const {error} = await SCM.delete().waitDocsByIds(idsToReject);
-    if (error) return makeError(error);
-
-    setDocsWaitRequests(prev => prev.filter(req => !selectedRequests.has(req.id)));
-    setSelectedRequests(new Set());
-    setCurrentPage(1); // 페이지 초기화
-    setShowErrorMessage(null); // 에러 메시지 초기화
+    const result = await reject({ requestIds: [...selectedRequests] });
+    if (!result.ok) return makeError(result.error);
+    handleModerationSuccess(result.value);
   };
 
   return (
@@ -145,7 +181,7 @@ export default function DocsWaitManager({initialData}: {initialData?: DocsWaitRe
                 variant="outline"
                 className="bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800"
                 onClick={approveSelected}
-                disabled={selectedRequests.size === 0}
+                disabled={selectedRequests.size === 0 || isPending}
               >
                 선택 승인
               </Button>
@@ -153,7 +189,7 @@ export default function DocsWaitManager({initialData}: {initialData?: DocsWaitRe
                 variant="outline"
                 className="bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800"
                 onClick={rejectSelected}
-                disabled={selectedRequests.size === 0}
+                disabled={selectedRequests.size === 0 || isPending}
               >
                 선택 거절
               </Button>

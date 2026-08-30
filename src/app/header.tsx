@@ -5,14 +5,17 @@ import { usePathname } from "next/navigation";
 import { useDispatch, useSelector } from 'react-redux';
 import { Menu, X, User, ChevronDown, LayoutDashboard, Sun, Moon } from 'lucide-react';
 import type { RootState, AppDispatch } from "./store/store";
-import { SCM } from "./lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import { userAction } from "./store/slice";
 import { useTheme } from 'next-themes'
+import ErrorModal from './components/ErrModal';
+import type { ErrorMessage } from './types/type';
+import { useAuthSession } from '@/src/modules/identity';
 
 const Header = () => {
     const [isOpen, setIsOpen] = useState<boolean>(false);
     const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
+    const [logoutError, setLogoutError] = useState<ErrorMessage | null>(null);
     const mobileMenuRef = useRef<HTMLDivElement>(null);
     const profileDropdownRef = useRef<HTMLDivElement>(null);
     const isLoggedIn = useSelector((state: RootState) => state.user.username) !== undefined; 
@@ -22,9 +25,19 @@ const Header = () => {
     const dispatch = useDispatch<AppDispatch>();
     const username=user.username;
     const { theme, setTheme } = useTheme();
+    const { signOut } = useAuthSession();
 
     const handleLogout = async () => {
-        await SCM.logout();
+        const result = await signOut();
+        if (!result.ok) {
+            setLogoutError({
+                ErrName: '인증 오류',
+                ErrMessage: result.error.message,
+                ErrStackRace: null,
+                inputValue: null,
+            });
+            return;
+        }
         dispatch(
             userAction.setInfo({
                 username: undefined,
@@ -297,6 +310,12 @@ const Header = () => {
                     </div>
                 </div>
             </nav>
+            {logoutError && (
+                <ErrorModal
+                    error={logoutError}
+                    onClose={() => setLogoutError(null)}
+                />
+            )}
         </header>
     );
 };

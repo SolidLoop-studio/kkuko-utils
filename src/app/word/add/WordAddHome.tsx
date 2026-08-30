@@ -7,18 +7,14 @@ import ErrorModal from "@/src/app/components/ErrModal";
 import CompleteModal from "@/src/app/components/CompleteModal";
 import LoginRequiredModal from "@/src/app/components/LoginRequiredModal"
 import FailModal from "@/src/app/components/FailModal";
-import { SCM } from "@/src/app/lib/supabaseClient";
-import { PostgrestError } from "@supabase/supabase-js";
-import useSWR from "swr";
-import { fetcher } from "../lib";
 import WordAddForm from "../components/WordAddFrom";
-import { isNoin } from "@/src/app/lib/lib";
-import { DocsLogData } from "@/src/app/types/type";
+import type { ApplicationError } from "@/src/shared/application/application-error";
+import { useWordThemes } from "@/src/modules/word-catalog";
+import { useDirectWordAddition } from "@/src/modules/word-moderation";
+import { useUserWordRequests } from "@/src/modules/word-requests";
 
 interface TopicInfo {
     topicsCode: Record<string, string>;
-    topicsKo: Record<string, string>;
-    topicsID: Record<string, number>;
 }
 
 export default function WordAddHome(){
@@ -29,10 +25,10 @@ export default function WordAddHome(){
     const [workFail, setWorkFail] = useState<string | null>(null);
     const [topicInfo, setTopicInfo] = useState<TopicInfo>({
         topicsCode: {},
-        topicsKo: {},
-        topicsID: {}
     });
-    const { data } = useSWR("themes", fetcher, { dedupingInterval: 120000 });
+    const { data } = useWordThemes(true);
+    const { addDirectly } = useDirectWordAddition();
+    const { requestAddition } = useUserWordRequests();
 
     useEffect(() => {
         setIsLogin(!!user.uuid);
@@ -41,105 +37,40 @@ export default function WordAddHome(){
     useEffect(() => {
         if (!data) return;
         const newTopicsCode: Record<string, string> = {};
-        const newTopicsKo: Record<string, string> = {};
-        const newTopicID: Record<string, number> = {};
 
-        data.forEach((d: { code: string, name: string, id: number }) => {
+        data.forEach((d) => {
             newTopicsCode[d.code] = d.name;
-            newTopicsKo[d.name] = d.code;
-            newTopicID[d.code] = d.id;
         });
 
         setTopicInfo({
             topicsCode: newTopicsCode,
-            topicsKo: newTopicsKo,
-            topicsID: newTopicID
         });
     }, [data]);
 
-    const makeError = (error: PostgrestError) => {
+    const makeApplicationError = (applicationError: ApplicationError) => {
         setError({
-            ErrName: error.name || "Unknown Error",
-            ErrMessage: error.message || "An unknown error occurred",
-            ErrStackRace: error.code || "",
-            inputValue: `/word/add`
+            ErrName: `ApplicationError:${applicationError.kind}`,
+            ErrMessage: applicationError.message,
+            ErrStackRace: "",
+            inputValue: "/word/add",
         });
-    }
+    };
 
     const onSaveByAdmin = async (word: string, themes: string[]) => {
         if (!user.uuid || !['admin','r4'].includes(user.role)) return;
 
-        const { data: existingWord, error: exstedCheckError } = await SCM.get().wordInfoByWord(word);
-
-        if (exstedCheckError) { return makeError(exstedCheckError); }
-        if (existingWord) { return setWorkFail("이미 존재하는 단어입니다."); }
-
-        const { data: insertedWord, error: insertedWordError } = await SCM.add().word([{
-            word, 
-            added_by: user.uuid,
-            noin_canuse: isNoin(themes),
-        }]);
-        if (insertedWordError) { return makeError(insertedWordError); }
-        if (!insertedWord || insertedWord.length === 0) { return setWorkFail("단어 추가에 실패했습니다."); }
-
-        const { error: insertWordLogError } = await SCM.add().wordLog([{
-            word,
-            make_by: user.uuid,
-            processed_by: user.uuid,
-            r_type: "add",
-            state: "approved"
-        }]);
-        if (insertWordLogError) { return makeError(insertWordLogError); }
-
-        const insertWordThemesQuery = themes
-            .filter(tc => topicInfo.topicsID[tc])
-            .map(tc => ({
-                word_id: insertedWord[0].id,
-                theme_id: topicInfo.topicsID[tc]
-            }));
-
-        const { data: insertWordThemesData ,error: insertWordThemesError } = await SCM.add().wordThemes(insertWordThemesQuery);
-        if (insertWordThemesError) { return makeError(insertWordThemesError); }
-
-        const { data: docsData, error: docsError } = await SCM.get().allDocs();
-        if (docsError) { return makeError(docsError); }
-
-        const letterDocs = docsData.filter(d => d.typez === 'letter');
-        const themeDocs = docsData.filter(d => d.typez === 'theme');
-
-        const docsLogQuery: DocsLogData[] = [];
-
-        for (const doc of letterDocs){
-            if (doc.name === word[word.length - 1]) {
-                docsLogQuery.push({
-                    word: word,
-                    docs_id: doc.id,
-                    add_by: user.uuid,
-                    type: "add"
-                });
+        const result = await addDirectly({ word, themeCodes: themes });
+        if (!result.ok) {
+            if (result.error.kind === 'conflict') {
+                setWorkFail(result.error.message);
+            } else {
+                makeApplicationError(result.error);
             }
+            return;
         }
-
-        for (const insertedTheme of insertWordThemesData){
-            for (const doc of themeDocs){
-                if (doc.name === insertedTheme.themes.name) {
-                    docsLogQuery.push({
-                        word: word,
-                        docs_id: doc.id,
-                        add_by: user.uuid,
-                        type: "add"
-                    });
-                }
-            }
-        }
-
-        const { error: insertDocsLogError } = await SCM.add().docsLog(docsLogQuery);
-        if (insertDocsLogError) { return makeError(insertDocsLogError); }
-
-        await SCM.update().docsLastUpdate(docsLogQuery.map(d => d.docs_id));
 
         setCompleteState({
-            word: word,
+            word: result.value.word,
             selectedTheme: themes.map(code => topicInfo.topicsCode[code]).join(', '),
             onClose: () => {
                 setCompleteState(null);
@@ -153,59 +84,23 @@ export default function WordAddHome(){
             return onSaveByAdmin(word, themes);
         }
 
-        try {
-            // Check if word already exists
-            const { data: existingWord, error: exstedCheckError } = await SCM.get().wordInfoByWord(word);
-
-            if (exstedCheckError) { return makeError(exstedCheckError); }
-
-            if (existingWord) { return setWorkFail("이미 존재하는 단어입니다."); }
-
-            // Insert word into wait list
-            const insertWaitWordData = {
-                word,
-                requested_by: user.uuid,
-                request_type: "add" as const
-            };
-
-            const { data: insertedWaitWord, error: insertedWaitWordError } = await SCM.add().waitWord(insertWaitWordData);
-
-            if (insertedWaitWordError) {
-                if (insertedWaitWordError.code === '23505') {
-                    return setWorkFail("이미 요청이 들어온 단어입니다.");
-                    
-                }
-                return makeError(insertedWaitWordError);
+        const result = await requestAddition({ word, themeCodes: themes });
+        if (!result.ok) {
+            if (result.error.kind === 'conflict') {
+                setWorkFail(result.error.message);
+            } else {
+                makeApplicationError(result.error);
             }
+            return;
+        }
 
-            // Insert selected topics
-            if (insertedWaitWord) {
-                const insertWaitWordTopicsData = themes
-                    .filter(tc => topicInfo.topicsID[tc])
-                    .map(tc => ({
-                        wait_word_id: insertedWaitWord.id,
-                        theme_id: topicInfo.topicsID[tc]
-                    }));
-
-                const { error: insertWaitWordTopicsDataError } = await SCM.add().waitWordThemes(insertWaitWordTopicsData);
-
-                if (insertWaitWordTopicsDataError) {
-                    throw insertWaitWordTopicsDataError;
-                }
-
-                setCompleteState({
-                    word: word,
-                    selectedTheme: themes.map(code => topicInfo.topicsCode[code]).join(', '),
-                    onClose: () => {
-                        setCompleteState(null);
-                    }
-                });
-
+        setCompleteState({
+            word: result.value.word,
+            selectedTheme: result.value.themes.map(({ themeName }) => themeName).join(', '),
+            onClose: () => {
+                setCompleteState(null);
             }
-
-        } 
-        catch { } 
-        finally { }
+        });
         
     };
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { fetchApiServerLogs, fetchCrawlerLogs } from '../api';
+import { fetchApiServerLogs, fetchCrawlerLogs } from '@/src/modules/admin-api-server';
 import { parsePinoLogs, calculateLogStatistics, ParsedLogEntry } from './utils/pinoLogParser';
 import StatisticsCards from './components/StatisticsCards';
 import LogCharts from './components/LogCharts';
@@ -44,7 +44,6 @@ export default function LogsViewer() {
       setRawLogs(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : '로그를 불러오는데 실패했습니다.');
-      console.error(err);
     } finally {
       setLoading(false);
     }

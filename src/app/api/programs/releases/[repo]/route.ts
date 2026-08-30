@@ -1,41 +1,21 @@
-import { SSM } from '@/src/app/lib/supabase/supabaseServerManager';
 import { NextRequest, NextResponse } from 'next/server';
+import { createServerProgramsServices } from '../../../../../modules/programs/infrastructure/server/server-program-services';
+import { parseReleasePagination, parseRepository } from '../../../../../modules/programs/infrastructure/server/program-route-validation';
+import { presentRelease } from '../../presenters';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ repo: string }> }
 ) {
+  const repository = parseRepository((await params).repo);
+  const pagination = parseReleasePagination(request.nextUrl.searchParams);
+  if (repository === null) return NextResponse.json({ error: 'Invalid repository' }, { status: 400 });
+  if (pagination === null) return NextResponse.json({ error: 'Invalid release pagination' }, { status: 400 });
   try {
-    const repo = decodeURIComponent((await params).repo);
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const per_page = parseInt(searchParams.get('per_page') || '10');
-
-    // GitHub API 호출
-    const {data, error} = await SSM.getGithubReleases(repo, page, per_page);
-
-    if (error) {
-      throw new Error(`GitHub API error: ${JSON.stringify(error)}`);
-    }
-
-    if (!data) {
-      return NextResponse.json(
-        { error: 'No releases found' },
-        { status: 404 }
-      );
-    }
-
-    const releases = data;
-
-    return NextResponse.json({ 
-      releases: releases ?? [],
-      has_more: releases.length === per_page
-    });
-  } catch (error) {
-    console.error('GitHub API error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch releases' },
-      { status: 500 }
-    );
+    const result = await createServerProgramsServices().programsService.releases(repository, pagination);
+    if (!result.ok) return NextResponse.json({ error: 'Failed to fetch releases' }, { status: 500 });
+    return NextResponse.json({ releases: result.value.map(presentRelease), has_more: result.value.length === pagination.perPage });
+  } catch {
+    return NextResponse.json({ error: 'Failed to fetch releases' }, { status: 500 });
   }
 }

@@ -22,6 +22,7 @@ Main features include:
 - `src/`: Source code
 - `src/__tests__/`: Test code
 - `src/app/`: Web application source code
+- `src/modules`: Module code used in the code
 - `public/`: Static files used by the web application
 - `docs/`: Documentation used for web development, such as external API specifications and naming conventions
 - `.github/`, `scripts/`: GitHub-related files and scripts used in deployment and other workflows
@@ -122,7 +123,7 @@ Authentication uses Google OAuth through Supabase.
 - Do not perform unnecessary refactoring.
 - Do not modify files outside the requested scope.
 - When adding a new feature, add tests whenever reasonably possible.
-- If creating a separate worktree, do not reinstall `node_modules` unnecessarily. Use a symbolic link to the existing `node_modules` directory or use `npm ci`.
+- When creating a separate worktree, symlink the existing `node_modules` only if the lockfile is unchanged, remove only the symlink before deleting the worktree, and use `npm ci` if dependencies differ.
 
 ## Rules for Code Implementation
 
@@ -157,7 +158,7 @@ Authentication uses Google OAuth through Supabase.
 
 ## Testing
 
-Tests are located in `src/__tests__/` and mirror the structure of `src/app/`.
+Tests are located in `src/__tests__/` and mirror the structure of `src/`.
 
 The setup file (`jest.setup.ts`) mocks:
 
