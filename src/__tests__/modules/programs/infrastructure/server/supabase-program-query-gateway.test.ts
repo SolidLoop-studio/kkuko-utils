@@ -13,4 +13,14 @@ describe('SupabaseProgramQueryGateway', () => {
         expect(select).toHaveBeenCalledWith('id, name, description, github_repo, category, tags, is_active, created_at, readme_path');
         expect(eq).toHaveBeenCalledWith('category', 'tool');
     });
+
+    it.each([
+        ['returned error', () => ({ data: null, error: { message: 'secret' } })],
+        ['thrown error', () => { throw new Error('secret'); }],
+        ['invalid row', () => ({ data: [{ id: 'bad' }], error: null })],
+    ])('does not leak diagnostics for %s', async (_, response) => {
+        const select = jest.fn().mockImplementation(response);
+        const result = await new SupabaseProgramQueryGateway({ from: () => ({ select }) } as never).list('all');
+        expect(result).toEqual({ ok: false, error: expect.objectContaining({ kind: 'infrastructure' }) });
+    });
 });
