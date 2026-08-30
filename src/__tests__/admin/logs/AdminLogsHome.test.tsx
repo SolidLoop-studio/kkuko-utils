@@ -179,17 +179,18 @@ describe('AdminLogsHome', () => {
     test('converts non-empty date inputs to ISO and requests 150 rows from page one', async () => {
         // Break caught: sending datetime-local text to Application or retaining a later page/date page size.
         const user = userEvent.setup();
+        const dateInputValue = '2026-08-29T12:34';
         renderHome();
         await user.click(screen.getByRole('link', { name: '2' }));
 
         fireEvent.change(screen.getByLabelText('시작 날짜+시간'), {
-            target: { value: '2026-08-29T12:34' },
+            target: { value: dateInputValue },
         });
 
         await waitFor(() => expect(lastQuery()).toEqual({
             page: 1,
             pageSize: 150,
-            fromDate: '2026-08-29T03:34:00.000Z',
+            fromDate: new Date(dateInputValue).toISOString(),
             filter: { kind: 'word', state: 'all', requestType: 'all' },
         }));
         expect(screen.getByText(/날짜 필터가 적용되어 페이지당 150개씩 표시됩니다/)).toBeInTheDocument();
