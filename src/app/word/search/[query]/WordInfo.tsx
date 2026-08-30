@@ -51,7 +51,7 @@ export interface WordInfoProps {
 const WordInfo = ({ wordInfo }: { wordInfo: WordInfoProps }) => {
     const user = useSelector((state: RootState) => state.user);
     const {
-        data: themes = [],
+        data: themes,
         error: themesError,
         isLoading,
     } = useWordThemes(true);
@@ -115,6 +115,8 @@ const WordInfo = ({ wordInfo }: { wordInfo: WordInfoProps }) => {
     }, [themesError]);
 
     useEffect(() => {
+        if (!themes) return;
+
         const newTopicsKo = themes.reduce<Record<string, string>>((acc, d: WordThemeSummary) => ({
             ...acc,
             [d.name]: d.code,

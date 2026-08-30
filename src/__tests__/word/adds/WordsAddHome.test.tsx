@@ -21,6 +21,19 @@ const legacyAdd = {
     wordThemesReq: jest.fn(),
     waitWords: jest.fn(),
 };
+let consoleErrorSpy: jest.SpyInstance;
+
+const expectNoMaximumUpdateDepthError = () => {
+    expect(consoleErrorSpy.mock.calls.some(([message]) => (
+        typeof message === 'string' && message.includes('Maximum update depth exceeded')
+    ))).toBe(false);
+};
+
+const flushReactEffects = async () => {
+    await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+};
 
 jest.mock('react-redux', () => ({ useSelector: jest.fn() }));
 jest.mock('../../../modules/word-catalog', () => ({ useWordThemes: jest.fn() }));
@@ -90,6 +103,7 @@ const loadEntries = async () => {
 
 beforeEach(() => {
     jest.clearAllMocks();
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     jest.mocked(useSelector).mockImplementation((selector) => selector({
         user: { uuid: 'user-1', role: 'r1' },
     } as never));
@@ -128,6 +142,10 @@ beforeEach(() => {
     legacyAdd.waitWords.mockResolvedValue({ data: [], error: null });
 });
 
+afterEach(() => {
+    consoleErrorSpy.mockRestore();
+});
+
 describe('WordsAddHome addition batch', () => {
     it('shows a safe Korean error when the catalog theme query fails', async () => {
         jest.mocked(useWordThemes).mockReturnValue({
@@ -141,6 +159,9 @@ describe('WordsAddHome addition batch', () => {
         const alert = await screen.findByRole('alert');
         expect(alert).toHaveTextContent('주제 정보를 불러오는 중 오류가 발생했습니다.');
         expect(alert).not.toHaveTextContent('raw SDK diagnostic');
+        await flushReactEffects();
+        expect(useWordThemes.mock.calls.length).toBeLessThan(5);
+        expectNoMaximumUpdateDepthError();
     });
 
     it('submits the edited entries through the feature hook without SCM mutations', async () => {

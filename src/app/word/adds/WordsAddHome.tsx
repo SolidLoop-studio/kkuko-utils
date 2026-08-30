@@ -56,7 +56,7 @@ export default function WordsAddPage() {
     const parentRef = useRef<HTMLDivElement>(null);
     const [topicsCodeName, setTopicCodeName] = useState<Record<string, string>>({});
     const {
-        data: themes = [],
+        data: themes,
         error: themesError,
         isLoading,
     } = useWordThemes(true);
@@ -90,6 +90,8 @@ export default function WordsAddPage() {
     });
 
     useEffect(() => {
+        if (!themes) return;
+
         const topicsCode: Record<string, string> = {};
         const topicsName: Record<string, string> = {};
         for (const topic of themes as WordThemeSummary[]) {

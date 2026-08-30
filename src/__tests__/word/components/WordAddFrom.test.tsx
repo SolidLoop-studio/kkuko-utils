@@ -1,12 +1,18 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import useSWR from 'swr';
+import type { ReactNode } from 'react';
 
 import WordAddForm from '../../../app/word/components/WordAddFrom';
 import { useWordThemes } from '../../../modules/word-catalog';
 
-jest.mock('swr', () => ({ __esModule: true, default: jest.fn() }));
 jest.mock('../../../modules/word-catalog', () => ({ useWordThemes: jest.fn() }));
+jest.mock('../../../app/components/ui/card', () => ({
+    Card: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    CardContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    CardFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    CardHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    CardTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
+}));
 jest.mock('../../../app/components/HelpModal', () => ({
     __esModule: true,
     default: () => null,
@@ -23,13 +29,23 @@ const themes = [
     { id: 2, code: 'game', name: '게임' },
 ];
 
+let consoleErrorSpy: jest.SpyInstance;
+
+const expectNoMaximumUpdateDepthError = () => {
+    expect(consoleErrorSpy.mock.calls.some(([message]) => (
+        typeof message === 'string' && message.includes('Maximum update depth exceeded')
+    ))).toBe(false);
+};
+
+const flushReactEffects = async () => {
+    await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+};
+
 beforeEach(() => {
     jest.clearAllMocks();
-    jest.mocked(useSWR).mockReturnValue({
-        data: undefined,
-        error: undefined,
-        isLoading: false,
-    } as ReturnType<typeof useSWR>);
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     jest.mocked(useWordThemes).mockReturnValue({
         data: themes,
         error: undefined,
@@ -37,8 +53,12 @@ beforeEach(() => {
     } as unknown as ReturnType<typeof useWordThemes>);
 });
 
+afterEach(() => {
+    consoleErrorSpy.mockRestore();
+});
+
 describe('WordAddForm theme loading', () => {
-    it('disables saving while the catalog themes are loading', () => {
+    it('disables saving without an update-depth error while the catalog themes are loading', async () => {
         jest.mocked(useWordThemes).mockReturnValue({
             data: undefined,
             error: undefined,
@@ -47,7 +67,25 @@ describe('WordAddForm theme loading', () => {
 
         render(<WordAddForm saveFn={jest.fn()} initWord="나비" />);
 
+        await flushReactEffects();
         expect(screen.getAllByRole('button', { name: '단어 저장' }).at(-1)).toBeDisabled();
+        expect(useWordThemes.mock.calls.length).toBeLessThan(5);
+        expectNoMaximumUpdateDepthError();
+    });
+
+    it('shows a query error without an update-depth error', async () => {
+        jest.mocked(useWordThemes).mockReturnValue({
+            data: undefined,
+            error: { kind: 'infrastructure', message: 'raw SDK diagnostic' },
+            isLoading: false,
+        } as unknown as ReturnType<typeof useWordThemes>);
+
+        render(<WordAddForm saveFn={jest.fn()} initWord="나비" />);
+
+        await flushReactEffects();
+        expect(await screen.findByRole('alert')).toHaveTextContent('주제 정보를 불러오는 중 오류가 발생했습니다.');
+        expect(useWordThemes.mock.calls.length).toBeLessThan(5);
+        expectNoMaximumUpdateDepthError();
     });
 
     it('groups catalog summaries and submits selected theme codes with their Korean labels', async () => {

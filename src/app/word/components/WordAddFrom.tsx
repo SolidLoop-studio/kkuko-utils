@@ -231,7 +231,7 @@ const WordAddForm = ({ saveFn, initWord = "", initThemes = [] }: WordAddFormProp
     const [invalidWord, setInvalidWord] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const {
-        data: themes = [],
+        data: themes,
         error: themesError,
         isLoading: areThemesLoading,
     } = useWordThemes(true);
@@ -255,6 +255,8 @@ const WordAddForm = ({ saveFn, initWord = "", initThemes = [] }: WordAddFormProp
 
     // Transform API data into usable format
     useEffect(() => {
+        if (!themes) return;
+
         const newTopicsCode: Record<string, string> = {};
         const newTopicsKo: Record<string, string> = {};
         const newTopicID: Record<string, number> = {};

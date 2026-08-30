@@ -11,6 +11,19 @@ import { err, ok } from '../../../../shared/application/result';
 
 const routerBack = jest.fn();
 const legacyWordThemesReq = jest.fn().mockResolvedValue({ data: [], error: null });
+let consoleErrorSpy: jest.SpyInstance;
+
+const expectNoMaximumUpdateDepthError = () => {
+    expect(consoleErrorSpy.mock.calls.some(([message]) => (
+        typeof message === 'string' && message.includes('Maximum update depth exceeded')
+    ))).toBe(false);
+};
+
+const flushReactEffects = async () => {
+    await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+};
 
 jest.mock('react-redux', () => ({
     useSelector: jest.fn(),
@@ -201,6 +214,7 @@ const confirmPrimaryAction = async () => {
 
 beforeEach(() => {
     jest.clearAllMocks();
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     isPending = false;
     currentThemes = themes;
     currentUser = { uuid: 'user-1', role: 'r1' };
@@ -236,6 +250,10 @@ beforeEach(() => {
     requestThemeChanges.mockResolvedValue(ok({ word: '나비', changes: [] }));
 });
 
+afterEach(() => {
+    consoleErrorSpy.mockRestore();
+});
+
 describe('WordInfo mutations', () => {
     it('shows a safe Korean error when the catalog theme query fails', async () => {
         jest.mocked(useWordThemes).mockReturnValue({
@@ -249,6 +267,9 @@ describe('WordInfo mutations', () => {
         const alert = await screen.findByRole('alert');
         expect(alert).toHaveTextContent('주제 정보를 불러오는 중 오류가 발생했습니다.');
         expect(alert).not.toHaveTextContent('raw SDK diagnostic');
+        await flushReactEffects();
+        expect(useWordThemes.mock.calls.length).toBeLessThan(5);
+        expectNoMaximumUpdateDepthError();
     });
 
     it('renders connection counts and disables both connections while lookup is pending', () => {
