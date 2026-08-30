@@ -52,6 +52,20 @@ const getResponseData = (response: unknown): unknown => (
     isRecord(response) ? response.data : undefined
 );
 
+const normalizeItemResponse = (value: unknown): unknown => {
+    if (!isRecord(value) || typeof value.updatedAt !== 'string' || !/^\d+$/.test(value.updatedAt)) {
+        return value;
+    }
+
+    const updatedAt = Number(value.updatedAt);
+    return Number.isSafeInteger(updatedAt) ? { ...value, updatedAt } : value;
+};
+
+const normalizeItemsResponse = (value: unknown): unknown => {
+    if (!isRecord(value) || !Array.isArray(value.items)) return value;
+    return { ...value, items: value.items.map(normalizeItemResponse) };
+};
+
 const isGzip = (value: Uint8Array) => value.length >= 2 && value[0] === 0x1f && value[1] === 0x8b;
 
 const decodeBrowserGzip: GzipDecoder = async (bytes) => {
@@ -79,12 +93,13 @@ export class AxiosAdminApiServerGateway implements AdminApiServerGateway {
     private async request<T>(
         call: (headers: Record<string, string>) => Promise<unknown>,
         isValid: (value: unknown) => value is T,
+        normalize: (value: unknown) => unknown = (value) => value,
     ): Promise<Result<T>> {
         try {
             const tokenResult = await this.tokenProvider.getAccessToken();
             if (!tokenResult.ok) return tokenResult.error.kind === 'unauthorized' ? publicUnauthorizedError() : publicGatewayError();
             const response = await call({ Authorization: tokenResult.value });
-            const data = getResponseData(response);
+            const data = normalize(getResponseData(response));
             return isValid(data) ? ok(data) : publicGatewayError();
         } catch {
             return publicGatewayError();
@@ -115,15 +130,15 @@ export class AxiosAdminApiServerGateway implements AdminApiServerGateway {
     }
     fetchItems(page = 1): Promise<Result<ItemsResponse>> {
         if (!isPositiveSafePage(page)) return Promise.resolve(validationError());
-        return this.request((headers) => this.client.get(`${BASE_URL}/admin/item/items`, { headers, params: { page } }), isItemsResponse);
+        return this.request((headers) => this.client.get(`${BASE_URL}/admin/item/items`, { headers, params: { page } }), isItemsResponse, normalizeItemsResponse);
     }
     createItem(data: CreateItemRequest): Promise<Result<Item>> {
         if (!isCreateItemRequest(data)) return Promise.resolve(validationError());
-        return this.request((headers) => this.client.post(`${BASE_URL}/admin/item`, data, { headers }), isItem);
+        return this.request((headers) => this.client.post(`${BASE_URL}/admin/item`, data, { headers }), isItem, normalizeItemResponse);
     }
     updateItem(id: string, data: UpdateItemRequest): Promise<Result<Item>> {
         if (!isNonBlankString(id) || !isUpdateItemRequest(data)) return Promise.resolve(validationError());
-        return this.request((headers) => this.client.put(`${BASE_URL}/admin/item/${id}`, data, { headers }), isItem);
+        return this.request((headers) => this.client.put(`${BASE_URL}/admin/item/${id}`, data, { headers }), isItem, normalizeItemResponse);
     }
     deleteItem(id: string): Promise<Result<void>> {
         if (!isNonBlankString(id)) return Promise.resolve(validationError());
@@ -131,11 +146,11 @@ export class AxiosAdminApiServerGateway implements AdminApiServerGateway {
     }
     searchItems(name: string, page = 1): Promise<Result<ItemsResponse>> {
         if (!isNonBlankString(name) || !isPositiveSafePage(page)) return Promise.resolve(validationError());
-        return this.request((headers) => this.client.get(`${BASE_URL}/admin/item/items/name/${encodeURIComponent(name)}`, { headers, params: { page } }), isItemsResponse);
+        return this.request((headers) => this.client.get(`${BASE_URL}/admin/item/items/name/${encodeURIComponent(name)}`, { headers, params: { page } }), isItemsResponse, normalizeItemsResponse);
     }
     searchItemsByGroup(group: string, page = 1): Promise<Result<ItemsResponse>> {
         if (!isNonBlankString(group) || !isPositiveSafePage(page)) return Promise.resolve(validationError());
-        return this.request((headers) => this.client.get(`${BASE_URL}/admin/item/items/group/${encodeURIComponent(group)}`, { headers, params: { page } }), isItemsResponse);
+        return this.request((headers) => this.client.get(`${BASE_URL}/admin/item/items/group/${encodeURIComponent(group)}`, { headers, params: { page } }), isItemsResponse, normalizeItemsResponse);
     }
     fetchUsers(page = 1): Promise<Result<UsersResponse>> {
         if (!isPositiveSafePage(page)) return Promise.resolve(validationError());

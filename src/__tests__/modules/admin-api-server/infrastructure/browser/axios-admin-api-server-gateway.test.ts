@@ -49,6 +49,38 @@ describe('AxiosAdminApiServerGateway', () => {
         expect(config.params).toEqual(params);
     });
 
+    test.each([
+        ['fetchItems', (gateway: AxiosAdminApiServerGateway) => gateway.fetchItems()],
+        ['searchItems', (gateway: AxiosAdminApiServerGateway) => gateway.searchItems('아이템')],
+        ['searchItemsByGroup', (gateway: AxiosAdminApiServerGateway) => gateway.searchItemsByGroup('normal')],
+    ])('%s normalizes numeric-string item timestamps returned by the production API', async (_name, operation) => {
+        const response = {
+            items: [{ ...item, updatedAt: '1783124525128' }],
+            totalCount: 1118,
+            currentPage: 1,
+            totalPages: 38,
+        };
+        const localGateway = new AxiosAdminApiServerGateway(createClient(response), tokenProvider);
+
+        await expect(operation(localGateway)).resolves.toEqual(ok({
+            ...response,
+            items: [{ ...item, updatedAt: 1783124525128 }],
+        }));
+    });
+
+    test.each([
+        ['createItem', (gateway: AxiosAdminApiServerGateway) => gateway.createItem({ id: 'item-1', name: '아이템', description: '', group: 'normal', options: { gEXP: 2 } })],
+        ['updateItem', (gateway: AxiosAdminApiServerGateway) => gateway.updateItem('item-1', { name: '아이템' })],
+    ])('%s normalizes a numeric-string timestamp in a single-item response', async (_name, operation) => {
+        const response = { ...item, updatedAt: '1783124525128' };
+        const localGateway = new AxiosAdminApiServerGateway(createClient(response), tokenProvider);
+
+        await expect(operation(localGateway)).resolves.toEqual(ok({
+            ...item,
+            updatedAt: 1783124525128,
+        }));
+    });
+
     test('sets arraybuffer response type and decodes plain UTF-8 and gzip log bodies identically', async () => {
         // Break caught: returning compressed bytes or changing the log endpoint configuration.
         const plainBytes = Buffer.from('line one\nline two');
@@ -132,6 +164,24 @@ describe('AxiosAdminApiServerGateway', () => {
 
         await expect(operation(localGateway)).resolves.toEqual(err({ kind: 'infrastructure', message: '관리자 API 요청을 처리하는 중 오류가 발생했습니다.' }));
     });
+
+    test.each(['not-a-timestamp', '-1', '9007199254740992'])(
+        'rejects an invalid numeric-string item timestamp: %s',
+        async (updatedAt) => {
+            const response = {
+                items: [{ ...item, updatedAt }],
+                totalCount: 1,
+                currentPage: 1,
+                totalPages: 1,
+            };
+            const localGateway = new AxiosAdminApiServerGateway(createClient(response), tokenProvider);
+
+            await expect(localGateway.fetchItems()).resolves.toEqual(err({
+                kind: 'infrastructure',
+                message: '관리자 API 요청을 처리하는 중 오류가 발생했습니다.',
+            }));
+        },
+    );
 
     test('rejects malformed gateway inputs without requesting a token or constructing a URL', async () => {
         // Break caught: bypassing the gateway validation when it is called without the Application service.
