@@ -24,6 +24,8 @@ jest.mock('../../../app/components/ErrModal', () => ({
     ),
 }));
 
+const mockedUseWordThemes = jest.mocked(useWordThemes);
+
 const themes = [
     { id: 1, code: 'animal', name: '동물' },
     { id: 2, code: 'game', name: '게임' },
@@ -46,7 +48,7 @@ const flushReactEffects = async () => {
 beforeEach(() => {
     jest.clearAllMocks();
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    jest.mocked(useWordThemes).mockReturnValue({
+    mockedUseWordThemes.mockReturnValue({
         data: themes,
         error: undefined,
         isLoading: false,
@@ -59,7 +61,7 @@ afterEach(() => {
 
 describe('WordAddForm theme loading', () => {
     it('disables saving without an update-depth error while the catalog themes are loading', async () => {
-        jest.mocked(useWordThemes).mockReturnValue({
+        mockedUseWordThemes.mockReturnValue({
             data: undefined,
             error: undefined,
             isLoading: true,
@@ -69,12 +71,12 @@ describe('WordAddForm theme loading', () => {
 
         await flushReactEffects();
         expect(screen.getAllByRole('button', { name: '단어 저장' }).at(-1)).toBeDisabled();
-        expect(useWordThemes.mock.calls.length).toBeLessThan(5);
+        expect(mockedUseWordThemes.mock.calls.length).toBeLessThan(5);
         expectNoMaximumUpdateDepthError();
     });
 
     it('shows a query error without an update-depth error', async () => {
-        jest.mocked(useWordThemes).mockReturnValue({
+        mockedUseWordThemes.mockReturnValue({
             data: undefined,
             error: { kind: 'infrastructure', message: 'raw SDK diagnostic' },
             isLoading: false,
@@ -84,7 +86,7 @@ describe('WordAddForm theme loading', () => {
 
         await flushReactEffects();
         expect(await screen.findByRole('alert')).toHaveTextContent('주제 정보를 불러오는 중 오류가 발생했습니다.');
-        expect(useWordThemes.mock.calls.length).toBeLessThan(5);
+        expect(mockedUseWordThemes.mock.calls.length).toBeLessThan(5);
         expectNoMaximumUpdateDepthError();
     });
 

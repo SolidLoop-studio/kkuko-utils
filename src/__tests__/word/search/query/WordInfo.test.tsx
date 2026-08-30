@@ -158,6 +158,8 @@ jest.mock('../../../../app/components/ErrModal', () => ({
     ),
 }));
 
+const mockedUseWordThemes = jest.mocked(useWordThemes);
+
 type UserRole = 'guest' | 'r1' | 'r2' | 'r3' | 'r4' | 'admin';
 
 const requestDeletion = jest.fn();
@@ -221,7 +223,7 @@ beforeEach(() => {
     jest.mocked(useSelector).mockImplementation((selector) => selector({
         user: currentUser,
     } as never));
-    jest.mocked(useWordThemes).mockImplementation(() => ({
+    mockedUseWordThemes.mockImplementation(() => ({
         data: currentThemes,
         error: undefined,
         isLoading: false,
@@ -256,7 +258,7 @@ afterEach(() => {
 
 describe('WordInfo mutations', () => {
     it('shows a safe Korean error when the catalog theme query fails', async () => {
-        jest.mocked(useWordThemes).mockReturnValue({
+        mockedUseWordThemes.mockReturnValue({
             data: undefined,
             error: { kind: 'infrastructure', message: 'raw SDK diagnostic' },
             isLoading: false,
@@ -268,7 +270,7 @@ describe('WordInfo mutations', () => {
         expect(alert).toHaveTextContent('주제 정보를 불러오는 중 오류가 발생했습니다.');
         expect(alert).not.toHaveTextContent('raw SDK diagnostic');
         await flushReactEffects();
-        expect(useWordThemes.mock.calls.length).toBeLessThan(5);
+        expect(mockedUseWordThemes.mock.calls.length).toBeLessThan(5);
         expectNoMaximumUpdateDepthError();
     });
 

@@ -90,6 +90,8 @@ jest.mock('../../../app/components/HelpModal', () => ({
     default: () => null,
 }));
 
+const mockedUseWordThemes = jest.mocked(useWordThemes);
+
 const loadEntries = async () => {
     const user = userEvent.setup();
     render(<WordsAddHome />);
@@ -107,7 +109,7 @@ beforeEach(() => {
     jest.mocked(useSelector).mockImplementation((selector) => selector({
         user: { uuid: 'user-1', role: 'r1' },
     } as never));
-    jest.mocked(useWordThemes).mockReturnValue({
+    mockedUseWordThemes.mockReturnValue({
         data: [
             { id: 1, code: 'animal', name: '동물' },
             { id: 2, code: 'place', name: '지명' },
@@ -148,7 +150,7 @@ afterEach(() => {
 
 describe('WordsAddHome addition batch', () => {
     it('shows a safe Korean error when the catalog theme query fails', async () => {
-        jest.mocked(useWordThemes).mockReturnValue({
+        mockedUseWordThemes.mockReturnValue({
             data: undefined,
             error: { kind: 'infrastructure', message: 'raw SDK diagnostic' },
             isLoading: false,
@@ -160,7 +162,7 @@ describe('WordsAddHome addition batch', () => {
         expect(alert).toHaveTextContent('주제 정보를 불러오는 중 오류가 발생했습니다.');
         expect(alert).not.toHaveTextContent('raw SDK diagnostic');
         await flushReactEffects();
-        expect(useWordThemes.mock.calls.length).toBeLessThan(5);
+        expect(mockedUseWordThemes.mock.calls.length).toBeLessThan(5);
         expectNoMaximumUpdateDepthError();
     });
 
