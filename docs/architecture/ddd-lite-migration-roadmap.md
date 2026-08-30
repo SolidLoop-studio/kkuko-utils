@@ -989,6 +989,21 @@ docs/admin-logs 경계를 추측하지 않는다.
   `SupabaseDocsCreationRequestGateway`의 `docs_wait.insert` 1개와
   `SupabaseAdminLogCommandGateway`의 종류별 `logs`·`docs_logs.delete` 1개뿐이며, 모두 해당
   Application port의 adapter 내부에 있다.
+- docs 요청 화면과 docs 내부 단어 action이 조합하는 인접 presentation consumer도 다음 명령으로
+  같은 기준으로 추적했다.
+
+  ```bash
+  git grep -n -E '\b(SCM|SSM)\b|supabaseClient|browserSupabaseClient|@supabase|database\.types|\.from\(|\.rpc\(' -- src/app/admin/request-docs src/modules/word-moderation/presentation src/modules/word-requests/presentation
+  git grep -n -E '\.(insert|update|upsert|delete)\(' -- src/app/admin/request-docs src/modules/word-moderation/presentation src/modules/word-requests/presentation
+  git grep -n -E '\b(SCM|SSM)\b|supabaseClient|browserSupabaseClient|@supabase|database\.types|\.from\(|\.rpc\(' -- src/modules/docs/infrastructure/browser/supabase-docs-request-moderation-gateway.ts src/modules/word-moderation/infrastructure/browser/supabase-docs-word-moderation-gateway.ts src/modules/word-moderation/infrastructure/browser/supabase-word-request-moderation-gateway.ts src/modules/word-requests/infrastructure/browser/supabase-user-word-request-gateway.ts
+  git grep -n -E '\.(insert|update|upsert|delete)\(' -- src/modules/docs/infrastructure/browser/supabase-docs-request-moderation-gateway.ts src/modules/word-moderation/infrastructure/browser/supabase-docs-word-moderation-gateway.ts src/modules/word-moderation/infrastructure/browser/supabase-word-request-moderation-gateway.ts src/modules/word-requests/infrastructure/browser/supabase-user-word-request-gateway.ts
+  ```
+
+  consumer boundary match는 `RequestDocsHome`의 `Array.from(...)` 1개뿐이고 consumer write
+  match는 같은 화면의 `Set.delete(...)` 1개뿐이다. 두 결과 모두 database access가 아니다.
+  adapter boundary match는 21개이며, `SupabaseDocsWordModerationGateway`의 `Array.from(...)`
+  2개를 제외한 19개는 browser client, query builder 또는 RPC를 adapter 내부에서 사용하는
+  의도된 경계다. 네 adapter의 write builder match는 0개이며, mutation은 각 RPC가 소유한다.
 - 선택 로그 삭제는 `AdminLogsHome` → `useDeleteAdminLogs` →
   `DeleteAdminLogsService` → `SupabaseAdminLogCommandGateway`로 연결된다. Application은 양의
   safe integer·중복 ID를 검증하고 adapter는 종류별 삭제 결과 ID를 정확히 확인한다.
