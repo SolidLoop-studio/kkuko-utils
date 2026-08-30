@@ -74,18 +74,18 @@ const parseFirstLetterRows = (rows: unknown[]): Pick<WordStatistics, 'firstLette
         const firstLetterEntry = parseStatisticEntry(
             row,
             'first_letter',
-            'k_count',
-            'n_count',
-            'k_count_updated_at',
-            'n_count_updated_at',
+            'exact_k_count',
+            'exact_n_count',
+            'exact_k_count_updated_at',
+            'exact_n_count_updated_at',
         );
         const threeLetterEntry = parseStatisticEntry(
             row,
             'first_letter',
-            'len3_k_count',
-            'len3_n_count',
-            'len3_k_count_updated_at',
-            'len3_n_count_updated_at',
+            'exact_len3_k_count',
+            'exact_len3_n_count',
+            'exact_len3_k_count_updated_at',
+            'exact_len3_n_count_updated_at',
         );
         if (firstLetterEntry === null || threeLetterEntry === null) return null;
 
@@ -102,10 +102,10 @@ const parseLastLetterRows = (rows: unknown[]): WordStatisticEntry[] | null => {
         const entry = parseStatisticEntry(
             row,
             'last_letter',
-            'k_count',
-            'n_count',
-            'k_count_updated_at',
-            'n_count_updated_at',
+            'exact_k_count',
+            'exact_n_count',
+            'exact_k_count_updated_at',
+            'exact_n_count_updated_at',
         );
         if (entry === null) return null;
         lastLetter.push(entry);
@@ -125,10 +125,10 @@ export class SupabaseWordStatisticsQueryGateway implements WordStatisticsQueryGa
         try {
             const [firstLetterResponse, lastLetterResponse] = await Promise.all([
                 this.client.from('word_first_letter_counts').select(
-                    'first_letter, k_count, n_count, k_count_updated_at, n_count_updated_at, len3_k_count, len3_n_count, len3_k_count_updated_at, len3_n_count_updated_at',
+                    'first_letter, exact_k_count, exact_n_count, exact_k_count_updated_at, exact_n_count_updated_at, exact_len3_k_count, exact_len3_n_count, exact_len3_k_count_updated_at, exact_len3_n_count_updated_at',
                 ),
                 this.client.from('word_last_letter_counts').select(
-                    'last_letter, k_count, n_count, k_count_updated_at, n_count_updated_at',
+                    'last_letter, exact_k_count, exact_n_count, exact_k_count_updated_at, exact_n_count_updated_at',
                 ),
             ]);
             const firstLetterRows = parseRows(firstLetterResponse);

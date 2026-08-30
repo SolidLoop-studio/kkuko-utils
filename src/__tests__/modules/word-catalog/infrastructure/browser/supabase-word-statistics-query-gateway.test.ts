@@ -47,22 +47,34 @@ const createClient = (results: Partial<Record<Table, QueryResult>> = {}) => {
 
 const firstLetterRow = {
     first_letter: '가',
-    k_count: 11,
-    n_count: 7,
-    k_count_updated_at: '2026-08-24T00:00:00Z',
-    n_count_updated_at: null,
-    len3_k_count: 5,
-    len3_n_count: 3,
-    len3_k_count_updated_at: '2026-08-23T00:00:00Z',
-    len3_n_count_updated_at: null,
+    k_count: 99,
+    n_count: 88,
+    k_count_updated_at: '2026-08-20T00:00:00Z',
+    n_count_updated_at: '2026-08-19T00:00:00Z',
+    len3_k_count: 77,
+    len3_n_count: 66,
+    len3_k_count_updated_at: '2026-08-18T00:00:00Z',
+    len3_n_count_updated_at: '2026-08-17T00:00:00Z',
+    exact_k_count: 11,
+    exact_n_count: 7,
+    exact_k_count_updated_at: '2026-08-24T00:00:00Z',
+    exact_n_count_updated_at: null,
+    exact_len3_k_count: 5,
+    exact_len3_n_count: 3,
+    exact_len3_k_count_updated_at: '2026-08-23T00:00:00Z',
+    exact_len3_n_count_updated_at: null,
 };
 
 const lastLetterRow = {
     last_letter: '나',
-    k_count: 13,
-    n_count: 2,
-    k_count_updated_at: null,
-    n_count_updated_at: '2026-08-22T00:00:00Z',
+    k_count: 55,
+    n_count: 44,
+    k_count_updated_at: '2026-08-16T00:00:00Z',
+    n_count_updated_at: '2026-08-15T00:00:00Z',
+    exact_k_count: 13,
+    exact_n_count: 2,
+    exact_k_count_updated_at: null,
+    exact_n_count_updated_at: '2026-08-22T00:00:00Z',
 };
 
 const infrastructureFailure = err({
@@ -76,8 +88,8 @@ describe('SupabaseWordStatisticsQueryGateway', () => {
             word_first_letter_counts: response([firstLetterRow, {
                 ...firstLetterRow,
                 first_letter: '나',
-                k_count: 17,
-                len3_k_count: 9,
+                exact_k_count: 17,
+                exact_len3_k_count: 9,
             }]),
             word_last_letter_counts: response([lastLetterRow]),
         });
@@ -128,13 +140,13 @@ describe('SupabaseWordStatisticsQueryGateway', () => {
             {
                 method: 'select',
                 table: 'word_first_letter_counts',
-                args: ['first_letter, k_count, n_count, k_count_updated_at, n_count_updated_at, len3_k_count, len3_n_count, len3_k_count_updated_at, len3_n_count_updated_at'],
+                args: ['first_letter, exact_k_count, exact_n_count, exact_k_count_updated_at, exact_n_count_updated_at, exact_len3_k_count, exact_len3_n_count, exact_len3_k_count_updated_at, exact_len3_n_count_updated_at'],
             },
             { method: 'from', table: 'word_last_letter_counts', args: [] },
             {
                 method: 'select',
                 table: 'word_last_letter_counts',
-                args: ['last_letter, k_count, n_count, k_count_updated_at, n_count_updated_at'],
+                args: ['last_letter, exact_k_count, exact_n_count, exact_k_count_updated_at, exact_n_count_updated_at'],
             },
         ]);
     });
@@ -153,8 +165,8 @@ describe('SupabaseWordStatisticsQueryGateway', () => {
         ['a query error', createClient({ word_first_letter_counts: response([], { message: 'private' }) }).client],
         ['a thrown query', createClient({ word_last_letter_counts: new Error('network') }).client],
         ['a blank letter', createClient({ word_first_letter_counts: response([{ ...firstLetterRow, first_letter: ' ' }]) }).client],
-        ['an invalid count', createClient({ word_last_letter_counts: response([{ ...lastLetterRow, n_count: '2' }]) }).client],
-        ['an invalid timestamp', createClient({ word_first_letter_counts: response([{ ...firstLetterRow, k_count_updated_at: 0 }]) }).client],
+        ['an invalid count', createClient({ word_last_letter_counts: response([{ ...lastLetterRow, exact_n_count: '2' }]) }).client],
+        ['an invalid timestamp', createClient({ word_first_letter_counts: response([{ ...firstLetterRow, exact_k_count_updated_at: 0 }]) }).client],
     ])('returns the stable infrastructure error for %s', async (_description, client) => {
         await expect(new SupabaseWordStatisticsQueryGateway(client).load())
             .resolves.toEqual(infrastructureFailure);

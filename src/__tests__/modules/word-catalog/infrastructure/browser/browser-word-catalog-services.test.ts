@@ -19,14 +19,14 @@ describe('browser word catalog services', () => {
         const firstLetterStatisticsResponse = Promise.resolve({
             data: [{
                 first_letter: '가',
-                k_count: 11,
-                n_count: 7,
-                k_count_updated_at: '2026-08-24T00:00:00Z',
-                n_count_updated_at: null,
-                len3_k_count: 5,
-                len3_n_count: 3,
-                len3_k_count_updated_at: null,
-                len3_n_count_updated_at: null,
+                exact_k_count: 11,
+                exact_n_count: 7,
+                exact_k_count_updated_at: '2026-08-24T00:00:00Z',
+                exact_n_count_updated_at: null,
+                exact_len3_k_count: 5,
+                exact_len3_n_count: 3,
+                exact_len3_k_count_updated_at: null,
+                exact_len3_n_count_updated_at: null,
             }],
             error: null,
         });
