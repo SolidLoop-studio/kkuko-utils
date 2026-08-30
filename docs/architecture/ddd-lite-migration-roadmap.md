@@ -972,6 +972,46 @@ docs/admin-logs 경계를 추측하지 않는다.
 이 범위는 docs context 전체 완료나 Phase 0B cloud rollout 완료를 의미하지 않는다. cloud migration rollout은
 계속 사용자/운영자가 별도로 통제하고 실행한다.
 
+2026-08-30 docs/admin-logs 남은 mutation source-boundary audit 결과:
+
+- 다음 명령으로 `src/app/words-docs`, `src/app/admin/logs`의 `SCM`, `SSM`, Supabase client·package,
+  생성 DB type, query builder 및 write builder 사용을 검사했다.
+
+  ```bash
+  git grep -n -E '\b(SCM|SSM)\b|supabaseClient|browserSupabaseClient|@supabase|database\.types|\.from\(|\.rpc\(' -- src/app/words-docs src/app/admin/logs
+  git grep -n -E '\.(insert|update|upsert|delete)\(' -- src/app/words-docs src/app/admin/logs
+  git grep -n -E '\b(SCM|SSM)\b|supabaseClient|browserSupabaseClient|@supabase|database\.types|\.from\(|\.rpc\(' -- src/modules/docs/presentation src/modules/admin-logs/presentation
+  git grep -n -E '\.(insert|update|upsert|delete)\(' -- src/modules/docs/infrastructure src/modules/admin-logs/infrastructure
+  ```
+
+  첫 명령의 3개 match는 `Array.from(...)`이고, 둘째 명령의 2개 match는 `Set`·`Map`의
+  `.delete(...)`다. presentation module match는 0개다. Infrastructure write builder match는
+  `SupabaseDocsCreationRequestGateway`의 `docs_wait.insert` 1개와
+  `SupabaseAdminLogCommandGateway`의 종류별 `logs`·`docs_logs.delete` 1개뿐이며, 모두 해당
+  Application port의 adapter 내부에 있다.
+- 선택 로그 삭제는 `AdminLogsHome` → `useDeleteAdminLogs` →
+  `DeleteAdminLogsService` → `SupabaseAdminLogCommandGateway`로 연결된다. Application은 양의
+  safe integer·중복 ID를 검증하고 adapter는 종류별 삭제 결과 ID를 정확히 확인한다.
+- docs 즐겨찾기는 `DocsDataHome` → `useDocsFavorite` → `SetDocsFavoriteService` →
+  `SupabaseDocsFavoriteCommandGateway`의 idempotent `set_docs_favorite` RPC로 연결된다.
+- docs 조회 수 기록은 `DocsDataPage` → `useRecordDocsView` → `RecordDocsViewService` →
+  `SupabaseDocsViewCommandGateway`의 `increment_doc_views` RPC로 연결되며 본문 렌더링과
+  독립적인 best-effort다.
+- docs 생성 요청은 `WordsDocsHome` → `useDocsCreationRequest` →
+  `RequestDocsCreationService` → `SupabaseDocsCreationRequestGateway`로 연결된다.
+- 관리자 docs 요청 승인·반려는 `RequestDocsHome` → `useDocsRequestModeration` →
+  `ModerateDocsRequestsService` → `SupabaseDocsRequestModerationGateway`의 원자적
+  approve/reject RPC로 연결된다.
+- docs 내부 단어 승인·반려·직접 삭제는 `Table` → `useDocsWordModeration` →
+  `ModerateWordRequestsService`/`DeleteWordDirectlyService` →
+  `SupabaseWordRequestModerationGateway`/`SupabaseDocsWordModerationGateway`로 연결된다.
+  사용자 삭제 요청·취소도 `useUserWordRequestActions` → `useUserWordRequests` →
+  `ManageUserWordRequestsService` → `SupabaseUserWordRequestGateway`의 RPC 경계에 있다.
+
+따라서 audit한 docs/admin-logs mutation consumer 중 repository-side로 이전되지 않은 경계는 없다.
+Phase 4의 다음 구현 작업은 추측으로 지정하지 않으며, cloud migration rollout은 여전히
+사용자/운영자가 별도로 통제한다.
+
 ### Phase 5. Identity, Profile, Notifications 이전
 
 우선순위: 중간
