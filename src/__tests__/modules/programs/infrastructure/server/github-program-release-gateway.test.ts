@@ -20,4 +20,15 @@ describe('GithubProgramReleaseGateway', () => {
             expect.objectContaining({ headers: expect.objectContaining({ Accept: 'application/vnd.github.v3+json', 'User-Agent': 'kkuko-utils' }), next: { revalidate: 300 } }),
         );
     });
+
+    it.each([
+        ['non-2xx', async () => ({ ok: false, json: async () => ({ message: 'secret' }) })],
+        ['thrown fetch', async () => { throw new Error('secret'); }],
+        ['invalid JSON', async () => ({ ok: true, json: async () => ({ nope: true }) })],
+        ['invalid asset', async () => ({ ok: true, json: async () => [{ id: 1, tag_name: 'v', name: '', body: '', published_at: 'a', updated_at: 'b', html_url: 'url', prerelease: false, draft: false, assets: [{ id: 1 }] }] })],
+    ])('returns a safe infrastructure result for %s', async (_, response) => {
+        const result = await new GithubProgramReleaseGateway(jest.fn().mockImplementation(response)).list('owner/repo', { page: 1, perPage: 10 });
+        expect(result).toEqual({ ok: false, error: expect.objectContaining({ kind: 'infrastructure' }) });
+        if (!result.ok) expect(result.error.message).not.toContain('secret');
+    });
 });

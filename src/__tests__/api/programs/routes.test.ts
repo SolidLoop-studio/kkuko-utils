@@ -32,12 +32,24 @@ describe('program routes', () => {
         expect(await response.json()).toEqual({ error: 'Invalid program ID' });
     });
 
+    it.each(['0', '-1', '+1', '01', '1.0', '1e2', '0x1', '9007199254740992'])('rejects non-canonical ID %s', async (id) => {
+        const { GET } = await import('../../../app/api/programs/info/route');
+        const response = await GET(request(`http://localhost/api/programs/info?id=${id}`));
+        expect(response.status).toBe(400);
+    });
+
     it('accepts encoded repository identifiers and preserves release envelopes', async () => {
         const { GET } = await import('../../../app/api/programs/releases/[repo]/route');
         const response = await GET(request('http://localhost/api/programs/releases/owner%2Frepo?page=1&per_page=10'), { params: Promise.resolve({ repo: 'owner%2Frepo' }) });
 
         expect(response.status).toBe(200);
         expect(await response.json()).toEqual({ releases: [expect.objectContaining({ tag_name: 'v1' })], has_more: false });
+    });
+
+    it.each(['owner%2F..', 'owner%2Frepo%2Fextra', 'owner%2Fre%20po', '%', 'owner%2Frepo%3Fq'])('rejects invalid repository %s', async (repo) => {
+        const { GET } = await import('../../../app/api/programs/releases/[repo]/latest/route');
+        const response = await GET(request('http://localhost/api/programs/releases/x/latest'), { params: Promise.resolve({ repo }) });
+        expect(response.status).toBe(400);
     });
 
     it('rejects malformed repositories and invalid pagination before calling a service', async () => {
