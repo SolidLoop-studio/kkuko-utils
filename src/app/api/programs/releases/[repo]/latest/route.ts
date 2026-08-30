@@ -13,7 +13,7 @@ export async function GET(
     const result = await createServerProgramsServices().programsService.latestRelease(repository);
     return result.ok
       ? NextResponse.json({ release: presentRelease(result.value) })
-      : NextResponse.json({ error: 'Failed to fetch latest release' }, { status: 502 });
+      : NextResponse.json({ error: 'Failed to fetch latest release' }, { status: 500 });
   } catch {
     return NextResponse.json({ error: 'Failed to fetch latest release' }, { status: 500 });
   }

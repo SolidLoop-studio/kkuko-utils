@@ -95,7 +95,7 @@ describe('program routes', () => {
         await expect(response.json()).resolves.toEqual({ error: 'Program not found' });
     });
 
-    it('suppresses upstream diagnostics in all 502 route responses', async () => {
+    it('preserves 500 responses and suppresses diagnostics for all Result failures', async () => {
         mockCreateServerProgramsServices.mockReturnValue({
             programsService: {
                 list: jest.fn().mockResolvedValue(err({ kind: 'infrastructure', message: 'GitHub database secret' })),
@@ -108,17 +108,21 @@ describe('program routes', () => {
         const infoRoute = await import('../../../app/api/programs/info/route');
         const releasesRoute = await import('../../../app/api/programs/releases/[repo]/route');
         const latestRoute = await import('../../../app/api/programs/releases/[repo]/latest/route');
-        const responses = await Promise.all([
+        const [listResponse, infoResponse, releasesResponse, latestResponse] = await Promise.all([
             listRoute.GET(request('http://localhost/api/programs')),
             infoRoute.GET(request('http://localhost/api/programs/info?id=7')),
             releasesRoute.GET(request('http://localhost/api/programs/releases/owner%2Frepo'), { params: Promise.resolve({ repo: 'owner%2Frepo' }) }),
             latestRoute.GET(request('http://localhost/api/programs/releases/owner%2Frepo/latest'), { params: Promise.resolve({ repo: 'owner%2Frepo' }) }),
         ]);
 
-        await Promise.all(responses.map(async (response) => {
-            expect(response.status).toBe(502);
-            expect(JSON.stringify(await response.json())).not.toContain('secret');
-        }));
+        expect(listResponse.status).toBe(500);
+        await expect(listResponse.json()).resolves.toEqual({ error: 'Failed to fetch programs' });
+        expect(infoResponse.status).toBe(500);
+        await expect(infoResponse.json()).resolves.toEqual({ error: 'Failed to fetch program info' });
+        expect(releasesResponse.status).toBe(500);
+        await expect(releasesResponse.json()).resolves.toEqual({ error: 'Failed to fetch releases' });
+        expect(latestResponse.status).toBe(500);
+        await expect(latestResponse.json()).resolves.toEqual({ error: 'Failed to fetch latest release' });
     });
 
     it('suppresses thrown diagnostics in all 500 route responses', async () => {

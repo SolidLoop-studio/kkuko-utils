@@ -13,7 +13,7 @@ export async function GET(
   if (pagination === null) return NextResponse.json({ error: 'Invalid release pagination' }, { status: 400 });
   try {
     const result = await createServerProgramsServices().programsService.releases(repository, pagination);
-    if (!result.ok) return NextResponse.json({ error: 'Failed to fetch releases' }, { status: 502 });
+    if (!result.ok) return NextResponse.json({ error: 'Failed to fetch releases' }, { status: 500 });
     return NextResponse.json({ releases: result.value.map(presentRelease), has_more: result.value.length === pagination.perPage });
   } catch {
     return NextResponse.json({ error: 'Failed to fetch releases' }, { status: 500 });

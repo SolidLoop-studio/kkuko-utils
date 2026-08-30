@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     if (id === null) return NextResponse.json({ error: 'Invalid program ID' }, { status: 400 });
     try {
         const result = await createServerProgramsServices().programsService.byId(id);
-        if (!result.ok) return NextResponse.json({ error: 'Failed to fetch program info' }, { status: 502 });
+        if (!result.ok) return NextResponse.json({ error: 'Failed to fetch program info' }, { status: 500 });
         if (result.value === null) return NextResponse.json({ error: 'Program not found' }, { status: 404 });
         return NextResponse.json({ data: presentProgram(result.value) });
     } catch {

@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     const result = await createServerProgramsServices().programsService
       .list(request.nextUrl.searchParams.get('category') ?? 'all');
-    if (!result.ok) return NextResponse.json({ error: 'Failed to fetch programs' }, { status: 502 });
+    if (!result.ok) return NextResponse.json({ error: 'Failed to fetch programs' }, { status: 500 });
     return NextResponse.json({ programs: result.value.map(presentProgram) });
   } catch {
     return NextResponse.json({ error: 'Failed to fetch programs' }, { status: 500 });
