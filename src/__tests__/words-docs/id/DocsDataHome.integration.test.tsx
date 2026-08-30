@@ -82,6 +82,9 @@ const createDeferred = <T,>() => {
 const createWrapper = (
     role: 'guest' | 'r1' | 'r4' | 'admin' = 'admin',
     uuid: string | undefined = 'admin-1',
+    queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    }),
 ) => {
     const store = configureStore({
         reducer: { user: userReducer, loading: loadingReducer, theme: themeReducer },
@@ -91,10 +94,6 @@ const createWrapper = (
             theme: { theme: 'light' as const },
         },
     });
-    const queryClient = new QueryClient({
-        defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-    });
-
     return function Wrapper({ children }: PropsWithChildren) {
         return (
             <Provider store={store}>
@@ -234,6 +233,38 @@ describe('DocsDataHome administrator removal completion integration', () => {
         expect(screen.getByRole('button', { name: '0' })).toBeInTheDocument();
         deferred.resolve(ok(undefined));
         await waitFor(() => expect(screen.getByRole('button', { name: '1' })).toBeInTheDocument());
+    });
+
+    it('refetches the current profile favorites after a successful favorite command', async () => {
+        // Break caught: returning to a recently viewed profile with a fresh but outdated favorites cache.
+        const queryClient = new QueryClient({
+            defaultOptions: {
+                queries: { retry: false, staleTime: 60 * 1000 },
+                mutations: { retry: false },
+            },
+        });
+        const profileFavoritesKey = ['identity', 'profile-favorite-docs', 'user-1'] as const;
+        queryClient.setQueryData(profileFavoritesKey, []);
+        const user = userEvent.setup();
+        render(
+            <DocsDataHome
+                id={55}
+                data={[]}
+                metaData={{ title: '테스트 문서', lastUpdate: '2026-08-22T00:00:00.000Z', typez: 'theme' }}
+                starCount={[]}
+            />,
+            { wrapper: createWrapper('r1', 'user-1', queryClient) },
+        );
+
+        await user.click(screen.getByRole('button', { name: '0' }));
+        await waitFor(() => expect(screen.getByRole('button', { name: '1' })).toBeInTheDocument());
+
+        const loadProfileFavorites = jest.fn().mockResolvedValue([{ id: 55 }]);
+        await expect(queryClient.fetchQuery({
+            queryKey: profileFavoritesKey,
+            queryFn: loadProfileFavorites,
+        })).resolves.toEqual([{ id: 55 }]);
+        expect(loadProfileFavorites).toHaveBeenCalledTimes(1);
     });
 
     it('keeps the favorite state and shows the existing ErrorModal when the command fails', async () => {

@@ -1,5 +1,6 @@
 "use client";
 import React, { useRef, useState, useEffect, useMemo } from "react";
+import { useQueryClient } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import WordsTableBody from "./WordsTableBody";
 import Link from "next/link";
@@ -26,6 +27,7 @@ import ToC from "./TableOfContents";
 import { createBrowserWordModerationServices } from "@/src/modules/word-moderation/infrastructure/browser/browser-word-moderation-services";
 import type { DocsWordMutationTarget } from "@/src/modules/word-moderation";
 import { useDocsFavorite, useDocsMarkers } from "@/src/modules/docs";
+import { identityQueryKeys } from "@/src/modules/identity/presentation/identity-query-keys";
 import type { ApplicationError } from "@/src/shared/application/application-error";
 import {
     DOCS_WORD_TARGET_REFRESH_ERROR_MESSAGE,
@@ -113,6 +115,7 @@ const DocsDataHome = ({
         setFavorite,
         isPending: isFavoritePending,
     } = useDocsFavorite();
+    const queryClient = useQueryClient();
     const { data: docsMarkers } = useDocsMarkers(id, isMissionParent);
 
     // 유저 즐겨찾기 상태 업데이트
@@ -314,6 +317,9 @@ const DocsDataHome = ({
                 }
                 return;
             }
+            void queryClient.invalidateQueries({
+                queryKey: identityQueryKeys.profileFavoriteDocs(user.uuid),
+            });
             setIsUserStarreda(nextIsStarred);
         } finally {
             isFavoriteSubmissionPendingRef.current = false;
