@@ -50,12 +50,6 @@ jest.mock('../../../app/components/ui/scroll-area', () => ({
     ScrollArea: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
-jest.mock('../../../app/lib/supabaseClient', () => ({
-    get SCM() {
-        throw new Error('ThemeSelectModal must not import legacy SCM.');
-    },
-}));
-
 jest.mock('swr', () => {
     throw new Error('ThemeSelectModal must not import SWR.');
 });

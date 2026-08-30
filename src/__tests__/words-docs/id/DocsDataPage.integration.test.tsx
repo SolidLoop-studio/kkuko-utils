@@ -13,15 +13,6 @@ jest.mock('../../../modules/word-moderation/infrastructure/browser/browser-word-
     createBrowserWordModerationServices: jest.fn(),
 }));
 
-jest.mock('../../../app/lib/supabaseClient', () => ({
-    SCM: {
-        get: jest.fn(() => ({ docsLastUpdate: jest.fn() })),
-        add: jest.fn(),
-        delete: jest.fn(),
-        update: jest.fn(),
-    },
-}));
-
 jest.mock('@tanstack/react-virtual', () => ({
     useVirtualizer: ({ count }: { count: number }) => ({
         getTotalSize: () => count * 120,

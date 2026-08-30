@@ -9,18 +9,6 @@ import { useUserWordRequests } from '../../../modules/word-requests';
 import { err, ok } from '../../../shared/application/result';
 
 const requestAdditions = jest.fn();
-const legacyGet = {
-    allThemes: jest.fn(),
-    allWaitWords: jest.fn(),
-    waitWordsThemes: jest.fn(),
-    wordsByWords: jest.fn(),
-    wordsThemes: jest.fn(),
-};
-const legacyAdd = {
-    waitWordThemes: jest.fn(),
-    wordThemesReq: jest.fn(),
-    waitWords: jest.fn(),
-};
 let consoleErrorSpy: jest.SpyInstance;
 
 const expectNoMaximumUpdateDepthError = () => {
@@ -38,12 +26,6 @@ const flushReactEffects = async () => {
 jest.mock('react-redux', () => ({ useSelector: jest.fn() }));
 jest.mock('../../../modules/word-catalog', () => ({ useWordThemes: jest.fn() }));
 jest.mock('../../../modules/word-requests', () => ({ useUserWordRequests: jest.fn() }));
-jest.mock('../../../app/lib/supabaseClient', () => ({
-    SCM: {
-        get: () => legacyGet,
-        add: () => legacyAdd,
-    },
-}));
 jest.mock('@tanstack/react-virtual', () => ({
     useVirtualizer: ({ count }: { count: number }) => ({
         getTotalSize: () => count * 80,
@@ -134,14 +116,6 @@ beforeEach(() => {
         createdThemeChangeRequestCount: 1,
         unchangedWordCount: 0,
     }));
-    legacyGet.allThemes.mockResolvedValue({ data: [], error: null });
-    legacyGet.allWaitWords.mockResolvedValue({ data: [], error: null });
-    legacyGet.waitWordsThemes.mockResolvedValue({ data: [], error: null });
-    legacyGet.wordsByWords.mockResolvedValue({ data: [], error: null });
-    legacyGet.wordsThemes.mockResolvedValue({ data: [], error: null });
-    legacyAdd.waitWordThemes.mockResolvedValue({ error: null });
-    legacyAdd.wordThemesReq.mockResolvedValue({ error: null });
-    legacyAdd.waitWords.mockResolvedValue({ data: [], error: null });
 });
 
 afterEach(() => {
@@ -181,8 +155,6 @@ describe('WordsAddHome addition batch', () => {
             expect.any(Function),
         ));
         expect(await screen.findByRole('dialog')).toHaveTextContent('신규 단어 요청 1개');
-        expect(legacyGet.allThemes).not.toHaveBeenCalled();
-        expect(legacyAdd.waitWords).not.toHaveBeenCalled();
     });
 
     it('renders the completed-word percentage reported by atomic batches', async () => {

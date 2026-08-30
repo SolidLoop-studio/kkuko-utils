@@ -23,6 +23,7 @@
     "test:docs-reference-db": "supabase test db --local supabase/tests/database/docs-reference-trigger-characterization.integration.sql supabase/tests/database/docs-reference-schema.integration.sql supabase/tests/database/docs-semantic-reference.integration.sql",
     "test:docs-favorite-db": "supabase test db --local supabase/tests/database/docs-favorite.integration.sql",
     "verify:local-db": "node scripts/verify-local-supabase.mjs",
+    "verify:architecture": "node scripts/verify-ddd-lite-architecture.mjs",
     "test:test": "jest 2>&1 | tee test.txt",
     "test:ci": "jest --ci --coverage --watchAll=false",
     "prepare": "husky"

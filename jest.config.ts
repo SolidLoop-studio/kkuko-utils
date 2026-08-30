@@ -13,6 +13,7 @@ const customJestConfig = {
   },
   transform: {
     '^.+\\.(ts|tsx)$': 'babel-jest',
+    '^.+\\.mjs$': 'babel-jest',
   },
   transformIgnorePatterns: [
     'node_modules/(?!(lucide-react)/)', // lucide-react는 변환 예외

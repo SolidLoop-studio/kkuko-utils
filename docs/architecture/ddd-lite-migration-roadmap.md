@@ -1,6 +1,6 @@
 # DDD-lite 데이터 접근 아키텍처 및 전환 로드맵
 
-> 상태: 전환 진행 중
+> 상태: 저장소 제어 범위 완료, cloud rollout은 사용자/운영자 대기
 >
 > 기준일: 2026-08-26
 >
@@ -76,14 +76,22 @@ git grep -n -E "\bSCM\." -- "src/**/*.ts" "src/**/*.tsx"
 `@supabase/supabase-js`, `.rpc(`, `.from(` import/call 검색 결과가 0건이다.
 
 2026-08-30 관리자 대시보드 count projection 전환 후 실제 import/call 구문을 다시
-측정한 결과, `SCM` import 소스 파일은 4개이고 `SCM.*` 호출 라인은 4개다. 테스트의
-source-boundary 설명 문자열처럼 실행되지 않는 `SCM` 텍스트는 제외했다. 측정에는 다음
-구문 기준을 사용했으며, 이 수치는 최종 제거 완료가 아니라 남은 전환 범위를 나타낸다.
+측정한 결과, `SCM` import 소스 파일은 4개이고 `SCM.*` 호출 라인은 4개였다. 테스트의
+source-boundary 설명 문자열처럼 실행되지 않는 `SCM` 텍스트는 제외했다.
 
 ```bash
 git grep -l -E '^[[:space:]]*import[[:space:]].*SCM.*from[[:space:]]' -- 'src/**/*.ts' 'src/**/*.tsx'
 git grep -n -E 'SCM\.(get|add|delete|update|getJWT)\(' -- 'src/**/*.ts' 'src/**/*.tsx'
 ```
+
+2026-08-30 Phase 7 완료 시점의 production AST 검사 결과는 `SCM` import 0개,
+`SSM` import 0개, `SCM`/`SSM` 실행 reference 0개다. `SupabaseClientManager`,
+`ISupabaseClientManager`, 전역 chunk/cache/progress/result surface는 삭제되었고,
+`src/app/lib/supabaseClient.ts`에는 client-factory 호환성 테스트만을 위한
+`browserSupabaseClient as supabase` re-export만 남겼다. 이 alias를 production에서
+소비하는 import도 0개다. 이 결과는 주석·문자열을 세지 않는
+`npm run verify:architecture` TypeScript AST 검사와 real-tree Jest regression으로
+확인한다.
 
 ### 3.2 완료된 기반 작업
 
@@ -1123,9 +1131,12 @@ Notifications:
   - 대체된 `wordsCount`·`waitWordsCount` manager/interface 메서드를 제거했다. 2026-08-30
     fresh audit 기준으로 남은 실제 SCM import 파일과 호출 라인은 각각 4개이므로 Phase 7과
     전체 SCM 제거는 계속 진행 중이다.
-- SCM의 남은 범용 cache 제거
+- SCM의 남은 범용 cache 제거 (완료)
+  - 전역 manager cache, query chunk, progress helper 및 broad Supabase result type surface를
+    삭제했다. 서버 상태 cache의 소유자는 feature-level React Query와 Next.js request/cache
+    경계이며, 재개해야 하는 명시적 payload만 IndexedDB가 소유한다. 전역 manager cache는 없다.
 
-### Phase 7. SCM 제거
+### Phase 7. SCM 제거 (완료: 저장소 제어 범위)
 
 선행 조건:
 
@@ -1135,12 +1146,26 @@ Notifications:
 
 작업:
 
-- `src/app/lib/supabase/SupabaseClientManager.ts` 삭제
-- `src/app/lib/supabase/ISupabaseClientManager.ts` 삭제
-- legacy `SCM` export 삭제
-- 사용하지 않는 `supabase.types.ts` 정리
-- 금지 import 규칙을 전체 presentation 경계로 확대
-- CI에서 architecture rule 검증
+- `src/app/lib/supabase/SupabaseClientManager.ts`와
+  `src/app/lib/supabase/ISupabaseClientManager.ts`를 삭제했다.
+- legacy `SCM`/`SSM` manager, 넓은 interface, `supabase.types.ts`, unused result/chunk/cache/progress
+  surface를 제거했다. transitional alias는 test-compatible `supabase` re-export만 유지하며
+  production 소비자는 없다.
+- `scripts/verify-ddd-lite-architecture.mjs`가 TypeScript AST로 legacy identifier/path,
+  transitional alias, Domain/Application 방향, Presentation import, Client Component direct
+  `.from()`/`.rpc()`를 결정적으로 검사한다. fixture와 real-tree regression은
+  `src/__tests__/architecture/ddd-lite-boundaries.test.ts`가 소유한다.
+- ESLint flat config는 Domain/Application 규칙을 유지하고 presentation source에 Supabase SDK,
+  generated DB type, shared Supabase client/Infrastructure, legacy alias/manager import를 금지한다.
+  기존 auth/OAuth Route Handler 직접 import 예외는 명시적인 세 route file로만 한정한다.
+- `package.json`의 `verify:architecture`와 PR CI의 required architecture step이 같은 AST 검사를
+  실행한다. CI step에는 `continue-on-error`가 없다.
+- Task 1의 docs/admin-logs mutation source-boundary audit은 유효하게 유지된다. audit한 consumer에
+  repository-side 미이전 경계가 없으며, 이번 전역 verifier가 그 경계가 legacy manager로 되돌아가는
+  것을 추가로 막는다.
+- 위 완료는 repository-controlled DDD-lite migration과 Phase 7 완료를 뜻한다. local verification은
+  remote migration을 적용하지 않았고, 모든 cloud Supabase migration/rollout은 계속
+  사용자/운영자가 명시적으로 계획·실행하는 pending 작업이다.
 
 ## 17. 기능 하나를 이전하는 표준 절차
 
@@ -1214,7 +1239,7 @@ Notifications:
 | identity/profile | 완료 | Auth session·Google login·상태 listener·logout, 현재 사용자 공개 profile query, nickname availability/registration, ProfileHome nickname search, profile main summary·월간 rank·최근 5개월 contribution, 즐겨찾기 문서·단어 요청·처리 요청 activity query, profile nickname 변경 command의 Application/gateway/hook·안정 오류·성공 UI 흐름 이전 완료. 관찰된 identity/profile presentation의 legacy SCM 소비자는 0개이며, 대체된 `usersLikeByNickname`·`userByNickname`·`monthlyConRankByUserId`·`monthlyContributionsByUserId`·`starredDocsById`·`requestsListById`·`logsListById`·`usersByNickname` getter를 제거함. nickname update slice는 database/cloud rollout을 수행하지 않음 |
 | notifications/storage | 완료 | 활성 목록·최신 모달 query와 browser/server adapter, React Query cache/dismissal 정책, server-safe 상세·metadata·편집 query, 관리자 create/update/delete command 및 이미지 Storage 경계 완료. 새 upload는 DB 저장 실패 시 best-effort로 제거하고, DB가 검증해 반환한 managed replace/remove/delete 대상은 DB 성공 뒤 fresh zero-reference 결과일 때만 best-effort로 제거한다. shared·external·stale·uncertain URL은 보존한다. form은 PostgREST 오류나 `alert`를 노출하지 않는다. 이 no-migration guarded 정책은 concurrency-proof garbage collection이 아니며 database migration·cloud rollout은 수행하지 않았다. 이는 notification sub-boundary 완료만 뜻하며 전체 SCM 제거는 별도 작업이다. |
 | release notes | 완료 | 내부 Supabase 릴리즈와 GitHub Releases를 독립 gateway/service/query key로 이전하고 defensive mapping, source별 안정 오류, partial failure UI를 검증했다. `ReleaseNote`의 직접 외부 연동과 `releaseNote` legacy getter를 제거했으며 database migration·cloud rollout은 없다. |
-| SCM 최종 제거 | 대기 | 모든 context 이전 후 실행 |
+| SCM 최종 제거 | 완료 | repository-controlled DDD-lite migration과 Phase 7 완료; cloud Supabase migration/rollout은 사용자/운영자 대기 |
 
 상태 값은 `미착수`, `설계 중`, `구현 중`, `부분 완료`, `완료`로 관리한다. 기능 일부만 새 구조를 사용하면 완료로 표시하지 않는다.
 

@@ -10,7 +10,6 @@ import { useWordInfoMutations } from '../../../../app/word/search/[query]/use-wo
 import { err, ok } from '../../../../shared/application/result';
 
 const routerBack = jest.fn();
-const legacyWordThemesReq = jest.fn().mockResolvedValue({ data: [], error: null });
 let consoleErrorSpy: jest.SpyInstance;
 
 const expectNoMaximumUpdateDepthError = () => {
@@ -41,34 +40,6 @@ jest.mock('../../../../app/word/search/[query]/use-word-info-mutations', () => (
 
 jest.mock('../../../../app/word/search/[query]/SearchBar', () => () => null);
 jest.mock('../../../../app/components/Spinner', () => () => <div>loading</div>);
-jest.mock('../../../../app/lib/supabaseClient', () => ({
-    SCM: {
-        add: () => ({
-            wordThemesReq: legacyWordThemesReq,
-            wordLog: jest.fn().mockResolvedValue({ error: null }),
-            docsLog: jest.fn().mockResolvedValue({ error: null }),
-            waitWord: jest.fn().mockResolvedValue({
-                data: { requested_at: '2026-08-23T00:00:00.000Z' },
-                error: null,
-            }),
-        }),
-        delete: () => ({
-            wordById: jest.fn().mockResolvedValue({ error: null }),
-            waitWordByWord: jest.fn().mockResolvedValue({ error: null }),
-        }),
-        get: () => ({
-            allDocs: jest.fn().mockResolvedValue({ data: [], error: null }),
-            wordInfoByWord: jest.fn().mockResolvedValue({
-                data: { added_at: '2026-08-20T12:00:00.000Z' },
-                error: null,
-            }),
-        }),
-        update: () => ({
-            docsLastUpdate: jest.fn().mockResolvedValue({ error: null }),
-        }),
-    },
-}));
-
 jest.mock('../../../../app/components/ui/card', () => ({
     Card: ({ children }: { children: ReactNode }) => <div>{children}</div>,
     CardContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -437,7 +408,6 @@ describe('WordInfo mutations', () => {
 
         await waitFor(() => expect(screen.getByRole('dialog', { name: 'completion' })).toBeInTheDocument());
         expect(requestThemeChanges).not.toHaveBeenCalled();
-        expect(legacyWordThemesReq).not.toHaveBeenCalled();
     });
 
     it('shows a safe validation error when a selected theme loses its loaded code', async () => {

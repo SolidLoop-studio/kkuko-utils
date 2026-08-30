@@ -76,6 +76,49 @@ const eslintConfig = [
               group: ["@/src/shared/infrastructure/*"],
               message: "Domain and application layers must not import shared infrastructure.",
             },
+            {
+              group: ["@/src/modules/*/infrastructure/*", "**/infrastructure/**"],
+              message: "Domain and application layers must not import Infrastructure modules.",
+            },
+            {
+              group: ["@/src/app/lib/supabaseClient", "**/app/lib/supabaseClient", "@/src/app/lib/supabase/*", "**/app/lib/supabase/*"],
+              message: "Domain and application layers must not import legacy Supabase aliases or managers.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/modules/*/presentation/**/*.{ts,tsx}", "src/app/**/*.{ts,tsx}"],
+    ignores: [
+      "src/app/lib/**",
+      "src/app/types/**",
+      "src/app/api/auth/callback/route.ts",
+      "src/app/api/auth/set_nickname/route.ts",
+      "src/app/api/auth/update_nickname/route.ts",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@supabase/*"],
+              message: "Presentation code must not import the Supabase SDK.",
+            },
+            {
+              group: ["@/src/app/types/database.types", "**/app/types/database.types"],
+              message: "Presentation code must not import generated database types.",
+            },
+            {
+              group: ["@/src/shared/infrastructure/supabase/*", "**/shared/infrastructure/supabase/*"],
+              message: "Presentation code must not import shared Supabase clients or Infrastructure.",
+            },
+            {
+              group: ["@/src/app/lib/supabaseClient", "**/app/lib/supabaseClient", "@/src/app/lib/supabase/*", "**/app/lib/supabase/*"],
+              message: "Presentation code must not import legacy Supabase aliases or managers.",
+            },
           ],
         },
       ],
