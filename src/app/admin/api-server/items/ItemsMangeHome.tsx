@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Plus, Search } from 'lucide-react'
-import axios, { AxiosError } from 'axios'
 
 import { Button } from '@/src/app/components/ui/button'
 import { Input } from '@/src/app/components/ui/input'
@@ -11,8 +10,7 @@ import ConfirmModal from '@/src/app/components/ConfirmModal'
 import ItemsTable from './_components/ItemsTable'
 import EditItemModal from './_components/EditItemModal'
 import { Item, ItemInput } from './_components/types'
-import { ErrorMessage } from '@/src/app/types/type'
-import ErrorModal from '@/src/app/components/ErrModal'
+import FailModal from '@/src/app/components/FailModal'
 
 import {
   Select,
@@ -22,7 +20,7 @@ import {
   SelectValue,
 } from "@/src/app/components/ui/select"
 
-import * as API from '../api'
+import * as API from '@/src/modules/admin-api-server'
 import Link from 'next/link'
 
 export default function ItemsManageHome() {
@@ -40,7 +38,7 @@ export default function ItemsManageHome() {
     const [isReadOnly, setIsReadOnly] = useState(false)
     
     // Error state
-    const [error, setError] = useState<ErrorMessage | null>(null)
+    const [error, setError] = useState<string | null>(null)
 
     // Debounce search
     useEffect(() => {
@@ -96,19 +94,8 @@ export default function ItemsManageHome() {
         onError: (err) => handleError(err),
     })
 
-    const handleError = (err: Error | AxiosError | unknown) => {
-        const errorObj = err instanceof Error ? err : new Error(String(err));
-        const axiosError = axios.isAxiosError(err) ? err : null
-        
-        const errMsg: ErrorMessage = {
-            ErrName: errorObj.name || 'Error',
-            ErrMessage: errorObj.message || 'An error occurred',
-            ErrStackRace: errorObj.stack,
-            HTTPStatus: axiosError?.response?.status,
-            HTTPData: JSON.stringify(axiosError?.response?.data),
-            inputValue: JSON.stringify(editingItem || deletingItem),
-        }
-        setError(errMsg)
+    const handleError = (err: unknown) => {
+        setError(err instanceof Error ? err.message : '아이템 작업을 완료하지 못했습니다.')
     }
 
     const handleEdit = (item: Item) => {
@@ -249,8 +236,10 @@ export default function ItemsManageHome() {
             />
 
             {error && (
-                <ErrorModal
-                    error={error}
+                <FailModal
+                    open={Boolean(error)}
+                    title="작업 실패"
+                    description={error}
                     onClose={() => setError(null)}
                 />
             )}

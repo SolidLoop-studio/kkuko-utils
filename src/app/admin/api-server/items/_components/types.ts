@@ -1,14 +1,5 @@
-export interface ItemOptions {
-    [key: string]: number | undefined
-}
+import type { Item } from '@/src/modules/admin-api-server'
 
-export interface Item {
-    id: string
-    name: string
-    description: string
-    updatedAt: number
-    group: string
-    options: ItemOptions
-}
+export type { Item }
 
 export type ItemInput = Omit<Item, 'updatedAt'>
