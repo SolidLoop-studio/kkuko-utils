@@ -94,8 +94,8 @@ export default function ItemsManageHome() {
         onError: (err) => handleError(err),
     })
 
-    const handleError = (err: unknown) => {
-        setError(err instanceof Error ? err.message : '아이템 작업을 완료하지 못했습니다.')
+    const handleError = (_err: unknown) => {
+        setError('아이템 작업을 완료하지 못했습니다.')
     }
 
     const handleEdit = (item: Item) => {
@@ -138,7 +138,7 @@ export default function ItemsManageHome() {
     // Effect to show query error
     useEffect(() => {
         if (isError && queryError) {
-            handleError(queryError)
+            setError('아이템 정보를 불러오는데 실패했습니다.')
         }
     }, [isError, queryError])
     

@@ -78,8 +78,8 @@ export default function UsersManageHome() {
         onError: (err) => handleError(err),
     })
 
-    const handleError = (err: unknown) => {
-        setError(err instanceof Error ? err.message : '사용자 작업을 완료하지 못했습니다.')
+    const handleError = (_err: unknown) => {
+        setError('사용자 작업을 완료하지 못했습니다.')
     }
 
     const handleEdit = (user: User) => {
@@ -103,7 +103,7 @@ export default function UsersManageHome() {
     // Effect to show query error
     useEffect(() => {
         if (isError && queryError) {
-            handleError(queryError)
+            setError('사용자 정보를 불러오는데 실패했습니다.')
         }
     }, [isError, queryError])
     

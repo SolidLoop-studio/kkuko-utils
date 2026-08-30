@@ -65,6 +65,46 @@ describe('AxiosAdminApiServerGateway', () => {
         expect(client.get.mock.calls[1][1]).toEqual({ headers: { Authorization: 'raw-token' }, params: {}, responseType: 'arraybuffer' });
     });
 
+    test('uses the production DecompressionStream path for gzip logs when no decoder is injected', async () => {
+        // Break caught: leaving production gzip handling dependent on the test-only injected decoder.
+        const gzipBytes = gzipSync(Buffer.from('default browser decoder'));
+        const gzip = gzipBytes.buffer.slice(gzipBytes.byteOffset, gzipBytes.byteOffset + gzipBytes.byteLength) as ArrayBuffer;
+        const previous = {
+            Blob: global.Blob,
+            Response: global.Response,
+            DecompressionStream: global.DecompressionStream,
+        };
+
+        class BrowserBlob {
+            constructor(private readonly parts: Uint8Array[]) {}
+            stream() {
+                return { pipeThrough: () => new Uint8Array(gunzipSync(Buffer.from(this.parts[0]))) };
+            }
+        }
+        class BrowserResponse {
+            constructor(private readonly stream: Uint8Array) {}
+            async arrayBuffer(): Promise<ArrayBuffer> {
+                return this.stream.buffer.slice(this.stream.byteOffset, this.stream.byteOffset + this.stream.byteLength) as ArrayBuffer;
+            }
+        }
+        class BrowserDecompressionStream {
+            constructor(format: string) { expect(format).toBe('gzip'); }
+        }
+
+        Object.assign(global, {
+            Blob: BrowserBlob,
+            Response: BrowserResponse,
+            DecompressionStream: BrowserDecompressionStream,
+        });
+
+        try {
+            await expect(new AxiosAdminApiServerGateway(createClient(gzip), tokenProvider).fetchCrawlerLogs())
+                .resolves.toEqual(ok('default browser decoder'));
+        } finally {
+            Object.assign(global, previous);
+        }
+    });
+
     test.each([
         [{ channels: [{ id: '', healthy: true }] }],
         [{ items: [{ ...item, options: { gEXP: Number.NaN } }], totalCount: 1, currentPage: 1, totalPages: 1 }],
