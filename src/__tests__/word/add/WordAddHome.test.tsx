@@ -96,6 +96,18 @@ beforeEach(() => {
     }));
 });
 
+describe('WordAddHome theme loading', () => {
+    it('renders while themes are loading without repeated state updates', () => {
+        jest.mocked(useWordThemes).mockReturnValue({
+            data: undefined,
+        } as ReturnType<typeof useWordThemes>);
+
+        render(<WordAddHome />);
+
+        expect(screen.getByRole('button', { name: '테스트 저장' })).toBeInTheDocument();
+    });
+});
+
 describe('WordAddHome direct administrator addition', () => {
     it.each(['admin', 'r4'])('routes %s additions through the atomic feature hook', async (role) => {
         jest.mocked(useSelector).mockImplementation((selector) => selector({

@@ -26,7 +26,7 @@ export default function WordAddHome(){
     const [topicInfo, setTopicInfo] = useState<TopicInfo>({
         topicsCode: {},
     });
-    const { data = [] } = useWordThemes(true);
+    const { data } = useWordThemes(true);
     const { addDirectly } = useDirectWordAddition();
     const { requestAddition } = useUserWordRequests();
 
