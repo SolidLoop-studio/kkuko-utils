@@ -54,3 +54,5 @@ app/api/test
 /.superpowers
 /docs/superpowers
 /.agents
+
+/temp
