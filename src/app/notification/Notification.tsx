@@ -11,9 +11,12 @@ import { cn } from "@/src/app/lib/utils";
 import { useSelector } from "react-redux";
 import { Button } from "@/src/app/components/ui/button";
 import type { RootState } from "../store/store";
+import FailModal from "@/src/app/components/FailModal";
+import { useState } from "react";
 
 interface NotificationProps {
     notifications: NotificationListItem[];
+    initialError?: string | null;
 }
 
 /**
@@ -22,10 +25,11 @@ interface NotificationProps {
  * 관리자는 글쓰기 버튼이 노출됩니다.
  * 
  * @param {Object} props - 컴포넌트 props
- * @param {NotificationListItem[]} props.notifications - 정렬된 활성 공지사항 데이터 배열
+ * @param {NotificationListItem[]} props.notifications - 정렬된 전체 공지사항 데이터 배열
  */
-export default function Notification({ notifications }: NotificationProps) {
+export default function Notification({ notifications, initialError = null }: NotificationProps) {
     const user = useSelector((state: RootState) => state.user);
+    const [error, setError] = useState(initialError);
 
     return (
         <div className="space-y-6 px-4 md:px-0 max-w-4xl mx-auto min-h-[60vh]">
@@ -44,7 +48,7 @@ export default function Notification({ notifications }: NotificationProps) {
                 )}
             </div>
 
-            {notifications.length === 0 ? (
+            {!error && notifications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center min-h-[400px] gap-4 text-muted-foreground">
                     <Megaphone className="w-12 h-12 opacity-20" />
                     <p>등록된 공지사항이 없습니다.</p>
@@ -84,6 +88,14 @@ export default function Notification({ notifications }: NotificationProps) {
                         </Link>
                     ))}
                 </div>
+            )}
+            {error && (
+                <FailModal
+                    open
+                    title="공지사항 조회 실패"
+                    description={error}
+                    onClose={() => setError(null)}
+                />
             )}
         </div>
     );

@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import type { ComponentType } from 'react';
 
 jest.mock('react-redux', () => ({
     useSelector: jest.fn(() => ({ role: 'r1' })),
@@ -10,6 +11,8 @@ jest.mock('lucide-react', () => ({
     Megaphone: () => <span />,
     Pin: () => <span />,
     PenSquare: () => <span />,
+    XCircle: () => <span />,
+    X: () => <span />,
 }));
 
 jest.mock('../../app/components/ui/card', () => ({
@@ -38,5 +41,20 @@ describe('Notification', () => {
     it('keeps the existing empty state', () => {
         render(<Notification notifications={[]} />);
         expect(screen.getByText('등록된 공지사항이 없습니다.')).toBeInTheDocument();
+    });
+
+    it('shows a query failure separately from the empty state', () => {
+        const ErrorAwareNotification = Notification as ComponentType<{
+            notifications: [];
+            initialError: string;
+        }>;
+
+        render(<ErrorAwareNotification
+            notifications={[]}
+            initialError="공지사항을 불러오는 중 오류가 발생했습니다."
+        />);
+
+        expect(screen.getByText('공지사항을 불러오는 중 오류가 발생했습니다.')).toBeInTheDocument();
+        expect(screen.queryByText('등록된 공지사항이 없습니다.')).not.toBeInTheDocument();
     });
 });

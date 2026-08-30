@@ -7,6 +7,7 @@ const createClient = (response: unknown): ServerNotificationListQueryClient => {
     const query = {
         select: jest.fn().mockReturnThis(),
         gte: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
         order: jest.fn().mockReturnThis(),
         then<TResult1 = unknown, TResult2 = never>(
             onfulfilled?: ((value: unknown) => TResult1 | PromiseLike<TResult1>) | null,
@@ -19,36 +20,36 @@ const createClient = (response: unknown): ServerNotificationListQueryClient => {
 };
 
 describe('SupabaseServerNotificationListQueryGateway', () => {
-    it('implements the same active projection contract as the browser adapter', async () => {
+    it('returns ended and non-modal notices without applying active-modal filters', async () => {
+        const client = createClient({
+            data: [{
+                id: 8,
+                title: '서버 공지',
+                body: '본문',
+                img: null,
+                created_at: '2026-08-27T01:00:00.000Z',
+                end_at: '2026-08-20T00:00:00.000Z',
+                is_important: false,
+                is_modal: false,
+            }],
+            error: null,
+        });
         const gateway = new SupabaseServerNotificationListQueryGateway(
-            createClient({
-                data: [{
-                    id: 8,
-                    title: '서버 공지',
-                    body: '본문',
-                    img: null,
-                    created_at: '2026-08-27T01:00:00.000Z',
-                    end_at: '2026-08-30T00:00:00.000Z',
-                    is_important: false,
-                    is_modal: false,
-                }],
-                error: null,
-            }),
-            () => new Date('2026-08-27T15:30:00.000Z'),
+            client,
         );
 
-        await expect(gateway.loadActive()).resolves.toEqual({
+        await expect(gateway.loadAll()).resolves.toEqual({
             ok: true,
-            value: {
-                notifications: [{
-                    id: 8,
-                    title: '서버 공지',
-                    createdAt: '2026-08-27T01:00:00.000Z',
-                    isImportant: false,
-                }],
-                modalNotice: null,
-            },
+            value: [{
+                id: 8,
+                title: '서버 공지',
+                createdAt: '2026-08-27T01:00:00.000Z',
+                isImportant: false,
+            }],
         });
+        const query = (client.from as jest.Mock).mock.results[0].value;
+        expect(query.gte).not.toHaveBeenCalled();
+        expect(query.eq).not.toHaveBeenCalled();
     });
 
     it('can be imported without evaluating the browser Supabase client', () => {

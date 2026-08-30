@@ -23,7 +23,10 @@ export default async function NotificationPage() {
 
     return (
         <main className="container mx-auto py-8">
-            <Notification notifications={result.ok ? result.value.notifications : []} />
+            <Notification
+                notifications={result.ok ? result.value : []}
+                initialError={result.ok ? null : result.error.message}
+            />
         </main>
     );
 }

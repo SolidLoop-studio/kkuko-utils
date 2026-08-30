@@ -5,9 +5,9 @@ import {
 
 export type ServerNotificationListQueryClient = SupabaseNotificationListQueryClient;
 
-/** 서버 Supabase client로 활성 공지 projection을 조회합니다. */
+/** 서버 Supabase client로 전체 공지 목록을 조회합니다. */
 export class SupabaseServerNotificationListQueryGateway extends SupabaseNotificationListQueryGateway {
-    constructor(client: ServerNotificationListQueryClient, clock?: () => Date) {
-        super(client, clock);
+    constructor(client: ServerNotificationListQueryClient) {
+        super(client);
     }
 }

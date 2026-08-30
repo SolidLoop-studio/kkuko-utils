@@ -1,15 +1,15 @@
 import { DeleteNotificationService } from '../../application/delete-notification';
-import { GetNotificationListService } from '../../application/get-notification-list';
+import { GetModalNoticeService } from '../../application/get-modal-notice';
 import { SaveNotificationService } from '../../application/save-notification';
 import { SupabaseNotificationDeleteCommandGateway } from './supabase-notification-delete-command-gateway';
 import { SupabaseNotificationImageReferenceQueryGateway } from './supabase-notification-image-reference-query-gateway';
 import { SupabaseNotificationImageStorage } from './supabase-notification-image-storage';
-import { SupabaseNotificationListQueryGateway } from './supabase-notification-list-query-gateway';
+import { SupabaseModalNoticeQueryGateway } from './supabase-modal-notice-query-gateway';
 import { SupabaseNotificationWriteCommandGateway } from './supabase-notification-write-command-gateway';
 
 export interface BrowserNotificationServices {
     notificationDeleteService: DeleteNotificationService;
-    notificationListQueryService: GetNotificationListService;
+    modalNoticeQueryService: GetModalNoticeService;
     notificationWriteService: SaveNotificationService;
 }
 
@@ -24,8 +24,8 @@ export const createBrowserNotificationServices = (): BrowserNotificationServices
             imageStorage,
             imageReferences,
         ),
-        notificationListQueryService: new GetNotificationListService(
-            new SupabaseNotificationListQueryGateway(),
+        modalNoticeQueryService: new GetModalNoticeService(
+            new SupabaseModalNoticeQueryGateway(),
         ),
         notificationWriteService: new SaveNotificationService(
             new SupabaseNotificationWriteCommandGateway(),
