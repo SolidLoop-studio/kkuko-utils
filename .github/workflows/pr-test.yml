@@ -70,6 +70,41 @@ jobs:
               }
               return null;
             }
+
+            // Parse XML attributes without depending on their order
+            function parseXmlAttributes(attributeText) {
+              const attributes = {};
+              const attributeRegex = /([A-Za-z_:][\w:.-]*)="([^"]*)"/g;
+              let attributeMatch;
+
+              while ((attributeMatch = attributeRegex.exec(attributeText)) !== null) {
+                attributes[attributeMatch[1]] = decodeXmlEntities(attributeMatch[2]);
+              }
+
+              return attributes;
+            }
+
+            function decodeXmlEntities(value) {
+              return value
+                .replace(/&quot;/g, '"')
+                .replace(/&apos;/g, "'")
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .replace(/&amp;/g, '&');
+            }
+
+            function getTestIssueMessage(caseContent, tagName) {
+              const issueRegex = tagName === 'failure'
+                ? /<failure\b([^>]*)>([\s\S]*?)<\/failure>|<failure\b([^>]*)\/>/
+                : /<error\b([^>]*)>([\s\S]*?)<\/error>|<error\b([^>]*)\/>/;
+              const issueMatch = caseContent.match(issueRegex);
+
+              if (!issueMatch) return null;
+
+              const attributes = parseXmlAttributes(issueMatch[1] || issueMatch[3] || '');
+              const message = attributes.message || issueMatch[2] || '';
+              return decodeXmlEntities(message).replace(/\s+/g, ' ').trim();
+            }
             
             // Simple XML parser for JUnit results
             function parseJUnitXML(xmlPath) {
@@ -83,35 +118,38 @@ jobs:
                 const testSuites = [];
                 
                 // Extract testsuite blocks
-                const testSuiteRegex = /<testsuite[^>]*name="([^"]*)"[^>]*tests="(\d+)"[^>]*failures="(\d+)"[^>]*errors="(\d+)"[^>]*time="([^"]*)"[^>]*>(.*?)<\/testsuite>/gs;
+                const testSuiteRegex = /<testsuite\b([^>]*)>([\s\S]*?)<\/testsuite>/g;
                 let suiteMatch;
                 
                 while ((suiteMatch = testSuiteRegex.exec(xmlContent)) !== null) {
-                  const [, suiteName, tests, failures, errors, time, suiteContent] = suiteMatch;
+                  const suiteAttributes = parseXmlAttributes(suiteMatch[1]);
+                  const suiteName = suiteAttributes.name || 'Unknown test suite';
+                  const suiteContent = suiteMatch[2];
                   
                   // Extract test cases within this suite
                   const testCases = [];
-                  const testCaseRegex = /<testcase[^>]*name="([^"]*)"[^>]*time="([^"]*)"[^>]*(?:classname="([^"]*)"[^>]*)?>(.*?)<\/testcase>/gs;
+                  const testCaseRegex = /<testcase\b([^>]*?)(?:\/>|>([\s\S]*?)<\/testcase>)/g;
                   let caseMatch;
                   
                   while ((caseMatch = testCaseRegex.exec(suiteContent)) !== null) {
-                    const [, testName, testTime, className, caseContent] = caseMatch;
+                    const caseAttributes = parseXmlAttributes(caseMatch[1]);
+                    const testName = caseAttributes.name || 'Unknown test';
+                    const testTime = caseAttributes.time;
+                    const className = caseAttributes.classname;
+                    const caseContent = caseMatch[2] || '';
                     
                     let status = '✅';
                     let message = '';
                     
-                    if (caseContent.includes('<failure')) {
+                    const failureMessage = getTestIssueMessage(caseContent, 'failure');
+                    const errorMessage = getTestIssueMessage(caseContent, 'error');
+
+                    if (failureMessage !== null) {
                       status = '❌';
-                      const failureMatch = caseContent.match(/<failure[^>]*(?:message="([^"]*)")?[^>]*>/);
-                      if (failureMatch && failureMatch[1]) {
-                        message = failureMatch[1].substring(0, 100) + (failureMatch[1].length > 100 ? '...' : '');
-                      }
-                    } else if (caseContent.includes('<error')) {
+                      message = failureMessage.substring(0, 100) + (failureMessage.length > 100 ? '...' : '');
+                    } else if (errorMessage !== null) {
                       status = '🔴';
-                      const errorMatch = caseContent.match(/<error[^>]*(?:message="([^"]*)")?[^>]*>/);
-                      if (errorMatch && errorMatch[1]) {
-                        message = errorMatch[1].substring(0, 100) + (errorMatch[1].length > 100 ? '...' : '');
-                      }
+                      message = errorMessage.substring(0, 100) + (errorMessage.length > 100 ? '...' : '');
                     } else if (caseContent.includes('<skipped')) {
                       status = '⏭️';
                       message = 'Test was skipped';
@@ -128,10 +166,10 @@ jobs:
                   
                   testSuites.push({
                     name: suiteName,
-                    tests: parseInt(tests) || 0,
-                    failures: parseInt(failures) || 0,
-                    errors: parseInt(errors) || 0,
-                    time: time ? `${Math.round(parseFloat(time) * 1000)}ms` : '',
+                    tests: parseInt(suiteAttributes.tests) || 0,
+                    failures: parseInt(suiteAttributes.failures) || 0,
+                    errors: parseInt(suiteAttributes.errors) || 0,
+                    time: suiteAttributes.time ? `${Math.round(parseFloat(suiteAttributes.time) * 1000)}ms` : '',
                     testCases
                   });
                 }
@@ -197,71 +235,27 @@ jobs:
               
               commentBody += `\n`;
               
-              // Detailed test results (collapsible)
-              commentBody += `### 🔍 Detailed Test Results\n\n`;
-              
-              testSuites.forEach(suite => {
-                const suiteName = path.basename(suite.name).replace(/\.test\.(ts|js)$/, '');
-                const suitePassed = suite.tests - suite.failures - suite.errors;
-                const suiteEmoji = suite.failures + suite.errors > 0 ? '❌' : '✅';
-                
-                commentBody += `<details>\n`;
-                commentBody += `<summary>${suiteEmoji} <strong>${suiteName}</strong> (${suitePassed}/${suite.tests} passed, ${suite.time})</summary>\n\n`;
-                
-                if (suite.testCases.length > 0) {
-                  // Group test cases by their class/describe block
-                  const groupedTests = {};
-                  suite.testCases.forEach(testCase => {
-                    const group = testCase.className || 'Tests';
-                    if (!groupedTests[group]) {
-                      groupedTests[group] = [];
-                    }
-                    groupedTests[group].push(testCase);
-                  });
-                  
-                  Object.entries(groupedTests).forEach(([groupName, tests]) => {
-                    if (Object.keys(groupedTests).length > 1) {
-                      commentBody += `#### 📂 ${path.basename(groupName)}\n\n`;
-                    }
-                    
-                    tests.forEach(test => {
-                      const testName = test.name.length > 80 ? test.name.substring(0, 77) + '...' : test.name;
-                      commentBody += `${test.status} ${testName}`;
-                      
-                      if (test.time && test.time !== '0ms') {
-                        commentBody += ` \`(${test.time})\``;
-                      }
-                      
-                      if (test.message && test.status !== '✅') {
-                        commentBody += `  \n   └─ *${test.message}*`;
-                      }
-                      
-                      commentBody += `\n`;
-                    });
-                    commentBody += `\n`;
-                  });
-                } else {
-                  commentBody += `*No detailed test cases found.*\n`;
-                }
-                
-                commentBody += `\n</details>\n\n`;
-              });
-              
-              // Failed tests highlight (if any)
+              // Failed tests
               const failedTests = testSuites.flatMap(suite => 
-                suite.testCases.filter(test => test.status === '❌' || test.status === '🔴')
+                suite.testCases
+                  .filter(test => test.status === '❌' || test.status === '🔴')
+                  .map(test => ({ ...test, suiteName: suite.name }))
               );
               
               if (failedTests.length > 0) {
-                commentBody += `### 🚨 Failed Tests Summary\n\n`;
+                commentBody += `### 🚨 Failed Tests\n\n`;
                 failedTests.forEach((test, index) => {
                   const shortName = test.name.length > 60 ? test.name.substring(0, 57) + '...' : test.name;
-                  commentBody += `${index + 1}. **${shortName}**\n`;
+                  const suiteName = path.basename(test.suiteName).replace(/\.test\.(ts|js)$/, '');
+                  commentBody += `${index + 1}. **${shortName}** — \`${suiteName}\`\n`;
                   if (test.message) {
                     commentBody += `   └─ \`${test.message}\`\n`;
                   }
                 });
                 commentBody += `\n`;
+              } else {
+                commentBody += `### ✅ Failed Tests\n\n`;
+                commentBody += `No failed tests.\n\n`;
               }
             } else {
               // Fallback if JUnit parsing fails
@@ -272,6 +266,9 @@ jobs:
                 commentBody += `## ❌ Some Tests Failed\n\n`;
                 commentBody += `🔍 Please check the failed tests and fix them before merging.\n\n`;
               }
+
+              commentBody += `### ⚠️ Failed Tests\n\n`;
+              commentBody += `Failed test details could not be read.\n\n`;
             }
             
             // Add workflow links
@@ -309,28 +306,57 @@ jobs:
                 commentBody += `Your code coverage is below recommended levels. Please add more tests.\n\n`;
               }
               
-              // Files breakdown
-              const fileCount = Object.keys(coverageData).filter(key => key !== 'total').length;
-              if (fileCount > 0) {
-                commentBody += `### 📂 Coverage by File (${fileCount} files tested)\n\n`;
-                commentBody += `<details>\n<summary>Click to expand file-by-file coverage</summary>\n\n`;
-                commentBody += `| File | Lines | Functions | Branches | Statements |\n`;
-                commentBody += `|------|-------|-----------|----------|-----------|\n`;
-                
-                Object.entries(coverageData)
-                  .filter(([key]) => key !== 'total')
-                  .sort(([,a], [,b]) => b.lines.pct - a.lines.pct)
-                  .slice(0, 15) // Show top 15 files to keep comment reasonable
-                  .forEach(([filePath, data]) => {
-                    const shortPath = filePath.length > 40 ? '...' + filePath.slice(-37) : filePath;
-                    commentBody += `| \`${shortPath}\` | ${getCoverageEmoji(data.lines.pct)} ${data.lines.pct}% | ${getCoverageEmoji(data.functions.pct)} ${data.functions.pct}% | ${getCoverageEmoji(data.branches.pct)} ${data.branches.pct}% | ${getCoverageEmoji(data.statements.pct)} ${data.statements.pct}% |\n`;
+              // Top-level src folder breakdown
+              const metricNames = ['lines', 'functions', 'branches', 'statements'];
+              const folderCoverage = {};
+
+              Object.entries(coverageData)
+                .filter(([key]) => key !== 'total')
+                .forEach(([filePath, data]) => {
+                  const normalizedPath = filePath.replace(/\\/g, '/');
+                  const srcIndex = normalizedPath.lastIndexOf('/src/');
+
+                  if (srcIndex === -1) return;
+
+                  const relativePath = normalizedPath.slice(srcIndex + 5);
+                  const pathParts = relativePath.split('/');
+                  const folderName = pathParts.length === 1 ? 'src (root)' : `src/${pathParts[0]}`;
+
+                  if (!folderCoverage[folderName]) {
+                    folderCoverage[folderName] = Object.fromEntries(
+                      metricNames.map(metric => [metric, { covered: 0, total: 0 }])
+                    );
+                  }
+
+                  metricNames.forEach(metric => {
+                    folderCoverage[folderName][metric].covered += data[metric].covered;
+                    folderCoverage[folderName][metric].total += data[metric].total;
                   });
-                
-                if (fileCount > 15) {
-                  commentBody += `| ... and ${fileCount - 15} more files | | | | |\n`;
-                }
-                
-                commentBody += `\n</details>\n\n`;
+                });
+
+              const folderEntries = Object.entries(folderCoverage)
+                .map(([folderName, metrics]) => {
+                  const calculatedMetrics = Object.fromEntries(
+                    metricNames.map(metric => {
+                      const { covered, total } = metrics[metric];
+                      const pct = total === 0 ? 100 : Number(((covered / total) * 100).toFixed(2));
+                      return [metric, { covered, total, pct }];
+                    })
+                  );
+                  return [folderName, calculatedMetrics];
+                })
+                .sort(([folderA], [folderB]) => folderA.localeCompare(folderB));
+
+              if (folderEntries.length > 0) {
+                commentBody += `### 📂 Coverage by Folder (${folderEntries.length} folders)\n\n`;
+                commentBody += `| Folder | Lines | Functions | Branches | Statements |\n`;
+                commentBody += `|--------|-------|-----------|----------|------------|\n`;
+
+                folderEntries.forEach(([folderName, data]) => {
+                  commentBody += `| \`${folderName}\` | ${getCoverageEmoji(data.lines.pct)} ${data.lines.pct}% | ${getCoverageEmoji(data.functions.pct)} ${data.functions.pct}% | ${getCoverageEmoji(data.branches.pct)} ${data.branches.pct}% | ${getCoverageEmoji(data.statements.pct)} ${data.statements.pct}% |\n`;
+                });
+
+                commentBody += `\n`;
               }
               
               // Coverage recommendations
