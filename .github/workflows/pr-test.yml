@@ -218,7 +218,8 @@ jobs:
               }
               
               // Test suites summary
-              commentBody += `### 📋 Test Suites Summary\n\n`;
+              commentBody += `<details>\n`;
+              commentBody += `<summary>📋 <strong>Test Suites Summary</strong> (${testSuites.length} suites)</summary>\n\n`;
               commentBody += `| Test Suite | Tests | Status | Duration |\n`;
               commentBody += `|------------|-------|--------|----------|\n`;
               
@@ -230,7 +231,7 @@ jobs:
                 commentBody += `| \`${suiteName}\` | ${suitePassed}/${suite.tests} | ${suiteStatus} | ${suite.time} |\n`;
               });
               
-              commentBody += `\n`;
+              commentBody += `\n</details>\n\n`;
               
               // Failed tests
               const failedTests = testSuites.flatMap(suite => 
