@@ -36,6 +36,7 @@ jest.mock('lucide-react', () => ({
     ChevronUp: () => <span />,
     Copy: () => <span />,
     Loader2: () => <span />,
+    Send: () => <span />,
     Upload: () => <span />,
     X: () => <span />,
 }));
