@@ -483,6 +483,53 @@ describe('DocsDataHome administrator removal completion integration', () => {
         expect(await screen.findByText('갱신단어')).toBeInTheDocument();
     });
 
+    it('사용자 삭제 요청 완료 뒤 content snapshot을 다시 받아 삭제 요청 상태를 표시한다', async () => {
+        const refreshedRow: DocsWordData = {
+            word: '다람쥐',
+            status: 'delete',
+            maker: 'user-1',
+            mutationTarget: {
+                kind: 'word-request',
+                requestId: 31,
+                requestType: 'delete',
+                selectedThemeIds: [],
+            },
+        };
+        const onContentRefresh = jest.fn().mockResolvedValue([refreshedRow]);
+        mockUseUserWordRequestActions.mockImplementation((options) => ({
+            cancelAddRequest: jest.fn(),
+            cancelDeleteRequest: jest.fn(),
+            requestDelete: async () => {
+                await options.completeWork();
+            },
+        }));
+        const user = userEvent.setup();
+        render(
+            <DocsDataHome
+                id={55}
+                data={[cases[2].row]}
+                metaData={{ title: '테스트 문서', lastUpdate: '2026-08-22T00:00:00.000Z', typez: 'letter' }}
+                starCount={[]}
+                onContentRefresh={onContentRefresh}
+            />,
+            { wrapper: createWrapper('r1', 'user-1') },
+        );
+
+        const wordCell = await screen.findByText('다람쥐');
+        const tableRow = wordCell.closest('tr');
+        if (tableRow === null) throw new Error('row not found');
+        await user.click(within(tableRow).getByRole('button', { name: '작업' }));
+        await user.click(await screen.findByRole('button', { name: '삭제 요청을 보냅니다.' }));
+
+        await waitFor(() => expect(onContentRefresh).toHaveBeenCalledTimes(1));
+        expect(await screen.findByText('delete')).toBeInTheDocument();
+        const refreshedWordCell = screen.getByText('다람쥐');
+        const refreshedTableRow = refreshedWordCell.closest('tr');
+        if (refreshedTableRow === null) throw new Error('refreshed row not found');
+        await user.click(within(refreshedTableRow).getByRole('button', { name: '작업' }));
+        expect(screen.getByText('삭제 요청을 취소합니다.')).toBeInTheDocument();
+    });
+
     const wholeDeleteRow: DocsWordData = {
         word: '나비',
         status: 'delete',

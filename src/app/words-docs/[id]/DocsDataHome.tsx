@@ -344,6 +344,22 @@ const DocsDataHome = ({
         });
     };
 
+    const refreshWordsData = async (): Promise<boolean> => {
+        if (onContentRefresh === undefined) {
+            showTargetRefreshError();
+            return false;
+        }
+
+        const refreshedRows = await onContentRefresh();
+        if (refreshedRows === null) {
+            showTargetRefreshError();
+            return false;
+        }
+
+        setWordsData(refreshedRows);
+        return true;
+    };
+
     const transitionRowToOk = async (row: DocsWordData): Promise<boolean> => {
         let registeredTarget: Extract<DocsWordMutationTarget, { kind: "registered-word" }> | null = null;
 
@@ -388,12 +404,7 @@ const DocsDataHome = ({
         row: DocsWordData,
     ): Promise<boolean> => {
         if (onContentRefresh !== undefined) {
-            const refreshedRows = await onContentRefresh();
-            if (refreshedRows === null) {
-                showTargetRefreshError();
-                return false;
-            }
-            setWordsData(refreshedRows);
+            if (!await refreshWordsData()) return false;
             setIsAdminCompleteModalOpen(true);
             return true;
         }
@@ -417,6 +428,8 @@ const DocsDataHome = ({
         setIsAdminCompleteModalOpen(true);
         return true;
     };
+
+    const handleUserActionComplete = (): Promise<boolean> => refreshWordsData();
 
     const handleTocClick = (index: number) => {
         virtualizer.scrollToIndex(index, { align: 'start' });
@@ -688,6 +701,7 @@ const DocsDataHome = ({
                                                         isLong={activeTab === "long" || metaData.title.includes("긴단어")}
                                                         isSp={missionCharacter === null ? undefined : { m: missionCharacter }}
                                                         onAdminActionComplete={handleAdminActionComplete}
+                                                        onUserActionComplete={handleUserActionComplete}
                                                     />
                                                 </div>
                                             </div>
