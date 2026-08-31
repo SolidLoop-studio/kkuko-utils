@@ -53,7 +53,7 @@ jest.mock('@tanstack/react-virtual', () => ({
 import { useDocsWordModeration } from '../../../modules/word-moderation';
 import { useDocsFavorite, useDocsMarkers } from '../../../modules/docs';
 import { createBrowserWordModerationServices } from '../../../modules/word-moderation/infrastructure/browser/browser-word-moderation-services';
-import { ok } from '../../../shared/application/result';
+import { ok, type Result } from '../../../shared/application/result';
 import { loadingReducer, themeReducer, userReducer } from '../../../app/store/slice';
 import DocsDataHome from '../../../app/words-docs/[id]/DocsDataHome';
 import { useUserWordRequestActions } from '../../../app/words-docs/[id]/use-user-word-request-actions';
@@ -212,8 +212,8 @@ describe('DocsDataHome administrator removal completion integration', () => {
         expect(setFavorite).not.toHaveBeenCalled();
     });
 
-    it('changes the favorite count only after a successful desired-state Result', async () => {
-        // Break caught: optimistically flipping before the command commits or sending a user UUID to the boundary.
+    it('optimistically changes the favorite state while the command is pending', async () => {
+        // Break caught: making users wait for the favorite command before showing their requested state.
         const deferred = createDeferred<ReturnType<typeof ok<void>>>();
         setFavorite.mockReturnValue(deferred.promise);
         const user = userEvent.setup();
@@ -230,7 +230,7 @@ describe('DocsDataHome administrator removal completion integration', () => {
         await user.click(screen.getByRole('button', { name: '0' }));
 
         expect(setFavorite).toHaveBeenCalledWith({ docsId: 55, isStarred: true });
-        expect(screen.getByRole('button', { name: '0' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '1' })).toBeInTheDocument();
         deferred.resolve(ok(undefined));
         await waitFor(() => expect(screen.getByRole('button', { name: '1' })).toBeInTheDocument());
     });
@@ -267,16 +267,18 @@ describe('DocsDataHome administrator removal completion integration', () => {
         expect(loadProfileFavorites).toHaveBeenCalledTimes(1);
     });
 
-    it('keeps the favorite state and shows the existing ErrorModal when the command fails', async () => {
-        // Break caught: flipping favorite UI on failure or leaking raw database errors outside the existing Modal.
-        setFavorite.mockResolvedValue({
+    it('rolls back the optimistic favorite state and shows the existing ErrorModal when the command fails', async () => {
+        // Break caught: leaving an uncommitted favorite visible after the command fails.
+        const deferred = createDeferred<Result<void>>();
+        setFavorite.mockReturnValue(deferred.promise);
+        const failure: Result<void> = {
             ok: false,
             error: {
                 kind: 'not-found',
                 message: '문서를 찾을 수 없습니다.',
                 code: 'P0001',
             },
-        });
+        };
         const user = userEvent.setup();
         render(
             <DocsDataHome
@@ -289,6 +291,8 @@ describe('DocsDataHome administrator removal completion integration', () => {
         );
 
         await user.click(screen.getByRole('button', { name: '0' }));
+        expect(screen.getByRole('button', { name: '1' })).toBeInTheDocument();
+        deferred.resolve(failure);
 
         const errorModal = await screen.findByRole('alert');
         expect(errorModal).toHaveTextContent('문서를 찾을 수 없습니다.');
@@ -348,7 +352,7 @@ describe('DocsDataHome administrator removal completion integration', () => {
                 starCount={[]}
             />,
         );
-        expect(screen.getByRole('button', { name: '0' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: '1' })).toBeDisabled();
 
         deferred.resolve(ok(undefined));
         await waitFor(() => expect(screen.getByRole('button', { name: '1' })).toBeInTheDocument());

@@ -120,7 +120,7 @@ const DocsDataHome = ({
 
     // 유저 즐겨찾기 상태 업데이트
     useEffect(() => {
-        if (user.uuid) {
+        if (user.uuid && !isFavoriteSubmissionPendingRef.current) {
             setIsUserStarreda(starCount.includes(user.uuid))
         }
     }, [user, starCount])
@@ -305,11 +305,14 @@ const DocsDataHome = ({
             return;
         }
 
-        const nextIsStarred = !isUserStarreda;
+        const previousIsStarred = isUserStarreda;
+        const nextIsStarred = !previousIsStarred;
         isFavoriteSubmissionPendingRef.current = true;
+        setIsUserStarreda(nextIsStarred);
         try {
             const result = await setFavorite({ docsId: id, isStarred: nextIsStarred });
             if (!result.ok) {
+                setIsUserStarreda(previousIsStarred);
                 if (result.error.kind === 'unauthorized') {
                     setLoginNeedModalOpen(true);
                 } else {
@@ -320,7 +323,6 @@ const DocsDataHome = ({
             void queryClient.invalidateQueries({
                 queryKey: identityQueryKeys.profileFavoriteDocs(user.uuid),
             });
-            setIsUserStarreda(nextIsStarred);
         } finally {
             isFavoriteSubmissionPendingRef.current = false;
         }
