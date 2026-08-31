@@ -18,7 +18,6 @@ import { useState } from "react";
 import ErrorModal from "@/src/app/components/ErrModal";
 import type { ErrorMessage } from "@/src/app/types/type";
 import ConfirmModal from "@/src/app/components/ConfirmModal";
-import CompleteModal from "@/src/app/components/CompleteModal";
 import NotificationViewCount from "./NotificationViewCount";
 
 interface NotificationDetailProps {
@@ -36,7 +35,6 @@ export default function NotificationDetail({ notification }: NotificationDetailP
     const router = useRouter();
     const [error, setError] = useState<ErrorMessage | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [completeStatus, setCompleteStatus] = useState<{title: string; description: string;} | null>(null);
     const { deleteNotification, isPending } = useDeleteNotification();
 
     const handleDelete = async () => {
@@ -55,28 +53,12 @@ export default function NotificationDetail({ notification }: NotificationDetailP
             return;
         }
 
-        setCompleteStatus({
-            title: "공지사항이 삭제되었습니다.",
-            description: "공지사항이 성공적으로 삭제되었습니다. 목록으로 돌아갑니다."
-        });
-    };
-
-    const handleCloseCompleteModal = () => {
-        router.push("/notification");
-        router.refresh();
+        router.replace("/notification");
     };
 
     return (
         <div className="space-y-6 px-4 md:px-0 max-w-4xl mx-auto">
             {error && <ErrorModal error={error} onClose={() => setError(null)} />}
-            {completeStatus && (
-                <CompleteModal 
-                    open={completeStatus !== null}
-                    title={completeStatus.title}
-                    description={completeStatus.description}
-                    onClose={handleCloseCompleteModal}
-                />
-            )}
             <ConfirmModal 
                 open={isDeleteModalOpen}
                 onClose={() => setIsDeleteModalOpen(false)}

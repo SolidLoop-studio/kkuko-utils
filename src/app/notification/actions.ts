@@ -63,7 +63,6 @@ export async function deleteNotificationAction(id: number): Promise<Result<void>
         const result = await services.notificationDeleteService.delete(id);
         if (result.ok) {
             revalidatePath('/notification');
-            revalidatePath(`/notification/${id}`);
         }
         return result;
     } catch {

@@ -91,12 +91,12 @@ describe('notification server actions', () => {
         expect(mockRevalidatePath.mock.calls).toEqual([['/notification'], ['/notification/17']]);
     });
 
-    it('revalidates the list and detail only after a successful deletion', async () => {
+    it('revalidates only the list after a successful deletion', async () => {
         const deleteService = { delete: jest.fn().mockResolvedValue(ok(undefined)) };
         mockCreateServices.mockResolvedValue({ authorize: jest.fn().mockResolvedValue(ok(undefined)), notificationDeleteService: deleteService });
 
         await expect(deleteNotificationAction(17)).resolves.toEqual(ok(undefined));
-        expect(mockRevalidatePath.mock.calls).toEqual([['/notification'], ['/notification/17']]);
+        expect(mockRevalidatePath.mock.calls).toEqual([['/notification']]);
     });
 
     it('does not revalidate returned or thrown command failures', async () => {
