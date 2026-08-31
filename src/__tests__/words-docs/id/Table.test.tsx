@@ -583,7 +583,7 @@ describe('Docs word target enrichment', () => {
 
         render(<DocsDataPage id={55} />, { wrapper: createWrapper('guest', undefined) });
 
-        expect(screen.getByRole('heading', { name: '문서 로딩 중' })).toBeInTheDocument();
+        expect(screen.getByRole('status', { name: '문서 로딩 중...' })).toBeInTheDocument();
         targetLoad.resolve(ok({ targets: [{ kind: 'registered-word', wordId: 55 }] }));
         expect(await screen.findByTestId('docs-row-나비')).toBeInTheDocument();
     });
@@ -591,7 +591,7 @@ describe('Docs word target enrichment', () => {
     it('initial loading, not-found, and query error states are stable before a snapshot exists', () => {
         mockUseDocsContent.mockReturnValue({ data: undefined, error: null, isLoading: true, refetch: jest.fn() } as never);
         const { rerender } = render(<DocsDataPage id={55} />, { wrapper: createWrapper('guest', undefined) });
-        expect(screen.getByRole('heading', { name: '문서 로딩 중' })).toBeInTheDocument();
+        expect(screen.getByRole('status', { name: '문서 로딩 중...' })).toBeInTheDocument();
 
         mockUseDocsContent.mockReturnValue({
             data: undefined,

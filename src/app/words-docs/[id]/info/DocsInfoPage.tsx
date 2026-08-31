@@ -9,7 +9,7 @@ import DocsInfo from './DocsInfo';
 export default function DocsInfoPage({ id }: { id: number }) {
     const { data, error, isLoading } = useDocsInfo(id);
 
-    if (isLoading) return <LoadingPage title="문서 정보" isForcedVisible />;
+    if (isLoading) return <LoadingPage title="문서 정보" />;
 
     if (data) return <DocsInfo
         metaData={{

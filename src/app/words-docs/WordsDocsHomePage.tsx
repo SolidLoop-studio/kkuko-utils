@@ -7,7 +7,7 @@ import { useDocsList } from '@/src/modules/docs';
 export default function WordsDocsHomePage(){
     const { data, error, isLoading } = useDocsList();
 
-    if (isLoading) return <LoadingPage title={"문서 목록"} isForcedVisible />
+    if (isLoading) return <LoadingPage title={"문서 목록"} />
 
     if (data) return <WordsDocsHome docs={data.map((docs) => ({
         id: `${docs.id}`,

@@ -29,7 +29,7 @@ describe('WordCombinerPage', () => {
 
         renderPage();
 
-        expect(screen.getByRole('heading', { name: '단어 데이터 로딩 중' })).toBeInTheDocument();
+        expect(screen.getByRole('status', { name: '단어 데이터 로딩 중...' })).toBeInTheDocument();
     });
 
     test('renders a safe query error without leaking infrastructure details', () => {

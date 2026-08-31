@@ -9,7 +9,7 @@ export default function AdminHomeWrapper() {
     const { data: requests, error, isLoading, refetch } = usePendingWordModerationRequests();
 
     if (isLoading) {
-        return <LoadingPage title="관리자 페이지" isForcedVisible />;
+        return <LoadingPage title="관리자 페이지" />;
     }
 
     if (error && requests === undefined) {

@@ -9,7 +9,7 @@ export default function WordCombinerPage() {
     const { data: candidates, error, isLoading } = useWordCombinerCandidates();
 
     if (isLoading || candidates === undefined && error === null) {
-        return <LoadingPage title="단어 데이터" isForcedVisible />;
+        return <LoadingPage title="단어 데이터" />;
     }
 
     if (error) return <ErrorPage message={error.message} />;

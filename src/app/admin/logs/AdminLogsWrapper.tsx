@@ -9,7 +9,7 @@ export default function AdminLogsWrapper() {
     const { data, error, isLoading } = useAdminLogsInitial();
 
     if (isLoading) {
-        return <LoadingPage title="문서 요청 목록" isForcedVisible />;
+        return <LoadingPage title="문서 요청 목록" />;
     }
 
     if (error && data === undefined) {

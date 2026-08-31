@@ -45,7 +45,7 @@ describe('AdminWrapper', () => {
 
         renderWrapper();
 
-        expect(screen.getByRole('heading', { name: '관리자 페이지 로딩 중' })).toBeInTheDocument();
+        expect(screen.getByRole('status', { name: '관리자 페이지 로딩 중...' })).toBeInTheDocument();
     });
 
     it('passes the stable projection to the moderation screen using its existing prop shape', () => {

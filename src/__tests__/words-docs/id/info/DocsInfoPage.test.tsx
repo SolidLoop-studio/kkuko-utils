@@ -79,8 +79,7 @@ describe('DocsInfoPage docs info query orchestration', () => {
         renderPage();
 
         expect(useDocsInfo).toHaveBeenCalledWith(51);
-        expect(screen.getByRole('heading', { name: '문서 정보 로딩 중' })).toBeInTheDocument();
-        expect(screen.getByText('로딩 중...')).toBeInTheDocument();
+        expect(screen.getByRole('status', { name: '문서 정보 로딩 중...' })).toBeInTheDocument();
     });
 
     it('renders only the stable docs info query error message', () => {
