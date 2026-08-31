@@ -1,16 +1,13 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { saveNotificationAction } from '@/src/app/notification/actions';
 import type { ApplicationError } from '@/src/shared/application/application-error';
 import { err, type Result } from '@/src/shared/application/result';
-import type { SaveNotificationService } from '../application/save-notification';
 import type { NotificationWriteResult } from '../application/notification-write-command-ports';
 import type { SaveNotificationCommand } from '../application/notification-write-command-types';
-import { createBrowserNotificationServices } from '../infrastructure/browser/browser-notification-services';
+import { toSaveNotificationFormData } from './notification-command-form-data';
 import { notificationQueryKeys } from './notification-query-keys';
-
-type NotificationWriteService = Pick<SaveNotificationService, 'save'>;
 
 const saveInfrastructureError = (): ApplicationError => ({
     kind: 'infrastructure',
@@ -23,13 +20,10 @@ export const useSaveNotification = (): {
     isPending: boolean;
 } => {
     const queryClient = useQueryClient();
-    const [service] = useState<NotificationWriteService>(() => (
-        createBrowserNotificationServices().notificationWriteService
-    ));
     const mutation = useMutation<Result<NotificationWriteResult>, never, SaveNotificationCommand>({
         mutationFn: async (command) => {
             try {
-                return await service.save(command);
+                return await saveNotificationAction(toSaveNotificationFormData(command));
             } catch {
                 return err(saveInfrastructureError());
             }

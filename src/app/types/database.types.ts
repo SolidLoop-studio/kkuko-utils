@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      bword: {
+        Row: {
+          id: number
+          themes: string | null
+          word: string
+        }
+        Insert: {
+          id?: number
+          themes?: string | null
+          word: string
+        }
+        Update: {
+          id?: number
+          themes?: string | null
+          word?: string
+        }
+        Relationships: []
+      }
       docs: {
         Row: {
           created_at: string
@@ -23,6 +41,7 @@ export type Database = {
           last_update: string
           maker: string | null
           name: string
+          reference_code: string | null
           typez: Database["public"]["Enums"]["document_type"]
           views: number
         }
@@ -34,6 +53,7 @@ export type Database = {
           last_update?: string
           maker?: string | null
           name: string
+          reference_code?: string | null
           typez: Database["public"]["Enums"]["document_type"]
           views?: number
         }
@@ -45,6 +65,7 @@ export type Database = {
           last_update?: string
           maker?: string | null
           name?: string
+          reference_code?: string | null
           typez?: Database["public"]["Enums"]["document_type"]
           views?: number
         }
@@ -623,6 +644,14 @@ export type Database = {
         Row: {
           count: number
           count_updated_at: string | null
+          exact_k_count: number
+          exact_k_count_updated_at: string | null
+          exact_len3_k_count: number
+          exact_len3_k_count_updated_at: string | null
+          exact_len3_n_count: number
+          exact_len3_n_count_updated_at: string | null
+          exact_n_count: number
+          exact_n_count_updated_at: string | null
           first_letter: string
           k_count: number
           k_count_updated_at: string | null
@@ -638,6 +667,14 @@ export type Database = {
         Insert: {
           count?: number
           count_updated_at?: string | null
+          exact_k_count?: number
+          exact_k_count_updated_at?: string | null
+          exact_len3_k_count?: number
+          exact_len3_k_count_updated_at?: string | null
+          exact_len3_n_count?: number
+          exact_len3_n_count_updated_at?: string | null
+          exact_n_count?: number
+          exact_n_count_updated_at?: string | null
           first_letter: string
           k_count?: number
           k_count_updated_at?: string | null
@@ -653,6 +690,14 @@ export type Database = {
         Update: {
           count?: number
           count_updated_at?: string | null
+          exact_k_count?: number
+          exact_k_count_updated_at?: string | null
+          exact_len3_k_count?: number
+          exact_len3_k_count_updated_at?: string | null
+          exact_len3_n_count?: number
+          exact_len3_n_count_updated_at?: string | null
+          exact_n_count?: number
+          exact_n_count_updated_at?: string | null
           first_letter?: string
           k_count?: number
           k_count_updated_at?: string | null
@@ -671,6 +716,10 @@ export type Database = {
         Row: {
           count: number
           count_updated_at: string | null
+          exact_k_count: number
+          exact_k_count_updated_at: string | null
+          exact_n_count: number
+          exact_n_count_updated_at: string | null
           k_count: number
           k_count_updated_at: string | null
           last_letter: string
@@ -680,6 +729,10 @@ export type Database = {
         Insert: {
           count?: number
           count_updated_at?: string | null
+          exact_k_count?: number
+          exact_k_count_updated_at?: string | null
+          exact_n_count?: number
+          exact_n_count_updated_at?: string | null
           k_count?: number
           k_count_updated_at?: string | null
           last_letter: string
@@ -689,6 +742,10 @@ export type Database = {
         Update: {
           count?: number
           count_updated_at?: string | null
+          exact_k_count?: number
+          exact_k_count_updated_at?: string | null
+          exact_n_count?: number
+          exact_n_count_updated_at?: string | null
           k_count?: number
           k_count_updated_at?: string | null
           last_letter?: string
@@ -843,6 +900,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_word_directly: {
+        Args: { p_theme_codes: string[]; p_word: string }
+        Returns: Json
+      }
       apply_word_approval_batch: {
         Args: {
           p_batch_index: number
@@ -863,6 +924,7 @@ export type Database = {
         }
         Returns: Json
       }
+      approve_docs_requests: { Args: { p_selections: Json }; Returns: Json }
       approve_word_requests: { Args: { p_selections: Json }; Returns: Json }
       cancel_word_approval_operation: {
         Args: { p_operation_id: string }
@@ -872,6 +934,7 @@ export type Database = {
         Args: { p_operation_id: string }
         Returns: Json
       }
+      cancel_word_request: { Args: { p_word: string }; Returns: Json }
       combine_hangul: {
         Args: { cho: string; jong?: string; jung: string }
         Returns: string
@@ -894,6 +957,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      delete_word_directly: { Args: { p_word_id: number }; Returns: Json }
       delete_word_themes_bulk: {
         Args: { pairs: Json }
         Returns: {
@@ -1118,9 +1182,24 @@ export type Database = {
           word: string
         }[]
       }
+      reject_docs_requests: { Args: { p_request_ids: Json }; Returns: Json }
       reject_word_requests: { Args: { p_selections: Json }; Returns: Json }
+      request_word_addition: {
+        Args: { p_theme_codes: string[]; p_word: string }
+        Returns: Json
+      }
+      request_word_additions: { Args: { p_entries: Json }; Returns: Json }
+      request_word_deletion: { Args: { p_word: string }; Returns: Json }
+      request_word_theme_changes: {
+        Args: { p_changes: Json; p_word: string }
+        Returns: Json
+      }
       reset_monthly_contribution: { Args: never; Returns: undefined }
       revers_duem: { Args: { letter: string }; Returns: string[] }
+      set_docs_favorite: {
+        Args: { p_docs_id: number; p_is_starred: boolean }
+        Returns: undefined
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       start_word_approval_operation: {

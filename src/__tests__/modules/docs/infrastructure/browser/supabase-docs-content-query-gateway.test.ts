@@ -15,7 +15,7 @@ class FakeQuery implements PromiseLike<QueryResponse> {
     select(columns: string): this { this.calls.push(`select:${columns}`); return this; }
     eq(column: string, value: boolean | number | string): this { this.calls.push(`eq:${column}:${value}`); return this; }
     in(column: string, values: string[]): this { this.calls.push(`in:${column}:${values.join(',')}`); return this; }
-    ilike(column: string, value: string): this { this.calls.push(`ilike:${column}:${value}`); return this; }
+    or(filters: string): this { this.calls.push(`or:${filters}`); return this; }
     neq(column: string, value: number): this { this.calls.push(`neq:${column}:${value}`); return this; }
     gt(column: string, value: number): this { this.calls.push(`gt:${column}:${value}`); return this; }
     maybeSingle(): this { this.calls.push('maybeSingle'); return this; }
@@ -95,6 +95,7 @@ describe('SupabaseDocsContentQueryGateway', () => {
         expect(calls).toContain('from:user_star_docs');
         expect(calls).toContain('from:words');
         expect(calls).toContain('from:wait_words');
+        expect(calls).toContain('or:word.ilike.%라');
     });
 
     it('maps approved, add, and delete theme rows while giving a whole request priority', async () => {
@@ -257,7 +258,7 @@ describe('SupabaseDocsContentQueryGateway', () => {
             words: expect.any(Array),
         })));
         expect(calls).toContainEqual(expect.stringMatching(/^in:last_letter:/));
-        expect(calls.filter((call) => call.startsWith('ilike:word:'))).not.toHaveLength(0);
+        expect(calls).toContain('or:word.ilike.%라,word.ilike.%나');
     });
 
     it.each([201, 202])('maps long-word ect document %s with approved and pending words', async (id) => {

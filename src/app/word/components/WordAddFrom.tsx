@@ -245,6 +245,7 @@ const WordAddForm = ({ saveFn, initWord = "", initThemes = [] }: WordAddFormProp
     useEffect(() => {
         if (themesError) {
             setErrorModalView({
+                component: 'WordAddForm',
                 ErrMessage: "주제 정보를 불러오는 중 오류가 발생했습니다.",
                 ErrName: "ThemeLoadError",
                 ErrStackRace: "",
@@ -358,6 +359,7 @@ const WordAddForm = ({ saveFn, initWord = "", initThemes = [] }: WordAddFormProp
         
         } catch (_error: unknown) {
             setErrorModalView({
+                component: 'WordAddForm',
                 ErrName: "WordSaveError",
                 ErrMessage: "단어 저장 중 오류가 발생했습니다.",
                 ErrStackRace: "",

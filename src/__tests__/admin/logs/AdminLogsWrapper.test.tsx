@@ -44,7 +44,7 @@ describe('AdminLogsWrapper', () => {
 
         renderWrapper();
 
-        expect(screen.getByRole('heading', { name: '문서 요청 목록 로딩 중' })).toBeInTheDocument();
+        expect(screen.getByRole('status', { name: '문서 요청 목록 로딩 중...' })).toBeInTheDocument();
     });
 
     test('passes only document choices to AdminLogsHome', () => {

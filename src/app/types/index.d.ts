@@ -1,5 +1,6 @@
 declare global{
     type ErrorMessage = {
+        component: string;
         ErrName:string | null;
         ErrMessage: string | null;
         ErrStackRace:string | undefined | null;

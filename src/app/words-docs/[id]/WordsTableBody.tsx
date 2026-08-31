@@ -17,6 +17,7 @@ const WordsTableBody = ({
     isLong,
     isSp,
     onAdminActionComplete,
+    onUserActionComplete,
 }: {
     initialData: DocsWordData[];
     title: string;
@@ -24,6 +25,7 @@ const WordsTableBody = ({
     isLong: boolean;
     isSp?: {m: string};
     onAdminActionComplete(action: DocsWordAdminAction, row: DocsWordData): Promise<boolean>;
+    onUserActionComplete(): Promise<boolean>;
 }) => {
     const [wordAddModalOpen, setWordAddModalOpen] = useState(false);
     const [isTableVisible, setIsTableVisible] = useState(true);
@@ -66,6 +68,7 @@ const WordsTableBody = ({
                     isMission={isMission ? {m: true, t: title} : isSp ? {m: true, t: isSp.m} : {m: false, t: null}}
                     isLong={isLong}
                     onAdminActionComplete={onAdminActionComplete}
+                    onUserActionComplete={onUserActionComplete}
                 />
             </motion.div>
 

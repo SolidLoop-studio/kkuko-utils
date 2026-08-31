@@ -1,4 +1,3 @@
-import { browserSupabaseClient } from '@/src/shared/infrastructure/supabase/browser-client';
 import type { ApplicationError } from '@/src/shared/application/application-error';
 import { err, ok, type Result } from '@/src/shared/application/result';
 import type {
@@ -35,11 +34,9 @@ const deletedNotificationFromResponse = (response: unknown): DeletedNotification
     return { id, imageUrl: img };
 };
 
-/** 브라우저 Supabase client로 RLS가 적용된 공지 행 하나를 삭제합니다. */
+/** 주입된 Supabase client로 RLS가 적용된 공지 행 하나를 삭제합니다. */
 export class SupabaseNotificationDeleteCommandGateway implements NotificationDeleteCommandGateway {
-    constructor(
-        private readonly client: NotificationDeleteClient = browserSupabaseClient as unknown as NotificationDeleteClient,
-    ) {}
+    constructor(private readonly client: NotificationDeleteClient) {}
 
     async deleteById(id: number): Promise<Result<DeletedNotification>> {
         try {

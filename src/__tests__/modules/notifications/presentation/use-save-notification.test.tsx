@@ -2,13 +2,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
 
-jest.mock('../../../../modules/notifications/infrastructure/browser/browser-notification-services', () => ({
-    createBrowserNotificationServices: jest.fn(),
+jest.mock('../../../../app/notification/actions', () => ({
+    saveNotificationAction: jest.fn(),
 }));
 
 import type { SaveNotificationCommand } from '@/src/modules/notifications/application/notification-write-command-types';
 import type { NotificationWriteResult } from '@/src/modules/notifications/application/notification-write-command-ports';
-import { createBrowserNotificationServices } from '@/src/modules/notifications/infrastructure/browser/browser-notification-services';
+import { saveNotificationAction } from '@/src/app/notification/actions';
 import { notificationQueryKeys } from '@/src/modules/notifications/presentation/notification-query-keys';
 import { useSaveNotification } from '@/src/modules/notifications/presentation/use-save-notification';
 import { err, ok, type Result } from '@/src/shared/application/result';
@@ -44,13 +44,11 @@ const createCommand = (): SaveNotificationCommand => ({
     imageChange: { kind: 'keep' },
 });
 
-const mockSaveService = (
-    handler: (command: SaveNotificationCommand) => Promise<Result<NotificationWriteResult>>,
+const mockSaveAction = (
+    handler: (formData: FormData) => Promise<Result<NotificationWriteResult>>,
 ) => {
     const save = jest.fn(handler);
-    jest.mocked(createBrowserNotificationServices).mockReturnValue({
-        notificationWriteService: { save },
-    } as unknown as ReturnType<typeof createBrowserNotificationServices>);
+    jest.mocked(saveNotificationAction).mockImplementation(save);
     return save;
 };
 
@@ -61,7 +59,7 @@ describe('useSaveNotification', () => {
 
     it('forwards the exact command, stays pending, and invalidates the active list after success', async () => {
         const deferred = createDeferred<Result<NotificationWriteResult>>();
-        const save = mockSaveService(async () => deferred.promise);
+        const save = mockSaveAction(async () => deferred.promise);
         const command = createCommand();
         const { queryClient, MutationWrapper } = createMutationWrapper();
         const invalidateQueries = jest.spyOn(queryClient, 'invalidateQueries');
@@ -75,8 +73,9 @@ describe('useSaveNotification', () => {
         });
 
         await waitFor(() => expect(result.current.isPending).toBe(true));
-        expect(save).toHaveBeenCalledWith(command);
-        expect(save.mock.calls[0]?.[0]).toBe(command);
+        expect(save).toHaveBeenCalledTimes(1);
+        expect(save.mock.calls[0]?.[0]).toBeInstanceOf(FormData);
+        expect((save.mock.calls[0]?.[0] as FormData).get('title')).toBe(command.title);
         expect(invalidateQueries).not.toHaveBeenCalled();
 
         await act(async () => {
@@ -95,7 +94,7 @@ describe('useSaveNotification', () => {
             kind: 'forbidden' as const,
             message: '공지사항 저장 권한이 없습니다.',
         };
-        mockSaveService(async () => err(failure));
+        mockSaveAction(async () => err(failure));
         const { queryClient, MutationWrapper } = createMutationWrapper();
         const invalidateQueries = jest.spyOn(queryClient, 'invalidateQueries');
         const { result } = renderHook(() => useSaveNotification(), {
@@ -112,7 +111,7 @@ describe('useSaveNotification', () => {
     });
 
     it('normalizes a rejected service promise into the stable infrastructure Result', async () => {
-        mockSaveService(async () => {
+        mockSaveAction(async () => {
             throw new Error('private database error');
         });
         const { queryClient, MutationWrapper } = createMutationWrapper();

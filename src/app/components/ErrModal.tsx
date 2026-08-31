@@ -1,14 +1,22 @@
 import React, { useState, useEffect } from "react";
-import { AlertCircle, Copy, ChevronDown, ChevronUp, X } from "lucide-react";
+import { AlertCircle, Send, ChevronDown, ChevronUp, X } from "lucide-react";
+
+const ERROR_REPORT_URL = "https://api.solidloop-studio.xyz/api/v1/app-error-report";
 
 type ErrorModalProps = {
   error: ErrorMessage;
   onClose: () => void;
 };
 
+type ReportStatus = {
+  type: "success" | "error";
+  message: string;
+};
+
 const ErrorModal = ({ error, onClose }: ErrorModalProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  const [reportStatus, setReportStatus] = useState<ReportStatus | null>(null);
+  const [isReporting, setIsReporting] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
 
   // 모달이 닫힐 때 페이드아웃 애니메이션 적용
@@ -19,25 +27,35 @@ const ErrorModal = ({ error, onClose }: ErrorModalProps) => {
     }, 300);
   };
 
-  const handleCopy = () => {
-    const errorText = `
-오류명: ${error.ErrName}
-오류 메시지: ${error.ErrMessage}
-스택 트레이스: ${error.ErrStackRace || "N/A"}
-사용자 입력: ${error.inputValue}
-HTTP 상태 코드: ${error.HTTPStatus || "N/A"}
-HTTP 데이터: ${error.HTTPData || "N/A"}
-    `;
-    
-    navigator.clipboard.writeText(errorText)
-      .then(() => {
-        setCopyStatus("복사되었습니다. 꼭 개발자에게 알려주세요!");
-        setTimeout(() => setCopyStatus(null), 2000);
-      })
-      .catch(() => {
-        setCopyStatus("복사를 실패하였습니다.");
-        setTimeout(() => setCopyStatus(null), 2000);
+  const handleReport = async () => {
+    setIsReporting(true);
+    setReportStatus(null);
+
+    try {
+      const response = await fetch(ERROR_REPORT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: error.ErrMessage || error.ErrName || "알 수 없는 오류",
+          ...(error.ErrStackRace ? { stack: error.ErrStackRace } : {}),
+          ...(error.ErrName ? { errorCode: error.ErrName } : {}),
+          severity: "ERROR",
+          url: error.location || window.location.pathname,
+          component: error.component,
+          browser: navigator.userAgent,
+        }),
       });
+
+      if (!response.ok) throw new Error("Error report request failed");
+      setReportStatus({ type: "success", message: "오류가 전송되었습니다." });
+    } catch {
+      setReportStatus({
+        type: "error",
+        message: "오류 전송에 실패했습니다. 잠시 후 다시 시도해주세요.",
+      });
+    } finally {
+      setIsReporting(false);
+    }
   };
 
   // ESC 키로 모달 닫기
@@ -143,10 +161,17 @@ HTTP 데이터: ${error.HTTPData || "N/A"}
             </div>
           )}
 
-          {/* 복사 상태 메시지 */}
-          {copyStatus && (
-            <div className="mt-4 text-center text-sm bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 p-2 rounded-md border border-green-100 dark:border-green-800 animate-pulse">
-              {copyStatus}
+          {/* 오류 신고 상태 메시지 */}
+          {reportStatus && (
+            <div
+              role={reportStatus.type === "error" ? "alert" : "status"}
+              className={`mt-4 text-center text-sm p-2 rounded-md border animate-pulse ${
+                reportStatus.type === "success"
+                  ? "bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border-green-100 dark:border-green-800"
+                  : "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-red-100 dark:border-red-800"
+              }`}
+            >
+              {reportStatus.message}
             </div>
           )}
         </div>
@@ -161,10 +186,12 @@ HTTP 데이터: ${error.HTTPData || "N/A"}
           </button>
           <button
             className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 font-medium flex items-center space-x-1 transition-colors"
-            onClick={handleCopy}
+            onClick={handleReport}
+            disabled={isReporting}
+            aria-busy={isReporting}
           >
-            <Copy className="w-4 h-4" />
-            <span>오류 내용 복사</span>
+            <Send className="w-4 h-4" />
+            <span>{isReporting ? "전송 중..." : "오류 신고"}</span>
           </button>
         </div>
       </div>

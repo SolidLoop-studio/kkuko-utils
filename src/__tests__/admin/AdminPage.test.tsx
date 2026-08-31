@@ -1,11 +1,14 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 jest.unmock('../../app/components/ui/card');
 
+const mockPush = jest.fn();
+
 jest.mock('next/navigation', () => ({
-    useRouter: () => ({ push: jest.fn() }),
+    useRouter: () => ({ push: mockPush }),
 }));
 
 jest.mock('../../modules/admin-dashboard', () => ({
@@ -69,6 +72,16 @@ describe('AdminDashboard', () => {
         expect(screen.getAllByText('0')).toHaveLength(2);
         expect(screen.queryByText('—')).not.toBeInTheDocument();
         expect(screen.queryByText('로딩 중...')).not.toBeInTheDocument();
+    });
+
+    test('opens application logs from quick access', async () => {
+        // Break caught: removing the requested shortcut or routing it to the API-server Pino logs page.
+        const user = userEvent.setup();
+        render(<AdminDashboard />);
+
+        await user.click(screen.getByRole('button', { name: '애플리케이션 로그' }));
+
+        expect(mockPush).toHaveBeenCalledWith('/admin/app-logs');
     });
 
     test('opens the project failure Modal with fixed Korean copy and no raw query diagnostics', () => {

@@ -214,6 +214,7 @@ const WordExtractorApp = () => {
         if (err instanceof Error) {
             console.error(err);
             seterrorModalView({
+                component: 'Merge',
                 ErrName: err.name,
                 ErrMessage: err.message,
                 ErrStackRace: err.stack,
@@ -222,6 +223,7 @@ const WordExtractorApp = () => {
         } else {
             console.error(err);
             seterrorModalView({
+                component: 'Merge',
                 ErrName: null,
                 ErrMessage: null,
                 ErrStackRace: err as string,

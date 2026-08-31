@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/src/app/components/ui/table';
 
 type ErrorModalView = {
+    component: string;
     ErrName: string;
     ErrMessage: string;
     ErrStackRace: string;
@@ -19,6 +20,7 @@ type ErrorModalView = {
 };
 
 const userListError = (): ErrorModalView => ({
+    component: 'UsersList',
     ErrName: '사용자 목록 조회 오류',
     ErrMessage: '사용자 목록을 불러오는 중 오류가 발생했습니다.',
     ErrStackRace: '',

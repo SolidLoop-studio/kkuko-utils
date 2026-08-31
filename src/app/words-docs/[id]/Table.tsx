@@ -50,11 +50,13 @@ const Table = ({
     isMission = { m: false, t: null }, // m: 미션여부, t: 미션 글자
     isLong = false,
     onAdminActionComplete,
+    onUserActionComplete,
 }: {
     initialData: DocsWordData[],
     isMission?: { m: false, t: null } | { m: true, t: string } 
     isLong?: boolean,
     onAdminActionComplete(action: DocsWordAdminAction, row: DocsWordData): Promise<boolean>,
+    onUserActionComplete(): Promise<boolean>,
 }) => {
     const data = initialData;
     
@@ -206,14 +208,17 @@ const Table = ({
         setModal(null);
     };
 
-    const CompleWork = () => {
+    const completeWork = async () => {
         setModal(null);
-        setIsCompleteModalOpen(true);
+        if (await onUserActionComplete()) {
+            setIsCompleteModalOpen(true);
+        }
     };
 
     const makeError = (error: ApplicationError) => {
         closeWork();
         seterrorModalView({
+            component: 'Table',
             ErrName: 'UserWordRequestError',
             ErrMessage: error.message,
             ErrStackRace: error.code,
@@ -236,12 +241,13 @@ const Table = ({
     } = useUserWordRequestActions({
         makeError,
         setIsProcessing,
-        completeWork: CompleWork,
+        completeWork,
         isProcessing,
     });
 
     const showAdminError = useCallback((error: ApplicationError) => {
         seterrorModalView({
+            component: 'Table',
             ErrName: "DocsWordModerationError",
             ErrMessage: getAdminErrorMessage(error),
             ErrStackRace: null,

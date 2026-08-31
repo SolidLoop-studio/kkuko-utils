@@ -7,8 +7,7 @@ import {
 import { err, ok } from '../../../shared/application/result';
 import type { ErrorMessage } from '../../../app/types/type';
 
-const mockRouterPush = jest.fn();
-const mockRouterRefresh = jest.fn();
+const mockRouterReplace = jest.fn();
 const mockDeleteNotification = jest.fn();
 let mockIsPending = false;
 
@@ -17,11 +16,18 @@ jest.mock('react-redux', () => ({
 }));
 
 jest.mock('next/navigation', () => ({
-    useRouter: () => ({ push: mockRouterPush, refresh: mockRouterRefresh }),
+    useRouter: () => ({
+        replace: mockRouterReplace,
+    }),
 }));
 
 jest.mock('../../../modules/notifications', () => ({
     useDeleteNotification: jest.fn(),
+}));
+
+jest.mock('../../../app/notification/[id]/NotificationViewCount', () => ({
+    __esModule: true,
+    default: ({ initialViews }: { initialViews: number }) => <span>{initialViews}</span>,
 }));
 
 jest.mock('next/image', () => ({
@@ -35,6 +41,7 @@ jest.mock('lucide-react', () => ({
     Pin: () => <span />,
     Edit: () => <span />,
     Trash2: () => <span />,
+    Eye: () => <span />,
 }));
 
 jest.mock('react-markdown', () => ({
@@ -116,6 +123,7 @@ const notification: NotificationDetailProjection = {
     endsAt: '2026-08-30T00:00:00.000Z',
     isImportant: true,
     isModal: true,
+    views: 40,
 };
 
 const openDeleteConfirmation = () => {
@@ -155,6 +163,7 @@ describe('NotificationDetail', () => {
             '/notification/17/edit',
         );
         expect(screen.getByRole('button', { name: '삭제' })).toBeInTheDocument();
+        expect(screen.getByText('40')).toBeInTheDocument();
     });
 
     it('hides edit and delete controls from non-admin users', () => {
@@ -203,16 +212,15 @@ describe('NotificationDetail', () => {
         expect(mockDeleteNotification).not.toHaveBeenCalled();
     });
 
-    it('shows the existing completion copy after a successful deletion', async () => {
+    it('replaces the deleted detail page with the notification list immediately', async () => {
         render(<NotificationDetail notification={notification} />);
 
         confirmDelete();
 
-        const completion = await screen.findByRole('dialog', { name: 'delete completion' });
-        expect(completion).toHaveTextContent('공지사항이 삭제되었습니다.');
-        expect(completion).toHaveTextContent(
-            '공지사항이 성공적으로 삭제되었습니다. 목록으로 돌아갑니다.',
-        );
+        await waitFor(() => {
+            expect(mockRouterReplace).toHaveBeenCalledWith('/notification');
+        });
+        expect(screen.queryByRole('dialog', { name: 'delete completion' })).not.toBeInTheDocument();
     });
 
     it('shows only the stable application error message when deletion fails', async () => {
@@ -237,16 +245,4 @@ describe('NotificationDetail', () => {
         expect(alert).not.toHaveTextContent('42501');
     });
 
-    it('navigates to the notification list before refreshing after completion closes', async () => {
-        render(<NotificationDetail notification={notification} />);
-        confirmDelete();
-
-        fireEvent.click(await screen.findByRole('button', { name: '완료 닫기' }));
-
-        expect(mockRouterPush).toHaveBeenCalledWith('/notification');
-        expect(mockRouterRefresh).toHaveBeenCalledTimes(1);
-        expect(mockRouterPush.mock.invocationCallOrder[0]).toBeLessThan(
-            mockRouterRefresh.mock.invocationCallOrder[0],
-        );
-    });
 });

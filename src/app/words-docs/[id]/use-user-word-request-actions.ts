@@ -12,7 +12,7 @@ import type { UserWordRequestResult } from '@/src/modules/word-requests';
 type UseUserWordRequestActionsOptions = {
     makeError(error: ApplicationError): void;
     setIsProcessing: Dispatch<SetStateAction<boolean>>;
-    completeWork(): void;
+    completeWork(): void | Promise<void>;
     isProcessing: boolean;
     service?: UserWordRequestService;
 };
@@ -58,7 +58,7 @@ export function useUserWordRequestActions({
             setIsProcessing(false);
         }
 
-        if (hasSucceeded) completeWork();
+        if (hasSucceeded) await completeWork();
     }, [completeWork, isPending, isProcessing, makeError, setIsProcessing]);
 
     const requestDelete = useCallback(

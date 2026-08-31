@@ -18,6 +18,7 @@ import {
 const pageSize = 30;
 
 const errorModal = {
+    component: 'RequestsHome',
     ErrName: 'ApplicationError',
     ErrMessage: '단어 요청 목록을 불러오는 중 오류가 발생했습니다.',
     ErrStackRace: '',

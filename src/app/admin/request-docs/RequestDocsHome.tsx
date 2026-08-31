@@ -65,6 +65,7 @@ export default function DocsWaitManager({ initialData, onModerationSuccess }: Do
       : publicMessages.infrastructure;
 
     setShowErrorMessage({
+      component: 'RequestDocsHome',
       ErrName: '요청 처리 오류',
       ErrMessage: publicMessage,
       ErrStackRace: undefined,

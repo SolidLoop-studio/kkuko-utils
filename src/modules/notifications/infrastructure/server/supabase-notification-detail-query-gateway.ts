@@ -36,6 +36,10 @@ const isPositiveSafeInteger = (value: unknown): value is number => (
     typeof value === 'number' && Number.isSafeInteger(value) && value > 0
 );
 
+const isNonNegativeSafeInteger = (value: unknown): value is number => (
+    typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+);
+
 const isValidDateString = (value: unknown): value is string => (
     typeof value === 'string' && !Number.isNaN(Date.parse(value))
 );
@@ -49,7 +53,8 @@ const parseProjection = (value: unknown): NotificationDetailProjection | null =>
         || !isValidDateString(value.created_at)
         || !isValidDateString(value.end_at)
         || typeof value.is_important !== 'boolean'
-        || typeof value.is_modal !== 'boolean') {
+        || typeof value.is_modal !== 'boolean'
+        || !isNonNegativeSafeInteger(value.views)) {
         return null;
     }
 
@@ -62,6 +67,7 @@ const parseProjection = (value: unknown): NotificationDetailProjection | null =>
         endsAt: value.end_at,
         isImportant: value.is_important,
         isModal: value.is_modal,
+        views: value.views,
     };
 };
 
@@ -73,7 +79,7 @@ export class SupabaseNotificationDetailQueryGateway implements NotificationDetai
         try {
             const response = await this.client
                 .from('notification')
-                .select('id, title, body, img, created_at, end_at, is_important, is_modal')
+                .select('id, title, body, img, created_at, end_at, is_important, is_modal, views')
                 .eq('id', id)
                 .maybeSingle();
 

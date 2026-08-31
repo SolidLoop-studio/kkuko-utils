@@ -507,6 +507,60 @@ No Content - 성공적으로 삭제됨
 
 ---
 
+### Error Report (Admin)
+
+#### GET /admin/app-error
+
+보고된 애플리케이션 로그를 확인합니다.
+
+**Path Parameter**
+| Name  | Type   | Description   |
+| ----- | ------ | ------------- |
+| limit | number? | 최대 반환할 로그 수(없으면 전체) |
+
+
+**Response (200)**
+
+```ts
+{
+  {
+    id: string;
+    createdAt: string;
+    message: string;
+    severity: "INFO" | "WARN" | "ERROR" | "FATAL",
+    stack: string | null;
+    errorCode: string | null;
+    url: string | null;
+    component: string | null;
+    browser: string | null;
+    os: string | null;
+    userId: string | null;
+    ipAddress: string | null;
+  }[]
+}
+```
+
+---
+
+#### POST /admin/app-error/delete
+
+애플리케이션 에러를 삭제합니다.
+
+**Request Body**
+| Field       | Type     | Description    |
+| ----------- | -------- | -------------- |
+| ids         | string[] | 삭제할 로그 id 리스트       |
+
+**Response (200)**
+```ts
+{ 
+  message: 'Error logs deleted successfully';
+  deletedCount: number;
+}
+```
+
+---
+
 ## User API
 
 ### GET /profile/total
@@ -769,5 +823,34 @@ No Content - 성공적으로 삭제됨
     };
   };
   status: 200;
+}
+```
+
+## Error Report
+
+### POST /app-error-report
+
+앱에서 발생한 에러를 서버에 보고합니다.
+
+**Request Body**
+| Field       | Type   | Description    |
+| ----------- | ------ | -------------- |
+| message     | string | 에러 메시지       |
+| stack       | string? | 스택 트레이스     |
+| errorCode   | string? | 에러 코드     |
+| severity    | string? | 심각도 (ex. INFO, WARN, ERROR) |
+| url         | string? | 에러가 발생한 path URL (ex. /kkuko)     |
+| component   | string? | 에러가 발생한 컴포넌트 이름 |
+| browser     | string? | 브라우저 정보 |
+| os          | string? | 운영체제 정보 |
+| userId      | string? | 사용자 ID    |
+
+
+--- 
+Response (201)
+
+```ts
+{
+  id: string; // 에러 로그 id
 }
 ```

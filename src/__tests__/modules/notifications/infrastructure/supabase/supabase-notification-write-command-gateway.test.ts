@@ -1,6 +1,4 @@
-jest.mock('../../../../../shared/infrastructure/supabase/browser-client', () => ({
-    browserSupabaseClient: { from: jest.fn() },
-}));
+import { readFileSync } from 'node:fs';
 
 import type { NotificationWriteValues } from '@/src/modules/notifications/application/notification-write-command-ports';
 import {
@@ -8,7 +6,7 @@ import {
     type NotificationWriteClient,
     type NotificationWritePayload,
     type NotificationWriteQuery,
-} from '@/src/modules/notifications/infrastructure/browser/supabase-notification-write-command-gateway';
+} from '@/src/modules/notifications/infrastructure/supabase/supabase-notification-write-command-gateway';
 
 const existingImageUrl =
     'https://project.supabase.co/storage/v1/object/public/public_img/notifications/old.png';
@@ -365,4 +363,13 @@ describe('SupabaseNotificationWriteCommandGateway safe errors', () => {
 
         expect(result).toEqual(staleImageError);
     });
+});
+
+it('is environment-neutral', () => {
+    const source = readFileSync(
+        'src/modules/notifications/infrastructure/supabase/supabase-notification-write-command-gateway.ts',
+        'utf8',
+    );
+
+    expect(source).not.toMatch(/browser-client|server-client|next\/headers|next\/cache/u);
 });

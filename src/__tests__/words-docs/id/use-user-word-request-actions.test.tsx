@@ -72,7 +72,9 @@ describe('useUserWordRequestActions', () => {
         const setIsProcessing = jest.fn((value: SetStateAction<boolean>) => {
             events.push(`processing:${typeof value === 'function' ? value(false) : value}`);
         });
-        const completeWork = jest.fn(() => events.push('complete'));
+        const completeWork = jest.fn(() => {
+            events.push('complete');
+        });
 
         const view = renderHook(() => useUserWordRequestActions({
             makeError,

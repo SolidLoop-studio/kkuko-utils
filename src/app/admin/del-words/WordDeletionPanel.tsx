@@ -56,6 +56,7 @@ const applicationErrorMessage = (error: ApplicationError): string => {
 };
 
 const errorMessage = (name: string, message: string): ErrorMessage => ({
+    component: 'WordDeletionPanel',
     ErrName: name,
     ErrMessage: message,
     ErrStackRace: null,

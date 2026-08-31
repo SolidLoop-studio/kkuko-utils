@@ -1,6 +1,7 @@
 export type SixCharString = `${string}${string}${string}${string}${string}${string}`;
 export type FiveCharString = `${string}${string}${string}${string}${string}`;
 export type ErrorMessage = {
+    component: string;
     ErrName:string | null;
     ErrMessage: string | null;
     ErrStackRace:string | undefined | null;

@@ -67,7 +67,7 @@ describe('WordsDocsHomePage docs list query orchestration', () => {
         renderPage();
 
         expect(useDocsList).toHaveBeenCalledTimes(1);
-        expect(screen.getByRole('heading', { name: '문서 목록 로딩 중' })).toBeInTheDocument();
+        expect(screen.getByRole('status', { name: '문서 목록 로딩 중...' })).toBeInTheDocument();
     });
 
     it('renders query loading while the Redux startup loading state is already complete', () => {
@@ -75,8 +75,7 @@ describe('WordsDocsHomePage docs list query orchestration', () => {
 
         renderPage();
 
-        expect(screen.getByRole('heading', { name: '문서 목록 로딩 중' })).toBeInTheDocument();
-        expect(screen.getByText('로딩 중...')).toBeInTheDocument();
+        expect(screen.getByRole('status', { name: '문서 목록 로딩 중...' })).toBeInTheDocument();
     });
 
     it('renders only the stable list-query error message', () => {

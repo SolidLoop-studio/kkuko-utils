@@ -13,6 +13,7 @@ import { Equipment, Mode, ProfileData } from '@/src/app/types/kkuko.types';
 import { useRecentSearches } from './useRecentSearches';
 
 interface ErrorMessage {
+    component: string;
     ErrName: string;
     ErrMessage: string;
     ErrStackRace: string | null;
@@ -38,6 +39,7 @@ export const useKkukoProfile = () => {
     // Helper to create error object
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const createError = (err: any, inputValue: string, location: string): ErrorMessage => ({
+        component: 'KkukoProfile',
         ErrName: err.name || "Error",
         ErrMessage: err.message || "Unknown error",
         ErrStackRace: err.stack || null,

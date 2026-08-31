@@ -156,12 +156,12 @@ export default function DocsDataPage({ id }: { id: number }) {
 
     if (!hasCurrentSnapshot) {
         if (isLoading || (data !== undefined && enrichmentError === null)) {
-            return <LoadingPage title="문서" isForcedVisible />;
+            return <LoadingPage title="문서" />;
         }
         if (error?.kind === 'not-found') return <NotFound />;
         if (error) return <ErrorPage message={error.message} />;
         if (enrichmentError) return <ErrorPage message={enrichmentError} />;
-        return <LoadingPage title="문서" isForcedVisible />;
+        return <LoadingPage title="문서" />;
     }
 
     if (snapshot !== null) {

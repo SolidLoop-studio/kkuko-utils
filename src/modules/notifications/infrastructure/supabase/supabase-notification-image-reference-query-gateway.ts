@@ -1,6 +1,5 @@
 import type { ApplicationError } from '@/src/shared/application/application-error';
 import { err, ok, type Result } from '@/src/shared/application/result';
-import { browserSupabaseClient } from '@/src/shared/infrastructure/supabase/browser-client';
 import type { NotificationImageReferenceQueryGateway } from '../../application/notification-image-reference-query-ports';
 
 export interface NotificationImageReferenceQuery {
@@ -38,10 +37,7 @@ const countFromResponse = (value: unknown): number | null => {
 
 /** 공지 이미지의 남은 참조를 정확한 개수만으로 확인해 정리 결정을 안전하게 제한합니다. */
 export class SupabaseNotificationImageReferenceQueryGateway implements NotificationImageReferenceQueryGateway {
-    constructor(
-        private readonly client: NotificationImageReferenceQueryClient =
-        browserSupabaseClient as unknown as NotificationImageReferenceQueryClient,
-    ) {}
+    constructor(private readonly client: NotificationImageReferenceQueryClient) {}
 
     async hasReference(imageUrl: string): Promise<Result<boolean>> {
         try {

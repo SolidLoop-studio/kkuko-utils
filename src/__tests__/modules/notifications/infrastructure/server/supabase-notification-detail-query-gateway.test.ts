@@ -12,6 +12,7 @@ const row = {
     end_at: '2026-08-30T00:00:00.000Z',
     is_important: true,
     is_modal: false,
+    views: 40,
 };
 
 const createClient = (response: unknown) => {
@@ -41,11 +42,12 @@ describe('SupabaseNotificationDetailQueryGateway', () => {
                 endsAt: '2026-08-30T00:00:00.000Z',
                 isImportant: true,
                 isModal: false,
+                views: 40,
             },
         });
         expect(client.from).toHaveBeenCalledWith('notification');
         expect(query.select).toHaveBeenCalledWith(
-            'id, title, body, img, created_at, end_at, is_important, is_modal',
+            'id, title, body, img, created_at, end_at, is_important, is_modal, views',
         );
         expect(query.eq).toHaveBeenCalledWith('id', 17);
         expect(query.maybeSingle).toHaveBeenCalledTimes(1);
@@ -68,8 +70,13 @@ describe('SupabaseNotificationDetailQueryGateway', () => {
         });
     });
 
-    it('maps malformed and thrown responses to the stable infrastructure error', async () => {
-        const malformed = createClient({ data: { ...row, created_at: 'not-a-date' }, error: null });
+    it('maps malformed views and thrown responses to the stable infrastructure error', async () => {
+        const malformedRows = [
+            { ...row, views: -1 },
+            { ...row, views: 1.5 },
+            { ...row, views: Number.MAX_SAFE_INTEGER + 1 },
+            { ...row, views: '40' },
+        ];
         const thrownQuery = {
             select: jest.fn().mockReturnThis(),
             eq: jest.fn().mockReturnThis(),
@@ -83,7 +90,11 @@ describe('SupabaseNotificationDetailQueryGateway', () => {
             error: { kind: 'infrastructure', message: '공지사항을 불러오는 중 오류가 발생했습니다.' },
         };
 
-        await expect(new SupabaseNotificationDetailQueryGateway(malformed.client).findById(17)).resolves.toEqual(expected);
+        for (const data of malformedRows) {
+            const malformed = createClient({ data, error: null });
+
+            await expect(new SupabaseNotificationDetailQueryGateway(malformed.client).findById(17)).resolves.toEqual(expected);
+        }
         await expect(new SupabaseNotificationDetailQueryGateway(thrown).findById(17)).resolves.toEqual(expected);
     });
 

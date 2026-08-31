@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { err, ok } from '@/src/shared/application/result';
 import type { NotificationDetailProjection } from '@/src/modules/notifications';
 
-const mockGetServerNotificationDetail = jest.fn();
+const mockGetFreshServerNotificationDetail = jest.fn();
 const mockNotFound = jest.fn(() => {
     throw new Error('NEXT_HTTP_ERROR_FALLBACK;404');
 });
@@ -10,7 +10,7 @@ const mockNotificationWrite = jest.fn((_props: unknown) => null);
 const mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
 jest.mock('../../../../modules/notifications/infrastructure/server/server-notification-services', () => ({
-    getServerNotificationDetail: (...args: unknown[]) => mockGetServerNotificationDetail(...args),
+    getFreshServerNotificationDetail: (...args: unknown[]) => mockGetFreshServerNotificationDetail(...args),
 }));
 
 jest.mock('next/navigation', () => ({
@@ -38,6 +38,7 @@ const projection: NotificationDetailProjection = {
     endsAt: '2026-08-30T00:00:00.000Z',
     isImportant: true,
     isModal: false,
+    views: 40,
 };
 
 describe('NotificationEditPage', () => {
@@ -45,13 +46,13 @@ describe('NotificationEditPage', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        mockGetServerNotificationDetail.mockResolvedValue(ok(projection));
+        mockGetFreshServerNotificationDetail.mockResolvedValue(ok(projection));
     });
 
     it('loads the edit initial value through the server notification composition', async () => {
         render(await NotificationEditPage({ params: Promise.resolve({ id: '17' }) }));
 
-        expect(mockGetServerNotificationDetail).toHaveBeenCalledWith(17);
+        expect(mockGetFreshServerNotificationDetail).toHaveBeenCalledWith(17);
         expect(mockNotificationWrite).toHaveBeenCalledWith({ notification: projection });
     });
 
@@ -61,12 +62,12 @@ describe('NotificationEditPage', () => {
             await expect(NotificationEditPage({ params: Promise.resolve({ id }) })).rejects.toThrow(
                 'NEXT_HTTP_ERROR_FALLBACK;404',
             );
-            expect(mockGetServerNotificationDetail).not.toHaveBeenCalled();
+            expect(mockGetFreshServerNotificationDetail).not.toHaveBeenCalled();
         },
     );
 
     it('uses not-found for a missing notification', async () => {
-        mockGetServerNotificationDetail.mockResolvedValue(err({
+        mockGetFreshServerNotificationDetail.mockResolvedValue(err({
             kind: 'not-found',
             message: '공지사항을 찾을 수 없습니다.',
         }));
@@ -74,11 +75,11 @@ describe('NotificationEditPage', () => {
             'NEXT_HTTP_ERROR_FALLBACK;404',
         );
         expect(mockNotFound).toHaveBeenCalledTimes(1);
-        expect(mockGetServerNotificationDetail).toHaveBeenCalledWith(404);
+        expect(mockGetFreshServerNotificationDetail).toHaveBeenCalledWith(404);
     });
 
     it('renders the stable infrastructure error without using not-found', async () => {
-        mockGetServerNotificationDetail.mockResolvedValue(err({
+        mockGetFreshServerNotificationDetail.mockResolvedValue(err({
             kind: 'infrastructure',
             message: '공지사항을 불러오는 중 오류가 발생했습니다.',
         }));

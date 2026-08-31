@@ -1,12 +1,10 @@
-jest.mock('../../../../../shared/infrastructure/supabase/browser-client', () => ({
-    browserSupabaseClient: { from: jest.fn() },
-}));
+import { readFileSync } from 'node:fs';
 
 import {
     SupabaseNotificationImageReferenceQueryGateway,
     type NotificationImageReferenceQueryClient,
     type NotificationImageReferenceQuery,
-} from '@/src/modules/notifications/infrastructure/browser/supabase-notification-image-reference-query-gateway';
+} from '@/src/modules/notifications/infrastructure/supabase/supabase-notification-image-reference-query-gateway';
 
 const imageUrl =
     'https://project.supabase.co/storage/v1/object/public/public_img/notifications/notice.png';
@@ -90,4 +88,13 @@ describe('SupabaseNotificationImageReferenceQueryGateway', () => {
         expect(result).toEqual(referenceInfrastructureError);
         expect(JSON.stringify(result)).not.toContain('private');
     });
+});
+
+it('is environment-neutral', () => {
+    const source = readFileSync(
+        'src/modules/notifications/infrastructure/supabase/supabase-notification-image-reference-query-gateway.ts',
+        'utf8',
+    );
+
+    expect(source).not.toMatch(/browser-client|server-client|next\/headers|next\/cache/u);
 });

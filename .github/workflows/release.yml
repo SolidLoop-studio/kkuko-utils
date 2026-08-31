@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -31,4 +32,4 @@ jobs:
       - name: Run Release Script (Create PR)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node scripts/release.js
+        run: node .github/scripts/release.js

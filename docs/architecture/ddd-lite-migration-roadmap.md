@@ -1089,26 +1089,27 @@ Notifications:
 
 - 활성 공지 목록·전역 모달 read slice 분리 (완료)
   - 목록과 모달이 `NotificationListProjection` Application 계약을 공유하며 DB Row를 UI에 노출하지 않는다.
+  - 공개 목록은 60초 ISR page에서, 공개 상세·metadata는 60초 ISR cache에서 cookie 없는 anon Supabase composition을 사용한다.
   - browser/server adapter는 실행 환경 timezone과 무관한 한국 시간 당일 말 cutoff로 active-only 조회를 수행한다.
   - 목록은 중요도, 생성일, ID 순으로 결정적으로 정렬하고 모달은 활성 modal 중 생성일·ID가 최신인 1건만 선택한다.
   - 전역 모달은 `['notifications', 'active-list']` key와 1분 stale time을 사용하며, background refetch 실패에도 cache를 유지하고 `hiddenNotices` 및 현재 mount의 dismissal을 보존한다. 손상된 storage 값은 양의 safe integer ID 목록으로 정규화하고 storage 접근 실패가 modal 닫힘을 막지 않게 한다.
   - 목록 page의 legacy `allNotifications`와 전역 hook의 `notice` SCM getter를 제거했다.
 - 공지 상세 query 분리 (완료)
-  - 상세·metadata·편집 page는 camelCase `NotificationDetailProjection`과 같은 server composition을 사용하며 browser SCM/생성 DB Row/PostgREST 응답을 받지 않는다.
+  - 공개 상세·metadata는 anon Supabase composition의 60초 ISR과 React 요청 단위 `cache`를 공유하고, 편집 page만 cookie 기반 authenticated composition으로 fresh read한다. 모두 camelCase `NotificationDetailProjection`만 소비하며 browser SCM/생성 DB Row/PostgREST 응답을 받지 않는다.
   - 공유 route parser는 leading zero, 지수·16진수·부호·소수·공백 형식을 거부하고 canonical positive safe decimal만 조회 ID로 허용한다. Application service도 양의 safe integer ID를 다시 검증하고 validation·not-found·infrastructure를 안정적인 `Result`로 구분한다. 서버 adapter의 반환·throw 오류 원문은 presentation에 노출하지 않는다.
-  - 상세 page와 metadata는 공식 React 요청 단위 `cache` loader를 공유해 같은 요청의 중복 조회를 제거하며 전역 cross-request cache나 `unstable_cache`, 별도 `revalidate` 정책은 추가하지 않는다. 테스트는 연속된 두 요청에서 같은 ID도 새 server client/query와 새 결과를 사용함을 검증한다.
+  - 공개 상세의 60초 ISR은 같은 ID의 cross-request read를 재사용하고 React `cache`가 같은 요청의 metadata/page 중복을 제거한다. detail view count는 별도 best-effort Server Action/RPC로 기록하므로 공개 detail query cache와 분리된다.
   - 현재 상세 조회 소비자는 모두 Server Component이므로 미사용 browser adapter는 만들지 않았다. 같은 Application port는 실제 browser 소비자가 생길 때 browser client adapter로 재사용할 수 있다.
   - edit page의 마지막 read-side `SCM.get().notificationById` 소비자를 이전하고 해당 getter를 제거했다. not-found는 기존 `notFound()` 흐름을 유지하고 infrastructure 오류는 안전한 오류 화면으로 구분한다.
 - 공지 관리자 row-delete command 분리 (완료)
   - Application service가 양의 safe integer ID를 검증하고, validation 및 adapter의 반환·throw 실패를 안정적인 공개 `Result` 오류로 변환한다.
-  - RLS가 적용된 browser Supabase adapter가 단일 `notification` row delete를 수행하며, 성공한 경우에만 활성 공지 목록 React Query cache를 무효화한다.
+  - authenticated Server Action이 RLS가 적용된 server Supabase adapter로 단일 `notification` row를 삭제하고, 성공한 경우에만 경로와 활성 공지 목록 cache를 무효화한다.
   - 관리자 확인·완료 Modal, 목록 이동과 refresh 동작은 유지하고 대체된 legacy `notificationById` delete method를 제거했다.
   - DB가 반환한 삭제 row의 이미지에만 lifecycle cleanup을 적용한다. managed URL은 DB 성공 뒤 fresh zero-reference 결과일 때만 best-effort로 삭제하며, shared·external·uncertain URL은 보존한다.
 - 공지 생성·수정 command와 이미지 Storage 경계 분리 (완료)
-  - form은 파일 선택 시 local preview만 만들고 submit 시에만 저장 command를 실행한다. presentation은 PostgREST 오류를 노출하거나 `alert`를 사용하지 않는다.
+  - form은 파일 선택 시 local preview만 만들고 submit 시 authenticated Server Action을 통해서만 저장 command를 실행한다. presentation은 PostgREST 오류를 노출하거나 `alert`를 사용하지 않는다.
   - 새 이미지 upload 뒤 DB create/update가 실패하면 새 object를 best-effort로 제거한다. DB가 검증해 반환한 managed 기존 이미지는 replace/remove/delete가 DB 성공한 뒤 fresh zero-reference 결과일 때만 best-effort로 제거한다.
   - shared·external·stale·uncertain URL은 삭제하지 않는다. 이 no-migration guarded best-effort 정책은 concurrency-proof garbage collection이 아니다.
-  - 이 경계에는 database migration이나 cloud rollout이 없었다.
+  - `database.types.ts` regeneration은 remote migration rollout 뒤까지 기다리며, 이 slice는 database/cloud rollout을 수행하지 않는다.
 
 ### Phase 6. 기타 외부 연동 분리
 

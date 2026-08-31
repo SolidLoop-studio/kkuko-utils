@@ -51,6 +51,7 @@ export default function ProfileHomePage() {
     if (!result.ok) {
       setResultUsers([]);
       setErrorModalView({
+        component: 'ProfileHome',
         ErrName: "Profile Search Error",
         ErrMessage: result.error.message,
         ErrStackRace: null,

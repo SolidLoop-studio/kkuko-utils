@@ -1,12 +1,10 @@
-jest.mock('../../../../../shared/infrastructure/supabase/browser-client', () => ({
-    browserSupabaseClient: { from: jest.fn() },
-}));
+import { readFileSync } from 'node:fs';
 
 import {
     SupabaseNotificationDeleteCommandGateway,
     type NotificationDeleteClient,
     type NotificationDeleteQuery,
-} from '@/src/modules/notifications/infrastructure/browser/supabase-notification-delete-command-gateway';
+} from '@/src/modules/notifications/infrastructure/supabase/supabase-notification-delete-command-gateway';
 
 const managedImageUrl =
     'https://project.supabase.co/storage/v1/object/public/public_img/notifications/old.png';
@@ -127,4 +125,13 @@ describe('SupabaseNotificationDeleteCommandGateway', () => {
         expect(result).toEqual(deleteInfrastructureError);
         expect(JSON.stringify(result)).not.toContain('private');
     });
+});
+
+it('is environment-neutral', () => {
+    const source = readFileSync(
+        'src/modules/notifications/infrastructure/supabase/supabase-notification-delete-command-gateway.ts',
+        'utf8',
+    );
+
+    expect(source).not.toMatch(/browser-client|server-client|next\/headers|next\/cache/u);
 });

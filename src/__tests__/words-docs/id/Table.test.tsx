@@ -223,18 +223,24 @@ const renderTable = ({
     uuid = 'admin-1',
     data = rows,
     onAdminActionComplete = jest.fn().mockResolvedValue(true),
+    onUserActionComplete = jest.fn().mockResolvedValue(true),
 }: {
     role?: 'guest' | 'r1' | 'r4' | 'admin';
     uuid?: string;
     data?: DocsWordData[];
     onAdminActionComplete?: jest.Mock;
-} = {}) => {
+    onUserActionComplete?: jest.Mock;
+    } = {}) => {
     render(
-        <Table initialData={data} onAdminActionComplete={onAdminActionComplete} />,
+        <Table
+            initialData={data}
+            onAdminActionComplete={onAdminActionComplete}
+            onUserActionComplete={onUserActionComplete}
+        />,
         { wrapper: createWrapper(role, uuid) },
     );
 
-    return { onAdminActionComplete };
+    return { onAdminActionComplete, onUserActionComplete };
 };
 
 const openRow = async (word: string) => {
@@ -282,6 +288,55 @@ describe('Table administrator and legacy user actions', () => {
         expect(mockApprove).toHaveBeenCalledWith(rows[0].mutationTarget);
         expect(onAdminActionComplete).toHaveBeenCalledWith('approve', rows[0]);
         expect(screen.queryByText('작업이 완료되었습니다!')).not.toBeInTheDocument();
+    });
+
+    it('사용자 삭제 요청 성공 뒤 현재 문서 갱신을 완료한다', async () => {
+        mockUseUserWordRequestActions.mockImplementation((options) => ({
+            cancelAddRequest: mockCancelAddRequest,
+            cancelDeleteRequest: mockCancelDeleteRequest,
+            requestDelete: async () => {
+                await options.completeWork();
+            },
+        }));
+        const onUserActionComplete = jest.fn().mockResolvedValue(true);
+        renderTable({ role: 'r1', uuid: 'requester-1', data: [rows[2]], onUserActionComplete });
+        await openRow('다람쥐');
+
+        await clickAction('삭제 요청을 보냅니다.');
+
+        await waitFor(() => expect(onUserActionComplete).toHaveBeenCalledTimes(1));
+    });
+
+    it('사용자 삭제 요청 취소 성공 뒤 현재 문서 갱신을 완료한다', async () => {
+        mockUseUserWordRequestActions.mockImplementation((options) => ({
+            cancelAddRequest: mockCancelAddRequest,
+            cancelDeleteRequest: async () => {
+                await options.completeWork();
+            },
+            requestDelete: mockRequestDelete,
+        }));
+        const onUserActionComplete = jest.fn().mockResolvedValue(true);
+        renderTable({
+            role: 'r1',
+            uuid: 'requester-4',
+            data: [{
+                word: '마차',
+                status: 'delete',
+                maker: 'requester-4',
+                mutationTarget: {
+                    kind: 'word-request',
+                    requestId: 29,
+                    requestType: 'delete',
+                    selectedThemeIds: [],
+                },
+            }],
+            onUserActionComplete,
+        });
+        await openRow('마차');
+
+        await clickAction('삭제 요청을 취소합니다.');
+
+        await waitFor(() => expect(onUserActionComplete).toHaveBeenCalledTimes(1));
     });
 
     it('주제 삭제 변경 반려를 theme-change target으로 실행한다', async () => {
@@ -528,7 +583,7 @@ describe('Docs word target enrichment', () => {
 
         render(<DocsDataPage id={55} />, { wrapper: createWrapper('guest', undefined) });
 
-        expect(screen.getByRole('heading', { name: '문서 로딩 중' })).toBeInTheDocument();
+        expect(screen.getByRole('status', { name: '문서 로딩 중...' })).toBeInTheDocument();
         targetLoad.resolve(ok({ targets: [{ kind: 'registered-word', wordId: 55 }] }));
         expect(await screen.findByTestId('docs-row-나비')).toBeInTheDocument();
     });
@@ -536,7 +591,7 @@ describe('Docs word target enrichment', () => {
     it('initial loading, not-found, and query error states are stable before a snapshot exists', () => {
         mockUseDocsContent.mockReturnValue({ data: undefined, error: null, isLoading: true, refetch: jest.fn() } as never);
         const { rerender } = render(<DocsDataPage id={55} />, { wrapper: createWrapper('guest', undefined) });
-        expect(screen.getByRole('heading', { name: '문서 로딩 중' })).toBeInTheDocument();
+        expect(screen.getByRole('status', { name: '문서 로딩 중...' })).toBeInTheDocument();
 
         mockUseDocsContent.mockReturnValue({
             data: undefined,

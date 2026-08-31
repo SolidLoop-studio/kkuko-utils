@@ -1,6 +1,5 @@
 import type { ApplicationError } from '@/src/shared/application/application-error';
 import { err, ok, type Result } from '@/src/shared/application/result';
-import { browserSupabaseClient } from '@/src/shared/infrastructure/supabase/browser-client';
 import type {
     NotificationWriteCommandGateway,
     NotificationWriteValues,
@@ -77,11 +76,9 @@ const toPayload = (values: NotificationWriteValues): NotificationWritePayload =>
     is_modal: values.isModal,
 });
 
-/** 브라우저 Supabase client로 공지 행을 생성하고 낙관적 이미지 조건으로 수정합니다. */
+/** 주입된 Supabase client로 공지 행을 생성하고 낙관적 이미지 조건으로 수정합니다. */
 export class SupabaseNotificationWriteCommandGateway implements NotificationWriteCommandGateway {
-    constructor(
-        private readonly client: NotificationWriteClient = browserSupabaseClient as unknown as NotificationWriteClient,
-    ) {}
+    constructor(private readonly client: NotificationWriteClient) {}
 
     async create(values: NotificationWriteValues): Promise<Result<PersistedNotificationWriteResult>> {
         try {

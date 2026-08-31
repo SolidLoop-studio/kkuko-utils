@@ -31,6 +31,7 @@ const Header = () => {
         const result = await signOut();
         if (!result.ok) {
             setLogoutError({
+                component: 'Header',
                 ErrName: '인증 오류',
                 ErrMessage: result.error.message,
                 ErrStackRace: null,

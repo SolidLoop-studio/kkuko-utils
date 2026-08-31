@@ -36,6 +36,7 @@ const LoopWordExtractorApp = () => {
     const handleError = (error: unknown) => {
         if (error instanceof Error) {
             seterrorModalView({
+                component: 'Loop',
                 ErrName: error.name,
                 ErrMessage: error.message,
                 ErrStackRace: error.stack,
@@ -43,6 +44,7 @@ const LoopWordExtractorApp = () => {
             });
         } else {
             seterrorModalView({
+                component: 'Loop',
                 ErrName: null,
                 ErrMessage: null,
                 ErrStackRace: error as string,

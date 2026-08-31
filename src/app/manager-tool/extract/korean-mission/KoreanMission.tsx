@@ -66,6 +66,7 @@ const WordExtractorApp = () => {
     const handleError = (error: unknown) => {
         if (error instanceof Error) {
             seterrorModalView({
+                component: 'KoreanMission',
                 ErrName: error.name,
                 ErrMessage: error.message,
                 ErrStackRace: error.stack,
@@ -73,6 +74,7 @@ const WordExtractorApp = () => {
             });
         } else {
             seterrorModalView({
+                component: 'KoreanMission',
                 ErrName: null,
                 ErrMessage: null,
                 ErrStackRace: error as string,

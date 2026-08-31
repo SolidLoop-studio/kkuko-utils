@@ -238,6 +238,7 @@ const ReleaseNote = () => {
                 {internal.error && !isInternalErrorDismissed && (
                     <ErrorModal
                         error={{
+                            component: 'ReleaseNote',
                             ErrName: '릴리즈 노트 오류',
                             ErrMessage: internal.error.message,
                             ErrStackRace: '',

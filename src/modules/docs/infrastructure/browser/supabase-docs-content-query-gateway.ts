@@ -16,7 +16,7 @@ interface DocsContentQueryBuilder extends PromiseLike<QueryResponse> {
     select(columns: string): DocsContentQueryBuilder;
     eq(column: string, value: boolean | number | string): DocsContentQueryBuilder;
     in(column: string, values: string[]): DocsContentQueryBuilder;
-    ilike(column: string, value: string): DocsContentQueryBuilder;
+    or(filters: string): DocsContentQueryBuilder;
     neq(column: string, value: number): DocsContentQueryBuilder;
     gt(column: string, value: number): DocsContentQueryBuilder;
     maybeSingle(): DocsContentQueryBuilder;
@@ -233,12 +233,12 @@ export class SupabaseDocsContentQueryGateway implements DocsContentQueryGateway 
         const approvedWords = parseWords(wordsResponse);
         if (approvedWords === null) return undefined;
 
-        let pendingQuery = this.client.from('wait_words').select('word, requested_by, request_type');
-        if (metadata.duem) {
-            for (const candidate of reverDuemLaw(letter)) pendingQuery = pendingQuery.ilike('word', `%${candidate}`);
-        } else {
-            pendingQuery = pendingQuery.ilike('word', letter);
-        }
+        const pendingLetters = metadata.duem
+            ? [...new Set([...reverDuemLaw(letter), duemLaw(letter)])]
+            : [letter];
+        const pendingQuery = this.client.from('wait_words')
+            .select('word, requested_by, request_type')
+            .or(pendingLetters.map((candidate) => `word.ilike.%${candidate}`).join(','));
         const pendingWords = parsePendingWords(await pendingQuery);
         if (pendingWords === null) return undefined;
         return toContentWords(approvedWords, pendingWords.filter(({ word }) => word.length > 1));

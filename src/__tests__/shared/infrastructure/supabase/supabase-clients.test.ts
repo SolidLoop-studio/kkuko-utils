@@ -58,4 +58,23 @@ describe('Supabase client boundaries', () => {
             'service-key',
         );
     });
+
+    it('public factory는 쿠키 없이 anon key와 비지속 인증 설정을 사용한다', async () => {
+        const { createPublicSupabaseClient } = await import('@/src/shared/infrastructure/supabase/public-client');
+
+        createPublicSupabaseClient();
+
+        expect(createClient).toHaveBeenCalledWith(
+            'https://example.supabase.co',
+            'anon-key',
+            {
+                auth: {
+                    persistSession: false,
+                    autoRefreshToken: false,
+                    detectSessionInUrl: false,
+                },
+            },
+        );
+        expect(cookieStore.getAll).not.toHaveBeenCalled();
+    });
 });

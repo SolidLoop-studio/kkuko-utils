@@ -126,6 +126,7 @@ const ProfilePage = ({ userName }: { userName: string }) => {
     // 오류 처리 함수
     const makeError = (error: ApplicationError) => {
         seterrorModalView({
+            component: 'ProfilePage',
             ErrName: "nickname update",
             ErrMessage: error.message,
             ErrStackRace: error.code ?? "",
@@ -155,6 +156,7 @@ const ProfilePage = ({ userName }: { userName: string }) => {
     useEffect(() => {
         if (!summaryQuery.error) return;
         seterrorModalView({
+            component: 'ProfilePage',
             ErrName: "profile summary",
             ErrMessage: summaryQuery.error.message,
             ErrStackRace: "",
