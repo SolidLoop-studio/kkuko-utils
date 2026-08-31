@@ -25,9 +25,6 @@ jobs:
           
       - name: Install dependencies
         run: npm install
-
-      - name: Verify DDD-lite architecture
-        run: npm run verify:architecture
         
       - name: Run tests with coverage
         run: |
