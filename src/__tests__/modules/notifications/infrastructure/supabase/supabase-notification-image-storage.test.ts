@@ -9,7 +9,9 @@ import {
 } from '@/src/modules/notifications/infrastructure/supabase/supabase-notification-image-storage';
 
 const supabaseUrl = 'https://project.supabase.co';
-const publicUrl = `${supabaseUrl}/storage/v1/object/public/public_img/notifications/1777777777777_notice_image.png`;
+const imageUuid = '11111111-2222-4333-8444-555555555555';
+const imagePath = `notifications/${imageUuid}.png`;
+const publicUrl = `${supabaseUrl}/storage/v1/object/public/public_img/${imagePath}`;
 
 const uploadInfrastructureError = {
     ok: false,
@@ -107,19 +109,21 @@ const createFile = (
 const createStorage = (client: NotificationImageStorageClient) =>
     new SupabaseNotificationImageStorage(
         client,
-        () => 1_777_777_777_777,
+        () => imageUuid,
         supabaseUrl,
     );
 
 describe('SupabaseNotificationImageStorage upload and removal', () => {
-    it('uploads a structural file as a typed Blob at the deterministic managed path', async () => {
-        // Break caught: uploading raw structural files or changing the bucket, prefix, path, or cache policy.
+    it('uploads an image under a UUID path without exposing its original file name', async () => {
+        // Break caught: including a non-ASCII original file name in the Storage object key.
         const { client, calls } = createClient();
 
-        await expect(createStorage(client).upload(createFile())).resolves.toEqual({
+        await expect(createStorage(client).upload(
+            createFile('ChatGPT_Image_2026년_8월_12일_오전_01_20_04.png'),
+        )).resolves.toEqual({
             ok: true,
             value: {
-                path: 'notifications/1777777777777_notice_image.png',
+                path: imagePath,
                 publicUrl,
             },
         });
@@ -128,30 +132,25 @@ describe('SupabaseNotificationImageStorage upload and removal', () => {
         expect(calls[0]).toEqual(['from', 'public_img']);
         expect(calls[1]?.[0]).toBe('upload');
         if (calls[1]?.[0] !== 'upload') throw new Error('Expected an upload call');
-        expect(calls[1][1]).toBe('notifications/1777777777777_notice_image.png');
+        expect(calls[1][1]).toBe(imagePath);
         expect(calls[1][2]).toBeInstanceOf(Blob);
         expect(calls[1][2]).toMatchObject({ size: 4, type: 'image/png' });
         expect(calls[1][3]).toEqual({ cacheControl: '3600', upsert: false });
         expect(calls[2]).toEqual([
             'getPublicUrl',
-            'notifications/1777777777777_notice_image.png',
+            imagePath,
         ]);
     });
 
-    it.each([
-        ['forward slashes', 'folder/notice.png', 'folder_notice.png'],
-        ['backslashes', 'folder\\notice.png', 'folder_notice.png'],
-        ['control and whitespace runs', 'notice\u0000 \t\nimage.png', 'notice_image.png'],
-        ['an empty name', '', 'image'],
-    ])('sanitizes %s without allowing a caller-controlled object path', async (_label, name, safeName) => {
-        // Break caught: object names creating nested paths or producing nondeterministic unsafe names.
+    it('derives the extension from the MIME type rather than the original file name', async () => {
+        // Break caught: allowing a caller-controlled file name or extension into the object key.
         const { client, calls } = createClient();
 
-        await createStorage(client).upload(createFile(name));
+        await createStorage(client).upload(createFile('photo.jpg', 'image/png'));
 
         expect(calls[1]?.[0]).toBe('upload');
         if (calls[1]?.[0] !== 'upload') throw new Error('Expected an upload call');
-        expect(calls[1][1]).toBe(`notifications/1777777777777_${safeName}`);
+        expect(calls[1][1]).toBe(imagePath);
     });
 
     it('removes only the requested object path from the public image bucket', async () => {
@@ -236,7 +235,7 @@ describe('SupabaseNotificationImageStorage upload and removal', () => {
         ]);
         expect(calls[3]).toEqual([
             'remove',
-            ['notifications/1777777777777_notice_image.png'],
+            [imagePath],
         ]);
     });
 
@@ -289,7 +288,7 @@ describe('SupabaseNotificationImageStorage managed URL parsing', () => {
     it('returns the decoded managed object path for the exact origin, bucket, and prefix', () => {
         // Break caught: returning an encoded or caller-controlled URL instead of the Storage object path.
         expect(storage.managedPathFromPublicUrl(publicUrl)).toBe(
-            'notifications/1777777777777_notice_image.png',
+            imagePath,
         );
         expect(storage.managedPathFromPublicUrl(
             `${supabaseUrl}/storage/v1/object/public/public_img/notifications/notice%20image.png`,
@@ -320,7 +319,7 @@ describe('SupabaseNotificationImageStorage managed URL parsing', () => {
         // Break caught: accepting managed paths when same-origin authority cannot be established.
         const invalidConfiguration = new SupabaseNotificationImageStorage(
             client,
-            () => 1_777_777_777_777,
+            () => imageUuid,
             '',
         );
 
@@ -346,7 +345,7 @@ describe('SupabaseNotificationImageStorage managed URL parsing', () => {
         // Break caught: treating the opaque string origin "null" as proof of shared HTTP authority.
         const opaqueConfiguration = new SupabaseNotificationImageStorage(
             client,
-            () => 1_777_777_777_777,
+            () => imageUuid,
             configuredUrl,
         );
 

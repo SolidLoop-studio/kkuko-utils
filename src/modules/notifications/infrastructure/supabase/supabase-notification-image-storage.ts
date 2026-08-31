@@ -55,6 +55,18 @@ const hasSuccessfulUploadResponse = (value: unknown, expectedPath: string): bool
 const hasSuccessfulRemoveResponse = (value: unknown): boolean =>
     isRecord(value) && value.error === null && Array.isArray(value.data);
 
+const IMAGE_EXTENSION_BY_MIME_TYPE: Readonly<Record<string, string>> = {
+    'image/avif': '.avif',
+    'image/bmp': '.bmp',
+    'image/gif': '.gif',
+    'image/jpeg': '.jpg',
+    'image/png': '.png',
+    'image/svg+xml': '.svg',
+    'image/tiff': '.tiff',
+    'image/webp': '.webp',
+    'image/x-icon': '.ico',
+};
+
 const publicUrlFromResponse = (value: unknown): string | null => {
     if (!isRecord(value) || (value.error !== undefined && value.error !== null)) return null;
     if (!isRecord(value.data) || typeof value.data.publicUrl !== 'string') return null;
@@ -62,34 +74,8 @@ const publicUrlFromResponse = (value: unknown): string | null => {
     return value.data.publicUrl.trim().length > 0 ? value.data.publicUrl : null;
 };
 
-const isUnsafeFileNameCharacter = (character: string): boolean => {
-    const codePoint = character.codePointAt(0);
-
-    return character === '/'
-        || character === '\\'
-        || /^\s$/u.test(character)
-        || codePoint === undefined
-        || codePoint <= 31
-        || codePoint === 127;
-};
-
-const safeFileName = (name: string): string => {
-    let sanitized = '';
-    let isInUnsafeRun = false;
-
-    for (const character of name) {
-        if (isUnsafeFileNameCharacter(character)) {
-            if (!isInUnsafeRun) sanitized += '_';
-            isInUnsafeRun = true;
-            continue;
-        }
-
-        sanitized += character;
-        isInUnsafeRun = false;
-    }
-
-    return sanitized || 'image';
-};
+const imageExtensionFromMimeType = (mimeType: string): string =>
+    IMAGE_EXTENSION_BY_MIME_TYPE[mimeType.toLowerCase()] ?? '';
 
 const rawPathnameFromAbsoluteUrl = (publicUrl: string): string | null => {
     const match = /^[a-z][a-z\d+.-]*:\/\/[^/?#]*(\/[^?#]*)?(?:[?#].*)?$/iu.exec(publicUrl);
@@ -113,12 +99,12 @@ const httpUrlFromString = (url: string): URL | null => {
 export class SupabaseNotificationImageStorage implements NotificationImageStorage {
     constructor(
         private readonly client: NotificationImageStorageClient,
-        private readonly now: () => number = Date.now,
+        private readonly createUuid: () => string = () => globalThis.crypto.randomUUID(),
         private readonly supabaseUrl: string = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
     ) {}
 
     async upload(file: NotificationImageFile): Promise<Result<StoredNotificationImage>> {
-        const path = `${OBJECT_PREFIX}${this.now()}_${safeFileName(file.name)}`;
+        const path = `${OBJECT_PREFIX}${this.createUuid()}${imageExtensionFromMimeType(file.type)}`;
 
         try {
             const contents = await file.arrayBuffer();
