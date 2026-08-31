@@ -1,6 +1,15 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import { StrictMode } from 'react';
 
 const mockRecord = jest.fn();
+
+const createDeferred = <T,>() => {
+    let resolve!: (value: T) => void;
+    const promise = new Promise<T>((nextResolve) => {
+        resolve = nextResolve;
+    });
+    return { promise, resolve };
+};
 
 jest.mock('../../../modules/notifications/presentation/use-record-notification-view', () => ({
     useRecordNotificationView: () => ({ record: mockRecord }),
@@ -46,5 +55,23 @@ describe('NotificationViewCount', () => {
 
         await waitFor(() => expect(mockRecord).toHaveBeenCalledTimes(1));
         expect(screen.getByText('40')).toBeInTheDocument();
+    });
+
+    it('displays a deferred successful count after StrictMode setup-cleanup-setup without a second record', async () => {
+        const deferred = createDeferred<ReturnType<typeof ok<number>>>();
+        mockRecord.mockReturnValue(deferred.promise);
+        render(
+            <StrictMode>
+                <NotificationViewCount id={17} initialViews={40} />
+            </StrictMode>,
+        );
+
+        await waitFor(() => expect(mockRecord).toHaveBeenCalledTimes(1));
+        await act(async () => {
+            deferred.resolve(ok(41));
+            await deferred.promise;
+        });
+
+        expect(screen.getByText('41')).toBeInTheDocument();
     });
 });

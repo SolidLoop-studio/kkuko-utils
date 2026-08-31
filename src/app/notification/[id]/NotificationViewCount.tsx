@@ -14,22 +14,25 @@ export default function NotificationViewCount({ id, initialViews }: Notification
     const { record } = useRecordNotificationView();
     const [views, setViews] = useState(initialViews);
     const recordedIdRef = useRef<number | null>(null);
+    const isMountedRef = useRef(false);
 
     useEffect(() => {
         setViews(initialViews);
     }, [id, initialViews]);
 
     useEffect(() => {
-        if (recordedIdRef.current === id) return;
-        recordedIdRef.current = id;
-        let isCurrent = true;
-
-        void record(id).then((result) => {
-            if (isCurrent && result.ok) setViews(result.value);
-        });
+        isMountedRef.current = true;
+        if (recordedIdRef.current !== id) {
+            recordedIdRef.current = id;
+            void record(id).then((result) => {
+                if (isMountedRef.current && recordedIdRef.current === id && result.ok) {
+                    setViews(result.value);
+                }
+            });
+        }
 
         return () => {
-            isCurrent = false;
+            isMountedRef.current = false;
         };
     }, [id, record]);
 

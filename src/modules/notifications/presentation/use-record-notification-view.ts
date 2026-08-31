@@ -1,6 +1,7 @@
 'use client';
 
 import { recordNotificationViewAction } from '@/src/app/notification/actions';
+import { useCallback } from 'react';
 import { err, type Result } from '@/src/shared/application/result';
 
 const recordViewInfrastructureError = () => err<number>({
@@ -11,12 +12,14 @@ const recordViewInfrastructureError = () => err<number>({
 /** 공지사항 상세 조회 수 기록 Server Action을 안정적인 Result 계약으로 제공합니다. */
 export const useRecordNotificationView = (): {
     record(id: number): Promise<Result<number>>;
-} => ({
-    record: async (id) => {
+} => {
+    const record = useCallback(async (id: number) => {
         try {
             return await recordNotificationViewAction(id);
         } catch {
             return recordViewInfrastructureError();
         }
-    },
-});
+    }, []);
+
+    return { record };
+};
