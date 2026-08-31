@@ -11,13 +11,6 @@ const customJestConfig = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
-  transform: {
-    '^.+\\.(ts|tsx)$': 'babel-jest',
-    '^.+\\.mjs$': 'babel-jest',
-  },
-  transformIgnorePatterns: [
-    'node_modules/(?!(lucide-react)/)', // lucide-react는 변환 예외
-  ],
   collectCoverageFrom: [
     'src/**/*.{js,jsx,ts,tsx}',
     '!src/**/_*.{js,jsx,ts,tsx}',
