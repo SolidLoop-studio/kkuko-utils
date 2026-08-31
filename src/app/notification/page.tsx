@@ -1,4 +1,4 @@
-import { createServerNotificationServices } from "@/src/modules/notifications/infrastructure/server/server-notification-services";
+import { createPublicNotificationServices } from "@/src/modules/notifications/infrastructure/server/server-notification-services";
 import Notification from "./Notification";
 import { type Metadata } from "next";
 
@@ -14,7 +14,7 @@ export const revalidate = 60;
  * 서버 사이드에서 데이터를 가져와 Notification 클라이언트 컴포넌트에 전달합니다.
  */
 export default async function NotificationPage() {
-    const { notificationListQueryService } = await createServerNotificationServices();
+    const { notificationListQueryService } = createPublicNotificationServices();
     const result = await notificationListQueryService.get();
 
     if (!result.ok) {

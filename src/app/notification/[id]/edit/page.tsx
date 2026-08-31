@@ -1,6 +1,6 @@
 import ErrorPage from "@/src/app/components/ErrorPage";
 import { parseNotificationRouteId } from "@/src/modules/notifications/application/parse-notification-route-id";
-import { getServerNotificationDetail } from "@/src/modules/notifications/infrastructure/server/server-notification-services";
+import { getFreshServerNotificationDetail } from "@/src/modules/notifications/infrastructure/server/server-notification-services";
 import NotificationWrite from "../../write/NotificationWrite";
 import { notFound } from "next/navigation";
 import { type Metadata } from "next";
@@ -17,7 +17,7 @@ export default async function NotificationEditPage({ params }: PageProps) {
     const { id } = await params;
     const notificationId = parseNotificationRouteId(id);
     if (notificationId === null) notFound();
-    const result = await getServerNotificationDetail(notificationId);
+    const result = await getFreshServerNotificationDetail(notificationId);
 
     if (!result.ok) {
         if (result.error.kind === 'validation' || result.error.kind === 'not-found') notFound();
