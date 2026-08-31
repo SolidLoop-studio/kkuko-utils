@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
+import { adminDashboardQueryKeys } from '../../admin-dashboard/presentation/admin-dashboard-query-keys';
 import type { ApplicationError } from '../../../shared/application/application-error';
 import { err, type Result } from '../../../shared/application/result';
 import type { RawWordDeletionEntry } from '../domain/word-deletion';
@@ -90,7 +91,7 @@ export function useWordDeletion(service?: WordDeletionService) {
             setError(null);
             setResult(null);
         },
-        onSuccess: (actionResult) => {
+        onSuccess: async (actionResult, action) => {
             if (!actionResult.ok) {
                 setProgress(null);
                 setError(actionResult.error);
@@ -98,6 +99,11 @@ export function useWordDeletion(service?: WordDeletionService) {
             }
 
             if (actionResult.value !== undefined) setResult(actionResult.value);
+            if (action.type !== 'cancel') {
+                await queryClient.invalidateQueries({
+                    queryKey: adminDashboardQueryKeys.summary(),
+                });
+            }
         },
         onSettled: async () => {
             await queryClient.invalidateQueries({ queryKey: pendingJobsQueryKey });

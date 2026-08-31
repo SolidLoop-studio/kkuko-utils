@@ -89,6 +89,44 @@ describe('useWordDeletion', () => {
         expect(result.current.error).toBeNull();
     });
 
+    it('invalidates the admin dashboard summary only after successful word deletion', async () => {
+        // Break caught: 대량 단어 삭제 직후 관리자 홈이 캐시된 이전 총 단어 수를 표시한다.
+        const service = createService();
+        const queryClient = new QueryClient({
+            defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+        });
+        const dashboardSummaryKey = ['admin-dashboard', 'summary'] as const;
+        queryClient.setQueryData(dashboardSummaryKey, {
+            totalWords: 10,
+            pendingWordChanges: 0,
+        });
+        const { result } = renderHook(() => useWordDeletion(service), {
+            wrapper: createWrapper(queryClient),
+        });
+
+        await act(async () => result.current.start(entries));
+
+        expect(queryClient.getQueryState(dashboardSummaryKey)?.isInvalidated).toBe(true);
+
+        queryClient.setQueryData(dashboardSummaryKey, {
+            totalWords: 9,
+            pendingWordChanges: 0,
+        });
+        await act(async () => result.current.resume('operation-1'));
+        expect(queryClient.getQueryState(dashboardSummaryKey)?.isInvalidated).toBe(true);
+
+        queryClient.setQueryData(dashboardSummaryKey, {
+            totalWords: 9,
+            pendingWordChanges: 0,
+        });
+        service.start.mockResolvedValue(err({ kind: 'infrastructure', message: 'batch failed' }));
+        await act(async () => result.current.start(entries));
+        expect(queryClient.getQueryState(dashboardSummaryKey)?.isInvalidated).toBe(false);
+
+        await act(async () => result.current.cancel('operation-1'));
+        expect(queryClient.getQueryState(dashboardSummaryKey)?.isInvalidated).toBe(false);
+    });
+
     it('exposes an ApplicationError without changing its kind or code', async () => {
         const service = createService();
         const applicationError: ApplicationError = {

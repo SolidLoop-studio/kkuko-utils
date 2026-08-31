@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { Database } from './src/app/types/database.types';
+import { Database } from './app/types/database.types';
 
 export async function middleware(request: NextRequest) {
     const isProtectedRoute = request.nextUrl.pathname.startsWith('/admin')
@@ -41,7 +41,7 @@ export async function middleware(request: NextRequest) {
 
     const {data, error} = await supabase.from('users').select('role').eq('id', user.id).maybeSingle();
 
-    if ((!data || error || !['r4','admin'].includes(data.role))){
+    if (!data || error || data.role !== 'admin'){
         return NextResponse.rewrite(new URL('/not-found', request.url));
     }
     return supabaseResponse;
