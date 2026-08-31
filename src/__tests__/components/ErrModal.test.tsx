@@ -6,6 +6,7 @@ jest.unmock('../../app/components/ErrModal');
 import ErrorModal from '@/src/app/components/ErrModal';
 
 const error: ErrorMessage = {
+    component: 'ArrangeHome',
     ErrName: 'FileReaderError',
     ErrMessage: '파일을 읽지 못했습니다.',
     ErrStackRace: 'Error: 파일을 읽지 못했습니다.\n    at FileReader.read',
@@ -63,7 +64,7 @@ describe('ErrorModal', () => {
                     errorCode: 'FileReaderError',
                     severity: 'ERROR',
                     url: '/manager-tool/arrange',
-                    component: 'ErrModal',
+                    component: 'ArrangeHome',
                     browser: 'Kkuko Test Browser',
                 }),
             },

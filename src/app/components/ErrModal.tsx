@@ -41,7 +41,7 @@ const ErrorModal = ({ error, onClose }: ErrorModalProps) => {
           ...(error.ErrName ? { errorCode: error.ErrName } : {}),
           severity: "ERROR",
           url: error.location || window.location.pathname,
-          component: "ErrModal",
+          component: error.component,
           browser: navigator.userAgent,
         }),
       });

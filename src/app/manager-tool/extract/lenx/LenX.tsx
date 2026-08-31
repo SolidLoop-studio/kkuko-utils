@@ -32,6 +32,7 @@ const WordExtractorApp = () => {
     const handleError = (error: unknown) => {
         if (error instanceof Error) {
             seterrorModalView({
+                component: 'LenX',
                 ErrName: error.name,
                 ErrMessage: error.message,
                 ErrStackRace: error.stack,
@@ -39,6 +40,7 @@ const WordExtractorApp = () => {
             });
         } else {
             seterrorModalView({
+                component: 'LenX',
                 ErrName: null,
                 ErrMessage: null,
                 ErrStackRace: error as string,

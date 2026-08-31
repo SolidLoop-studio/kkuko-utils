@@ -55,6 +55,7 @@ const applicationErrorMessage = (error: ApplicationError): string => {
 };
 
 const errorMessage = (name: string, message: string): ErrorMessage => ({
+    component: 'WordApprovalPanel',
     ErrName: name,
     ErrMessage: message,
     ErrStackRace: null,

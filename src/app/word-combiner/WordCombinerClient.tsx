@@ -69,6 +69,7 @@ export default function WordCombinerClient({ prop }: { prop: WordCombinerWithDat
         } catch (err: unknown) {
             if (err instanceof Error) {
                 seterrorModalView({
+                    component: 'WordCombinerClient',
                     ErrName: err.name,
                     ErrMessage: err.message,
                     ErrStackRace: err.stack,
@@ -76,6 +77,7 @@ export default function WordCombinerClient({ prop }: { prop: WordCombinerWithDat
                 });
             } else {
                 seterrorModalView({
+                    component: 'WordCombinerClient',
                     ErrName: null,
                     ErrMessage: null,
                     ErrStackRace: err as string,
@@ -99,6 +101,7 @@ export default function WordCombinerClient({ prop }: { prop: WordCombinerWithDat
         } catch (err: unknown) {
             if (err instanceof Error) {
                 seterrorModalView({
+                    component: 'WordCombinerClient',
                     ErrName: err.name,
                     ErrMessage: err.message,
                     ErrStackRace: err.stack,
@@ -106,6 +109,7 @@ export default function WordCombinerClient({ prop }: { prop: WordCombinerWithDat
                 });
             } else {
                 seterrorModalView({
+                    component: 'WordCombinerClient',
                     ErrName: null,
                     ErrMessage: null,
                     ErrStackRace: err as string,
@@ -131,6 +135,7 @@ export default function WordCombinerClient({ prop }: { prop: WordCombinerWithDat
         } catch (err: unknown) {
             if (err instanceof Error) {
                 seterrorModalView({
+                    component: 'WordCombinerClient',
                     ErrName: err.name,
                     ErrMessage: err.message,
                     ErrStackRace: err.stack,
@@ -138,6 +143,7 @@ export default function WordCombinerClient({ prop }: { prop: WordCombinerWithDat
                 });
             } else {
                 seterrorModalView({
+                    component: 'WordCombinerClient',
                     ErrName: null,
                     ErrMessage: null,
                     ErrStackRace: err as string,
@@ -163,6 +169,7 @@ export default function WordCombinerClient({ prop }: { prop: WordCombinerWithDat
         } catch (err: unknown) {
             if (err instanceof Error) {
                 seterrorModalView({
+                    component: 'WordCombinerClient',
                     ErrName: err.name,
                     ErrMessage: err.message,
                     ErrStackRace: err.stack,
@@ -170,6 +177,7 @@ export default function WordCombinerClient({ prop }: { prop: WordCombinerWithDat
                 });
             } else {
                 seterrorModalView({
+                    component: 'WordCombinerClient',
                     ErrName: null,
                     ErrMessage: null,
                     ErrStackRace: err as string,

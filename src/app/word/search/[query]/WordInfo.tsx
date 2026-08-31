@@ -83,6 +83,7 @@ const WordInfo = ({ wordInfo }: { wordInfo: WordInfoProps }) => {
 
     const makeError = (error: ApplicationError, inputValue: string) => {
         setErrorModalView({
+            component: 'WordInfo',
             ErrMessage: error.message,
             ErrName: `ApplicationError:${error.kind}`,
             ErrStackRace: error.code ?? '',
@@ -107,6 +108,7 @@ const WordInfo = ({ wordInfo }: { wordInfo: WordInfoProps }) => {
     useEffect(() => {
         if (!themesError) return;
         setErrorModalView({
+            component: 'WordInfo',
             ErrMessage: "주제 정보를 불러오는 중 오류가 발생했습니다.",
             ErrName: "ThemeLoadError",
             ErrStackRace: "",

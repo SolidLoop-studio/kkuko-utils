@@ -19,6 +19,7 @@ export default function NotificationWrite({ notification }: NotificationWritePro
     const user = useSelector((state: RootState) => state.user);
     const [error, setError] = useState<ApplicationError | null>(null);
     const modalError: ErrorMessage | null = error === null ? null : {
+        component: 'NotificationWrite',
         ErrName: "Notification Error",
         ErrMessage: error.message,
         ErrStackRace: null,

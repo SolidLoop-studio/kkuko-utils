@@ -29,6 +29,7 @@ import { ArrowLeft, Filter, Trash2 } from 'lucide-react';
 import ErrorModal from '@/src/app/components/ErrModal';
 
 type ErrorMessage = {
+    component: string;
     ErrName: string;
     ErrMessage: string;
     ErrStackRace: string;
@@ -48,6 +49,7 @@ interface AdminLogsHomeProps {
 type AdminLogsTab = 'word_logs' | 'docs_logs';
 
 const stableDeleteError = (): ErrorMessage => ({
+    component: 'AdminLogsHome',
     ErrName: '관리자 로그 삭제 오류',
     ErrMessage: '선택한 로그를 삭제하는 중 오류가 발생했습니다.',
     ErrStackRace: '',
@@ -55,6 +57,7 @@ const stableDeleteError = (): ErrorMessage => ({
 });
 
 const noSelectionError = (): ErrorMessage => ({
+    component: 'AdminLogsHome',
     ErrName: '관리자 로그 삭제 오류',
     ErrMessage: '선택된 로그가 없습니다.',
     ErrStackRace: '',
@@ -218,6 +221,7 @@ export default function AdminLogsHome({ allDocs }: AdminLogsHomeProps) {
     const queryError = error === null || isQueryErrorDismissed
         ? null
         : {
+            component: 'AdminLogsHome',
             ErrName: '관리자 로그 조회 오류',
             ErrMessage: error.message,
             ErrStackRace: '',

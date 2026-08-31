@@ -17,6 +17,7 @@ import type { ApplicationError } from "@/src/shared/application/application-erro
 import { useAuthSession, useNicknameRegistration } from "@/src/modules/identity";
 
 const toErrorMessage = (error: ApplicationError): ErrorMessage => ({
+    component: "Auth",
     ErrName: "인증 오류",
     ErrMessage: error.message,
     ErrStackRace: null,

@@ -49,6 +49,7 @@ export default function WordAddHome(){
 
     const makeApplicationError = (applicationError: ApplicationError) => {
         setError({
+            component: 'WordAddHome',
             ErrName: `ApplicationError:${applicationError.kind}`,
             ErrMessage: applicationError.message,
             ErrStackRace: "",

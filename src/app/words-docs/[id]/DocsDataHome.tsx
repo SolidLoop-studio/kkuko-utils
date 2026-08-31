@@ -330,6 +330,7 @@ const DocsDataHome = ({
 
     const showFavoriteError = (error: ApplicationError) => {
         setErrorModalView({
+            component: 'DocsDataHome',
             ErrName: 'DocsFavoriteError',
             ErrMessage: error.message,
             ErrStackRace: null,
@@ -339,6 +340,7 @@ const DocsDataHome = ({
 
     const showTargetRefreshError = () => {
         setErrorModalView({
+            component: 'DocsDataHome',
             ErrName: "DocsWordTargetRefreshError",
             ErrMessage: DOCS_WORD_TARGET_REFRESH_ERROR_MESSAGE,
             ErrStackRace: null,

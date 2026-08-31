@@ -46,6 +46,7 @@ export default function LogPage() {
     const queryError = error === null || isQueryErrorDismissed
         ? null
         : {
+            component: 'LogsHome',
             ErrName: '로그 조회 오류',
             ErrMessage: error.message,
             ErrStackRace: '',

@@ -145,7 +145,7 @@ const ToolSector = ({ fileContent, setFileContent, setLineCount, setErrorModalVi
         fileContent: string,
         setFileContent: React.Dispatch<React.SetStateAction<string>>,
         setLineCount: React.Dispatch<React.SetStateAction<number>>,
-        setErrorModalView: React.Dispatch<React.SetStateAction<ErrorMessage | null>>
+        setErrorModalView: (error: Omit<ErrorMessage, 'component'>) => void
     }
 ) => {
     const [undoStack, setUndoStack] = useState<string[]>([]);
@@ -1083,6 +1083,7 @@ const ArrangeHome = () => {
                     } catch (err) {
                         if (err instanceof Error) {
                             seterrorModalView({
+                                component: 'ArrangeHome',
                                 ErrName: err.name,
                                 ErrMessage: err.message,
                                 ErrStackRace: err.stack,
@@ -1091,6 +1092,7 @@ const ArrangeHome = () => {
 
                         } else {
                             seterrorModalView({
+                                component: 'ArrangeHome',
                                 ErrName: null,
                                 ErrMessage: null,
                                 ErrStackRace: err as string,
@@ -1135,7 +1137,7 @@ const ArrangeHome = () => {
                     fileContent={fileContent}
                     setFileContent={setFileContent}
                     setLineCount={setLineCount}
-                    setErrorModalView={seterrorModalView}
+                    setErrorModalView={(error) => seterrorModalView({ component: 'ToolSector', ...error })}
                 />
             </div>
 

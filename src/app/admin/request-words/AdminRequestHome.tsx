@@ -61,6 +61,7 @@ type WordRequest = {
 }
 
 const createErrorMessage = (name: string, message: string): ErrorMessage => ({
+    component: 'AdminRequestHome',
     ErrName: name,
     ErrMessage: message,
     ErrStackRace: null,

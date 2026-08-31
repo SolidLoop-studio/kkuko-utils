@@ -33,6 +33,7 @@ interface FileInfo {
 }
 
 interface ErrorMessage {
+    component: string;
     ErrName: string | null;
     ErrMessage: string | null;
     ErrStackRace: string | undefined;
@@ -105,6 +106,7 @@ export default function WordsAddPage() {
     useEffect(() => {
         if (!themesError) return;
         seterrorModalView({
+            component: 'WordsAddHome',
             ErrName: "ThemeLoadError",
             ErrMessage: "주제 정보를 불러오는 중 오류가 발생했습니다.",
             ErrStackRace: "",
@@ -382,6 +384,7 @@ export default function WordsAddPage() {
         } catch (err) {
             if (err instanceof Error) {
                 seterrorModalView({
+                    component: 'WordsAddHome',
                     ErrName: err.name,
                     ErrMessage: err.message,
                     ErrStackRace: err.stack,
@@ -389,6 +392,7 @@ export default function WordsAddPage() {
                 });
             } else {
                 seterrorModalView({
+                    component: 'WordsAddHome',
                     ErrName: null,
                     ErrMessage: null,
                     ErrStackRace: err as string,
@@ -532,6 +536,7 @@ export default function WordsAddPage() {
             );
             if (!result.ok) {
                 seterrorModalView({
+                    component: 'WordsAddHome',
                     ErrName: `ApplicationError:${result.error.kind}`,
                     ErrMessage: result.error.message,
                     ErrStackRace: result.error.code,

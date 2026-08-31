@@ -218,6 +218,7 @@ const Table = ({
     const makeError = (error: ApplicationError) => {
         closeWork();
         seterrorModalView({
+            component: 'Table',
             ErrName: 'UserWordRequestError',
             ErrMessage: error.message,
             ErrStackRace: error.code,
@@ -246,6 +247,7 @@ const Table = ({
 
     const showAdminError = useCallback((error: ApplicationError) => {
         seterrorModalView({
+            component: 'Table',
             ErrName: "DocsWordModerationError",
             ErrMessage: getAdminErrorMessage(error),
             ErrStackRace: null,

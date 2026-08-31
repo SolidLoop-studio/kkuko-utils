@@ -31,6 +31,7 @@ const WordExtractorApp = () => {
     const handleError = (error: unknown) => {
         if (error instanceof Error) {
             seterrorModalView({
+                component: 'EnglishMission',
                 ErrName: error.name,
                 ErrMessage: error.message,
                 ErrStackRace: error.stack,
@@ -38,6 +39,7 @@ const WordExtractorApp = () => {
             });
         } else {
             seterrorModalView({
+                component: 'EnglishMission',
                 ErrName: null,
                 ErrMessage: null,
                 ErrStackRace: error as string,
@@ -76,6 +78,7 @@ const WordExtractorApp = () => {
             setLoading(false);
             if (err instanceof Error) {
                 seterrorModalView({
+                    component: 'EnglishMission',
                     ErrName: err.name,
                     ErrMessage: err.message,
                     ErrStackRace: err.stack,
@@ -83,6 +86,7 @@ const WordExtractorApp = () => {
                 });
             } else {
                 seterrorModalView({
+                    component: 'EnglishMission',
                     ErrName: null,
                     ErrMessage: null,
                     ErrStackRace: err as string,

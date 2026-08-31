@@ -44,6 +44,7 @@ export default function NotificationDetail({ notification }: NotificationDetailP
         setIsDeleteModalOpen(false);
         if (!result.ok) {
             setError({
+                component: 'NotificationDetail',
                 ErrName: "Notification Delete Error",
                 ErrMessage: result.error.message,
                 ErrStackRace: null,
