@@ -8,4 +8,5 @@ export interface NotificationDetailProjection {
     endsAt: string;
     isImportant: boolean;
     isModal: boolean;
+    views: number;
 }

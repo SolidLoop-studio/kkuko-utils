@@ -59,6 +59,7 @@ const notification: NotificationDetailProjection = {
     endsAt: '2026-08-30T00:00:00.000Z',
     isImportant: true,
     isModal: true,
+    views: 40,
 };
 
 const getFileInput = (container: HTMLElement): HTMLInputElement => {

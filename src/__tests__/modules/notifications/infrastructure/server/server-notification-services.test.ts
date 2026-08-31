@@ -62,6 +62,7 @@ describe('server notification detail composition', () => {
                     end_at: '2026-08-30T00:00:00.000Z',
                     is_important: false,
                     is_modal: false,
+                    views: 40,
                 },
                 error: null,
             }),

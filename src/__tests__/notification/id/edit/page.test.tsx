@@ -38,6 +38,7 @@ const projection: NotificationDetailProjection = {
     endsAt: '2026-08-30T00:00:00.000Z',
     isImportant: true,
     isModal: false,
+    views: 40,
 };
 
 describe('NotificationEditPage', () => {
