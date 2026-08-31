@@ -1,3 +1,11 @@
+# [v1.12.0](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.11.0...v1.12.0) - 2026-08-31
+
+## fix
+- ([f7ebba1](https://github.com/SolidLoop-studio/kkuko-utils/commit/f7ebba1)) - 미들웨어 버그, 관리자 캐시 무효화누락 수정
+
+## feat
+- ([fc974f2](https://github.com/SolidLoop-studio/kkuko-utils/commit/fc974f2)) - add exact word letter statistics
+
 # [v1.11.0](https://github.com/SolidLoop-studio/kkuko-utils/compare/v1.10.0...v1.11.0) - 2026-08-30
 
 ## fix
