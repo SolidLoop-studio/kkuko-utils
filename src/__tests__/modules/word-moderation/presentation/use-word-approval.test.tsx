@@ -123,14 +123,12 @@ class FakeWordApprovalService implements WordApprovalService {
     }
 }
 
-const createWrapper = () => {
-    const queryClient = new QueryClient({
-        defaultOptions: {
-            queries: { retry: false },
-            mutations: { retry: false },
-        },
-    });
-
+const createWrapper = (queryClient = new QueryClient({
+    defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+    },
+})) => {
     return ({ children }: PropsWithChildren) => (
         <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
@@ -194,6 +192,55 @@ describe('useWordApproval', () => {
             });
             expect(result.current.pendingJobs).toEqual([]);
         });
+    });
+
+    it('단어 승인 성공 후에만 관리자 대시보드 요약을 무효화한다', async () => {
+        // Break caught: 대량 단어 추가 직후 관리자 홈이 캐시된 이전 총 단어 수를 표시한다.
+        const service = new FakeWordApprovalService();
+        const queryClient = new QueryClient({
+            defaultOptions: {
+                queries: { retry: false },
+                mutations: { retry: false },
+            },
+        });
+        const dashboardSummaryKey = ['admin-dashboard', 'summary'] as const;
+        queryClient.setQueryData(dashboardSummaryKey, {
+            totalWords: 10,
+            pendingWordChanges: 0,
+        });
+        const { result } = renderHook(() => useWordApproval(service), {
+            wrapper: createWrapper(queryClient),
+        });
+
+        await act(async () => {
+            await result.current.start(rawEntries);
+        });
+
+        expect(queryClient.getQueryState(dashboardSummaryKey)?.isInvalidated).toBe(true);
+
+        queryClient.setQueryData(dashboardSummaryKey, {
+            totalWords: 12,
+            pendingWordChanges: 0,
+        });
+        await act(async () => {
+            await result.current.resume('operation-1');
+        });
+        expect(queryClient.getQueryState(dashboardSummaryKey)?.isInvalidated).toBe(true);
+
+        queryClient.setQueryData(dashboardSummaryKey, {
+            totalWords: 12,
+            pendingWordChanges: 0,
+        });
+        service.startFailure = { kind: 'infrastructure', message: 'batch failed' };
+        await act(async () => {
+            await result.current.start(rawEntries);
+        });
+        expect(queryClient.getQueryState(dashboardSummaryKey)?.isInvalidated).toBe(false);
+
+        await act(async () => {
+            await result.current.cancel('operation-1');
+        });
+        expect(queryClient.getQueryState(dashboardSummaryKey)?.isInvalidated).toBe(false);
     });
 
     it('부분 progress 뒤 실패한 시작 작업은 progress를 지우고 오류를 노출한다', async () => {

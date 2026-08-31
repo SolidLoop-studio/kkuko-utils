@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
+import { adminDashboardQueryKeys } from '../../admin-dashboard/presentation/admin-dashboard-query-keys';
 import type { ApplicationError } from '../../../shared/application/application-error';
 import { err, type Result } from '../../../shared/application/result';
 import type { RawWordApprovalEntry } from '../domain/word-approval';
@@ -83,10 +84,17 @@ export function useWordApproval(service?: WordApprovalService) {
             setProgress(null);
             setError(null);
         },
-        onSuccess: (result) => {
+        onSuccess: async (result, action) => {
             if (!result.ok) {
                 setProgress(null);
                 setError(result.error);
+                return;
+            }
+
+            if (action.type !== 'cancel') {
+                await queryClient.invalidateQueries({
+                    queryKey: adminDashboardQueryKeys.summary(),
+                });
             }
         },
         onSettled: async () => {
