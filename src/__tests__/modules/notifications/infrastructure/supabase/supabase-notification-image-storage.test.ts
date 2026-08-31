@@ -1,6 +1,4 @@
-jest.mock('../../../../../shared/infrastructure/supabase/browser-client', () => ({
-    browserSupabaseClient: { storage: { from: jest.fn() } },
-}));
+import { readFileSync } from 'node:fs';
 
 import type { NotificationImageFile } from '@/src/modules/notifications/application/notification-write-command-types';
 import {
@@ -8,7 +6,7 @@ import {
     type NotificationImageStorageBucket,
     type NotificationImageStorageClient,
     type NotificationImageUploadOptions,
-} from '@/src/modules/notifications/infrastructure/browser/supabase-notification-image-storage';
+} from '@/src/modules/notifications/infrastructure/supabase/supabase-notification-image-storage';
 
 const supabaseUrl = 'https://project.supabase.co';
 const publicUrl = `${supabaseUrl}/storage/v1/object/public/public_img/notifications/1777777777777_notice_image.png`;
@@ -354,4 +352,13 @@ describe('SupabaseNotificationImageStorage managed URL parsing', () => {
 
         expect(opaqueConfiguration.managedPathFromPublicUrl(candidateUrl)).toBeNull();
     });
+});
+
+it('is environment-neutral', () => {
+    const source = readFileSync(
+        'src/modules/notifications/infrastructure/supabase/supabase-notification-image-storage.ts',
+        'utf8',
+    );
+
+    expect(source).not.toMatch(/browser-client|server-client|next\/headers|next\/cache/u);
 });
