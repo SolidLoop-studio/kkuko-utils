@@ -1,7 +1,9 @@
 import type { Result } from '@/src/shared/application/result';
 import type {
+    AppErrorLog,
     CrawlerHealthResponse,
     CreateItemRequest,
+    DeleteAppErrorLogsResponse,
     Item,
     ItemsResponse,
     RestartCrawlerResponse,
@@ -29,4 +31,6 @@ export interface AdminApiServerGateway {
     updateUserLastOnlineHiddenStatus(id: string, isLastOnlineHidden: boolean): Promise<Result<User>>;
     fetchApiServerLogs(date?: string): Promise<Result<string>>;
     fetchCrawlerLogs(date?: string): Promise<Result<string>>;
+    fetchAppErrorLogs(limit?: number): Promise<Result<AppErrorLog[]>>;
+    deleteAppErrorLogs(ids: string[]): Promise<Result<DeleteAppErrorLogsResponse>>;
 }

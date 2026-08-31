@@ -27,6 +27,28 @@ export interface User {
 
 export interface UsersResponse { items: User[]; totalCount: number; currentPage: number; totalPages: number; }
 
+export type AppErrorSeverity = 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
+
+export interface AppErrorLog {
+    id: string;
+    createdAt: string;
+    message: string;
+    severity: AppErrorSeverity;
+    stack: string | null;
+    errorCode: string | null;
+    url: string | null;
+    component: string | null;
+    browser: string | null;
+    os: string | null;
+    userId: string | null;
+    ipAddress: string | null;
+}
+
+export interface DeleteAppErrorLogsResponse {
+    message: string;
+    deletedCount: number;
+}
+
 const isRecord = (value: unknown): value is Record<string, unknown> => (
     typeof value === 'object' && value !== null && !Array.isArray(value)
 );
@@ -125,6 +147,44 @@ export const isUsersResponse = (value: unknown): value is UsersResponse => (
     && isNonNegativeFiniteNumber(value.totalCount)
     && isNonNegativeFiniteNumber(value.currentPage)
     && isNonNegativeFiniteNumber(value.totalPages)
+);
+
+const isNullableString = (value: unknown): value is string | null => (
+    value === null || typeof value === 'string'
+);
+
+const isValidTimestamp = (value: unknown): value is string => (
+    isNonBlankString(value) && !Number.isNaN(Date.parse(value))
+);
+
+export const isAppErrorLog = (value: unknown): value is AppErrorLog => (
+    isRecord(value)
+    && isNonBlankString(value.id)
+    && isValidTimestamp(value.createdAt)
+    && typeof value.message === 'string'
+    && ['INFO', 'WARN', 'ERROR', 'FATAL'].includes(String(value.severity))
+    && isNullableString(value.stack)
+    && isNullableString(value.errorCode)
+    && isNullableString(value.url)
+    && isNullableString(value.component)
+    && isNullableString(value.browser)
+    && isNullableString(value.os)
+    && isNullableString(value.userId)
+    && isNullableString(value.ipAddress)
+);
+
+export const isAppErrorLogs = (value: unknown): value is AppErrorLog[] => (
+    Array.isArray(value) && value.every(isAppErrorLog)
+);
+
+export const isDeleteAppErrorLogsResponse = (value: unknown): value is DeleteAppErrorLogsResponse => (
+    isRecord(value)
+    && typeof value.message === 'string'
+    && isNonNegativeFiniteNumber(value.deletedCount)
+);
+
+export const isAppErrorLogIds = (value: unknown): value is string[] => (
+    Array.isArray(value) && value.length > 0 && value.every(isNonBlankString)
 );
 
 export const isValidLogDate = (value: unknown): value is string => {

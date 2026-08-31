@@ -1,8 +1,11 @@
 import { err, ok, type Result } from '@/src/shared/application/result';
 import type { AdminApiServerGateway } from '../../application/admin-api-server-ports';
 import {
+    isAppErrorLogIds,
+    isAppErrorLogs,
     isCrawlerHealthResponse,
     isCreateItemRequest,
+    isDeleteAppErrorLogsResponse,
     isItem,
     isItemsResponse,
     isNonBlankString,
@@ -14,8 +17,10 @@ import {
     isUser,
     isUsersResponse,
     isValidLogDate,
+    type AppErrorLog,
     type CrawlerHealthResponse,
     type CreateItemRequest,
+    type DeleteAppErrorLogsResponse,
     type Item,
     type ItemsResponse,
     type RestartCrawlerResponse,
@@ -177,6 +182,23 @@ export class AxiosAdminApiServerGateway implements AdminApiServerGateway {
     }
     async fetchCrawlerLogs(date?: string): Promise<Result<string>> {
         return this.fetchLogsDecoded('/admin/logs/crawler', date);
+    }
+    fetchAppErrorLogs(limit?: number): Promise<Result<AppErrorLog[]>> {
+        if (limit !== undefined && !isPositiveSafePage(limit)) return Promise.resolve(validationError());
+        return this.request(
+            (headers) => this.client.get(`${BASE_URL}/admin/app-error`, {
+                headers,
+                params: limit === undefined ? {} : { limit },
+            }),
+            isAppErrorLogs,
+        );
+    }
+    deleteAppErrorLogs(ids: string[]): Promise<Result<DeleteAppErrorLogsResponse>> {
+        if (!isAppErrorLogIds(ids)) return Promise.resolve(validationError());
+        return this.request(
+            (headers) => this.client.post(`${BASE_URL}/admin/app-error/delete`, { ids }, { headers }),
+            isDeleteAppErrorLogsResponse,
+        );
     }
     private async fetchLogsDecoded(path: string, date?: string): Promise<Result<string>> {
         if (date !== undefined && !isValidLogDate(date)) return validationError();

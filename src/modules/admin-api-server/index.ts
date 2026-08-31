@@ -18,11 +18,16 @@ export const updateUserPublicStatus = (id: string, isPublic: boolean) => adminAp
 export const updateUserLastOnlineHiddenStatus = (id: string, isLastOnlineHidden: boolean) => adminApiServerService.updateUserLastOnlineHiddenStatus(id, isLastOnlineHidden);
 export const fetchApiServerLogs = (date?: string) => adminApiServerService.fetchApiServerLogs(date);
 export const fetchCrawlerLogs = (date?: string) => adminApiServerService.fetchCrawlerLogs(date);
+export const fetchAppErrorLogs = (limit?: number) => adminApiServerService.fetchAppErrorLogs(limit);
+export const deleteAppErrorLogs = (ids: string[]) => adminApiServerService.deleteAppErrorLogs(ids);
 
 export type {
+    AppErrorLog,
+    AppErrorSeverity,
     ChannelHealth,
     CrawlerHealthResponse,
     CreateItemRequest,
+    DeleteAppErrorLogsResponse,
     Item,
     ItemOption,
     ItemsResponse,

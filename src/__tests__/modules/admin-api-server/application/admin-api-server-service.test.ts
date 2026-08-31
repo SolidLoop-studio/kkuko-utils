@@ -1,12 +1,26 @@
 import { AdminApiServerService } from '@/src/modules/admin-api-server/application/admin-api-server-service';
 import type { AdminApiServerGateway } from '@/src/modules/admin-api-server/application/admin-api-server-ports';
-import type { Item, ItemsResponse, User, UsersResponse } from '@/src/modules/admin-api-server/application/admin-api-server-types';
+import type { AppErrorLog, Item, ItemsResponse, User, UsersResponse } from '@/src/modules/admin-api-server/application/admin-api-server-types';
 import { err, ok } from '@/src/shared/application/result';
 
 const item: Item = { id: 'item-1', name: '아이템', description: '', updatedAt: 1, group: 'normal', options: { gEXP: 2 } };
 const items: ItemsResponse = { items: [item], totalCount: 1, currentPage: 1, totalPages: 1 };
 const user: User = { id: 'user-1', nickname: '끝말잇기', exp: 1, observedAt: '2026-01-01', exordial: 'x', level: 1, isPublic: true, isLastOnlineHidden: false };
 const users: UsersResponse = { items: [user], totalCount: 1, currentPage: 1, totalPages: 1 };
+const appErrorLog: AppErrorLog = {
+    id: 'error-1',
+    createdAt: '2026-08-31T01:02:03.000Z',
+    message: '렌더링 실패',
+    severity: 'ERROR',
+    stack: 'Error: 렌더링 실패',
+    errorCode: 'RENDER_FAILED',
+    url: '/kkuko/profile',
+    component: 'ProfileCard',
+    browser: 'Chrome',
+    os: 'Windows',
+    userId: 'user-1',
+    ipAddress: '127.0.0.1',
+};
 
 const createGateway = (): jest.Mocked<AdminApiServerGateway> => ({
     fetchCrawlerHealth: jest.fn().mockResolvedValue(ok({ channels: [{ id: 'channel-1', healthy: true }] })),
@@ -25,6 +39,8 @@ const createGateway = (): jest.Mocked<AdminApiServerGateway> => ({
     updateUserLastOnlineHiddenStatus: jest.fn().mockResolvedValue(ok(user)),
     fetchApiServerLogs: jest.fn().mockResolvedValue(ok('api logs')),
     fetchCrawlerLogs: jest.fn().mockResolvedValue(ok('crawler logs')),
+    fetchAppErrorLogs: jest.fn().mockResolvedValue(ok([appErrorLog])),
+    deleteAppErrorLogs: jest.fn().mockResolvedValue(ok({ message: 'Error logs deleted successfully', deletedCount: 1 })),
 });
 
 describe('AdminApiServerService', () => {
@@ -49,10 +65,14 @@ describe('AdminApiServerService', () => {
         await expect(service.updateUserLastOnlineHiddenStatus('user-1', false)).resolves.toEqual(user);
         await expect(service.fetchApiServerLogs('2026-01-01')).resolves.toBe('api logs');
         await expect(service.fetchCrawlerLogs()).resolves.toBe('crawler logs');
+        await expect(service.fetchAppErrorLogs(100)).resolves.toEqual([appErrorLog]);
+        await expect(service.deleteAppErrorLogs(['error-1'])).resolves.toEqual({ message: 'Error logs deleted successfully', deletedCount: 1 });
 
         expect(gateway.restartCrawler).toHaveBeenCalledWith('channel-1');
         expect(gateway.updateItem).toHaveBeenCalledWith('item-1', { name: '변경' });
         expect(gateway.fetchCrawlerLogs).toHaveBeenCalledWith(undefined);
+        expect(gateway.fetchAppErrorLogs).toHaveBeenCalledWith(100);
+        expect(gateway.deleteAppErrorLogs).toHaveBeenCalledWith(['error-1']);
     });
 
     test.each([
@@ -61,6 +81,8 @@ describe('AdminApiServerService', () => {
         ['search text', () => new AdminApiServerService(createGateway()).searchItems('\t', 1)],
         ['date', () => new AdminApiServerService(createGateway()).fetchApiServerLogs('not-a-date')],
         ['item option number', () => new AdminApiServerService(createGateway()).createItem({ id: 'item', name: 'name', description: '', group: 'group', options: { gEXP: Number.NaN } })],
+        ['app error limit', () => new AdminApiServerService(createGateway()).fetchAppErrorLogs(0)],
+        ['app error ids', () => new AdminApiServerService(createGateway()).deleteAppErrorLogs(['error-1', '  '])],
     ])('rejects an invalid %s before Infrastructure is called', async (_name, operation) => {
         // Break caught: constructing a malformed URL or payload from untrusted presentation input.
         await expect(operation()).rejects.toThrow('올바른 요청 값이 필요합니다.');

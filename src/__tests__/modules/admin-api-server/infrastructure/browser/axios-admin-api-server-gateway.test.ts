@@ -7,6 +7,11 @@ const BASE_URL = 'https://api.solidloop-studio.xyz/api/v1';
 const tokenProvider = { getAccessToken: jest.fn().mockResolvedValue(ok('raw-token')) };
 const item = { id: 'item-1', name: '아이템', description: '', updatedAt: 1, group: 'normal', options: { gEXP: 2 } };
 const user = { id: 'user-1', nickname: '끝말잇기', exp: 1, observedAt: '2026-01-01', exordial: 'x', level: 1, isPublic: true, isLastOnlineHidden: false };
+const appErrorLog = {
+    id: 'error-1', createdAt: '2026-08-31T01:02:03.000Z', message: '렌더링 실패', severity: 'ERROR',
+    stack: null, errorCode: null, url: '/kkuko/profile', component: 'ProfileCard', browser: 'Chrome',
+    os: 'Windows', userId: null, ipAddress: null,
+};
 
 Object.assign(global, { TextDecoder });
 
@@ -95,6 +100,42 @@ describe('AxiosAdminApiServerGateway', () => {
         await expect(gateway.fetchCrawlerLogs()).resolves.toEqual(ok('line one\nline two'));
         expect(client.get.mock.calls[0][1]).toEqual({ headers: { Authorization: 'raw-token' }, params: { date: '2026-01-01' }, responseType: 'arraybuffer' });
         expect(client.get.mock.calls[1][1]).toEqual({ headers: { Authorization: 'raw-token' }, params: {}, responseType: 'arraybuffer' });
+    });
+
+    test('fetches and deletes application error logs with the documented contract', async () => {
+        // Break caught: sending the limit outside query params or using a DELETE request instead of the documented POST payload.
+        const client = createClient([appErrorLog]);
+        const localGateway = new AxiosAdminApiServerGateway(client, tokenProvider);
+
+        await expect(localGateway.fetchAppErrorLogs(100)).resolves.toEqual(ok([appErrorLog]));
+        expect(client.get).toHaveBeenCalledWith(`${BASE_URL}/admin/app-error`, {
+            headers: { Authorization: 'raw-token' },
+            params: { limit: 100 },
+        });
+
+        client.post.mockResolvedValueOnce({ data: { message: 'Error logs deleted successfully', deletedCount: 1 } });
+        await expect(localGateway.deleteAppErrorLogs(['error-1'])).resolves.toEqual(ok({
+            message: 'Error logs deleted successfully',
+            deletedCount: 1,
+        }));
+        expect(client.post).toHaveBeenCalledWith(
+            `${BASE_URL}/admin/app-error/delete`,
+            { ids: ['error-1'] },
+            { headers: { Authorization: 'raw-token' } },
+        );
+    });
+
+    test('rejects application error logs with malformed timestamps', async () => {
+        // Break caught: allowing an invalid external timestamp to reach Intl formatting and crash the admin page.
+        const localGateway = new AxiosAdminApiServerGateway(
+            createClient([{ ...appErrorLog, createdAt: 'not-a-timestamp' }]),
+            tokenProvider,
+        );
+
+        await expect(localGateway.fetchAppErrorLogs()).resolves.toEqual(err({
+            kind: 'infrastructure',
+            message: '관리자 API 요청을 처리하는 중 오류가 발생했습니다.',
+        }));
     });
 
     test('uses the production DecompressionStream path for gzip logs when no decoder is injected', async () => {

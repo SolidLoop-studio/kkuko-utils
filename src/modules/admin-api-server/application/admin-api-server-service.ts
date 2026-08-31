@@ -1,8 +1,11 @@
 import type { Result } from '@/src/shared/application/result';
 import type { AdminApiServerGateway } from './admin-api-server-ports';
 import {
+    isAppErrorLogIds,
+    isAppErrorLogs,
     isCrawlerHealthResponse,
     isCreateItemRequest,
+    isDeleteAppErrorLogsResponse,
     isItem,
     isItemsResponse,
     isNonBlankString,
@@ -14,8 +17,10 @@ import {
     isUser,
     isUsersResponse,
     isValidLogDate,
+    type AppErrorLog,
     type CrawlerHealthResponse,
     type CreateItemRequest,
+    type DeleteAppErrorLogsResponse,
     type Item,
     type ItemsResponse,
     type RestartCrawlerResponse,
@@ -116,5 +121,13 @@ export class AdminApiServerService {
     fetchCrawlerLogs(date?: string): Promise<string> {
         if (date !== undefined && !isValidLogDate(date)) return this.invalid();
         return this.execute(this.gateway.fetchCrawlerLogs(date), (value): value is string => typeof value === 'string', '로그를 불러오는데 실패했습니다.');
+    }
+    fetchAppErrorLogs(limit?: number): Promise<AppErrorLog[]> {
+        if (limit !== undefined && !isPositiveSafePage(limit)) return this.invalid();
+        return this.execute(this.gateway.fetchAppErrorLogs(limit), isAppErrorLogs, '애플리케이션 로그를 불러오는데 실패했습니다.');
+    }
+    deleteAppErrorLogs(ids: string[]): Promise<DeleteAppErrorLogsResponse> {
+        if (!isAppErrorLogIds(ids)) return this.invalid();
+        return this.execute(this.gateway.deleteAppErrorLogs(ids), isDeleteAppErrorLogsResponse, '애플리케이션 로그 삭제에 실패했습니다.');
     }
 }
