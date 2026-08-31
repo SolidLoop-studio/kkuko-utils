@@ -74,4 +74,33 @@ describe('NotificationViewCount', () => {
 
         expect(screen.getByText('41')).toBeInTheDocument();
     });
+
+    it('ignores a stale first A result after A-to-B-to-A navigation and displays the current A result', async () => {
+        const firstA = createDeferred<ReturnType<typeof ok<number>>>();
+        const b = createDeferred<ReturnType<typeof ok<number>>>();
+        const currentA = createDeferred<ReturnType<typeof ok<number>>>();
+        mockRecord
+            .mockReturnValueOnce(firstA.promise)
+            .mockReturnValueOnce(b.promise)
+            .mockReturnValueOnce(currentA.promise);
+        const { rerender } = render(<NotificationViewCount id={17} initialViews={40} />);
+
+        await waitFor(() => expect(mockRecord).toHaveBeenCalledTimes(1));
+        rerender(<NotificationViewCount id={18} initialViews={50} />);
+        await waitFor(() => expect(mockRecord).toHaveBeenCalledTimes(2));
+        rerender(<NotificationViewCount id={17} initialViews={60} />);
+        await waitFor(() => expect(mockRecord).toHaveBeenCalledTimes(3));
+
+        await act(async () => {
+            firstA.resolve(ok(41));
+            await firstA.promise;
+        });
+        expect(screen.getByText('60')).toBeInTheDocument();
+
+        await act(async () => {
+            currentA.resolve(ok(61));
+            await currentA.promise;
+        });
+        expect(screen.getByText('61')).toBeInTheDocument();
+    });
 });
