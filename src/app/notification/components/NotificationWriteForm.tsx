@@ -62,6 +62,15 @@ const saveInfrastructureError = (): ApplicationError => ({
     message: '공지사항 저장에 실패했습니다.',
 });
 
+const imageValidationError = (): ApplicationError => ({
+    kind: 'validation',
+    field: 'image',
+    message: '이미지는 5MB 이하의 이미지 파일만 업로드할 수 있습니다.',
+});
+
+const isValidImageFile = (file: File): boolean =>
+    file.size <= 5 * 1024 * 1024 && file.type.startsWith('image/');
+
 /**
  * 공지사항 작성 컴포넌트
  * 관리자 권한이 있는 사용자만 접근 가능합니다.
@@ -109,7 +118,11 @@ export default function NotificationWriteForm({ notification, onError }: Notific
         if (isPending || isSubmittingRef.current) return;
         const file = e.target.files?.[0];
         if (!file) return;
-
+        if (!isValidImageFile(file)) {
+            e.target.value = '';
+            onError?.(imageValidationError());
+            return;
+        }
         const previewUrl = URL.createObjectURL(file);
         if (ownedPreviewUrlRef.current !== null) {
             URL.revokeObjectURL(ownedPreviewUrlRef.current);
@@ -149,6 +162,11 @@ export default function NotificationWriteForm({ notification, onError }: Notific
         }
         if (isModal && endDate === "") {
             onError?.(endDateValidationError());
+            return;
+        }
+        if (imageSelection.kind === 'replace' && !isValidImageFile(imageSelection.file)) {
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            onError?.(imageValidationError());
             return;
         }
 

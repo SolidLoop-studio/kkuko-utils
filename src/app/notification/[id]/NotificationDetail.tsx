@@ -19,6 +19,7 @@ import ErrorModal from "@/src/app/components/ErrModal";
 import type { ErrorMessage } from "@/src/app/types/type";
 import ConfirmModal from "@/src/app/components/ConfirmModal";
 import CompleteModal from "@/src/app/components/CompleteModal";
+import NotificationViewCount from "./NotificationViewCount";
 
 interface NotificationDetailProps {
     notification: NotificationDetailProjection;
@@ -139,6 +140,7 @@ export default function NotificationDetail({ notification }: NotificationDetailP
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Calendar className="w-4 h-4" />
                         <span>{format(new Date(notification.createdAt), "yyyy년 M월 d일 a h:mm", { locale: ko })}</span>
+                        <NotificationViewCount id={notification.id} initialViews={notification.views} />
                     </div>
                 </CardHeader>
                 

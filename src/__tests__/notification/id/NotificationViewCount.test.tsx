@@ -1,0 +1,50 @@
+import { render, screen, waitFor } from '@testing-library/react';
+
+const mockRecord = jest.fn();
+
+jest.mock('../../../modules/notifications/presentation/use-record-notification-view', () => ({
+    useRecordNotificationView: () => ({ record: mockRecord }),
+}));
+
+jest.mock('lucide-react', () => ({
+    Eye: () => <span data-testid="eye-icon" />,
+}));
+
+import NotificationViewCount from '@/src/app/notification/[id]/NotificationViewCount';
+import { err, ok } from '@/src/shared/application/result';
+
+describe('NotificationViewCount', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+        mockRecord.mockResolvedValue(ok(41));
+    });
+
+    it('shows the initial value immediately and replaces it with the recorded count once per ID', async () => {
+        const { rerender } = render(<NotificationViewCount id={17} initialViews={40} />);
+
+        expect(screen.getByText('40')).toBeInTheDocument();
+        expect(screen.getByText('조회수')).toHaveClass('sr-only');
+        await waitFor(() => expect(mockRecord).toHaveBeenCalledTimes(1));
+        expect(await screen.findByText('41')).toBeInTheDocument();
+
+        rerender(<NotificationViewCount id={17} initialViews={40} />);
+        await waitFor(() => expect(mockRecord).toHaveBeenCalledTimes(1));
+
+        mockRecord.mockResolvedValue(ok(8));
+        rerender(<NotificationViewCount id={18} initialViews={7} />);
+        expect(screen.getByText('7')).toBeInTheDocument();
+        await waitFor(() => expect(mockRecord).toHaveBeenCalledWith(18));
+        expect(await screen.findByText('8')).toBeInTheDocument();
+    });
+
+    it('keeps the initial value visible when recording returns an error Result', async () => {
+        mockRecord.mockResolvedValue(err({
+            kind: 'infrastructure',
+            message: '공지사항 조회 수 기록에 실패했습니다.',
+        }));
+        render(<NotificationViewCount id={17} initialViews={40} />);
+
+        await waitFor(() => expect(mockRecord).toHaveBeenCalledTimes(1));
+        expect(screen.getByText('40')).toBeInTheDocument();
+    });
+});

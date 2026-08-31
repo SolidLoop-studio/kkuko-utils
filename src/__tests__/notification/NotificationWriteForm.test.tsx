@@ -136,6 +136,25 @@ describe('NotificationWriteForm', () => {
         expect(mockOnError).not.toHaveBeenCalled();
     });
 
+    it.each([
+        new File(['not an image'], 'notice.txt', { type: 'text/plain' }),
+        new File([new Uint8Array((5 * 1024 * 1024) + 1)], 'large.png', { type: 'image/png' }),
+    ])('rejects an invalid image selection before creating a preview', (file) => {
+        const { container } = render(<NotificationWriteForm onError={mockOnError} />);
+        const fileInput = getFileInput(container);
+
+        fireEvent.change(fileInput, { target: { files: [file] } });
+
+        expect(mockOnError).toHaveBeenCalledWith({
+            kind: 'validation',
+            field: 'image',
+            message: '이미지는 5MB 이하의 이미지 파일만 업로드할 수 있습니다.',
+        });
+        expect(URL.createObjectURL).not.toHaveBeenCalled();
+        expect(fileInput).toHaveValue('');
+        expect(screen.queryByRole('img', { name: 'Preview' })).not.toBeInTheDocument();
+    });
+
     it('submits create with a replace command and converts a blank non-modal end date to now', async () => {
         const user = userEvent.setup();
         const file = new File(['image'], 'notice.png', { type: 'image/png' });

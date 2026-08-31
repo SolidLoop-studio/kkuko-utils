@@ -2,12 +2,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
 
-jest.mock('../../../../modules/notifications/infrastructure/browser/browser-notification-services', () => ({
-    createBrowserNotificationServices: jest.fn(),
+jest.mock('../../../../app/notification/actions', () => ({
+    deleteNotificationAction: jest.fn(),
 }));
 
-import { createBrowserNotificationServices } from '@/src/modules/notifications/infrastructure/browser/browser-notification-services';
-import { notificationQueryKeys } from '@/src/modules/notifications/presentation/use-modal-notice';
+import { deleteNotificationAction } from '@/src/app/notification/actions';
+import { notificationQueryKeys } from '@/src/modules/notifications/presentation/notification-query-keys';
 import { useDeleteNotification } from '@/src/modules/notifications/presentation/use-delete-notification';
 import { err, ok, type Result } from '@/src/shared/application/result';
 
@@ -32,11 +32,9 @@ const createMutationWrapper = () => {
     };
 };
 
-const mockDeleteService = (handler: (id: number) => Promise<Result<void>>) => {
+const mockDeleteAction = (handler: (id: number) => Promise<Result<void>>) => {
     const deleteById = jest.fn(handler);
-    jest.mocked(createBrowserNotificationServices).mockReturnValue({
-        notificationDeleteService: { delete: deleteById },
-    } as unknown as ReturnType<typeof createBrowserNotificationServices>);
+    jest.mocked(deleteNotificationAction).mockImplementation(deleteById);
     return deleteById;
 };
 
@@ -47,7 +45,7 @@ describe('useDeleteNotification', () => {
 
     it('forwards the exact ID, stays pending, and invalidates the active list after success', async () => {
         const deferred = createDeferred<Result<void>>();
-        const deleteById = mockDeleteService(async () => deferred.promise);
+        const deleteById = mockDeleteAction(async () => deferred.promise);
         const { queryClient, MutationWrapper } = createMutationWrapper();
         const invalidateQueries = jest.spyOn(queryClient, 'invalidateQueries');
         const { result } = renderHook(() => useDeleteNotification(), {
@@ -81,7 +79,7 @@ describe('useDeleteNotification', () => {
             kind: 'forbidden' as const,
             message: '공지사항 삭제 권한이 없습니다.',
         };
-        mockDeleteService(async () => err(failure));
+        mockDeleteAction(async () => err(failure));
         const { queryClient, MutationWrapper } = createMutationWrapper();
         const invalidateQueries = jest.spyOn(queryClient, 'invalidateQueries');
         const { result } = renderHook(() => useDeleteNotification(), {
@@ -98,7 +96,7 @@ describe('useDeleteNotification', () => {
     });
 
     it('normalizes a rejected service promise into the stable infrastructure Result', async () => {
-        mockDeleteService(async () => {
+        mockDeleteAction(async () => {
             throw new Error('private database error');
         });
         const { queryClient, MutationWrapper } = createMutationWrapper();

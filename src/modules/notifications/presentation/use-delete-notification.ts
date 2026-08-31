@@ -1,14 +1,10 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { deleteNotificationAction } from '@/src/app/notification/actions';
 import type { ApplicationError } from '@/src/shared/application/application-error';
 import { err, type Result } from '@/src/shared/application/result';
-import type { DeleteNotificationService } from '../application/delete-notification';
-import { createBrowserNotificationServices } from '../infrastructure/browser/browser-notification-services';
 import { notificationQueryKeys } from './notification-query-keys';
-
-type NotificationDeleteService = Pick<DeleteNotificationService, 'delete'>;
 
 const deleteInfrastructureError = (): ApplicationError => ({
     kind: 'infrastructure',
@@ -21,13 +17,10 @@ export const useDeleteNotification = (): {
     isPending: boolean;
 } => {
     const queryClient = useQueryClient();
-    const [service] = useState<NotificationDeleteService>(() => (
-        createBrowserNotificationServices().notificationDeleteService
-    ));
     const mutation = useMutation<Result<void>, never, number>({
         mutationFn: async (id) => {
             try {
-                return await service.delete(id);
+                return await deleteNotificationAction(id);
             } catch {
                 return err(deleteInfrastructureError());
             }

@@ -24,6 +24,11 @@ jest.mock('../../../modules/notifications', () => ({
     useDeleteNotification: jest.fn(),
 }));
 
+jest.mock('../../../app/notification/[id]/NotificationViewCount', () => ({
+    __esModule: true,
+    default: ({ initialViews }: { initialViews: number }) => <span>{initialViews}</span>,
+}));
+
 jest.mock('next/image', () => ({
     __esModule: true,
     default: ({ alt, src }: { alt: string; src: string }) => <img alt={alt} src={src} />,
@@ -35,6 +40,7 @@ jest.mock('lucide-react', () => ({
     Pin: () => <span />,
     Edit: () => <span />,
     Trash2: () => <span />,
+    Eye: () => <span />,
 }));
 
 jest.mock('react-markdown', () => ({
@@ -156,6 +162,7 @@ describe('NotificationDetail', () => {
             '/notification/17/edit',
         );
         expect(screen.getByRole('button', { name: '삭제' })).toBeInTheDocument();
+        expect(screen.getByText('40')).toBeInTheDocument();
     });
 
     it('hides edit and delete controls from non-admin users', () => {
