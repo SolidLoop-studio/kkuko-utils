@@ -1,6 +1,6 @@
 # PostgreSQL + NestJS API 스트랭글러 마이그레이션 설계
 
-> 상태: 설계 승인, 구현 계획 작성 전 사용자 검토 대기
+> 상태: 설계 승인, 1차 구현 계획 작성 완료
 >
 > 기준일: 2026-09-01
 >
@@ -181,7 +181,7 @@ interface AuthenticatedIdentity {
   userId: string;
 }
 
-type UserRole = 'user' | 'r4' | 'admin';
+type UserRole = 'r1' | 'r2' | 'r3' | 'r4' | 'admin';
 ```
 
 초기 구현은 `SupabaseIdentityVerifier`와
